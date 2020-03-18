@@ -22,6 +22,7 @@ template("bison_core") {
   write_native_libraries_java("${_template_name}__native_libraries") {
     deps = [
       ":${_template_name}__shared_library_list",
+      "//build/util:chrome_version_json"
     ]
     _native_lib_file =
         rebase_path("$root_gen_dir/CHROME_VERSION.json", root_out_dir)

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// #include "bison/android/bison_jni_registration.h"
+#include "bison/android/bison_jni_registration.h"
 
 #include "base/android/jni_android.h"
 #include "base/android/library_loader/library_loader_hooks.h"
@@ -39,16 +39,16 @@ bool NativeInit(base::android::LibraryProcessType library_process_type) {
 JNI_EXPORT jint JNI_OnLoad(JavaVM* vm, void* reserved) {
   LOGD("Jni_onLoad");
   base::android::InitVM(vm);
-  // JNIEnv* env = base::android::AttachCurrentThread();
-  // if (!base::android::IsSelectiveJniRegistrationEnabled(env)) {
-  //   if (!RegisterNonMainDexNatives(env)) {
-  //     return false;
-  //   }
-  // }
+  JNIEnv* env = base::android::AttachCurrentThread();
+  if (!base::android::IsSelectiveJniRegistrationEnabled(env)) {
+    if (!RegisterNonMainDexNatives(env)) {
+      return false;
+    }
+  }
 
-  // if (!RegisterMainDexNatives(env)) {
-  //   return false;
-  // }
+  if (!RegisterMainDexNatives(env)) {
+    return false;
+  }
   base::android::SetNativeInitializationHook(&NativeInit);
   return JNI_VERSION_1_4;
 }
