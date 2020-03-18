@@ -2,7 +2,7 @@ import("//build/android/resource_sizes.gni")
 import("//build/config/android/config.gni")
 import("//build/config/android/rules.gni")
 import("//build/config/locales.gni")
-import("//build/util/version.gni")
+
 # import("//chrome/android/chrome_common_shared_library.gni")
 # import("//chrome/android/chrome_public_apk_tmpl.gni")
 # import("//chrome/android/trichrome.gni")
@@ -12,6 +12,7 @@ import("//tools/grit/repack.gni")
 # import("//tools/resources/generate_resource_whitelist.gni")
 # import("//tools/v8_context_snapshot/v8_context_snapshot.gni")
 import("//weblayer/variables.gni")
+import("//bison/android/bison.gni")
 
 group ("bison_android"){
   deps = [
@@ -21,69 +22,9 @@ group ("bison_android"){
   ]
 }
 
-template("repackage_jars") {
-  dist_jar(target_name) {
-    requires_android = true
-    direct_deps_only = true
-    use_unprocessed_jars = true
-    no_build_hooks = true
-    forward_variables_from(invoker, "*")
-  }
-}
 
-template("android_aar") {
-  assert(defined(invoker.shared_libraries))
-  _template_name = target_name
 
-  _shared_library_list_file =
-      "$target_gen_dir/${_template_name}.native_libs"
-  generated_file("${_template_name}__shared_library_list") {
-    deps = invoker.shared_libraries
-    outputs = [
-      _shared_library_list_file,
-    ]
-    data_keys = [ "shared_libraries" ]
-    walk_keys = [ "shared_libraries_barrier" ]
-    rebase = root_build_dir
-  }
-
-  write_native_libraries_java("${_template_name}__native_libraries") {
-    deps = [
-      ":${_template_name}__shared_library_list",
-    ]
-    _native_lib_file =
-        rebase_path("$root_gen_dir/CHROME_VERSION.json", root_out_dir)
-    version_number = "@FileArg($_native_lib_file:full-quoted)"
-    native_libraries_list_file = _shared_library_list_file
-    use_final_fields = true
-  }
-
-  android_library("${_template_name}__native_libraries_java"){
-    srcjar_deps = [":${_template_name}__native_libraries"]
-  }
-
-  _deps =[":${_template_name}__native_libraries_java"]
-    if (defined(invoker.deps)) {
-      _deps += invoker.deps
-  }
-  _deps+=invoker.shared_libraries
-
-  dist_aar(target_name) {
-    forward_variables_from(invoker, [
-      "output",
-      "resource_included_patterns",
-      "jar_excluded_patterns",
-    ])
-    deps = _deps
-
-    native_libraries = [
-      "$root_build_dir/libbison.so",
-    ]
-  }
-}
-
-android_aar("bison_aar") {
-
+bison_core("bison_aar") {
   deps = [
     ":bison_java_part",
   ]
