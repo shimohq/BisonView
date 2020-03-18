@@ -1,0 +1,614 @@
+import("//build/android/resource_sizes.gni")
+import("//build/config/android/config.gni")
+import("//build/config/android/rules.gni")
+import("//build/config/locales.gni")
+# import("//chrome/android/chrome_common_shared_library.gni")
+# import("//chrome/android/chrome_public_apk_tmpl.gni")
+# import("//chrome/android/trichrome.gni")
+import("//components/gwp_asan/buildflags/buildflags.gni")
+import("//components/spellcheck/spellcheck_build_features.gni")
+import("//tools/grit/repack.gni")
+# import("//tools/resources/generate_resource_whitelist.gni")
+# import("//tools/v8_context_snapshot/v8_context_snapshot.gni")
+import("//weblayer/variables.gni")
+
+group ("bison_android"){
+  deps = [
+    "common",
+    "browser",
+    "renderer",
+  ]
+}
+
+
+dist_aar("bison_aar") {
+
+  deps = [
+    ":browser_java",
+    ":libbison",
+  ]
+
+  native_libraries = [
+    "$root_build_dir/libbison.so",
+  ]
+  
+  output = "$root_build_dir/aars/bison.aar" 
+
+  resource_included_patterns =[
+    "*/bison/*"
+  ]
+
+  jar_excluded_patterns = [
+    "im/shimo/bison/R\$*.class",
+    "im/shimo/bison/R.class",
+    "gen/*",
+
+    # "android/arch/*",
+    # "android/support/design/*",
+    "android/support/v4/R\$*.class",
+    "android/support/v4/R.class",
+
+    "android/support/annotation/*",
+    # "android/support/v7/*",
+    # "android/support/v13/*",
+
+    # "android.support.graphics/*",
+    # "android.support.graphics/R\$*.class",
+    # "android.support.graphics/R.class",
+
+    # "android/support/asynclayoutinflater/*",
+    # "android/support/swiperefreshlayout/*",
+    # "android/support/slidingpanelayout/*",
+    # "android/support/coordinatorlayout/*",
+    # "android/support/mediacompat/*",
+    # "android/support/coreutils/*",
+    # "android/support/drawerlayout/*",
+    # "android/support/customview/*",
+    # "android/support/fragment/*",
+    # "android/support/coreui/*",
+    # "android/support/compat/*",
+    # "android/support/loader/*",
+    # "androidx/core/*",
+    # "androidx/media/*",
+    # "androidx/version*",
+    "*.stamp",
+    "META-INF/*",
+  ]
+
+
+}
+
+_registration_header="$target_gen_dir/bison_jni_registration.h"
+
+shared_library("libbison") {
+
+  sources = [
+    "lib/bison_entry_point.cc",
+    "lib/bison_main_delegate.cc",
+    "lib/bison_main_delegate.h",
+    "lib/bison_jni_onload.cc",
+    "lib/bison_jni_onload.h",
+    
+    _registration_header,
+  ]
+
+  deps = [
+    ":browser_jni_headers",
+    ":bison_jni_registration",
+    "browser",
+    "browser/gfx",
+    "common",
+    "gpu",
+    "renderer",
+    "//base",
+    "//components/autofill/core/common",
+    "//components/crash/android:crashpad_main",
+    "//components/gwp_asan/buildflags",
+    "//components/safe_browsing/android:safe_browsing_api_handler",
+    "//components/services/heap_profiling/public/cpp",
+    "//components/spellcheck:buildflags",
+    "//components/spellcheck/common",
+    "//components/version_info",
+    "//components/version_info/android:channel_getter",
+    "//content/public/app:both",
+    "//content/public/browser",
+    "//content/public/common:content_descriptor_keys",
+    "//gin",
+    "//gpu/command_buffer/service",
+    "//gpu/ipc:gl_in_process_context",
+    "//ui/events:gesture_detection",
+  ]
+
+
+  if (enable_gwp_asan) {
+    deps += [ "//components/gwp_asan/client" ]
+  }
+
+  if (webview_includes_weblayer) {
+    defines = [ "WEBVIEW_INCLUDES_WEBLAYER" ]
+    deps += [ "//weblayer:weblayer_lib" ]
+  }
+
+
+  libs = [
+    "android",
+    "log",
+  ]
+
+  configs -= [ "//build/config/android:hide_all_but_jni_onload" ]
+  configs += [ "//build/config/android:hide_all_but_jni" ]
+
+
+
+
+}
+
+
+generate_jni_registration("bison_jni_registration") {
+  target = ":browser_java"
+  # header_output = _jni_registration_header
+  header_output = _registration_header
+  # sources_blacklist = [
+  #   "//base/android/java/src/org/chromium/base/library_loader/LibraryLoader.java",
+  #   "//base/android/java/src/org/chromium/base/library_loader/LibraryPrefetcher.java",
+  #   "//base/android/java/src/org/chromium/base/process_launcher/ChildProcessService.java",
+  #   "//base/android/java/src/org/chromium/base/SysUtils.java",
+  # ]
+}
+
+
+
+
+generate_jni("browser_jni_headers") {
+  sources = [
+    "java/im/shimo/bison/AndroidProtocolHandler.java",
+    "java/im/shimo/bison/BisonAutofillClient.java",
+    "java/im/shimo/bison/BisonBrowserContext.java",
+    "java/im/shimo/bison/BisonBrowserProcess.java",
+    "java/im/shimo/bison/BisonContents.java",
+    "java/im/shimo/bison/BisonContentsBackgroundThreadClient.java",
+    "java/im/shimo/bison/BisonContentsClientBridge.java",
+    "java/im/shimo/bison/BisonContentsIoThreadClient.java",
+    "java/im/shimo/bison/BisonContentsLifecycleNotifier.java",
+    "java/im/shimo/bison/BisonContentsStatics.java",
+    "java/im/shimo/bison/BisonCookieManager.java",
+    "java/im/shimo/bison/BisonDebug.java",
+    "java/im/shimo/bison/BisonDevToolsServer.java",
+    "java/im/shimo/bison/BisonFeatureList.java",
+    "java/im/shimo/bison/BisonFormDatabase.java",
+    "java/im/shimo/bison/BisonHttpAuthHandler.java",
+    "java/im/shimo/bison/BisonPdfExporter.java",
+    "java/im/shimo/bison/BisonProxyController.java",
+    "java/im/shimo/bison/BisonQuotaManagerBridge.java",
+    "java/im/shimo/bison/BisonRenderProcess.java",
+    "java/im/shimo/bison/BisonSettings.java",
+    "java/im/shimo/bison/BisonTracingController.java",
+    "java/im/shimo/bison/BisonVariationsSeedBridge.java",
+    "java/im/shimo/bison/BisonWebContentsDelegate.java",
+    "java/im/shimo/bison/BisonWebResourceInterceptResponse.java",
+    "java/im/shimo/bison/BisonWebResourceResponse.java",
+    "java/im/shimo/bison/InputStreamUtil.java",
+    "java/im/shimo/bison/JsReplyProxy.java",
+    "java/im/shimo/bison/PopupTouchHandleDrawable.java",
+    "java/im/shimo/bison/WebMessageListenerHolder.java",
+    "java/im/shimo/bison/gfx/BisonDrawFnImpl.java",
+    "java/im/shimo/bison/gfx/BisonGLFunctor.java",
+    "java/im/shimo/bison/gfx/BisonPicture.java",
+    "java/im/shimo/bison/gfx/JavaBrowserViewRendererHelper.java",
+    "java/im/shimo/bison/metrics/BisonMetricsLogUploader.java",
+    "java/im/shimo/bison/metrics/BisonMetricsServiceClient.java",
+    "java/im/shimo/bison/permission/BisonPermissionRequest.java",
+  ]
+
+  deps = [
+    ":cancellation_signal_android_jar_jni_headers",
+  ]
+}
+
+generate_jar_jni("cancellation_signal_android_jar_jni_headers") {
+  classes = [ "android/os/CancellationSignal.class" ]
+}
+
+android_library("browser_java") {
+  java_files = [
+    "java/im/shimo/bison/AndroidProtocolHandler.java",
+    "java/im/shimo/bison/AutofillActionModeCallback.java",
+    "java/im/shimo/bison/BisonActionModeCallback.java",
+    "java/im/shimo/bison/BisonAutofillClient.java",
+    "java/im/shimo/bison/BisonAutofillManager.java",
+    "java/im/shimo/bison/BisonAutofillProvider.java",
+    "java/im/shimo/bison/BisonAutofillUMA.java",
+    "java/im/shimo/bison/BisonBrowserContext.java",
+    "java/im/shimo/bison/BisonBrowserProcess.java",
+    "java/im/shimo/bison/BisonConsoleMessage.java",
+    "java/im/shimo/bison/BisonContents.java",
+    "java/im/shimo/bison/BisonContentsBackgroundThreadClient.java",
+    "java/im/shimo/bison/BisonContentsClient.java",
+    "java/im/shimo/bison/BisonContentsClientBridge.java",
+    "java/im/shimo/bison/BisonContentsClientCallbackHelper.java",
+    "java/im/shimo/bison/BisonContentsIoThreadClient.java",
+    "java/im/shimo/bison/BisonContentsLifecycleNotifier.java",
+    "java/im/shimo/bison/BisonContentsStatics.java",
+    "java/im/shimo/bison/BisonCookieManager.java",
+    "java/im/shimo/bison/BisonDebug.java",
+    "java/im/shimo/bison/BisonDevToolsServer.java",
+    "java/im/shimo/bison/BisonFeatures.java",
+    "java/im/shimo/bison/BisonFeatureList.java",
+    # "java/im/shimo/bison/BisonFirebaseConfig.java",
+    "java/im/shimo/bison/BisonFormDatabase.java",
+    "java/im/shimo/bison/BisonGeolocationPermissions.java",
+    "java/im/shimo/bison/BisonHistogramRecorder.java",
+    "java/im/shimo/bison/BisonHttpAuthHandler.java",
+    "java/im/shimo/bison/BisonLayoutSizer.java",
+    "java/im/shimo/bison/BisonNetworkChangeNotifierRegistrationPolicy.java",
+    "java/im/shimo/bison/BisonPdfExporter.java",
+    "java/im/shimo/bison/BisonPrintDocumentAdapter.java",
+    "java/im/shimo/bison/BisonProxyController.java",
+    "java/im/shimo/bison/BisonQuotaManagerBridge.java",
+    "java/im/shimo/bison/BisonRenderProcess.java",
+    "java/im/shimo/bison/BisonRenderProcessGoneDetail.java",
+    "java/im/shimo/bison/BisonScrollOffsetManager.java",
+    "java/im/shimo/bison/BisonServiceWorkerClient.java",
+    "java/im/shimo/bison/BisonServiceWorkerController.java",
+    "java/im/shimo/bison/BisonServiceWorkerSettings.java",
+    "java/im/shimo/bison/BisonSettings.java",
+    "java/im/shimo/bison/BisonSupportLibIsomorphic.java",
+    "java/im/shimo/bison/BisonSwitches.java",
+    "java/im/shimo/bison/BisonTracingController.java",
+    "java/im/shimo/bison/BisonVariationsSeedBridge.java",
+    "java/im/shimo/bison/BisonViewAndroidDelegate.java",
+    "java/im/shimo/bison/BisonViewMethods.java",
+    "java/im/shimo/bison/BisonWebContentsDelegate.java",
+    "java/im/shimo/bison/BisonWebContentsDelegateAdapter.java",
+    "java/im/shimo/bison/BisonWebContentsObserver.java",
+    "java/im/shimo/bison/BisonWebResourceInterceptResponse.java",
+    "java/im/shimo/bison/BisonWebResourceResponse.java",
+    "java/im/shimo/bison/BisonZoomControls.java",
+    "java/im/shimo/bison/CleanupReference.java",
+    "java/im/shimo/bison/ClientCertLookupTable.java",
+    "java/im/shimo/bison/DefaultVideoPosterRequestHandler.java",
+    "java/im/shimo/bison/ErrorCodeConversionHelper.java",
+    "java/im/shimo/bison/FindAddress.java",
+    "java/im/shimo/bison/FullScreenView.java",
+    "java/im/shimo/bison/HttpAuthDatabase.java",
+    "java/im/shimo/bison/InputStreamUtil.java",
+    "java/im/shimo/bison/JsPromptResultReceiver.java",
+    "java/im/shimo/bison/JsReplyProxy.java",
+    "java/im/shimo/bison/JsResultHandler.java",
+    "java/im/shimo/bison/JsResultReceiver.java",
+    "java/im/shimo/bison/NullBisonViewMethods.java",
+    "java/im/shimo/bison/OverScrollGlow.java",
+    "java/im/shimo/bison/PopupTouchHandleDrawable.java",
+    "java/im/shimo/bison/ResourcesContextWrapperFactory.java",
+    "java/im/shimo/bison/ScrollAccessibilityHelper.java",
+    "java/im/shimo/bison/SslUtil.java",
+    "java/im/shimo/bison/VariationsSeedLoader.java",
+    "java/im/shimo/bison/ViewPositionObserver.java",
+    "java/im/shimo/bison/WebMessageListener.java",
+    "java/im/shimo/bison/WebMessageListenerHolder.java",
+    "java/im/shimo/bison/WebViewChromiumRunQueue.java",
+    "java/im/shimo/bison/gfx/BisonDrawFnImpl.java",
+    "java/im/shimo/bison/gfx/BisonFunctor.java",
+    "java/im/shimo/bison/gfx/BisonGLFunctor.java",
+    "java/im/shimo/bison/gfx/BisonPicture.java",
+    "java/im/shimo/bison/gfx/JavaBrowserViewRendererHelper.java",
+    "java/im/shimo/bison/metrics/BisonMetricsLogUploader.java",
+    "java/im/shimo/bison/metrics/BisonMetricsServiceClient.java",
+    "java/im/shimo/bison/safe_browsing/BisonSafeBrowsingConfigHelper.java",
+    "java/im/shimo/bison/safe_browsing/BisonSafeBrowsingConversionHelper.java",
+    "java/im/shimo/bison/safe_browsing/BisonSafeBrowsingResponse.java",
+    "java/im/shimo/bison/permission/BisonGeolocationCallback.java",
+    "java/im/shimo/bison/permission/BisonPermissionRequest.java",
+    "java/im/shimo/bison/policy/BisonPolicyProvider.java",
+    # "java/im/shimo/bison/ui/CrashesListActivity.java",
+    # "java/im/shimo/bison/ui/util/CrashInfoLoader.java",
+    # "java/im/shimo/bison/ui/util/UnuploadedFilesStateLoader.java",
+    # "java/im/shimo/bison/ui/util/UploadedCrashesInfoLoader.java",
+    # "java/im/shimo/bison/ui/util/WebViewCrashInfoCollector.java",
+    # "java/im/shimo/bison/ui/util/WebViewCrashLogParser.java",
+  ]
+  deps = [
+    ":common_aidl_java",
+    ":common_commandline_java",
+    # ":common_crash_java",
+    
+    # This includes BisonResource, which may be called via JNI. We're including it
+    # here because there's currently no good way to enforce that it gets included
+    # when it's depended on via JNI.
+
+    ":common_java",
+    
+    ":common_platform_services_java",
+    ":common_variations_utils_java",
+    ":resources",
+    ":strings_grd",
+    # ":system_webview_manifest",
+    "//base:base_java",
+    "//base:jni_java",
+    "//components/autofill/android:autofill_java",
+    "//components/autofill/android:provider_java",
+    "//components/background_task_scheduler:background_task_scheduler_task_ids_java",
+    "//components/content_capture/android:java",
+    "//components/crash/android:handler_java",
+    "//components/crash/android:java",
+    "//components/embedder_support/android:application_java",
+    "//components/embedder_support/android:web_contents_delegate_java",
+    "//components/minidump_uploader:minidump_uploader_java",
+    "//components/navigation_interception/android:navigation_interception_java",
+    "//components/policy/android:policy_java",
+    "//components/safe_browsing/android:safe_browsing_java",
+    "//components/variations:load_seed_result_enum_java",
+    "//components/variations/android:variations_java",
+    "//components/version_info/android:version_constants_java",
+    "//components/viz/common:common_java",
+    "//content/public/android:content_java",
+    "//device/gamepad:java",
+    "//mojo/public/java:system_java",
+    "//mojo/public/java/system:system_impl_java",
+    "//net/android:net_java",
+    "//services/network/public/mojom:mojom_java",
+    "//third_party/android_deps:androidx_annotation_annotation_java",
+    "//third_party/blink/public:blink_headers_java",
+    "//ui/android:ui_java",
+  ]
+  annotation_processor_deps = [ "//base/android/jni_generator:jni_processor" ]
+
+  if (enable_spellcheck) {
+    deps += [ "//components/spellcheck/browser/android:java" ]
+  }
+
+  if (webview_includes_weblayer) {
+    deps += [
+      "//components/viz/service:service_java",
+      "//weblayer/browser/java",
+    ]
+  }
+
+  srcjar_deps = [
+    "browser:browser_enums",
+    "//components/safe_browsing/db:sb_threat_values",
+  ]
+
+  # android_manifest_for_lint = system_webview_android_manifest
+  min_sdk_version = 21
+}
+
+
+android_library("common_variations_utils_java") {
+  java_files = [ "java/im/shimo/bison/common/variations/VariationsUtils.java" ]
+  deps = [
+    "proto:bison_variations_seed_proto_java",
+    "//base:base_java",
+    "//components/variations/android:variations_java",
+    "//third_party/android_deps:com_google_protobuf_protobuf_lite_java",
+  ]
+}
+
+
+android_library("common_java") {
+  java_files = [
+    "java/im/shimo/bison/common/BisonResource.java",
+    "java/im/shimo/bison/common/ServiceNames.java",
+  ]
+  deps = [
+    "//base:base_java",
+  ]
+}
+
+generate_jni("common_jni_headers") {
+  sources = [
+    "java/im/shimo/bison/common/BisonResource.java",
+    "java/im/shimo/bison/common/crash/BisonCrashReporterClient.java",
+  ]
+}
+
+android_library("common_commandline_java") {
+  java_files =
+      [ "java/im/shimo/bison/common/CommandLineUtil.java" ]
+
+  deps = [
+    "//base:base_java",
+  ]
+}
+
+android_library("common_platform_services_java") {
+  java_files = [
+    "java/im/shimo/bison/common/PlatformServiceBridge.java",
+    "java/im/shimo/bison/common/PlatformServiceBridgeImpl.java",
+  ]
+
+  deps = [
+    "//base:base_java",
+    "//third_party/android_deps:androidx_annotation_annotation_java",
+  ]
+
+  # The appropriate .class file will be loaded via a dependency to a library
+  # like :platform_service_bridge_upstream_implementation_java below. We only include the
+  # .java file because other files in the target depend on it.
+  jar_excluded_patterns = [ "*/PlatformServiceBridgeImpl.class" ]
+}
+
+
+android_aidl("services_variations_seed_server_aidl") {
+  import_include = [ "java" ]
+  sources = [
+    "java/im/shimo/bison/services/IVariationsSeedServer.aidl",
+  ]
+}
+
+android_aidl("services_crash_receiver_aidl") {
+  import_include = [ "java" ]
+  sources = [
+    "java/im/shimo/bison/services/ICrashReceiverService.aidl",
+  ]
+}
+
+android_library("common_aidl_java") {
+  srcjar_deps = [
+    ":services_crash_receiver_aidl",
+    ":services_variations_seed_server_aidl",
+  ]
+}
+
+android_resources("resources") {
+  resource_dirs = [ "res" ]
+  custom_package = "im.shimo.bison"
+  deps = [
+    ":strings_grd",
+  ]
+}
+
+java_strings_grd("strings_grd") {
+  grd_file = "res/strings/android_webview_strings.grd"
+  outputs = [
+    "values-am/android_webview_strings.xml",
+    "values-ar/android_webview_strings.xml",
+    "values-bg/android_webview_strings.xml",
+    "values-bn/android_webview_strings.xml",
+    "values-ca/android_webview_strings.xml",
+    "values-cs/android_webview_strings.xml",
+    "values-da/android_webview_strings.xml",
+    "values-de/android_webview_strings.xml",
+    "values-el/android_webview_strings.xml",
+    "values-en-rGB/android_webview_strings.xml",
+    "values-es/android_webview_strings.xml",
+    "values-es-rUS/android_webview_strings.xml",
+    "values-et/android_webview_strings.xml",
+    "values-fa/android_webview_strings.xml",
+    "values-fi/android_webview_strings.xml",
+    "values-fr/android_webview_strings.xml",
+    "values-gu/android_webview_strings.xml",
+    "values-hi/android_webview_strings.xml",
+    "values-hr/android_webview_strings.xml",
+    "values-hu/android_webview_strings.xml",
+    "values-in/android_webview_strings.xml",
+    "values-it/android_webview_strings.xml",
+    "values-iw/android_webview_strings.xml",
+    "values-ja/android_webview_strings.xml",
+    "values-kn/android_webview_strings.xml",
+    "values-ko/android_webview_strings.xml",
+    "values-lt/android_webview_strings.xml",
+    "values-lv/android_webview_strings.xml",
+    "values-ml/android_webview_strings.xml",
+    "values-mr/android_webview_strings.xml",
+    "values-ms/android_webview_strings.xml",
+    "values-nb/android_webview_strings.xml",
+    "values-nl/android_webview_strings.xml",
+    "values-pl/android_webview_strings.xml",
+    "values-pt-rBR/android_webview_strings.xml",
+    "values-pt-rPT/android_webview_strings.xml",
+    "values-ro/android_webview_strings.xml",
+    "values-ru/android_webview_strings.xml",
+    "values-sk/android_webview_strings.xml",
+    "values-sl/android_webview_strings.xml",
+    "values-sr/android_webview_strings.xml",
+    "values-sv/android_webview_strings.xml",
+    "values-sw/android_webview_strings.xml",
+    "values-ta/android_webview_strings.xml",
+    "values-te/android_webview_strings.xml",
+    "values-th/android_webview_strings.xml",
+    "values-tl/android_webview_strings.xml",
+    "values-tr/android_webview_strings.xml",
+    "values-uk/android_webview_strings.xml",
+    "values-vi/android_webview_strings.xml",
+    "values-zh-rCN/android_webview_strings.xml",
+    "values-zh-rTW/android_webview_strings.xml",
+    "values/android_webview_strings.xml",
+  ]
+}
+
+# deps on browser
+grit("generate_components_strings") {
+  source = "../../components/components_strings.grd"
+
+  # components_strings contains strings from all components. WebView
+  # will never display most of them, so we try to limit the included
+  # strings. This whitelist trims about 50% more than the compile-based
+  # whitelist generated by :system_webview_pak_whitelist.
+  whitelist = rebase_path("ui/grit_strings_whitelist.txt", root_build_dir)
+  inputs = [
+    "//bison/android/ui/grit_strings_whitelist.txt",
+  ]
+  grit_flags = [
+    "-w",
+    whitelist,
+  ]
+  outputs = [
+    "grit/components_strings.h",
+    "java/res/values-am/components_strings.xml",
+    "java/res/values-ar/components_strings.xml",
+    "java/res/values-bg/components_strings.xml",
+    "java/res/values-bn/components_strings.xml",
+    "java/res/values-ca/components_strings.xml",
+    "java/res/values-cs/components_strings.xml",
+    "java/res/values-da/components_strings.xml",
+    "java/res/values-de/components_strings.xml",
+    "java/res/values-el/components_strings.xml",
+    "java/res/values-en-rGB/components_strings.xml",
+    "java/res/values-es/components_strings.xml",
+    "java/res/values-es-rUS/components_strings.xml",
+    "java/res/values-et/components_strings.xml",
+    "java/res/values-fa/components_strings.xml",
+    "java/res/values-fi/components_strings.xml",
+    "java/res/values-fr/components_strings.xml",
+    "java/res/values-gu/components_strings.xml",
+    "java/res/values-hi/components_strings.xml",
+    "java/res/values-hr/components_strings.xml",
+    "java/res/values-hu/components_strings.xml",
+    "java/res/values-in/components_strings.xml",
+    "java/res/values-it/components_strings.xml",
+    "java/res/values-iw/components_strings.xml",
+    "java/res/values-ja/components_strings.xml",
+    "java/res/values-kn/components_strings.xml",
+    "java/res/values-ko/components_strings.xml",
+    "java/res/values-lt/components_strings.xml",
+    "java/res/values-lv/components_strings.xml",
+    "java/res/values-ml/components_strings.xml",
+    "java/res/values-mr/components_strings.xml",
+    "java/res/values-ms/components_strings.xml",
+    "java/res/values-nb/components_strings.xml",
+    "java/res/values-nl/components_strings.xml",
+    "java/res/values-pl/components_strings.xml",
+    "java/res/values-pt-rBR/components_strings.xml",
+    "java/res/values-pt-rPT/components_strings.xml",
+    "java/res/values-ro/components_strings.xml",
+    "java/res/values-ru/components_strings.xml",
+    "java/res/values-sk/components_strings.xml",
+    "java/res/values-sl/components_strings.xml",
+    "java/res/values-sr/components_strings.xml",
+    "java/res/values-sv/components_strings.xml",
+    "java/res/values-sw/components_strings.xml",
+    "java/res/values-ta/components_strings.xml",
+    "java/res/values-te/components_strings.xml",
+    "java/res/values-th/components_strings.xml",
+    "java/res/values-tl/components_strings.xml",
+    "java/res/values-tr/components_strings.xml",
+    "java/res/values-uk/components_strings.xml",
+    "java/res/values-vi/components_strings.xml",
+    "java/res/values-zh-rCN/components_strings.xml",
+    "java/res/values-zh-rTW/components_strings.xml",
+    "java/res/values/components_strings.xml",
+  ]
+  foreach(_locale, locales_with_fake_bidi) {
+    outputs += [ "components_strings_${_locale}.pak" ]
+  }
+}
+
+grit("generate_aw_resources") {
+  source = "ui/aw_resources.grd"
+  outputs = [
+    "grit/bison_resources.h",
+    "aw_resources.pak",
+  ]
+}
+
+grit("generate_aw_strings") {
+  source = "ui/aw_strings.grd"
+  outputs = [
+    "grit/bison_strings.h",
+  ]
+  foreach(_locale, locales) {
+    outputs += [ "aw_strings_${_locale}.pak" ]
+  }
+}
+
