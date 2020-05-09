@@ -42,7 +42,7 @@ bison_core("bison_aar") {
   jar_excluded_patterns = [
     "im/shimo/bison/R\$*.class",
     "im/shimo/bison/R.class",
-    "gen/*",
+    # "gen/*",
 
     # "android/arch/*",
     # "android/support/design/*",
@@ -72,6 +72,7 @@ bison_core("bison_aar") {
     # "androidx/core/*",
     # "androidx/media/*",
     # "androidx/version*",
+    "androidx/*",
     "*.stamp",
     "META-INF/*",
   ]
