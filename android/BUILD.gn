@@ -26,6 +26,10 @@ group ("bison_android"){
 
 
 bison_core("bison_aar") {
+
+  android_manifest = "AndroidManifest.xml"
+  output = "$root_build_dir/aars/bison.aar" 
+  
   deps = [
     ":bison_java_part",
   ]
@@ -33,10 +37,11 @@ bison_core("bison_aar") {
   shared_libraries = [
     ":libbison",
   ]
-  output = "$root_build_dir/aars/bison.aar" 
-
+  
   resource_included_patterns =[
-    "*/bison/*"
+    "*/bison/*",
+    "*/ui/android/*",
+  
   ]
 
   jar_excluded_patterns = [
@@ -543,6 +548,9 @@ android_library("common_java") {
   java_files = [
     "java/im/shimo/bison/common/BisonResource.java",
     "java/im/shimo/bison/common/ServiceNames.java",
+
+    # bison add
+    "java/im/shimo/bison/common/BisonCoreResource.java",
   ]
   deps = [
     "//base:base_java",

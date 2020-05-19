@@ -144,6 +144,7 @@ public final class BisonBrowserProcess {
 
                 try (ScopedSysTraceEvent e2 = ScopedSysTraceEvent.scoped(
                              "AwBrowserProcess.startBrowserProcessesSync")) {
+                    // TODO jiang  最后一步了 ?
                     BrowserStartupController.get(LibraryProcessType.PROCESS_WEBVIEW)
                             .startBrowserProcessesSync(!multiProcess);
                 }

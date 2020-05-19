@@ -37,7 +37,6 @@ bool NativeInit(base::android::LibraryProcessType library_process_type) {
 
 
 JNI_EXPORT jint JNI_OnLoad(JavaVM* vm, void* reserved) {
-  LOGD("Jni_onLoad");
   base::android::InitVM(vm);
   JNIEnv* env = base::android::AttachCurrentThread();
   if (!base::android::IsSelectiveJniRegistrationEnabled(env)) {
@@ -49,6 +48,8 @@ JNI_EXPORT jint JNI_OnLoad(JavaVM* vm, void* reserved) {
   if (!RegisterMainDexNatives(env)) {
     return false;
   }
+  LOGD("bison loaded!");
+
   base::android::SetNativeInitializationHook(&NativeInit);
   return JNI_VERSION_1_4;
 }

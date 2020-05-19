@@ -41,8 +41,15 @@ template("bison_core") {
   }
   _deps+=invoker.shared_libraries
 
+
+  # build_aar 需要有 asset 功能
+  # asset 应该是直接写入文件夹可以了 
+  # 需要查看 android_webview 是怎么打包 icu 的
+
+  # TODO jiang 这里的deps 顺序不对. 后期看看怎么修正
   dist_aar(target_name) {
     forward_variables_from(invoker, [
+      "android_manifest",
       "output",
       "resource_included_patterns",
       "jar_excluded_patterns",

@@ -19,6 +19,8 @@
 
 namespace bison {
 
+
+// TODO jiang loadICU  这里好像可以不用加载
 void InitIcuAndResourceBundleBrowserSide() {
   ui::SetLocalePaksStoredInApk(true);
   std::string locale = ui::ResourceBundle::InitSharedInstanceWithLocale(

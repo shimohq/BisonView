@@ -60,6 +60,9 @@
 #include "net/proxy_resolution/proxy_resolution_service.h"
 #include "services/preferences/tracked/segregated_pref_store.h"
 
+
+// #include "base/logging.h"
+
 using base::FilePath;
 using content::BrowserThread;
 
@@ -180,6 +183,7 @@ BisonBrowserContext::~BisonBrowserContext() {
 BisonBrowserContext* BisonBrowserContext::GetDefault() {
   // TODO(joth): rather than store in a global here, lookup this instance
   // from the Java-side peer.
+  // LOG(ERROR) << "call me (BisonBrowserContext* BisonBrowserContext::GetDefault()) "; 
   return g_browser_context;
 }
 
@@ -510,6 +514,7 @@ BisonBrowserContext::GetNetworkContextParams(
 
 base::android::ScopedJavaLocalRef<jobject> JNI_BisonBrowserContext_GetDefaultJava(
     JNIEnv* env) {
+      
   return g_browser_context->GetJavaBrowserContext();
 }
 
