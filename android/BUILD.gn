@@ -10,7 +10,7 @@ import("//components/gwp_asan/buildflags/buildflags.gni")
 import("//components/spellcheck/spellcheck_build_features.gni")
 import("//tools/grit/repack.gni")
 # import("//tools/resources/generate_resource_whitelist.gni")
-# import("//tools/v8_context_snapshot/v8_context_snapshot.gni")
+import("//tools/v8_context_snapshot/v8_context_snapshot.gni")
 import("//weblayer/variables.gni")
 import("//build/util/version.gni")
 import("//bison/android/bison.gni")
@@ -775,3 +775,21 @@ grit("generate_aw_strings") {
   }
 }
 
+
+
+
+
+android_assets("bison_assets") {
+  deps = [
+    "//third_party/icu:icu_assets",
+  ]
+
+  if (use_v8_context_snapshot) {
+    deps += [ "//tools/v8_context_snapshot:v8_context_snapshot_assets" ]
+  } else {
+    deps += [ "//v8:v8_external_startup_data_assets" ]
+  }
+  if (android_64bit_target_cpu && build_apk_secondary_abi) {
+    deps += [ ":v8_snapshot_secondary_abi_assets" ]
+  }
+}

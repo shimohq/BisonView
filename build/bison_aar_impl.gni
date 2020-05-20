@@ -1,0 +1,118 @@
+import("//build/config/android/rules.gni")
+
+
+
+template("my_action_test"){
+
+  action(target_name){
+
+  }
+
+}
+
+
+template("bison_aar_impl") {
+  forward_variables_from(invoker, [ "testonly" ])
+
+
+  print ("invoker",invoker)
+
+  _deps = []
+  if (defined(invoker.deps)) {
+    _deps = invoker.deps
+  }
+
+  _direct_deps_only =
+      defined(invoker.direct_deps_only) && invoker.direct_deps_only
+
+  _build_config = "$target_gen_dir/$target_name.build_config"
+  _build_config_target_name = "$target_name$build_config_target_suffix"
+
+  write_build_config(_build_config_target_name) {
+    type = "dist_aar"
+    forward_variables_from(invoker, [ "proguard_configs" ])
+    possible_config_deps = _deps
+    supports_android = true
+    requires_android = true
+    build_config = _build_config
+  }
+
+  _deps += [ ":$_build_config_target_name" ]
+
+  _rebased_build_config = rebase_path(_build_config, root_build_dir)
+
+  print ("======_rebased_build_config======")
+
+  print (_rebased_build_config)
+
+  print ("======_rebased_build_config======")
+
+  action_with_pydeps(target_name) {
+    forward_variables_from(invoker, [ "data" ])
+    depfile = "$target_gen_dir/$target_name.d"
+    deps = _deps
+    script = "//bison/build/build_aar.py"
+
+    inputs = [
+      _build_config,
+    ]
+
+    # Although these will be listed as deps in the depfile, they must also
+    # appear here so that "gn analyze" knows about them.
+    # https://crbug.com/827197
+    if (defined(invoker.proguard_configs)) {
+      inputs += invoker.proguard_configs
+    }
+
+    outputs = [
+      invoker.output,
+    ]
+
+
+    args = [
+      "--depfile",
+      rebase_path(depfile, root_build_dir),
+      "--output",
+      rebase_path(invoker.output, root_build_dir),
+      "--dependencies-res-zips=@FileArg($_rebased_build_config:deps_info:dependency_zips)",
+      "--r-text-files=@FileArg($_rebased_build_config:deps_info:extra_r_text_files)",
+      "--proguard-configs=@FileArg($_rebased_build_config:deps_info:proguard_all_configs)",
+    ]
+
+
+    if (_direct_deps_only) {
+      args += [ "--jars=@FileArg($_rebased_build_config:javac:classpath)" ]
+    } else {
+      args += [ "--jars=@FileArg($_rebased_build_config:deps_info:javac_full_classpath)" ]
+    }
+    if (defined(invoker.android_manifest)) {
+      args += [
+        "--android-manifest",
+        rebase_path(invoker.android_manifest, root_build_dir),
+      ]
+    }
+
+    if (defined(invoker.native_libraries) && invoker.native_libraries != []) {
+      inputs += invoker.native_libraries
+      _rebased_native_libraries =
+          rebase_path(invoker.native_libraries, root_build_dir)
+
+      args += [
+        "--native-libraries=$_rebased_native_libraries",
+        "--abi=$android_app_abi",
+      ]
+    }
+    if (defined(invoker.jar_excluded_patterns)) {
+      args += [ "--jar-excluded-globs=${invoker.jar_excluded_patterns}" ]
+    }
+    if (defined(invoker.jar_included_patterns)) {
+      args += [ "--jar-included-globs=${invoker.jar_included_patterns}" ]
+    }
+    if (defined(invoker.resource_included_patterns)) {
+      args += [
+        "--resource-included-globs=${invoker.resource_included_patterns}",
+      ]
+    }
+  }
+  
+}
