@@ -14,6 +14,8 @@ using base::android::ScopedJavaLocalRef;
 namespace bison {
 namespace BisonResource {
 
+
+// TODO: jiang 这里要屏蔽
 std::vector<std::string> GetConfigKeySystemUuidMapping() {
   JNIEnv* env = base::android::AttachCurrentThread();
   std::vector<std::string> key_system_uuid_mappings;

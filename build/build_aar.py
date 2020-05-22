@@ -1,9 +1,20 @@
 #!/usr/bin/env python
 # coding=utf-8 
 #
-# Copyright 2017 The Chromium Authors. All rights reserved.
-# Use of this source code is governed by a BSD-style license that can be
-# found in the LICENSE file.
+# Author jiangshiqu
+#
+# ref://build/android/gyp/dist_aar.py
+# Currently supports:
+#   * AndroidManifest.xml
+#   * classes.jar
+#   * jni/
+#   * res/
+#   * R.txt
+#   * proguard.txt
+#   * assets/  暂时根据bison写的固定值
+# Does not yet support:
+#   * public.txt
+#   * annotations.zip
 
 """Creates an Android .aar file."""
 
@@ -167,6 +178,10 @@ def main(args):
           z,os.path.join("assets","natives_blob.bin"),src_path="natives_blob.bin")
         build_utils.AddToZipHermetic(
           z,os.path.join("assets","v8_snapshot_32_data"),src_path="snapshot_blob.bin")
+
+        #gen/bison/android/chrome_100_percent.pak
+        build_utils.AddToZipHermetic(
+          z,os.path.join("assets","chrome_100_percent.pak"),src_path="gen/bison/android/chrome_100_percent.pak")
           
     except:
       os.unlink(staging_file.name)

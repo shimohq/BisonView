@@ -56,6 +56,7 @@ class BisonCrashReporterClient : public crash_reporter::CrashReporterClient {
   void GetProductNameAndVersion(std::string* product_name,
                                 std::string* version,
                                 std::string* channel) override {
+    VLOG(0) << "GetProductNameAndVersion";
     *product_name = "AndroidWebView";
     *version = PRODUCT_VERSION;
     *channel =
@@ -63,6 +64,7 @@ class BisonCrashReporterClient : public crash_reporter::CrashReporterClient {
   }
 
   bool GetCrashDumpLocation(base::FilePath* crash_dir) override {
+    VLOG(0) << "GetCrashDumpLocation:" << crash_dir;
     return base::PathService::Get(bison::DIR_CRASH_DUMPS, crash_dir);
   }
 
@@ -191,9 +193,12 @@ void EnableCrashReporter(const std::string& process_type) {
   }
 #endif
 
+  // TODO jiang chrash reporter
+  VLOG(0) << "EnableCrashReporter:" << process_type;  
   BisonCrashReporterClient* client = g_crash_reporter_client.Pointer();
   crash_reporter::SetCrashReporterClient(client);
   crash_reporter::InitializeCrashpad(process_type.empty(), process_type);
+  
   if (process_type.empty()) {
     base::android::InitJavaExceptionReporter();
   } else {

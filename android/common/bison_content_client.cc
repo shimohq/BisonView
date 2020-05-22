@@ -73,8 +73,10 @@ bool BisonContentClient::UsingSynchronousCompositing() {
 }
 
 media::MediaDrmBridgeClient* BisonContentClient::GetMediaDrmBridgeClient() {
-  return new BisonMediaDrmBridgeClient(
-      BisonResource::GetConfigKeySystemUuidMapping());
+  // return new BisonMediaDrmBridgeClient(
+  //     BisonResource::GetConfigKeySystemUuidMapping());
+  // TODO jiang 先屏幕 或者参考 chrome/common/chrome_content_client.cc
+  return nullptr;
 }
 
 void BisonContentClient::BindChildProcessInterface(

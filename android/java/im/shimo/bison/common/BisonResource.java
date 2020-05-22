@@ -42,6 +42,7 @@ public class BisonResource {
     @CalledByNative
     private static String[] getConfigKeySystemUuidMapping() {
         // No need to cache, since this should be called only once.
+        // TODO jiang 拿不到系统的 看看这里应该怎么补
         return sResources.getStringArray(sStringArrayConfigKeySystemUUIDMapping);
     }
 }

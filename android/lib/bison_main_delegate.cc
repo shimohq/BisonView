@@ -6,6 +6,18 @@
 
 #include <memory>
 
+#include "base/android/apk_assets.h"
+#include "base/android/build_info.h"
+#include "base/bind.h"
+#include "base/command_line.h"
+#include "base/cpu.h"
+#include "base/i18n/icu_util.h"
+#include "base/i18n/rtl.h"
+#include "base/lazy_instance.h"
+#include "base/logging.h"
+#include "base/posix/global_descriptors.h"
+#include "base/strings/string_number_conversions.h"
+#include "base/threading/thread_restrictions.h"
 #include "bison/android/browser/bison_content_browser_client.h"
 #include "bison/android/browser/bison_media_url_interceptor.h"
 #include "bison/android/browser/gfx/browser_view_renderer.h"
@@ -22,18 +34,6 @@
 #include "bison/android/common/crash_reporter/crash_keys.h"
 #include "bison/android/gpu/bison_content_gpu_client.h"
 #include "bison/android/renderer/bison_content_renderer_client.h"
-#include "base/android/apk_assets.h"
-#include "base/android/build_info.h"
-#include "base/bind.h"
-#include "base/command_line.h"
-#include "base/cpu.h"
-#include "base/i18n/icu_util.h"
-#include "base/i18n/rtl.h"
-#include "base/lazy_instance.h"
-#include "base/logging.h"
-#include "base/posix/global_descriptors.h"
-#include "base/strings/string_number_conversions.h"
-#include "base/threading/thread_restrictions.h"
 #include "cc/base/switches.h"
 #include "components/autofill/core/common/autofill_features.h"
 #include "components/crash/core/common/crash_key.h"
@@ -244,6 +244,8 @@ bool BisonMainDelegate::BasicStartupComplete(int* exit_code) {
 }
 
 void BisonMainDelegate::PreSandboxStartup() {
+  // TODO jiang Sandbox
+  VLOG(0) << "PreSandboxStartup()";
 #if defined(ARCH_CPU_ARM_FAMILY)
   // Create an instance of the CPU class to parse /proc/cpuinfo and cache
   // cpu_brand info.
@@ -256,31 +258,38 @@ void BisonMainDelegate::PreSandboxStartup() {
   std::string process_type =
       command_line.GetSwitchValueASCII(switches::kProcessType);
   const bool is_browser_process = process_type.empty();
+
+  VLOG(0) << "PreSandboxStartup() is_browser_process:" << is_browser_process;  
   if (!is_browser_process) {
     base::i18n::SetICUDefaultLocale(
         command_line.GetSwitchValueASCII(switches::kLang));
   }
 
+  VLOG(0) << "PreSandboxStartup() process_type:" << process_type;  
   if (process_type == switches::kRendererProcess) {
     InitResourceBundleRendererSide();
   }
 
-  EnableCrashReporter(process_type);
+  // TODO jiang 这里先注释的 crashReporter
+  // EnableCrashReporter(process_type);
 
   base::android::BuildInfo* android_build_info =
       base::android::BuildInfo::GetInstance();
 
-  static ::crash_reporter::CrashKeyString<64> app_name_key(
-      crash_keys::kAppPackageName);
-  app_name_key.Set(android_build_info->host_package_name());
+  VLOG(0) << "android_build_info->host_package_name():" << android_build_info->host_package_name();
 
-  static ::crash_reporter::CrashKeyString<64> app_version_key(
-      crash_keys::kAppPackageVersionCode);
-  app_version_key.Set(android_build_info->host_version_code());
+  
+  // static ::crash_reporter::CrashKeyString<64> app_name_key(
+  //     crash_keys::kAppPackageName);
+  // app_name_key.Set(android_build_info->host_package_name());
 
-  static ::crash_reporter::CrashKeyString<8> sdk_int_key(
-      crash_keys::kAndroidSdkInt);
-  sdk_int_key.Set(base::NumberToString(android_build_info->sdk_int()));
+  // static ::crash_reporter::CrashKeyString<64> app_version_key(
+  //     crash_keys::kAppPackageVersionCode);
+  // app_version_key.Set(android_build_info->host_version_code());
+
+  // static ::crash_reporter::CrashKeyString<8> sdk_int_key(
+  //     crash_keys::kAndroidSdkInt);
+  // sdk_int_key.Set(base::NumberToString(android_build_info->sdk_int()));
 }
 
 int BisonMainDelegate::RunProcess(
@@ -315,12 +324,14 @@ bool BisonMainDelegate::ShouldCreateFeatureList() {
 
 // This function is called only on the browser process.
 void BisonMainDelegate::PostEarlyInitialization(bool is_running_tests) {
+  VLOG(0) << "PostEarlyInitialization";
   InitIcuAndResourceBundleBrowserSide();
   aw_feature_list_creator_->CreateFeatureListAndFieldTrials();
   PostFieldTrialInitialization();
 }
 
 void BisonMainDelegate::PostFieldTrialInitialization() {
+  VLOG(0) << "PostFieldTrialInitialization";
   version_info::Channel channel = version_info::android::GetChannel();
   bool is_canary_dev = (channel == version_info::Channel::CANARY ||
                         channel == version_info::Channel::DEV);
@@ -383,7 +394,8 @@ content::ContentGpuClient* BisonMainDelegate::CreateContentGpuClient() {
   return content_gpu_client_.get();
 }
 
-content::ContentRendererClient* BisonMainDelegate::CreateContentRendererClient() {
+content::ContentRendererClient*
+BisonMainDelegate::CreateContentRendererClient() {
   content_renderer_client_.reset(new BisonContentRendererClient());
   return content_renderer_client_.get();
 }

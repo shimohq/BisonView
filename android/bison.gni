@@ -42,7 +42,11 @@ template("bison_core") {
   }
   _deps += invoker.shared_libraries
 
-  _deps += [ "//bison/android:bison_assets" ]
+  _deps += [ 
+    "//bison/android:bison_assets" ,
+    # "//bison:pak_file_assets",
+  ]
+  
 
   # build_aar 需要有 asset 功能
   # asset 应该是直接写入文件夹可以了 

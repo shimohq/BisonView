@@ -79,6 +79,7 @@ public final class BisonBrowserProcess {
      *                             process; null to use no suffix.
      */
     public static void loadLibrary(String processDataDirSuffix) {
+        Log.d(TAG, "BisonBrowserProcess loadLibrary " + processDataDirSuffix);
         if (processDataDirSuffix == null) {
             PathUtils.setPrivateDataDirectorySuffix(WEBVIEW_DIR_BASENAME, "WebView");
         } else {
