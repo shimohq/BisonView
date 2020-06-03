@@ -8,7 +8,7 @@
 namespace bison {
 
 // TODO(boliu): Remove INITIAL.
-// GENERATED_JAVA_ENUM_PACKAGE: im.shimo.bison.renderer_priority
+// GENERATED_JAVA_ENUM_PACKAGE: im.shimo.bison.core.renderer_priority
 enum class RendererPriority { INITIAL = -1, WAIVED = 0, LOW = 1, HIGH = 2 };
 
 }  // namespace bison

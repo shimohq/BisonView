@@ -17,7 +17,7 @@ struct BisonWebResourceRequest;
 
 class BisonUrlCheckerDelegateImpl : public safe_browsing::UrlCheckerDelegate {
  public:
-  // GENERATED_JAVA_ENUM_PACKAGE: im.shimo.bison
+  // GENERATED_JAVA_ENUM_PACKAGE: im.shimo.bison.core
   enum class SafeBrowsingAction {
     SHOW_INTERSTITIAL,
     PROCEED,

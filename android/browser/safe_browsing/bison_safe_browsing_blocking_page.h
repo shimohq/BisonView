@@ -28,7 +28,8 @@ class BisonSafeBrowsingBlockingPage : public safe_browsing::BaseBlockingPage {
   // parameters they require.
   // Note: these values are persisted in UMA logs, so they should never be
   // renumbered nor reused.
-  // GENERATED_JAVA_ENUM_PACKAGE: im.shimo.bison
+  // TODO jiang java package
+  // GENERATED_JAVA_ENUM_PACKAGE: im.shimo.bison.core
   enum class ErrorUiType { LOUD, QUIET_SMALL, QUIET_GIANT, COUNT };
 
   // Don't instantiate this class directly, use ShowBlockingPage instead.

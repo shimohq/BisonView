@@ -17,23 +17,19 @@ import("//weblayer/variables.gni")
 import("//build/util/version.gni")
 import("//bison/android/bison.gni")
 
-group ("bison_android"){
-  deps = [
-    "common",
-    "browser",
-    "renderer",
-  ]
+group ("bison"){
+ 
 }
 
 
 
-bison_core("bison_aar") {
+bison_core("bison_core_aar") {
 
   android_manifest = "AndroidManifest.xml"
-  output = "$root_build_dir/aars/bison.aar" 
+  output = "$root_build_dir/aars/bison_core.aar" 
   
   deps = [
-    ":bison_java_part",
+    ":bison_core_java_part",
   ]
 
   shared_libraries = [
@@ -49,6 +45,13 @@ bison_core("bison_aar") {
   jar_excluded_patterns = [
     "im/shimo/bison/R\$*.class",
     "im/shimo/bison/R.class",
+
+
+    "im.shimo.bison.core.R\$*.class",
+    "im.shimo.bison.core.R.class",
+
+
+
     # "gen/*",
 
     # "android/arch/*",
@@ -159,43 +162,43 @@ generate_jni_registration("bison_jni_registration") {
 
 generate_jni("browser_jni_headers") {
   sources = [
-    "java/im/shimo/bison/AndroidProtocolHandler.java",
-    "java/im/shimo/bison/BisonAutofillClient.java",
-    "java/im/shimo/bison/BisonBrowserContext.java",
-    "java/im/shimo/bison/BisonBrowserProcess.java",
-    "java/im/shimo/bison/BisonContents.java",
-    "java/im/shimo/bison/BisonContentsBackgroundThreadClient.java",
-    "java/im/shimo/bison/BisonContentsClientBridge.java",
-    "java/im/shimo/bison/BisonContentsIoThreadClient.java",
-    "java/im/shimo/bison/BisonContentsLifecycleNotifier.java",
-    "java/im/shimo/bison/BisonContentsStatics.java",
-    "java/im/shimo/bison/BisonCookieManager.java",
-    "java/im/shimo/bison/BisonDebug.java",
-    "java/im/shimo/bison/BisonDevToolsServer.java",
-    "java/im/shimo/bison/BisonFeatureList.java",
-    "java/im/shimo/bison/BisonFormDatabase.java",
-    "java/im/shimo/bison/BisonHttpAuthHandler.java",
-    "java/im/shimo/bison/BisonPdfExporter.java",
-    "java/im/shimo/bison/BisonProxyController.java",
-    "java/im/shimo/bison/BisonQuotaManagerBridge.java",
-    "java/im/shimo/bison/BisonRenderProcess.java",
-    "java/im/shimo/bison/BisonSettings.java",
-    "java/im/shimo/bison/BisonTracingController.java",
-    "java/im/shimo/bison/BisonVariationsSeedBridge.java",
-    "java/im/shimo/bison/BisonWebContentsDelegate.java",
-    "java/im/shimo/bison/BisonWebResourceInterceptResponse.java",
-    "java/im/shimo/bison/BisonWebResourceResponse.java",
-    "java/im/shimo/bison/InputStreamUtil.java",
-    "java/im/shimo/bison/JsReplyProxy.java",
-    "java/im/shimo/bison/PopupTouchHandleDrawable.java",
-    "java/im/shimo/bison/WebMessageListenerHolder.java",
-    "java/im/shimo/bison/gfx/BisonDrawFnImpl.java",
-    "java/im/shimo/bison/gfx/BisonGLFunctor.java",
-    "java/im/shimo/bison/gfx/BisonPicture.java",
-    "java/im/shimo/bison/gfx/JavaBrowserViewRendererHelper.java",
-    "java/im/shimo/bison/metrics/BisonMetricsLogUploader.java",
-    "java/im/shimo/bison/metrics/BisonMetricsServiceClient.java",
-    "java/im/shimo/bison/permission/BisonPermissionRequest.java",
+    "java/im/shimo/bison/core/AndroidProtocolHandler.java",
+    "java/im/shimo/bison/core/BisonAutofillClient.java",
+    "java/im/shimo/bison/core/BisonBrowserContext.java",
+    "java/im/shimo/bison/core/BisonBrowserProcess.java",
+    "java/im/shimo/bison/core/BisonContents.java",
+    "java/im/shimo/bison/core/BisonContentsBackgroundThreadClient.java",
+    "java/im/shimo/bison/core/BisonContentsClientBridge.java",
+    "java/im/shimo/bison/core/BisonContentsIoThreadClient.java",
+    "java/im/shimo/bison/core/BisonContentsLifecycleNotifier.java",
+    "java/im/shimo/bison/core/BisonContentsStatics.java",
+    "java/im/shimo/bison/core/BisonCookieManager.java",
+    "java/im/shimo/bison/core/BisonDebug.java",
+    "java/im/shimo/bison/core/BisonDevToolsServer.java",
+    "java/im/shimo/bison/core/BisonFeatureList.java",
+    "java/im/shimo/bison/core/BisonFormDatabase.java",
+    "java/im/shimo/bison/core/BisonHttpAuthHandler.java",
+    "java/im/shimo/bison/core/BisonPdfExporter.java",
+    "java/im/shimo/bison/core/BisonProxyController.java",
+    "java/im/shimo/bison/core/BisonQuotaManagerBridge.java",
+    "java/im/shimo/bison/core/BisonRenderProcess.java",
+    "java/im/shimo/bison/core/BisonSettings.java",
+    "java/im/shimo/bison/core/BisonTracingController.java",
+    "java/im/shimo/bison/core/BisonVariationsSeedBridge.java",
+    "java/im/shimo/bison/core/BisonWebContentsDelegate.java",
+    "java/im/shimo/bison/core/BisonWebResourceInterceptResponse.java",
+    "java/im/shimo/bison/core/BisonWebResourceResponse.java",
+    "java/im/shimo/bison/core/InputStreamUtil.java",
+    "java/im/shimo/bison/core/JsReplyProxy.java",
+    "java/im/shimo/bison/core/PopupTouchHandleDrawable.java",
+    "java/im/shimo/bison/core/WebMessageListenerHolder.java",
+    "java/im/shimo/bison/core/gfx/BisonDrawFnImpl.java",
+    "java/im/shimo/bison/core/gfx/BisonGLFunctor.java",
+    "java/im/shimo/bison/core/gfx/BisonPicture.java",
+    "java/im/shimo/bison/core/gfx/JavaBrowserViewRendererHelper.java",
+    "java/im/shimo/bison/core/metrics/BisonMetricsLogUploader.java",
+    "java/im/shimo/bison/core/metrics/BisonMetricsServiceClient.java",
+    "java/im/shimo/bison/core/permission/BisonPermissionRequest.java",
   ]
 
   deps = [
@@ -208,10 +211,10 @@ generate_jar_jni("cancellation_signal_android_jar_jni_headers") {
 }
 
 
-android_library("bison_java_part") {
+android_library("bison_core_java_part") {
 
   java_files = [
-    "java/im/shimo/bison/AutofillActionModeCallback.java",
+    "java/im/shimo/bison/core/AutofillActionModeCallback.java",
   ]
 
   deps = [
@@ -371,101 +374,101 @@ repackage_jars("repackage_native_impl") {
 
 android_library("bison_native_base_java") {
   java_files = [
-    "java/im/shimo/bison/AndroidProtocolHandler.java",
-    "java/im/shimo/bison/AutofillActionModeCallback.java",
-    "java/im/shimo/bison/BisonActionModeCallback.java",
-    "java/im/shimo/bison/BisonAutofillClient.java",
-    "java/im/shimo/bison/BisonAutofillManager.java",
-    "java/im/shimo/bison/BisonAutofillProvider.java",
-    "java/im/shimo/bison/BisonAutofillUMA.java",
-    "java/im/shimo/bison/BisonBrowserContext.java",
-    "java/im/shimo/bison/BisonBrowserProcess.java",
-    "java/im/shimo/bison/BisonConsoleMessage.java",
-    "java/im/shimo/bison/BisonContents.java",
-    "java/im/shimo/bison/BisonContentsBackgroundThreadClient.java",
-    "java/im/shimo/bison/BisonContentsClient.java",
-    "java/im/shimo/bison/BisonContentsClientBridge.java",
-    "java/im/shimo/bison/BisonContentsClientCallbackHelper.java",
-    "java/im/shimo/bison/BisonContentsIoThreadClient.java",
-    "java/im/shimo/bison/BisonContentsLifecycleNotifier.java",
-    "java/im/shimo/bison/BisonContentsStatics.java",
-    "java/im/shimo/bison/BisonCookieManager.java",
-    "java/im/shimo/bison/BisonDebug.java",
-    "java/im/shimo/bison/BisonDevToolsServer.java",
-    "java/im/shimo/bison/BisonFeatures.java",
-    "java/im/shimo/bison/BisonFeatureList.java",
-    # "java/im/shimo/bison/BisonFirebaseConfig.java",
-    "java/im/shimo/bison/BisonFormDatabase.java",
-    "java/im/shimo/bison/BisonGeolocationPermissions.java",
-    "java/im/shimo/bison/BisonHistogramRecorder.java",
-    "java/im/shimo/bison/BisonHttpAuthHandler.java",
-    "java/im/shimo/bison/BisonLayoutSizer.java",
-    "java/im/shimo/bison/BisonNetworkChangeNotifierRegistrationPolicy.java",
-    "java/im/shimo/bison/BisonPdfExporter.java",
-    "java/im/shimo/bison/BisonPrintDocumentAdapter.java",
-    "java/im/shimo/bison/BisonProxyController.java",
-    "java/im/shimo/bison/BisonQuotaManagerBridge.java",
-    "java/im/shimo/bison/BisonRenderProcess.java",
-    "java/im/shimo/bison/BisonRenderProcessGoneDetail.java",
-    "java/im/shimo/bison/BisonScrollOffsetManager.java",
-    "java/im/shimo/bison/BisonServiceWorkerClient.java",
-    "java/im/shimo/bison/BisonServiceWorkerController.java",
-    "java/im/shimo/bison/BisonServiceWorkerSettings.java",
-    "java/im/shimo/bison/BisonSettings.java",
-    "java/im/shimo/bison/BisonSupportLibIsomorphic.java",
-    "java/im/shimo/bison/BisonSwitches.java",
-    "java/im/shimo/bison/BisonTracingController.java",
-    "java/im/shimo/bison/BisonVariationsSeedBridge.java",
-    "java/im/shimo/bison/BisonViewAndroidDelegate.java",
-    "java/im/shimo/bison/BisonViewMethods.java",
-    "java/im/shimo/bison/BisonWebContentsDelegate.java",
-    "java/im/shimo/bison/BisonWebContentsDelegateAdapter.java",
-    "java/im/shimo/bison/BisonWebContentsObserver.java",
-    "java/im/shimo/bison/BisonWebResourceInterceptResponse.java",
-    "java/im/shimo/bison/BisonWebResourceResponse.java",
-    "java/im/shimo/bison/BisonZoomControls.java",
-    "java/im/shimo/bison/CleanupReference.java",
-    "java/im/shimo/bison/ClientCertLookupTable.java",
-    "java/im/shimo/bison/DefaultVideoPosterRequestHandler.java",
-    "java/im/shimo/bison/ErrorCodeConversionHelper.java",
-    "java/im/shimo/bison/FindAddress.java",
-    "java/im/shimo/bison/FullScreenView.java",
-    "java/im/shimo/bison/HttpAuthDatabase.java",
-    "java/im/shimo/bison/InputStreamUtil.java",
-    "java/im/shimo/bison/JsPromptResultReceiver.java",
-    "java/im/shimo/bison/JsReplyProxy.java",
-    "java/im/shimo/bison/JsResultHandler.java",
-    "java/im/shimo/bison/JsResultReceiver.java",
-    "java/im/shimo/bison/NullBisonViewMethods.java",
-    "java/im/shimo/bison/OverScrollGlow.java",
-    "java/im/shimo/bison/PopupTouchHandleDrawable.java",
-    "java/im/shimo/bison/ResourcesContextWrapperFactory.java",
-    "java/im/shimo/bison/ScrollAccessibilityHelper.java",
-    "java/im/shimo/bison/SslUtil.java",
-    "java/im/shimo/bison/VariationsSeedLoader.java",
-    "java/im/shimo/bison/ViewPositionObserver.java",
-    "java/im/shimo/bison/WebMessageListener.java",
-    "java/im/shimo/bison/WebMessageListenerHolder.java",
-    "java/im/shimo/bison/WebViewChromiumRunQueue.java",
-    "java/im/shimo/bison/gfx/BisonDrawFnImpl.java",
-    "java/im/shimo/bison/gfx/BisonFunctor.java",
-    "java/im/shimo/bison/gfx/BisonGLFunctor.java",
-    "java/im/shimo/bison/gfx/BisonPicture.java",
-    "java/im/shimo/bison/gfx/JavaBrowserViewRendererHelper.java",
-    "java/im/shimo/bison/metrics/BisonMetricsLogUploader.java",
-    "java/im/shimo/bison/metrics/BisonMetricsServiceClient.java",
-    "java/im/shimo/bison/safe_browsing/BisonSafeBrowsingConfigHelper.java",
-    "java/im/shimo/bison/safe_browsing/BisonSafeBrowsingConversionHelper.java",
-    "java/im/shimo/bison/safe_browsing/BisonSafeBrowsingResponse.java",
-    "java/im/shimo/bison/permission/BisonGeolocationCallback.java",
-    "java/im/shimo/bison/permission/BisonPermissionRequest.java",
-    "java/im/shimo/bison/policy/BisonPolicyProvider.java",
-    # "java/im/shimo/bison/ui/CrashesListActivity.java",
-    # "java/im/shimo/bison/ui/util/CrashInfoLoader.java",
-    # "java/im/shimo/bison/ui/util/UnuploadedFilesStateLoader.java",
-    # "java/im/shimo/bison/ui/util/UploadedCrashesInfoLoader.java",
-    # "java/im/shimo/bison/ui/util/WebViewCrashInfoCollector.java",
-    # "java/im/shimo/bison/ui/util/WebViewCrashLogParser.java",
+    "java/im/shimo/bison/core/AndroidProtocolHandler.java",
+    "java/im/shimo/bison/core/AutofillActionModeCallback.java",
+    "java/im/shimo/bison/core/BisonActionModeCallback.java",
+    "java/im/shimo/bison/core/BisonAutofillClient.java",
+    "java/im/shimo/bison/core/BisonAutofillManager.java",
+    "java/im/shimo/bison/core/BisonAutofillProvider.java",
+    "java/im/shimo/bison/core/BisonAutofillUMA.java",
+    "java/im/shimo/bison/core/BisonBrowserContext.java",
+    "java/im/shimo/bison/core/BisonBrowserProcess.java",
+    "java/im/shimo/bison/core/BisonConsoleMessage.java",
+    "java/im/shimo/bison/core/BisonContents.java",
+    "java/im/shimo/bison/core/BisonContentsBackgroundThreadClient.java",
+    "java/im/shimo/bison/core/BisonContentsClient.java",
+    "java/im/shimo/bison/core/BisonContentsClientBridge.java",
+    "java/im/shimo/bison/core/BisonContentsClientCallbackHelper.java",
+    "java/im/shimo/bison/core/BisonContentsIoThreadClient.java",
+    "java/im/shimo/bison/core/BisonContentsLifecycleNotifier.java",
+    "java/im/shimo/bison/core/BisonContentsStatics.java",
+    "java/im/shimo/bison/core/BisonCookieManager.java",
+    "java/im/shimo/bison/core/BisonDebug.java",
+    "java/im/shimo/bison/core/BisonDevToolsServer.java",
+    "java/im/shimo/bison/core/BisonFeatures.java",
+    "java/im/shimo/bison/core/BisonFeatureList.java",
+    # "java/im/shimo/bison/core/BisonFirebaseConfig.java",
+    "java/im/shimo/bison/core/BisonFormDatabase.java",
+    "java/im/shimo/bison/core/BisonGeolocationPermissions.java",
+    "java/im/shimo/bison/core/BisonHistogramRecorder.java",
+    "java/im/shimo/bison/core/BisonHttpAuthHandler.java",
+    "java/im/shimo/bison/core/BisonLayoutSizer.java",
+    "java/im/shimo/bison/core/BisonNetworkChangeNotifierRegistrationPolicy.java",
+    "java/im/shimo/bison/core/BisonPdfExporter.java",
+    "java/im/shimo/bison/core/BisonPrintDocumentAdapter.java",
+    "java/im/shimo/bison/core/BisonProxyController.java",
+    "java/im/shimo/bison/core/BisonQuotaManagerBridge.java",
+    "java/im/shimo/bison/core/BisonRenderProcess.java",
+    "java/im/shimo/bison/core/BisonRenderProcessGoneDetail.java",
+    "java/im/shimo/bison/core/BisonScrollOffsetManager.java",
+    "java/im/shimo/bison/core/BisonServiceWorkerClient.java",
+    "java/im/shimo/bison/core/BisonServiceWorkerController.java",
+    "java/im/shimo/bison/core/BisonServiceWorkerSettings.java",
+    "java/im/shimo/bison/core/BisonSettings.java",
+    "java/im/shimo/bison/core/BisonSupportLibIsomorphic.java",
+    "java/im/shimo/bison/core/BisonSwitches.java",
+    "java/im/shimo/bison/core/BisonTracingController.java",
+    "java/im/shimo/bison/core/BisonVariationsSeedBridge.java",
+    "java/im/shimo/bison/core/BisonViewAndroidDelegate.java",
+    "java/im/shimo/bison/core/BisonViewMethods.java",
+    "java/im/shimo/bison/core/BisonWebContentsDelegate.java",
+    "java/im/shimo/bison/core/BisonWebContentsDelegateAdapter.java",
+    "java/im/shimo/bison/core/BisonWebContentsObserver.java",
+    "java/im/shimo/bison/core/BisonWebResourceInterceptResponse.java",
+    "java/im/shimo/bison/core/BisonWebResourceResponse.java",
+    "java/im/shimo/bison/core/BisonZoomControls.java",
+    "java/im/shimo/bison/core/CleanupReference.java",
+    "java/im/shimo/bison/core/ClientCertLookupTable.java",
+    "java/im/shimo/bison/core/DefaultVideoPosterRequestHandler.java",
+    "java/im/shimo/bison/core/ErrorCodeConversionHelper.java",
+    "java/im/shimo/bison/core/FindAddress.java",
+    "java/im/shimo/bison/core/FullScreenView.java",
+    "java/im/shimo/bison/core/HttpAuthDatabase.java",
+    "java/im/shimo/bison/core/InputStreamUtil.java",
+    "java/im/shimo/bison/core/JsPromptResultReceiver.java",
+    "java/im/shimo/bison/core/JsReplyProxy.java",
+    "java/im/shimo/bison/core/JsResultHandler.java",
+    "java/im/shimo/bison/core/JsResultReceiver.java",
+    "java/im/shimo/bison/core/NullBisonViewMethods.java",
+    "java/im/shimo/bison/core/OverScrollGlow.java",
+    "java/im/shimo/bison/core/PopupTouchHandleDrawable.java",
+    "java/im/shimo/bison/core/ResourcesContextWrapperFactory.java",
+    "java/im/shimo/bison/core/ScrollAccessibilityHelper.java",
+    "java/im/shimo/bison/core/SslUtil.java",
+    "java/im/shimo/bison/core/VariationsSeedLoader.java",
+    "java/im/shimo/bison/core/ViewPositionObserver.java",
+    "java/im/shimo/bison/core/WebMessageListener.java",
+    "java/im/shimo/bison/core/WebMessageListenerHolder.java",
+    "java/im/shimo/bison/core/WebViewChromiumRunQueue.java",
+    "java/im/shimo/bison/core/gfx/BisonDrawFnImpl.java",
+    "java/im/shimo/bison/core/gfx/BisonFunctor.java",
+    "java/im/shimo/bison/core/gfx/BisonGLFunctor.java",
+    "java/im/shimo/bison/core/gfx/BisonPicture.java",
+    "java/im/shimo/bison/core/gfx/JavaBrowserViewRendererHelper.java",
+    "java/im/shimo/bison/core/metrics/BisonMetricsLogUploader.java",
+    "java/im/shimo/bison/core/metrics/BisonMetricsServiceClient.java",
+    "java/im/shimo/bison/core/safe_browsing/BisonSafeBrowsingConfigHelper.java",
+    "java/im/shimo/bison/core/safe_browsing/BisonSafeBrowsingConversionHelper.java",
+    "java/im/shimo/bison/core/safe_browsing/BisonSafeBrowsingResponse.java",
+    "java/im/shimo/bison/core/permission/BisonGeolocationCallback.java",
+    "java/im/shimo/bison/core/permission/BisonPermissionRequest.java",
+    "java/im/shimo/bison/core/policy/BisonPolicyProvider.java",
+    # "java/im/shimo/bison/core/ui/CrashesListActivity.java",
+    # "java/im/shimo/bison/core/ui/util/CrashInfoLoader.java",
+    # "java/im/shimo/bison/core/ui/util/UnuploadedFilesStateLoader.java",
+    # "java/im/shimo/bison/core/ui/util/UploadedCrashesInfoLoader.java",
+    # "java/im/shimo/bison/core/ui/util/WebViewCrashInfoCollector.java",
+    # "java/im/shimo/bison/core/ui/util/WebViewCrashLogParser.java",
 
     
   ]
@@ -536,7 +539,7 @@ android_library("bison_native_base_java") {
 
 
 android_library("common_variations_utils_java") {
-  java_files = [ "java/im/shimo/bison/common/variations/VariationsUtils.java" ]
+  java_files = [ "java/im/shimo/bison/core/common/variations/VariationsUtils.java" ]
   deps = [
     "proto:bison_variations_seed_proto_java",
     "//base:base_java",
@@ -548,11 +551,11 @@ android_library("common_variations_utils_java") {
 
 android_library("common_java") {
   java_files = [
-    "java/im/shimo/bison/common/BisonResource.java",
-    "java/im/shimo/bison/common/ServiceNames.java",
+    "java/im/shimo/bison/core/common/BisonResource.java",
+    "java/im/shimo/bison/core/common/ServiceNames.java",
 
     # bison add
-    "java/im/shimo/bison/common/BisonCoreResource.java",
+    "java/im/shimo/bison/core/common/BisonCoreResource.java",
   ]
   deps = [
     "//base:base_java",
@@ -561,14 +564,14 @@ android_library("common_java") {
 
 generate_jni("common_jni_headers") {
   sources = [
-    "java/im/shimo/bison/common/BisonResource.java",
-    "java/im/shimo/bison/common/crash/BisonCrashReporterClient.java",
+    "java/im/shimo/bison/core/common/BisonResource.java",
+    "java/im/shimo/bison/core/common/crash/BisonCrashReporterClient.java",
   ]
 }
 
 android_library("common_commandline_java") {
   java_files =
-      [ "java/im/shimo/bison/common/CommandLineUtil.java" ]
+      [ "java/im/shimo/bison/core/common/CommandLineUtil.java" ]
 
   deps = [
     "//base:base_java",
@@ -577,8 +580,8 @@ android_library("common_commandline_java") {
 
 android_library("common_platform_services_java") {
   java_files = [
-    "java/im/shimo/bison/common/PlatformServiceBridge.java",
-    "java/im/shimo/bison/common/PlatformServiceBridgeImpl.java",
+    "java/im/shimo/bison/core/common/PlatformServiceBridge.java",
+    "java/im/shimo/bison/core/common/PlatformServiceBridgeImpl.java",
   ]
 
   deps = [
@@ -596,14 +599,14 @@ android_library("common_platform_services_java") {
 android_aidl("services_variations_seed_server_aidl") {
   import_include = [ "java" ]
   sources = [
-    "java/im/shimo/bison/services/IVariationsSeedServer.aidl",
+    "java/im/shimo/bison/core/services/IVariationsSeedServer.aidl",
   ]
 }
 
 android_aidl("services_crash_receiver_aidl") {
   import_include = [ "java" ]
   sources = [
-    "java/im/shimo/bison/services/ICrashReceiverService.aidl",
+    "java/im/shimo/bison/core/services/ICrashReceiverService.aidl",
   ]
 }
 
