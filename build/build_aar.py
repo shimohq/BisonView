@@ -179,9 +179,9 @@ def main(args):
         build_utils.AddToZipHermetic(
           z,os.path.join("assets","v8_snapshot_32_data"),src_path="snapshot_blob.bin")
 
-        #gen/bison/android/chrome_100_percent.pak
+        #gen/bison/core/chrome_100_percent.pak
         build_utils.AddToZipHermetic(
-          z,os.path.join("assets","chrome_100_percent.pak"),src_path="gen/bison/android/chrome_100_percent.pak")
+          z,os.path.join("assets","chrome_100_percent.pak"),src_path="gen/bison/core/chrome_100_percent.pak")
           
     except:
       os.unlink(staging_file.name)
