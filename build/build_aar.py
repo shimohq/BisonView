@@ -177,7 +177,8 @@ def main(args):
         build_utils.AddToZipHermetic(
           z,os.path.join("assets","natives_blob.bin"),src_path="natives_blob.bin")
         build_utils.AddToZipHermetic(
-          z,os.path.join("assets","v8_snapshot_32_data"),src_path="snapshot_blob.bin")
+          z,os.path.join("assets","snapshot_blob_32.bin"),src_path="snapshot_blob.bin")
+          # snapshot_blob_32    snapshot_blob_32.bin
 
         #gen/bison/core/chrome_100_percent.pak
         build_utils.AddToZipHermetic(
