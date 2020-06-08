@@ -128,6 +128,8 @@ shared_library("libbison") {
     "//ui/events:gesture_detection",
     # TODO (jiang947) error: undefined symbol: Java_org_chromium_base_natives_GEN_1JNI_org_1chromium_1components_1crash_1CrashKeys_1set
     "//components/crash/android:crash_android",
+
+    "//components/embedder_support/android:view"
   ]
 
 
@@ -252,6 +254,8 @@ java_prebuilt("package_impl_native_java") {
     "//components/crash/android:java",
     "//components/embedder_support/android:application_java",
     "//components/embedder_support/android:web_contents_delegate_java",
+    "//components/embedder_support/android:content_view_java",
+    "//components/embedder_support/android:view_java",
     "//components/minidump_uploader:minidump_uploader_java",
     "//components/navigation_interception/android:navigation_interception_java",
     "//components/policy/android:policy_java",
@@ -311,6 +315,8 @@ android_java_prebuilt("repackage_native_java") {
     "//components/crash/android:java",
     "//components/embedder_support/android:application_java",
     "//components/embedder_support/android:web_contents_delegate_java",
+    "//components/embedder_support/android:content_view_java",
+    "//components/embedder_support/android:view_java",
     "//components/minidump_uploader:minidump_uploader_java",
     "//components/navigation_interception/android:navigation_interception_java",
     "//components/policy/android:policy_java",
@@ -347,6 +353,8 @@ repackage_jars("repackage_native_impl") {
     "//components/crash/android:java",
     "//components/embedder_support/android:application_java",
     "//components/embedder_support/android:web_contents_delegate_java",
+    "//components/embedder_support/android:content_view_java",
+    "//components/embedder_support/android:view_java",
     "//components/minidump_uploader:minidump_uploader_java",
     "//components/navigation_interception/android:navigation_interception_java",
     "//components/policy/android:policy_java",
@@ -488,6 +496,10 @@ android_library("bison_native_base_java") {
     "//components/crash/android:java",
     "//components/embedder_support/android:application_java",
     "//components/embedder_support/android:web_contents_delegate_java",
+
+    "//components/embedder_support/android:content_view_java",
+    "//components/embedder_support/android:view_java",
+
     "//components/minidump_uploader:minidump_uploader_java",
     "//components/navigation_interception/android:navigation_interception_java",
     "//components/policy/android:policy_java",
@@ -785,7 +797,6 @@ android_assets("bison_assets") {
   deps = [
     "//third_party/icu:icu_assets",
   ]
-
   if (use_v8_context_snapshot) {
     deps += [ "//tools/v8_context_snapshot:v8_context_snapshot_assets" ]
   } else {
