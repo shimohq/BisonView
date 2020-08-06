@@ -1,0 +1,17 @@
+source_set("renderer") {
+  sources = [
+    "bison_content_renderer_client.cc",
+    "bison_content_renderer_client.h",
+    "bison_render_view_observer.cc",
+    "bison_render_view_observer.h",
+  ]
+
+  deps = [
+    "//components/cdm/renderer",
+    "//components/plugins/renderer",
+    "//components/web_cache/renderer",
+    "//gin",
+    "//services/service_manager/public/cpp",
+    "//ui/gfx",
+  ]
+}

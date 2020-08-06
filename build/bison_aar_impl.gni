@@ -15,7 +15,7 @@ template("bison_aar_impl") {
   forward_variables_from(invoker, [ "testonly" ])
 
 
-  print ("invoker",invoker)
+  # print ("invoker",invoker)
 
   _deps = []
   if (defined(invoker.deps)) {
@@ -41,11 +41,9 @@ template("bison_aar_impl") {
 
   _rebased_build_config = rebase_path(_build_config, root_build_dir)
 
-  print ("======_rebased_build_config======")
-
-  print (_rebased_build_config)
-
-  print ("======_rebased_build_config======")
+  # print ("======_rebased_build_config======")
+  # print (_rebased_build_config)
+  # print ("======_rebased_build_config======")
 
   action_with_pydeps(target_name) {
     forward_variables_from(invoker, [ "data" ])

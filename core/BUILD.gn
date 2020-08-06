@@ -11,42 +11,34 @@ import("//android_webview/webview_repack_locales.gni")
 import("//components/gwp_asan/buildflags/buildflags.gni")
 import("//components/spellcheck/spellcheck_build_features.gni")
 import("//tools/grit/repack.gni")
+
+import("//bison/core/bison.gni")
+import("//build/util/version.gni")
+
 # import("//tools/resources/generate_resource_whitelist.gni")
 import("//tools/v8_context_snapshot/v8_context_snapshot.gni")
 import("//weblayer/variables.gni")
-import("//build/util/version.gni")
-import("//bison/core/bison.gni")
-
-
-
 bison_core("bison_core_aar") {
-
   android_manifest = "AndroidManifest.xml"
-  output = "$root_build_dir/aars/bison_core.aar" 
-  
+  output = "$root_build_dir/aars/bison_core.aar"
+
   deps = [
     ":bison_core_java_part",
   ]
 
-  shared_libraries = [
-    ":libbison",
-  ]
-  
-  resource_included_patterns =[
+  shared_libraries = [ ":libbison" ]
+
+  resource_included_patterns = [
     "*/bison/*",
     "*/ui/android/*",
-  
   ]
 
   jar_excluded_patterns = [
     "im/shimo/bison/R\$*.class",
     "im/shimo/bison/R.class",
 
-
     "im.shimo.bison.core.R\$*.class",
     "im.shimo.bison.core.R.class",
-
-
 
     # "gen/*",
 
@@ -56,6 +48,7 @@ bison_core("bison_core_aar") {
     "android/support/v4/R.class",
 
     "android/support/annotation/*",
+
     # "android/support/v7/*",
     # "android/support/v13/*",
 
@@ -84,21 +77,15 @@ bison_core("bison_core_aar") {
   ]
 }
 
-
-
-
-
-
-_registration_header="$target_gen_dir/bison_jni_registration.h"
+_registration_header = "$target_gen_dir/bison_jni_registration.h"
 
 shared_library("libbison") {
-
   sources = [
     "lib/bison_entry_point.cc",
-    "lib/bison_main_delegate.cc",
-    "lib/bison_main_delegate.h",
     "lib/bison_jni_onload.cc",
     "lib/bison_jni_onload.h",
+    "lib/bison_main_delegate.cc",
+    "lib/bison_main_delegate.h",
     _registration_header,
   ]
 
@@ -111,7 +98,11 @@ shared_library("libbison") {
     "renderer",
     "//base",
     "//components/autofill/core/common",
+
+    # TODO (jiang947) error: undefined symbol: Java_org_chromium_base_natives_GEN_1JNI_org_1chromium_1components_1crash_1CrashKeys_1set
+    "//components/crash/android:crash_android",
     "//components/crash/android:crashpad_main",
+    "//components/embedder_support/android:view",
     "//components/gwp_asan/buildflags",
     "//components/safe_browsing/android:safe_browsing_api_handler",
     "//components/services/heap_profiling/public/cpp",
@@ -126,12 +117,7 @@ shared_library("libbison") {
     "//gpu/command_buffer/service",
     "//gpu/ipc:gl_in_process_context",
     "//ui/events:gesture_detection",
-    # TODO (jiang947) error: undefined symbol: Java_org_chromium_base_natives_GEN_1JNI_org_1chromium_1components_1crash_1CrashKeys_1set
-    "//components/crash/android:crash_android",
-
-    "//components/embedder_support/android:view"
   ]
-
 
   if (enable_gwp_asan) {
     deps += [ "//components/gwp_asan/client" ]
@@ -142,7 +128,6 @@ shared_library("libbison") {
     deps += [ "//weblayer:weblayer_lib" ]
   }
 
-
   libs = [
     "android",
     "log",
@@ -151,7 +136,6 @@ shared_library("libbison") {
   configs -= [ "//build/config/android:hide_all_but_jni_onload" ]
   configs += [ "//build/config/android:hide_all_but_jni" ]
 }
-
 
 generate_jni_registration("bison_jni_registration") {
   target = ":bison_native_base_java"
@@ -208,18 +192,13 @@ generate_jar_jni("cancellation_signal_android_jar_jni_headers") {
   classes = [ "android/os/CancellationSignal.class" ]
 }
 
-
 android_library("bison_core_java_part") {
-
-  java_files = [
-    "java/im/shimo/bison/core/AutofillActionModeCallback.java",
-  ]
+  java_files = [ "java/im/shimo/bison/core/AutofillActionModeCallback.java" ]
 
   deps = [
     ":package_impl_native_java",
     # ":resources",
   ]
-  
 }
 
 _package_dir = "$root_out_dir/bison_aar"
@@ -238,12 +217,10 @@ java_prebuilt("package_impl_native_java") {
     # "//content/public/android:content_java",
 
     ":common_aidl_java",
-    ":common_java",
     ":common_commandline_java",
-    
+    ":common_java",
     ":common_platform_services_java",
     ":common_variations_utils_java",
-
     "//base:base_java",
     "//base:jni_java",
     "//components/autofill/android:autofill_java",
@@ -253,9 +230,9 @@ java_prebuilt("package_impl_native_java") {
     "//components/crash/android:handler_java",
     "//components/crash/android:java",
     "//components/embedder_support/android:application_java",
-    "//components/embedder_support/android:web_contents_delegate_java",
     "//components/embedder_support/android:content_view_java",
     "//components/embedder_support/android:view_java",
+    "//components/embedder_support/android:web_contents_delegate_java",
     "//components/minidump_uploader:minidump_uploader_java",
     "//components/navigation_interception/android:navigation_interception_java",
     "//components/policy/android:policy_java",
@@ -273,25 +250,20 @@ java_prebuilt("package_impl_native_java") {
     "//third_party/android_deps:androidx_annotation_annotation_java",
     "//third_party/blink/public:blink_headers_java",
     "//ui/android:ui_java",
-
-    
   ]
-
 }
 
 android_library("bison_jni_registration_java") {
   srcjar_deps = [ ":bison_jni_registration" ]
 }
 
-
 repackage_jars("repackage_native") {
   output = "$_package_dir/impl_native_java.jar"
   deps = [
-    ":bison_jni_registration_java",  
+    ":bison_jni_registration_java",
     ":repackage_native_java",
   ]
 }
-
 
 _native_intermediate_jar_path = "$target_out_dir/repackage_native_impl.jar"
 
@@ -303,8 +275,6 @@ android_java_prebuilt("repackage_native_java") {
   enable_bytecode_rewriter = false
   deps = [
     ":repackage_native_impl",
-
-    
     "//base:base_java",
     "//base:jni_java",
     "//components/autofill/android:autofill_java",
@@ -314,9 +284,9 @@ android_java_prebuilt("repackage_native_java") {
     "//components/crash/android:handler_java",
     "//components/crash/android:java",
     "//components/embedder_support/android:application_java",
-    "//components/embedder_support/android:web_contents_delegate_java",
     "//components/embedder_support/android:content_view_java",
     "//components/embedder_support/android:view_java",
+    "//components/embedder_support/android:web_contents_delegate_java",
     "//components/minidump_uploader:minidump_uploader_java",
     "//components/navigation_interception/android:navigation_interception_java",
     "//components/policy/android:policy_java",
@@ -335,14 +305,13 @@ android_java_prebuilt("repackage_native_java") {
     "//third_party/blink/public:blink_headers_java",
     "//ui/android:ui_java",
   ]
-  
 }
-
 
 repackage_jars("repackage_native_impl") {
   output = _native_intermediate_jar_path
-  
+
   deps = [
+    ":bison_native_base_java",
     "//base:base_java",
     "//base:jni_java",
     "//components/autofill/android:autofill_java",
@@ -352,9 +321,9 @@ repackage_jars("repackage_native_impl") {
     "//components/crash/android:handler_java",
     "//components/crash/android:java",
     "//components/embedder_support/android:application_java",
-    "//components/embedder_support/android:web_contents_delegate_java",
     "//components/embedder_support/android:content_view_java",
     "//components/embedder_support/android:view_java",
+    "//components/embedder_support/android:web_contents_delegate_java",
     "//components/minidump_uploader:minidump_uploader_java",
     "//components/navigation_interception/android:navigation_interception_java",
     "//components/policy/android:policy_java",
@@ -372,7 +341,6 @@ repackage_jars("repackage_native_impl") {
     "//third_party/android_deps:androidx_annotation_annotation_java",
     "//third_party/blink/public:blink_headers_java",
     "//ui/android:ui_java",
-    ":bison_native_base_java",
   ]
 }
 
@@ -401,6 +369,7 @@ android_library("bison_native_base_java") {
     "java/im/shimo/bison/core/BisonDevToolsServer.java",
     "java/im/shimo/bison/core/BisonFeatures.java",
     "java/im/shimo/bison/core/BisonFeatureList.java",
+
     # "java/im/shimo/bison/core/BisonFirebaseConfig.java",
     "java/im/shimo/bison/core/BisonFormDatabase.java",
     "java/im/shimo/bison/core/BisonGeolocationPermissions.java",
@@ -467,22 +436,21 @@ android_library("bison_native_base_java") {
     "java/im/shimo/bison/core/permission/BisonGeolocationCallback.java",
     "java/im/shimo/bison/core/permission/BisonPermissionRequest.java",
     "java/im/shimo/bison/core/policy/BisonPolicyProvider.java",
+
     # "java/im/shimo/bison/core/ui/CrashesListActivity.java",
     # "java/im/shimo/bison/core/ui/util/CrashInfoLoader.java",
     # "java/im/shimo/bison/core/ui/util/UnuploadedFilesStateLoader.java",
     # "java/im/shimo/bison/core/ui/util/UploadedCrashesInfoLoader.java",
     # "java/im/shimo/bison/core/ui/util/WebViewCrashInfoCollector.java",
     # "java/im/shimo/bison/core/ui/util/WebViewCrashLogParser.java",
-
-    
   ]
   deps = [
     ":common_aidl_java",
     ":common_commandline_java",
     ":common_java",
-    
     ":common_platform_services_java",
     ":common_variations_utils_java",
+
     # ":resources",
     # ":strings_grd",
     # ":system_webview_manifest",
@@ -495,11 +463,9 @@ android_library("bison_native_base_java") {
     "//components/crash/android:handler_java",
     "//components/crash/android:java",
     "//components/embedder_support/android:application_java",
-    "//components/embedder_support/android:web_contents_delegate_java",
-
     "//components/embedder_support/android:content_view_java",
     "//components/embedder_support/android:view_java",
-
+    "//components/embedder_support/android:web_contents_delegate_java",
     "//components/minidump_uploader:minidump_uploader_java",
     "//components/navigation_interception/android:navigation_interception_java",
     "//components/policy/android:policy_java",
@@ -537,17 +503,17 @@ android_library("bison_native_base_java") {
   ]
 
   jar_excluded_patterns = [
-      "*/BuildConfig.class",
-      "*/NativeLibraries.class",
-      "*/NativeLibraries##*.class",
+    "*/BuildConfig.class",
+    "*/NativeLibraries.class",
+    "*/NativeLibraries##*.class",
   ]
 
   min_sdk_version = 21
 }
 
-
 android_library("common_variations_utils_java") {
-  java_files = [ "java/im/shimo/bison/core/common/variations/VariationsUtils.java" ]
+  java_files =
+      [ "java/im/shimo/bison/core/common/variations/VariationsUtils.java" ]
   deps = [
     "proto:bison_variations_seed_proto_java",
     "//base:base_java",
@@ -555,7 +521,6 @@ android_library("common_variations_utils_java") {
     "//third_party/android_deps:com_google_protobuf_protobuf_lite_java",
   ]
 }
-
 
 android_library("common_java") {
   java_files = [
@@ -578,8 +543,7 @@ generate_jni("common_jni_headers") {
 }
 
 android_library("common_commandline_java") {
-  java_files =
-      [ "java/im/shimo/bison/core/common/CommandLineUtil.java" ]
+  java_files = [ "java/im/shimo/bison/core/common/CommandLineUtil.java" ]
 
   deps = [
     "//base:base_java",
@@ -602,7 +566,6 @@ android_library("common_platform_services_java") {
   # .java file because other files in the target depend on it.
   jar_excluded_patterns = [ "*/PlatformServiceBridgeImpl.class" ]
 }
-
 
 android_aidl("services_variations_seed_server_aidl") {
   import_include = [ "java" ]
@@ -692,7 +655,6 @@ java_strings_grd("strings_grd") {
     "values/android_webview_strings.xml",
   ]
 }
-
 
 # deps on browser
 grit("generate_components_strings") {
@@ -789,9 +751,6 @@ grit("generate_aw_strings") {
   }
 }
 
-
-
-
 # monochrome_webview_assets
 android_assets("bison_assets") {
   deps = [
@@ -806,8 +765,6 @@ android_assets("bison_assets") {
     deps += [ ":v8_snapshot_secondary_abi_assets" ]
   }
 }
-
-
 
 # android_assets("locale_pak_assets") {
 #   disable_compression = true
@@ -866,11 +823,12 @@ android_assets("bison_assets") {
 #     deps += [ "//weblayer:resources" ]
 #   }
 # }
-# TODO jiang 这个还没有链上 bison_core_aar 
+# TODO jiang 这个还没有链上 bison_core_aar
 # 需要编译 `repack_100_percent` 然后 编译 `bison_core_aar`
 repack("repack_100_percent") {
   sources = [
     "$root_gen_dir/content/app/resources/content_resources_100_percent.pak",
+
     # "$root_gen_dir/third_party/blink/public/resources/blink_scaled_resources_100_percent.pak",
     "$root_gen_dir/ui/resources/ui_resources_100_percent.pak",
   ]
@@ -898,5 +856,3 @@ android_assets("pak_file_assets") {
   ]
   disable_compression = true
 }
-
-

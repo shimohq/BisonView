@@ -1,8 +1,181 @@
-import("//build/config/android/config.gni")
-import("//build/config/android/rules.gni")
+import("//build/config/features.gni")
+import("//build/config/sanitizers/sanitizers.gni")
+import("//build/config/ui.gni")
+import("//gpu/vulkan/features.gni")
+import("//media/media_options.gni")
+import("//mojo/public/tools/bindings/mojom.gni")
 
-group ("bison"){
+import("//build/config/android/config.gni")
+
+#import("//ppapi/buildflags/buildflags.gni")
+import("//tools/grit/grit_rule.gni")
+import("//tools/grit/repack.gni")
+import("//tools/v8_context_snapshot/v8_context_snapshot.gni")
+
+group("bison") {
   deps = [
+    ":libbison_view",
+    "browser",
+    "common",
     "core:bison_core_aar",
+    "gpu",
+    "renderer",
+    "apk:bison_apk_java",
   ]
+}
+
+config("bison_lib_warnings") {
+  if (is_clang) {
+    cflags = [ "-Wno-nonnull" ]
+  }
+}
+
+generate_jni("bison_jni_headers") {
+  sources = [
+    "java/src/im/shimo/bison/BisonView.java",
+    "java/src/im/shimo/bison/BisonViewManager.java",
+  ]
+}
+
+android_library("bison_java"){
+  java_files = [
+    "java/src/im/shimo/bison/BisonView.java",
+    "java/src/im/shimo/bison/BisonViewManager.java",
+    "java/src/im/shimo/bison/BisonViewAndroidDelegate.java",
+  ]
+
+  deps = [
+    ":bison_java_resources",
+    "//base:base_java",
+    "//base:jni_java",
+    "//components/embedder_support/android:content_view_java",
+    "//components/embedder_support/android:view_java",
+    "//components/viz/service:service_java",
+    "//ui/android:ui_java",
+    "//content/public/android:content_java",
+  ]
+
+  annotation_processor_deps = [ "//base/android/jni_generator:jni_processor" ]
+
+}
+
+android_resources("bison_java_resources"){
+  resource_dirs = [ "java/res" ]
+  custom_package = "im.shimo.bison"
+}
+
+
+
+
+shared_library("libbison_view") {
+  sources = [
+    "lib/bison_view_library_loader.cc",
+  ]
+
+  deps = [
+    ":bison_lib",
+    "//base",
+    "//components/crash/content/app",
+    "//components/crash/content/browser",
+    "//components/embedder_support/android:view",
+    "//content/public/app:both",
+    "//content/public/browser",
+    "//content/public/renderer",
+    "//components/keyed_service/content",
+    "//ui/gfx",
+  ]
+
+  configs -= [ "//build/config/android:hide_all_but_jni_onload" ]
+  configs += [ "//build/config/android:hide_all_but_jni" ]
+}
+
+source_set("bison_lib") {
+  sources = [
+    "lib/bison_main_delegate.cc",
+    "lib/bison_main_delegate.h",
+  ]
+
+  deps = [
+    ":bison_lib_descriptors",
+    "browser",
+    "common",
+    "gpu",
+    "renderer",
+    ":pak",
+    "//base",
+    "//content/public/gpu",
+    "//ui/gfx",
+  ]
+}
+
+source_set("bison_lib_descriptors") {
+  sources = [
+    "lib/bison_descriptors.h",
+  ]
+  public_deps = [
+    "//content/public/common:content_descriptors",
+  ]
+}
+
+grit("bison_resources_grit") {
+  # External code should depend on ":resources" instead.
+  visibility = [ ":*" ]
+  source = "bison_resources.grd"
+  outputs = [
+    "grit/bison_resources.h",
+    "bison_resources.pak",
+  ]
+}
+
+copy("copy_bison_resources") {
+  sources = [
+    "$target_gen_dir/bison_resources.pak",
+  ]
+  outputs = [
+    "$root_out_dir/bison_resources.pak",
+  ]
+
+  public_deps = [
+    ":bison_resources_grit",
+  ]
+}
+
+group("resources") {
+  public_deps = [
+    ":copy_bison_resources",
+  ]
+}
+
+repack("pak") {
+  sources = [
+    "$root_gen_dir/bison/bison_resources.pak",
+    "$root_gen_dir/content/app/resources/content_resources_100_percent.pak",
+    "$root_gen_dir/content/browser/tracing/tracing_resources.pak",
+    "$root_gen_dir/content/content_resources.pak",
+    "$root_gen_dir/mojo/public/js/mojo_bindings_resources.pak",
+    "$root_gen_dir/net/net_resources.pak",
+    "$root_gen_dir/third_party/blink/public/resources/blink_resources.pak",
+    "$root_gen_dir/third_party/blink/public/resources/blink_scaled_resources_100_percent.pak",
+    "$root_gen_dir/third_party/blink/public/strings/blink_strings_en-US.pak",
+    "$root_gen_dir/ui/resources/ui_resources_100_percent.pak",
+    "$root_gen_dir/ui/resources/webui_resources.pak",
+    "$root_gen_dir/ui/strings/app_locale_settings_en-US.pak",
+    "$root_gen_dir/ui/strings/ui_strings_en-US.pak",
+  ]
+
+  deps = [
+    ":resources",
+    "//content:resources",
+    "//content/app/resources",
+    "//content/browser/tracing:resources",
+    "//mojo/public/js:resources",
+    "//net:net_resources",
+    "//third_party/blink/public:resources",
+    "//third_party/blink/public:scaled_resources_100_percent",
+    "//third_party/blink/public/strings",
+    "//ui/resources",
+    "//ui/strings",
+  ]
+
+  output = "$root_out_dir/bison.pak"
 }

@@ -182,13 +182,13 @@ source_set("browser") {
   ]
 
   deps = [
+    "//base",
     "//bison/core:browser_jni_headers",
     "//bison/core:generate_components_strings",
     "//bison/core/browser/gfx",
     "//bison/core/browser/metrics",
     "//bison/core/common",
     "//bison/core/common:common_mojom",
-    "//base",
     "//components/autofill/android:provider",
     "//components/autofill/content/browser",
     "//components/cdm/browser",

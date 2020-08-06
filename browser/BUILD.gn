@@ -1,0 +1,32 @@
+source_set("browser") {
+  sources = [
+    "bison_browser_context.cc",
+    "bison_browser_context.h",
+    "bison_browser_main_parts.cc",
+    "bison_browser_main_parts.h",
+    "bison_content_browser_client.cc",
+    "bison_content_browser_client.h",
+    "bison_devtools_bindings.cc",
+    "bison_devtools_bindings.h",
+    "bison_devtools_frontend.cc",
+    "bison_devtools_frontend.h",
+    "bison_devtools_manager_delegate.cc",
+    "bison_devtools_manager_delegate.h",
+    "bison_download_manager_delegate.cc",
+    "bison_download_manager_delegate.h",
+    "bison_permission_manager.cc",
+    "bison_permission_manager.h",
+    "bison_view.cc",
+    "bison_view_android.cc",
+    "bison_view.h",
+    "bison_view_manager.cc",
+    "bison_view_manager.h",
+  ]
+
+  deps = [
+    "//base",
+    "//content/public/browser",
+    "//ui/gfx",
+    "//bison:bison_jni_headers"
+  ]
+}

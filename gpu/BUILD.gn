@@ -1,0 +1,11 @@
+source_set("gpu") {
+  sources = [
+    "bison_content_gpu_client.cc",
+    "bison_content_gpu_client.h",
+  ]
+
+  deps = [
+    "//base",
+    "//content/public/gpu",
+  ]
+}

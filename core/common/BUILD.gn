@@ -16,8 +16,6 @@ mojom("common_mojom") {
   ]
 }
 
-
-
 source_set("common") {
   sources = [
     "android_webview_message_generator.cc",
@@ -50,8 +48,8 @@ source_set("common") {
     "url_constants.h",
   ]
   deps = [
-    "//bison/core:common_jni_headers",
     "//base",
+    "//bison/core:common_jni_headers",
     "//components/cdm/common",
     "//components/crash/content/app",
     "//components/crash/core/common:crash_key",

@@ -61,9 +61,9 @@ source_set("gfx") {
   ]
 
   deps = [
+    "//base",
     "//bison/core:browser_jni_headers",
     "//bison/core/common",
-    "//base",
     "//components/ui_devtools:buildflags",
     "//components/viz/service",
     "//components/viz/service/main",
@@ -71,6 +71,7 @@ source_set("gfx") {
     "//gpu/command_buffer/client:gles2_implementation",
     "//gpu/command_buffer/service",
     "//gpu/ipc:gl_in_process_context",
+
     # "//gpu/ipc/common:android_image_reader_utils",
     "//gpu/ipc/common:common",
     "//gpu/skia_bindings",

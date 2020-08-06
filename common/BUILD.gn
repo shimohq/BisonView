@@ -1,0 +1,13 @@
+source_set("common"){
+  sources = [
+    "bison_content_client.cc",
+    "bison_content_client.h",
+    # "bison_crash_reporter_client.cc",
+    # "bison_crash_reporter_client.h",
+  ]
+
+  deps = [
+    "//base",
+    "//content/public/common",
+  ]
+}

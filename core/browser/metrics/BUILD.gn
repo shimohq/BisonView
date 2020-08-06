@@ -12,9 +12,9 @@ source_set("metrics") {
     "memory_metrics_logger.h",
   ]
   deps = [
+    "//base",
     "//bison/core:browser_jni_headers",
     "//bison/core/common",
-    "//base",
     "//components/metrics",
     "//components/metrics:gpu",
     "//components/metrics:net",

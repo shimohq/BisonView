@@ -31,11 +31,11 @@ source_set("renderer") {
   ]
 
   deps = [
-    "//bison/core:generate_aw_resources", 
-    "//bison/core:generate_aw_strings",
-    "//bison/core/common", 
-    "//bison/core/common:common_mojom",
     "//base",
+    "//bison/core:generate_aw_resources",
+    "//bison/core:generate_aw_strings",
+    "//bison/core/common",
+    "//bison/core/common:common_mojom",
     "//components/autofill/content/renderer",
     "//components/cdm/renderer",
     "//components/content_capture/common",
