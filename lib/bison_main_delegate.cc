@@ -1,15 +1,6 @@
 
 #include "bison_main_delegate.h"
 
-#include "bison/browser/bison_content_browser_client.h"
-#include "bison/common/bison_content_client.h"
-#include "bison/gpu/bison_content_gpu_client.h"
-#include "bison/renderer/bison_content_renderer_client.h"
-
-// #include "content/shell/app/shell_crash_reporter_client.h"
-
-// #include "content/shell/common/shell_switches.h"
-
 #include <iostream>
 
 #include "base/base_switches.h"
@@ -21,6 +12,10 @@
 #include "base/logging.h"
 #include "base/path_service.h"
 #include "base/trace_event/trace_log.h"
+#include "bison/browser/bison_content_browser_client.h"
+#include "bison/common/bison_content_client.h"
+#include "bison/gpu/bison_content_gpu_client.h"
+#include "bison/renderer/bison_content_renderer_client.h"
 #include "build/build_config.h"
 #include "cc/base/switches.h"
 #include "components/crash/core/common/crash_key.h"
@@ -29,7 +24,6 @@
 #include "content/public/browser/browser_main_runner.h"
 #include "content/public/common/content_switches.h"
 #include "content/public/common/url_constants.h"
-
 #include "gpu/config/gpu_switches.h"
 #include "ipc/ipc_buildflags.h"
 #include "media/base/media_switches.h"
@@ -66,12 +60,8 @@ void InitLogging(const base::CommandLine& command_line) {
   base::FilePath log_filename =
       command_line.GetSwitchValuePath(switches::kLogFile);
   if (log_filename.empty()) {
-#if defined(OS_FUCHSIA)
-    base::PathService::Get(base::DIR_TEMP, &log_filename);
-#else
     base::PathService::Get(base::DIR_EXE, &log_filename);
-#endif
-    log_filename = log_filename.AppendASCII("content_shell.log");
+    log_filename = log_filename.AppendASCII("bison.log");
   }
 
   logging::LoggingSettings settings;
@@ -113,21 +103,31 @@ void BisonMainDelegate::PreSandboxStartup() {
   base::CPU cpu_info;
 #endif
 
-  // Disable platform crash handling and initialize the crash reporter, if
-  // requested.
-  // TODO(crbug.com/753619): Implement crash reporter integration for Fuchsia.
-  // #if !defined(OS_FUCHSIA)
-  //   if (base::CommandLine::ForCurrentProcess()->HasSwitch(
-  //           switches::kEnableCrashReporter)) {
-  //     std::string process_type =
-  //         base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
-  //             switches::kProcessType);
-  //     crash_reporter::SetCrashReporterClient(g_shell_crash_client.Pointer());
-  //     crash_reporter::InitializeCrashpad(process_type.empty(), process_type);
+  VLOG(0) << "======调试宏定义======";
+#if defined(ARCH_CPU_ARM_FAMILY)
+  VLOG(0) << "defined(ARCH_CPU_ARM_FAMILY) true";
+#else
+  VLOG(0) << "defined(ARCH_CPU_ARM_FAMILY) false";
+#endif
 
-  //     VLOG(0) << "OS_FUCHSIA";
-  //   }
-  // #endif  // !defined(OS_FUCHSIA)
+#if defined(OS_FUCHSIA)
+  VLOG(0) << "defined(OS_FUCHSIA) true";
+#else
+  VLOG(0) << "defined(OS_FUCHSIA) false";
+#endif
+
+#if defined(TOOLKIT_VIEWS)
+  VLOG(0) << "defined(TOOLKIT_VIEWS) true";
+#else
+  VLOG(0) << "defined(TOOLKIT_VIEWS) false";
+#endif
+
+#if BUILDFLAG(IPC_MESSAGE_LOG_ENABLED)
+  VLOG(0) << "BUILDFLAG(IPC_MESSAGE_LOG_ENABLED) true";
+#else
+  VLOG(0) << "BUILDFLAG(IPC_MESSAGE_LOG_ENABLED) false";
+#endif
+  VLOG(0) << "======调试宏定义======";
 
   crash_reporter::InitializeCrashKeys();
 
@@ -173,7 +173,6 @@ void BisonMainDelegate::InitializeResourceBundle() {
   if (pak_fd >= 0) {
     pak_region = global_descriptors->GetRegion(kBisonPakDescriptor);
   } else {
-    // content_shell.pak
     pak_fd = base::android::OpenApkAsset("assets/bison.pak", &pak_region);
     // Loaded from disk for browsertests.
     if (pak_fd < 0) {
