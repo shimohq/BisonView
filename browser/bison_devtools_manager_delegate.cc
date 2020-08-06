@@ -1,13 +1,14 @@
 #include "bison_devtools_manager_delegate.h"
 
-// #include "content/shell/browser/shell.h"
 // #include "content/shell/common/shell_content_client.h"
 // #include "content/shell/common/shell_switches.h"
-#include "bison/grit/bison_resources.h"
 
 #include <stdint.h>
 
 #include <vector>
+
+#include "bison/grit/bison_resources.h"
+#include "bison_view.h"
 
 #include "base/atomicops.h"
 #include "base/bind.h"
@@ -196,10 +197,9 @@ void BisonDevToolsManagerDelegate::ClientDetached(
 
 scoped_refptr<DevToolsAgentHost> BisonDevToolsManagerDelegate::CreateNewTarget(
     const GURL& url) {
-  // Shell* shell =
-  //     Shell::CreateNewWindow(browser_context_, url, nullptr, gfx::Size());
-  // return DevToolsAgentHost::GetOrCreateFor(shell->web_contents());
-  return nullptr;
+  BisonView* bisonView =
+      BisonView::CreateNewWindow(browser_context_, url, nullptr, gfx::Size());
+  return DevToolsAgentHost::GetOrCreateFor(bisonView->web_contents());
 }
 
 std::string BisonDevToolsManagerDelegate::GetDiscoveryPageHTML() {

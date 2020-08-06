@@ -51,7 +51,6 @@ android_assets("bison_apk_assets"){
   }
 }
 
-
 android_apk("bison_sample_apk") {
   apk_name = "BisonApk"
   android_manifest = bison_apk_manifest_xml
