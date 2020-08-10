@@ -4,31 +4,29 @@ import("//build/config/ui.gni")
 import("//gpu/vulkan/features.gni")
 import("//media/media_options.gni")
 import("//mojo/public/tools/bindings/mojom.gni")
-
 import("//build/config/android/config.gni")
-
 #import("//ppapi/buildflags/buildflags.gni")
 import("//tools/grit/grit_rule.gni")
 import("//tools/grit/repack.gni")
 import("//tools/v8_context_snapshot/v8_context_snapshot.gni")
 
+
+
 group("bison") {
   deps = [
-    ":libbison_view",
-    "browser",
-    "common",
-    "core:bison_core_aar",
-    "gpu",
-    "renderer",
+    # "core:bison_core_aar",
     "apk:bison_apk_java",
+    # "aar:bison_view_aar",
   ]
 }
+
 
 config("bison_lib_warnings") {
   if (is_clang) {
     cflags = [ "-Wno-nonnull" ]
   }
 }
+
 
 generate_jni("bison_jni_headers") {
   sources = [
@@ -63,9 +61,6 @@ android_resources("bison_java_resources"){
   resource_dirs = [ "java/res" ]
   custom_package = "im.shimo.bison"
 }
-
-
-
 
 shared_library("libbison_view") {
   sources = [

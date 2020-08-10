@@ -93,10 +93,9 @@ class BisonView : public WebContentsDelegate, public WebContentsObserver {
   void ShowDevTools();
   void CloseDevTools();
   bool hide_toolbar() { return hide_toolbar_; }
-#if defined(OS_MACOSX) || defined(OS_ANDROID)
+
   // Resizes the web content view to the given dimensions.
   void SizeTo(const gfx::Size& content_size);
-#endif
 
   // Do one time initialization at application startup.
   static void Initialize();
@@ -140,12 +139,6 @@ class BisonView : public WebContentsDelegate, public WebContentsObserver {
   WebContents* web_contents() const { return web_contents_.get(); }
   gfx::NativeWindow window() { return window_; }
 
-#if defined(OS_MACOSX)
-  // Public to be called by an ObjC bridge object.
-  void ActionPerformed(int control);
-  void URLEntered(const std::string& url_string);
-#endif
-
   // WebContentsDelegate
   WebContents* OpenURLFromTab(WebContents* source,
                               const OpenURLParams& params) override;
@@ -183,10 +176,6 @@ class BisonView : public WebContentsDelegate, public WebContentsObserver {
   std::unique_ptr<BluetoothScanningPrompt> ShowBluetoothScanningPrompt(
       RenderFrameHost* frame,
       const BluetoothScanningPrompt::EventHandler& event_handler) override;
-#if defined(OS_MACOSX)
-  bool HandleKeyboardEvent(WebContents* source,
-                           const NativeWebKeyboardEvent& event) override;
-#endif
   bool DidAddMessageToConsole(WebContents* source,
                               blink::mojom::ConsoleMessageLevel log_level,
                               const base::string16& message,

@@ -11,7 +11,7 @@ template("my_action_test"){
 }
 
 
-template("bison_aar_impl") {
+template("build_aar_impl") {
   forward_variables_from(invoker, [ "testonly" ])
 
 

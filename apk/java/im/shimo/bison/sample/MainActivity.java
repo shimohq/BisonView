@@ -40,20 +40,21 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
 
         // Initializing the command line must occur before loading the library.
-        if (!CommandLine.isInitialized()) {
-            ((App) getApplication()).initCommandLine();
-            String[] commandLineParams = getCommandLineParamsFromIntent(getIntent());
-            if (commandLineParams != null) {
-                CommandLine.getInstance().appendSwitchesAndArguments(commandLineParams);
-            }
-        }
+        // if (!CommandLine.isInitialized()) {
+        //     ((App) getApplication()).initCommandLine();
+        //     String[] commandLineParams = getCommandLineParamsFromIntent(getIntent());
+        //     if (commandLineParams != null) {
+        //         Log.d(TAG, "commandLineParams.");
+        //         CommandLine.getInstance().appendSwitchesAndArguments(commandLineParams);
+        //     }
+        // }
 
-        DeviceUtils.addDeviceSpecificUserAgentSwitch();
+        //DeviceUtils.addDeviceSpecificUserAgentSwitch();
 
         LibraryLoader.getInstance().ensureInitialized(LibraryProcessType.PROCESS_BROWSER);
 
-        setContentView(R.layout.content_shell_activity);
-        mBisonViewManager = findViewById(R.id.shell_container);
+        setContentView(R.layout.main_activity);
+        mBisonViewManager = findViewById(R.id.container);
         final boolean listenToActivityState = true;
         mWindowAndroid = new ActivityWindowAndroid(this, listenToActivityState);
         mWindowAndroid.restoreInstanceState(savedInstanceState);
@@ -86,14 +87,19 @@ public class MainActivity extends Activity {
                                 }
                             });
         }
+
     }
+
+
+
+
 
     private void finishInitialization(Bundle savedInstanceState) {
         String shellUrl;
         if (!TextUtils.isEmpty(mStartupUrl)) {
             shellUrl = mStartupUrl;
         } else {
-            shellUrl = BisonViewManager.DEFAULT_SHELL_URL;
+            shellUrl = BisonViewManager.DEFAULT_URL;
         }
 
         if (savedInstanceState != null

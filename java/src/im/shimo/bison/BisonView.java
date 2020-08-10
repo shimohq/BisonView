@@ -1,5 +1,6 @@
 package im.shimo.bison;
 
+import android.app.Activity;
 import android.content.Context;
 import android.graphics.drawable.ClipDrawable;
 import android.text.TextUtils;
@@ -92,6 +93,11 @@ public class BisonView extends LinearLayout {
     public void initialize(long nativeBisonView, WindowAndroid window) {
         mNativeBisonView = nativeBisonView;
         mWindow = window;
+    }
+
+    @SuppressWarnings("unused")
+    public Activity getActivity() {
+        return (Activity)getContext();
     }
 
     

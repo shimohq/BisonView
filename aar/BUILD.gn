@@ -1,10 +1,12 @@
+
 import("//build/config/android/config.gni")
 import("//build/config/android/rules.gni")
 import("//build/util/version.gni")
 import("//bison/build/bison_aar_impl.gni")
 
 
-template("bison_core") {
+template("bison_aar_impl"){
+
   assert(defined(invoker.shared_libraries))
   _template_name = target_name
 
@@ -63,9 +65,10 @@ template("bison_core") {
     deps = _deps
 
     native_libraries = [
-      "$root_build_dir/libbison.so",
+      "$root_build_dir/libbison_view.so",
     ]
   }
+
 }
 
 template("repackage_jars") {
@@ -78,4 +81,20 @@ template("repackage_jars") {
   }
 }
 
+bison_aar_impl("bison_view_aar"){
 
+  android_manifest = "AndroidManifest.xml"
+  output = "$root_build_dir/aars/bison_view.aar"
+
+  deps = [
+    "//bison:bison_java",
+  ]
+
+  shared_libraries = [ "//bison:libbison_view" ]
+
+  # resource_included_patterns = [
+  #   "*/bison/*",
+  #   "*/ui/android/*",
+  # ]
+
+}

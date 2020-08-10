@@ -13,8 +13,8 @@ import org.chromium.ui.base.ResourceBundle;
 
 
 public class App extends Application {
-    public static final String COMMAND_LINE_FILE = "/data/local/tmp/content-shell-command-line";
-    private static final String PRIVATE_DATA_DIRECTORY_SUFFIX = "content_shell";
+    public static final String COMMAND_LINE_FILE = "/data/local/tmp/bison-apk-command-line";
+    private static final String PRIVATE_DATA_DIRECTORY_SUFFIX = "bison";
 
     @Override
     protected void attachBaseContext(Context base) {
@@ -28,7 +28,10 @@ public class App extends Application {
             }
             PathUtils.setPrivateDataDirectorySuffix(PRIVATE_DATA_DIRECTORY_SUFFIX);
             ApplicationStatus.initialize(this);
-        }
+        } 
+
+        initCommandLine();
+
     }
 
     public void initCommandLine() {

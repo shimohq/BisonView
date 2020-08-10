@@ -19,11 +19,11 @@ import org.chromium.ui.base.WindowAndroid;
 @JNINamespace("bison")
 public class BisonViewManager extends FrameLayout {
 
-    public static final String DEFAULT_SHELL_URL = "http://www.baidu.com";
+    public static final String DEFAULT_URL = "http://www.baidu.com";
     private WindowAndroid mWindow;
     private BisonView mActiveShell;
 
-    private String mStartupUrl = DEFAULT_SHELL_URL;
+    private String mStartupUrl = DEFAULT_URL;
 
     // The target for all content rendering.
     private ContentViewRenderView mContentViewRenderView;
