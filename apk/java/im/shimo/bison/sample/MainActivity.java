@@ -65,28 +65,20 @@ public class MainActivity extends Activity {
                 mBisonViewManager.getContentViewRenderView().getSurfaceView());
 
         mStartupUrl = getUrlFromIntent(getIntent());
-        if (!TextUtils.isEmpty(mStartupUrl)) {
-            mBisonViewManager.setStartupUrl(BisonView.sanitizeUrl(mStartupUrl));
-        }
 
-        if (CommandLine.getInstance().hasSwitch(RUN_WEB_TESTS_SWITCH)) {
-            BrowserStartupController.get(LibraryProcessType.PROCESS_BROWSER)
-                    .startBrowserProcessesSync(false);
-        } else {
-            BrowserStartupController.get(LibraryProcessType.PROCESS_BROWSER)
-                    .startBrowserProcessesAsync(
-                            true, false, new BrowserStartupController.StartupCallback() {
-                                @Override
-                                public void onSuccess() {
-                                    finishInitialization(savedInstanceState);
-                                }
+        BrowserStartupController.get(LibraryProcessType.PROCESS_BROWSER)
+                .startBrowserProcessesAsync(
+                        true, false, new BrowserStartupController.StartupCallback() {
+                            @Override
+                            public void onSuccess() {
+                                finishInitialization(savedInstanceState);
+                            }
 
-                                @Override
-                                public void onFailure() {
-                                    initializationFailed();
-                                }
-                            });
-        }
+                            @Override
+                            public void onFailure() {
+                                initializationFailed();
+                            }
+                        });
 
     }
 
@@ -95,18 +87,19 @@ public class MainActivity extends Activity {
 
 
     private void finishInitialization(Bundle savedInstanceState) {
-        String shellUrl;
+        String url;
         if (!TextUtils.isEmpty(mStartupUrl)) {
-            shellUrl = mStartupUrl;
+            url = mStartupUrl;
         } else {
-            shellUrl = BisonViewManager.DEFAULT_URL;
+            url = BisonViewManager.DEFAULT_URL;
         }
 
         if (savedInstanceState != null
                 && savedInstanceState.containsKey(ACTIVE_SHELL_URL_KEY)) {
-            shellUrl = savedInstanceState.getString(ACTIVE_SHELL_URL_KEY);
+            url = savedInstanceState.getString(ACTIVE_SHELL_URL_KEY);
         }
-        mBisonViewManager.launchShell(shellUrl);
+        mBisonViewManager.launchShell();
+        mBisonViewManager.loadUrl(url);
     }
 
     private void initializationFailed() {

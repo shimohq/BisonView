@@ -26,7 +26,7 @@ static GURL GetFrontendURL() {
 BisonDevToolsFrontend* BisonDevToolsFrontend::Show(
     WebContents* inspected_contents) {
   BisonView* bison_view = BisonView::CreateNewWindow(
-      inspected_contents->GetBrowserContext(), GURL(), nullptr, gfx::Size());
+      inspected_contents->GetBrowserContext(), nullptr, gfx::Size());
   BisonDevToolsFrontend* devtools_frontend =
       new BisonDevToolsFrontend(bison_view, inspected_contents);
   bison_view->LoadURL(GetFrontendURL());

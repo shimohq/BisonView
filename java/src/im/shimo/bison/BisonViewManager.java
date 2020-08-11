@@ -23,7 +23,6 @@ public class BisonViewManager extends FrameLayout {
     private WindowAndroid mWindow;
     private BisonView mActiveShell;
 
-    private String mStartupUrl = DEFAULT_URL;
 
     // The target for all content rendering.
     private ContentViewRenderView mContentViewRenderView;
@@ -57,8 +56,12 @@ public class BisonViewManager extends FrameLayout {
     }
 
 
-    public void setStartupUrl(String url) {
-        mStartupUrl = url;
+
+    public void loadUrl(String url) {
+        if (mActiveShell!=null){
+            mActiveShell.loadUrl(url);
+        }
+
     }
 
 
@@ -67,10 +70,10 @@ public class BisonViewManager extends FrameLayout {
     }
 
 
-    public void launchShell(String url) {
+    public void launchShell() {
         ThreadUtils.assertOnUiThread();
         BisonView previousShell = mActiveShell;
-        BisonViewManagerJni.get().launchShell(url);
+        BisonViewManagerJni.get().launchShell();
         if (previousShell != null) previousShell.close();
     }
 
@@ -127,6 +130,6 @@ public class BisonViewManager extends FrameLayout {
     @NativeMethods
     interface Natives {
         void init(Object bisonViewManagerInstance);
-        void launchShell(String url);
+        void launchShell();
     }
 }

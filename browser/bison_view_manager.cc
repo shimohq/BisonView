@@ -48,12 +48,10 @@ static void JNI_BisonViewManager_Init(JNIEnv* env,
   g_global_state.Get().j_shell_manager.Reset(obj);
 }
 
-void JNI_BisonViewManager_LaunchShell(JNIEnv* env,
-                                      const JavaParamRef<jstring>& jurl) {
+void JNI_BisonViewManager_LaunchShell(JNIEnv* env) {
   BisonBrowserContext* browserContext =
       BisonContentBrowserClient::Get()->browser_context();
-  GURL url(base::android::ConvertJavaStringToUTF8(env, jurl));
-  BisonView::CreateNewWindow(browserContext, url, NULL, gfx::Size());
+  BisonView::CreateNewWindow(browserContext, NULL, gfx::Size());
 }
 
 void DestroyShellManager() {

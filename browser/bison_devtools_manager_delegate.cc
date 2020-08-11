@@ -135,7 +135,8 @@ void BisonDevToolsManagerDelegate::ClientDetached(
 scoped_refptr<DevToolsAgentHost> BisonDevToolsManagerDelegate::CreateNewTarget(
     const GURL& url) {
   BisonView* bisonView =
-      BisonView::CreateNewWindow(browser_context_, url, nullptr, gfx::Size());
+      BisonView::CreateNewWindow(browser_context_, nullptr, gfx::Size());
+  bisonView->LoadURL(url);
   return DevToolsAgentHost::GetOrCreateFor(bisonView->web_contents());
 }
 

@@ -21,9 +21,6 @@ base::android::ScopedJavaLocalRef<jobject> CreateShellView(
 
 void RemoveShellView(const base::android::JavaRef<jobject>& shell_view);
 
-void ShellAttachLayer(cc::Layer* layer);
-void ShellRemoveLayer(cc::Layer* layer);
-
 void DestroyShellManager();
 
 }  // namespace bison

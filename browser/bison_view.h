@@ -92,7 +92,6 @@ class BisonView : public WebContentsDelegate, public WebContentsObserver {
   void Close();
   void ShowDevTools();
   void CloseDevTools();
-  bool hide_toolbar() { return hide_toolbar_; }
 
   // Resizes the web content view to the given dimensions.
   void SizeTo(const gfx::Size& content_size);
@@ -102,7 +101,6 @@ class BisonView : public WebContentsDelegate, public WebContentsObserver {
 
   static BisonView* CreateNewWindow(
       BrowserContext* browser_context,
-      const GURL& url,
       const scoped_refptr<SiteInstance>& site_instance,
       const gfx::Size& initial_size);
 
@@ -300,7 +298,6 @@ class BisonView : public WebContentsDelegate, public WebContentsObserver {
 #endif  // defined(USE_AURA)
 
   bool headless_;
-  bool hide_toolbar_;
   bool delay_popup_contents_delegate_for_testing_ = false;
 
   // A container of all the open windows. We use a vector so we can keep track

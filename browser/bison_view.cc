@@ -82,8 +82,7 @@ BisonView::BisonView(std::unique_ptr<WebContents> web_contents,
       devtools_frontend_(nullptr),
       is_fullscreen_(false),
       window_(nullptr),
-      headless_(false),
-      hide_toolbar_(false) {
+      headless_(false) {
   VLOG(0) << "create: should_set_delegate" << should_set_delegate;
   if (should_set_delegate)
     web_contents_->SetDelegate(this);
@@ -190,7 +189,6 @@ gfx::Size BisonView::AdjustWindowSize(const gfx::Size& initial_size) {
 
 BisonView* BisonView::CreateNewWindow(
     BrowserContext* browser_context,
-    const GURL& url,
     const scoped_refptr<SiteInstance>& site_instance,
     const gfx::Size& initial_size) {
   WebContents::CreateParams create_params(browser_context, site_instance);
@@ -204,8 +202,7 @@ BisonView* BisonView::CreateNewWindow(
   BisonView* bison_view =
       CreateShell(std::move(web_contents), AdjustWindowSize(initial_size),
                   true /* should_set_delegate */);
-  if (!url.is_empty())
-    bison_view->LoadURL(url);
+
   return bison_view;
 }
 
@@ -271,19 +268,13 @@ void BisonView::LoadDataWithBaseURLInternal(const GURL& url,
                                             const std::string& data,
                                             const GURL& base_url,
                                             bool load_as_string) {
-#if !defined(OS_ANDROID)
-  DCHECK(!load_as_string);  // Only supported on Android.
-#endif
-
   NavigationController::LoadURLParams params(GURL::EmptyGURL());
   const std::string data_url_header = "data:text/html;charset=utf-8,";
   if (load_as_string) {
     params.url = GURL(data_url_header);
     std::string data_url_as_string = data_url_header + data;
-#if defined(OS_ANDROID)
     params.data_url_as_string =
         base::RefCountedString::TakeString(&data_url_as_string);
-#endif
   } else {
     params.url = GURL(data_url_header + data);
   }
