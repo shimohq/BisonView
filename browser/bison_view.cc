@@ -53,9 +53,6 @@ namespace bison {
 // Null until/unless the default main message loop is running.
 base::NoDestructor<base::OnceClosure> g_quit_main_message_loop;
 
-const int kDefaultTestWindowWidthDip = 800;
-const int kDefaultTestWindowHeightDip = 600;
-
 std::vector<BisonView*> BisonView::windows_;
 base::OnceCallback<void(BisonView*)> BisonView::bison_view_created_callback_;
 
@@ -121,13 +118,12 @@ BisonView::~BisonView() {
   }
 }
 
-BisonView* BisonView::CreateShell(std::unique_ptr<WebContents> web_contents,
-                                  const gfx::Size& initial_size,
-                                  bool should_set_delegate) {
+BisonView* BisonView::CreateBisonView(std::unique_ptr<WebContents> web_contents,
+                                      bool should_set_delegate) {
   // WebContents* raw_web_contents = web_contents.get();
   BisonView* bison_view =
       new BisonView(std::move(web_contents), should_set_delegate);
-  bison_view->PlatformCreateWindow(initial_size.width(), initial_size.height());
+  bison_view->PlatformCreateWindow();
 
   bison_view->PlatformSetContents();
 
@@ -177,31 +173,16 @@ BisonView* BisonView::FromWebContents(WebContents* web_contents) {
   return nullptr;
 }
 
-void BisonView::Initialize() {
-  PlatformInitialize(GetShellDefaultSize());
-}
-
-gfx::Size BisonView::AdjustWindowSize(const gfx::Size& initial_size) {
-  if (!initial_size.IsEmpty())
-    return initial_size;
-  return GetShellDefaultSize();
-}
+void BisonView::Initialize() {}
 
 BisonView* BisonView::CreateNewWindow(
     BrowserContext* browser_context,
-    const scoped_refptr<SiteInstance>& site_instance,
-    const gfx::Size& initial_size) {
+    const scoped_refptr<SiteInstance>& site_instance) {
   WebContents::CreateParams create_params(browser_context, site_instance);
-  if (base::CommandLine::ForCurrentProcess()->HasSwitch(
-          switches::kForcePresentationReceiverForTesting)) {
-    create_params.starting_sandbox_flags =
-        blink::kPresentationReceiverSandboxFlags;
-  }
   std::unique_ptr<WebContents> web_contents =
       WebContents::Create(create_params);
   BisonView* bison_view =
-      CreateShell(std::move(web_contents), AdjustWindowSize(initial_size),
-                  true /* should_set_delegate */);
+      CreateBisonView(std::move(web_contents), true /* should_set_delegate */);
 
   return bison_view;
 }
@@ -224,8 +205,7 @@ BisonView* BisonView::CreateNewWindowWithSessionStorageNamespace(
   std::unique_ptr<WebContents> web_contents =
       WebContents::CreateWithSessionStorage(create_params, session_storages);
   BisonView* bison_view =
-      CreateShell(std::move(web_contents), AdjustWindowSize(initial_size),
-                  true /* should_set_delegate */);
+      CreateBisonView(std::move(web_contents), true /* should_set_delegate */);
   if (!url.is_empty())
     bison_view->LoadURL(url);
   return bison_view;
@@ -560,15 +540,6 @@ PictureInPictureResult BisonView::EnterPictureInPicture(
 
 bool BisonView::ShouldResumeRequestsForCreatedWindow() {
   return !delay_popup_contents_delegate_for_testing_;
-}
-
-gfx::Size BisonView::GetShellDefaultSize() {
-  static gfx::Size default_shell_size;
-  if (!default_shell_size.IsEmpty())
-    return default_shell_size;
-  default_shell_size =
-      gfx::Size(kDefaultTestWindowWidthDip, kDefaultTestWindowHeightDip);
-  return default_shell_size;
 }
 
 void BisonView::TitleWasSet(NavigationEntry* entry) {

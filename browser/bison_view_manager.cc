@@ -51,7 +51,7 @@ static void JNI_BisonViewManager_Init(JNIEnv* env,
 void JNI_BisonViewManager_LaunchShell(JNIEnv* env) {
   BisonBrowserContext* browserContext =
       BisonContentBrowserClient::Get()->browser_context();
-  BisonView::CreateNewWindow(browserContext, NULL, gfx::Size());
+  BisonView::CreateNewWindow(browserContext, NULL);
 }
 
 void DestroyShellManager() {

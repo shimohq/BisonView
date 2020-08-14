@@ -101,8 +101,7 @@ class BisonView : public WebContentsDelegate, public WebContentsObserver {
 
   static BisonView* CreateNewWindow(
       BrowserContext* browser_context,
-      const scoped_refptr<SiteInstance>& site_instance,
-      const gfx::Size& initial_size);
+      const scoped_refptr<SiteInstance>& site_instance);
 
   static BisonView* CreateNewWindowWithSessionStorageNamespace(
       BrowserContext* browser_context,
@@ -200,8 +199,6 @@ class BisonView : public WebContentsDelegate, public WebContentsObserver {
       const gfx::Size& natural_size) override;
   bool ShouldResumeRequestsForCreatedWindow() override;
 
-  static gfx::Size GetShellDefaultSize();
-
   void set_delay_popup_contents_delegate_for_testing(bool delay) {
     delay_popup_contents_delegate_for_testing_ = delay;
   }
@@ -215,25 +212,20 @@ class BisonView : public WebContentsDelegate, public WebContentsObserver {
             bool should_set_delegate);
 
   // Helper to create a new Shell given a newly created WebContents.
-  static BisonView* CreateShell(std::unique_ptr<WebContents> web_contents,
-                                const gfx::Size& initial_size,
-                                bool should_set_delegate);
+  static BisonView* CreateBisonView(std::unique_ptr<WebContents> web_contents,
+                                    bool should_set_delegate);
 
   // Helper for one time initialization of application
   static void PlatformInitialize(const gfx::Size& default_window_size);
   // Helper for one time deinitialization of platform specific state.
   static void PlatformExit();
 
-  // Adjust the size when Blink sends 0 for width and/or height.
-  // This happens when Blink requests a default-sized window.
-  static gfx::Size AdjustWindowSize(const gfx::Size& initial_size);
-
   // All the methods that begin with Platform need to be implemented by the
   // platform specific Shell implementation.
   // Called from the destructor to let each platform do any necessary cleanup.
   void PlatformCleanUp();
   // Creates the main window GUI.
-  void PlatformCreateWindow(int width, int height);
+  void PlatformCreateWindow();
   // Links the WebContents into the newly created window.
   void PlatformSetContents();
   // Resize the content area and GUI.

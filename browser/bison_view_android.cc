@@ -1,5 +1,3 @@
-#include "bison_view.h"
-
 #include <jni.h>
 
 #include "base/android/jni_string.h"
@@ -8,6 +6,7 @@
 #include "base/logging.h"
 #include "base/strings/string_piece.h"
 #include "bison/bison_jni_headers/BisonView_jni.h"
+#include "bison_view.h"
 #include "bison_view_manager.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/common/content_switches.h"
@@ -50,7 +49,7 @@ void BisonView::PlatformSetIsLoading(bool loading) {
   Java_BisonView_setIsLoading(env, java_object_, loading);
 }
 
-void BisonView::PlatformCreateWindow(int width, int height) {
+void BisonView::PlatformCreateWindow() {
   java_object_.Reset(CreateShellView(this));
 }
 

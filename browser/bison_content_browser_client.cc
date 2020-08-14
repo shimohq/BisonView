@@ -11,6 +11,7 @@
 // #include "content/shell/common/shell_switches.h"
 
 #include <stddef.h>
+
 #include <utility>
 
 #include "base/base_switches.h"
@@ -38,7 +39,6 @@
 #include "content/public/common/user_agent.h"
 #include "content/public/common/web_preferences.h"
 #include "content/public/test/test_service.h"
-
 #include "content/test/data/mojo_web_test_helper_test.mojom.h"
 #include "device/bluetooth/public/mojom/test/fake_bluetooth.mojom.h"
 #include "media/mojo/buildflags.h"

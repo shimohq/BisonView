@@ -33,6 +33,9 @@ public class BisonViewManager extends FrameLayout {
     public BisonViewManager(final Context context, AttributeSet attrs) {
         super(context, attrs);
         BisonViewManagerJni.get().init(this);
+        // LayoutInflater inflater =
+        //         (LayoutInflater) getContext().getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+        // mActiveShell = (BisonView) inflater.inflate(R.layout.shell_view, null);
     }
 
 
@@ -88,7 +91,7 @@ public class BisonViewManager extends FrameLayout {
                 (LayoutInflater) getContext().getSystemService(Context.LAYOUT_INFLATER_SERVICE);
         BisonView bisonView = (BisonView) inflater.inflate(R.layout.shell_view, null);
         bisonView.initialize(nativeBisonViewPtr, mWindow);
-
+        
         // TODO(tedchoc): Allow switching back to these inactive shells.
         if (mActiveShell != null) removeBisonView(mActiveShell);
 
