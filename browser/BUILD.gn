@@ -17,7 +17,6 @@ source_set("browser") {
     "bison_permission_manager.cc",
     "bison_permission_manager.h",
     "bison_view.cc",
-    "bison_view_android.cc",
     "bison_view.h",
     "bison_view_manager.cc",
     "bison_view_manager.h",
