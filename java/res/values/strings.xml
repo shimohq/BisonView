@@ -6,6 +6,6 @@
      found in the LICENSE file.
  -->
 
-<resources>
-    <string name="url_hint">Type URL Here</string>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <string name="url_hint" tools:ignore="UnusedResources">Type URL Here</string>
 </resources>

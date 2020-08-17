@@ -18,11 +18,12 @@ import org.chromium.ui.base.WindowAndroid;
  * Container and generator of ShellViews.
  */
 @JNINamespace("bison")
-public class BisonViewManager extends FrameLayout {
+public class BisonViewManager {
     private static final String TAG = "BisonViewManager";
     public static final String DEFAULT_URL = "http://www.baidu.com";
     private WindowAndroid mWindow;
     private BisonView mActiveShell;
+    private Context mContext;
 
 
     // The target for all content rendering.
@@ -31,14 +32,21 @@ public class BisonViewManager extends FrameLayout {
     /**
      * Constructor for inflating via XML.
      */
-    public BisonViewManager(final Context context, AttributeSet attrs) {
-        super(context, attrs);
+    public BisonViewManager(final Context context,BisonView bisonView) {
+        // super(context, attrs);
+        this.mContext = context;
         BisonViewManagerJni.get().init(this);
-        LayoutInflater inflater =
-                (LayoutInflater) getContext().getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-        mActiveShell = (BisonView) inflater.inflate(R.layout.shell_view, null);
-        addView(mActiveShell, new FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+        // LayoutInflater inflater =
+        //         (LayoutInflater) getContext().getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+        // mActiveShell = (BisonView) inflater.inflate(R.layout.shell_view, null);
+        
+        // addView(mActiveShell, new FrameLayout.LayoutParams(
+        //         FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+        this.mActiveShell = bisonView;
+    }
+
+    public Context getContext(){
+        return mContext;
     }
 
 
@@ -50,24 +58,10 @@ public class BisonViewManager extends FrameLayout {
     }
 
 
-    public WindowAndroid getWindow() {
-        return mWindow;
-    }
-
-    /**
-     * Get the ContentViewRenderView.
-     */
-    public ContentViewRenderView getContentViewRenderView() {
-        return mContentViewRenderView;
-    }
-
-
-
     public void loadUrl(String url) {
         if (mActiveShell!=null){
             mActiveShell.loadUrl(url);
         }
-
     }
 
 
@@ -78,19 +72,14 @@ public class BisonViewManager extends FrameLayout {
 
     public void launchShell() {
         ThreadUtils.assertOnUiThread();
-        BisonViewManagerJni.get().launchShell();
+        //BisonViewManagerJni.get().launchShell();
+        mActiveShell.init();
     }
 
     @SuppressWarnings("unused")
     @CalledByNative
     private Object createBisonView(long nativeBisonViewPtr) {
         Log.d(TAG,"createBisonView");
-        if (mContentViewRenderView == null) {
-            mContentViewRenderView = new ContentViewRenderView(getContext());
-            mContentViewRenderView.onNativeLibraryLoaded(mWindow);
-        }
-
-        mActiveShell.initialize(nativeBisonViewPtr, mWindow);
         
         showBisonView(mActiveShell);
         return mActiveShell;
@@ -99,10 +88,10 @@ public class BisonViewManager extends FrameLayout {
     private void showBisonView(BisonView bisonView) {
         bisonView.setContentViewRenderView(mContentViewRenderView);
         WebContents webContents = mActiveShell.getWebContents();
-        if (webContents != null) {
-            mContentViewRenderView.setCurrentWebContents(webContents);
-            webContents.onShow();
-        }
+        // if (webContents != null) {
+        //     mContentViewRenderView.setCurrentWebContents(webContents);
+        //     webContents.onShow();
+        // }
     }
 
     @CalledByNative
@@ -110,7 +99,7 @@ public class BisonViewManager extends FrameLayout {
         if (bisonView == mActiveShell) mActiveShell = null;
         if (bisonView.getParent() == null) return;
         bisonView.setContentViewRenderView(null);
-        removeView(bisonView);
+        //removeView(bisonView);
     }
 
     @CalledByNative

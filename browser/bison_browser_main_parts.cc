@@ -139,6 +139,7 @@ void BisonBrowserMainParts::InitializeBrowserContexts() {
 }
 
 void BisonBrowserMainParts::InitializeMessageLoopContext() {
+  VLOG(0) << "InitializeMessageLoopContext";
   ui::MaterialDesignController::Initialize();
   // Shell::CreateNewWindow 这里暂时注释 还没有想好怎么搞
   // Shell::CreateNewWindow(browser_context_.get(), GetStartupURL(), nullptr,

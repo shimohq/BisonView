@@ -18,7 +18,6 @@ import org.chromium.content_public.browser.WebContents;
 import org.chromium.ui.base.ActivityWindowAndroid;
 
 import im.shimo.bison.BisonView;
-import im.shimo.bison.BisonViewManager;
 
 public class MainActivity extends Activity {
 
@@ -30,7 +29,8 @@ public class MainActivity extends Activity {
     // Native switch - shell_switches::kRunWebTests
     private static final String RUN_WEB_TESTS_SWITCH = "run-web-tests";
 
-    private BisonViewManager mBisonViewManager;
+    // private BisonViewManager mBisonViewManager;
+    private BisonView mBisonView;
     private ActivityWindowAndroid mWindowAndroid;
     private Intent mLastSentIntent;
     private String mStartupUrl;
@@ -38,31 +38,9 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(final Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-        // Initializing the command line must occur before loading the library.
-        // if (!CommandLine.isInitialized()) {
-        //     ((App) getApplication()).initCommandLine();
-        //     String[] commandLineParams = getCommandLineParamsFromIntent(getIntent());
-        //     if (commandLineParams != null) {
-        //         Log.d(TAG, "commandLineParams.");
-        //         CommandLine.getInstance().appendSwitchesAndArguments(commandLineParams);
-        //     }
-        // }
-
-        //DeviceUtils.addDeviceSpecificUserAgentSwitch();
-
         LibraryLoader.getInstance().ensureInitialized(LibraryProcessType.PROCESS_BROWSER);
-
         setContentView(R.layout.main_activity);
-        mBisonViewManager = findViewById(R.id.container);
-        final boolean listenToActivityState = true;
-        mWindowAndroid = new ActivityWindowAndroid(this, listenToActivityState);
-        mWindowAndroid.restoreInstanceState(savedInstanceState);
-        mBisonViewManager.setWindow(mWindowAndroid);
-        // Set up the animation placeholder to be the SurfaceView. This disables the
-        // SurfaceView's 'hole' clipping during animations that are notified to the window.
-        mWindowAndroid.setAnimationPlaceholderView(
-                mBisonViewManager.getContentViewRenderView().getSurfaceView());
+        mBisonView = findViewById(R.id.bison_view);
 
         mStartupUrl = getUrlFromIntent(getIntent());
 
@@ -82,24 +60,18 @@ public class MainActivity extends Activity {
 
     }
 
-
-
-
-
     private void finishInitialization(Bundle savedInstanceState) {
-        String url;
-        if (!TextUtils.isEmpty(mStartupUrl)) {
-            url = mStartupUrl;
-        } else {
-            url = BisonViewManager.DEFAULT_URL;
-        }
+        String url = "http://www.baidu.com";
+        
 
         if (savedInstanceState != null
                 && savedInstanceState.containsKey(ACTIVE_SHELL_URL_KEY)) {
             url = savedInstanceState.getString(ACTIVE_SHELL_URL_KEY);
         }
-        mBisonViewManager.launchShell();
-        mBisonViewManager.loadUrl(url);
+        mBisonView.init();
+        mBisonView.loadUrl(url);
+        // mBisonViewManager.launchShell();
+        // mBisonViewManager.loadUrl(url);
     }
 
     private void initializationFailed() {
@@ -118,7 +90,7 @@ public class MainActivity extends Activity {
             outState.putString(ACTIVE_SHELL_URL_KEY, webContents.getLastCommittedUrl());
         }
 
-        mWindowAndroid.saveInstanceState(outState);
+        //mWindowAndroid.saveInstanceState(outState);
     }
 
     @Override
@@ -143,11 +115,8 @@ public class MainActivity extends Activity {
         if (MemoryPressureListener.handleDebugIntent(this, intent.getAction())) return;
 
         String url = getUrlFromIntent(intent);
-        if (!TextUtils.isEmpty(url)) {
-            BisonView activeView = getActiveShell();
-            if (activeView != null) {
-                activeView.loadUrl(url);
-            }
+        if (mBisonView!=null){
+            mBisonView.loadUrl(url);
         }
     }
 
@@ -173,7 +142,7 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
-        if (mBisonViewManager != null) mBisonViewManager.destroy();
+        if (mBisonView != null) mBisonView.destroy();
         super.onDestroy();
     }
 
@@ -189,25 +158,13 @@ public class MainActivity extends Activity {
         return intent != null ? intent.getStringArrayExtra(COMMAND_LINE_ARGS_KEY) : null;
     }
 
-
-    public BisonViewManager getShellManager() {
-        return mBisonViewManager;
-    }
-
-    /**
-     * @return The currently visible {@link Shell} or null if one is not showing.
-     */
-    public BisonView getActiveShell() {
-        return mBisonViewManager != null ? mBisonViewManager.getActiveShell() : null;
-    }
-
     /**
      * @return The {@link WebContents} owned by the currently visible {@link Shell} or null if
      *         one is not showing.
      */
     public WebContents getActiveWebContents() {
-        BisonView bisonView = getActiveShell();
-        return bisonView != null ? bisonView.getWebContents() : null;
+        // BisonView bisonView = getActiveShell();
+        return mBisonView != null ? mBisonView.getWebContents() : null;
     }
 
 }

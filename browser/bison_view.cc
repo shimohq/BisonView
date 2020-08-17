@@ -24,7 +24,7 @@
 #include "bison_browser_main_parts.h"
 #include "bison_content_browser_client.h"
 #include "bison_devtools_frontend.h"
-#include "bison_view_manager.h"
+// #include "bison_view_manager.h"
 // #include "bison_javascript_dialog_manager.h"
 // #include "bison_switches.h"
 #include "build/build_config.h"
@@ -132,11 +132,11 @@ BisonView* BisonView::CreateBisonView(std::unique_ptr<WebContents> web_contents,
   // WebContents* raw_web_contents = web_contents.get();
   BisonView* bison_view =
       new BisonView(std::move(web_contents), should_set_delegate);
-  bison_view->PlatformCreateWindow();
+  // bison_view->PlatformCreateWindow();
 
-  bison_view->PlatformSetContents();
+  // bison_view->PlatformSetContents();
 
-  bison_view->PlatformResizeSubViews();
+  // bison_view->PlatformResizeSubViews();
 
   return bison_view;
 }
@@ -564,7 +564,7 @@ void BisonView::OnDevToolsWebContentsDestroyed() {
 void BisonView::PlatformInitialize(const gfx::Size& default_window_size) {}
 
 void BisonView::PlatformExit() {
-  DestroyShellManager();
+  // DestroyShellManager();
 }
 
 void BisonView::PlatformCleanUp() {
@@ -593,7 +593,7 @@ void BisonView::PlatformSetIsLoading(bool loading) {
 }
 
 void BisonView::PlatformCreateWindow() {
-  java_object_.Reset(CreateShellView(this));
+  // java_object_.Reset(CreateShellView(this));
 }
 
 void BisonView::PlatformSetContents() {
@@ -640,11 +640,23 @@ bool BisonView::PlatformIsFullscreenForTabOrPending(
 }
 
 void BisonView::Close() {
-  RemoveShellView(java_object_);
+  // RemoveShellView(java_object_);
   delete this;
 }
 
+ScopedJavaLocalRef<jobject> BisonView::GetWebContents(JNIEnv* env) {
+  return web_contents()->GetJavaWebContents();
+}
+
 // static
+jlong JNI_BisonView_Init(JNIEnv* env, const JavaParamRef<jobject>& obj) {
+  BisonBrowserContext* browserContext =
+      BisonContentBrowserClient::Get()->browser_context();
+  BisonView* bison_view = BisonView::CreateNewWindow(browserContext, NULL);
+  bison_view->java_object_.Reset(obj);
+  return reinterpret_cast<intptr_t>(bison_view);
+}
+
 void JNI_BisonView_CloseShell(JNIEnv* env, jlong bisonViewPtr) {
   BisonView* bisonView = reinterpret_cast<BisonView*>(bisonViewPtr);
   bisonView->Close();

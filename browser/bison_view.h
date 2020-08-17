@@ -203,6 +203,9 @@ class BisonView : public WebContentsDelegate, public WebContentsObserver {
     delay_popup_contents_delegate_for_testing_ = delay;
   }
 
+  base::android::ScopedJavaGlobalRef<jobject> java_object_;
+  base::android::ScopedJavaLocalRef<jobject> GetWebContents(JNIEnv* env);
+
  private:
   enum UIControl { BACK_BUTTON, FORWARD_BUTTON, STOP_BUTTON };
 
@@ -274,7 +277,7 @@ class BisonView : public WebContentsDelegate, public WebContentsObserver {
   gfx::Size content_size_;
 
 #if defined(OS_ANDROID)
-  base::android::ScopedJavaGlobalRef<jobject> java_object_;
+  // base::android::ScopedJavaGlobalRef<jobject> java_object_;
 #elif defined(USE_AURA)
 #if defined(OS_CHROMEOS)
   static wm::WMTestHelper* wm_test_helper_;

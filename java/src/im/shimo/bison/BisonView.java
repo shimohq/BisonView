@@ -31,11 +31,12 @@ import org.chromium.content_public.browser.LoadUrlParams;
 import org.chromium.content_public.browser.NavigationController;
 import org.chromium.content_public.browser.SelectionPopupController;
 import org.chromium.content_public.browser.WebContents;
+import org.chromium.ui.base.ActivityWindowAndroid;
 import org.chromium.ui.base.ViewAndroidDelegate;
 import org.chromium.ui.base.WindowAndroid;
 
 @JNINamespace("bison")
-public class BisonView extends LinearLayout {
+public class BisonView extends FrameLayout {
 
     private static final long COMPLETED_PROGRESS_TIMEOUT_MS = 200;
 
@@ -65,29 +66,76 @@ public class BisonView extends LinearLayout {
 
     private Callback<Boolean> mOverlayModeChangedCallbackForTesting;
 
+    private ViewGroup mContentViewHodler;
+
     /**
      * Constructor for inflating via XML.
      */
     public BisonView(Context context, AttributeSet attrs) {
         super(context, attrs);
+        mContentViewHodler = new FrameLayout(context);
+        addView(mContentViewHodler,new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,FrameLayout.LayoutParams.MATCH_PARENT));
+        
+        mWindow = new ActivityWindowAndroid(getActivity(), true);
+        mContentViewRenderView = new ContentViewRenderView(getContext());
+        mContentViewRenderView.onNativeLibraryLoaded(mWindow);
+        mWindow.setAnimationPlaceholderView(mContentViewRenderView.getSurfaceView());
+        addView(mContentViewRenderView);
     }
 
     /**
      * Set the SurfaceView being renderered to as soon as it is available.
      */
     public void setContentViewRenderView(ContentViewRenderView contentViewRenderView) {
-        FrameLayout contentViewHolder = (FrameLayout) findViewById(R.id.contentview_holder);
-        if (contentViewRenderView == null) {
-            if (mContentViewRenderView != null) {
-                contentViewHolder.removeView(mContentViewRenderView);
-            }
-        } else {
-            contentViewHolder.addView(contentViewRenderView,
-                    new FrameLayout.LayoutParams(
-                            FrameLayout.LayoutParams.MATCH_PARENT,
-                            FrameLayout.LayoutParams.MATCH_PARENT));
+        // FrameLayout contentViewHolder = (FrameLayout) findViewById(R.id.contentview_holder);
+        // if (contentViewRenderView == null) {
+        //     if (mContentViewRenderView != null) {
+        //         mContentViewHodler.removeView(mContentViewRenderView);
+        //     }
+        // } else {
+        //     mContentViewHodler.addView(contentViewRenderView,
+        //             new FrameLayout.LayoutParams(
+        //                     FrameLayout.LayoutParams.MATCH_PARENT,
+        //                     FrameLayout.LayoutParams.MATCH_PARENT));
+        // }
+        // if (contentViewRenderView == null ) {
+        //     if (mContentViewRenderView != null) {
+        //         removeView(mContentViewRenderView);
+        //     }
+        // }else {
+        //     addView(contentViewRenderView);
+        // }
+        // mContentViewRenderView = contentViewRenderView;
+        
+        
+        
+    }
+
+    public void init() {
+        mNativeBisonView = BisonViewJni.get().init(this);
+        initFromNativeTabContents(BisonViewJni.get().getWebContents(mNativeBisonView));
+    }
+
+    @Override
+    public void addView(View child){
+        FrameLayout.LayoutParams layoutParams = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT);
+        if (mContentViewHodler != null){
+            mContentViewHodler.addView(child,layoutParams);
+        }else{
+            super.addView(child,layoutParams);
         }
-        mContentViewRenderView = contentViewRenderView;
+    }
+
+    @Override
+    public void removeView(View view) {
+        if (mContentViewHodler !=null){
+            mContentViewHodler.removeView(view);
+        }else{
+            super.removeView(view);
+        }
+        
     }
 
     public void initialize(long nativeBisonView, WindowAndroid window) {
@@ -127,51 +175,77 @@ public class BisonView extends LinearLayout {
     protected void onFinishInflate() {
         super.onFinishInflate();
 
-        View toolbar = findViewById(R.id.toolbar);
-        mProgressDrawable = (ClipDrawable) toolbar.getBackground();
-        initializeUrlField();
-        initializeNavigationButtons();
+        // View toolbar = findViewById(R.id.toolbar);
+        // mProgressDrawable = (ClipDrawable) toolbar.getBackground();
+        // initializeUrlField();
+        // initializeNavigationButtons();
     }
 
-    private void initializeUrlField() {
-        mUrlTextView = (EditText) findViewById(R.id.url);
-        mUrlTextView.setOnEditorActionListener(new OnEditorActionListener() {
-            @Override
-            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
-                if ((actionId != EditorInfo.IME_ACTION_GO) && (event == null
-                        || event.getKeyCode() != KeyEvent.KEYCODE_ENTER
-                        || event.getAction() != KeyEvent.ACTION_DOWN)) {
-                    return false;
-                }
-                loadUrl(mUrlTextView.getText().toString());
-                setKeyboardVisibilityForUrl(false);
-                getContentView().requestFocus();
-                return true;
-            }
-        });
-        mUrlTextView.setOnFocusChangeListener(new OnFocusChangeListener() {
-            @Override
-            public void onFocusChange(View v, boolean hasFocus) {
-                setKeyboardVisibilityForUrl(hasFocus);
-                mNextButton.setVisibility(hasFocus ? GONE : VISIBLE);
-                mPrevButton.setVisibility(hasFocus ? GONE : VISIBLE);
-                mStopReloadButton.setVisibility(hasFocus ? GONE : VISIBLE);
-                if (!hasFocus) {
-                    mUrlTextView.setText(mWebContents.getVisibleUrl());
-                }
-            }
-        });
-        mUrlTextView.setOnKeyListener(new OnKeyListener() {
-            @Override
-            public boolean onKey(View v, int keyCode, KeyEvent event) {
-                if (keyCode == KeyEvent.KEYCODE_BACK) {
-                    getContentView().requestFocus();
-                    return true;
-                }
-                return false;
-            }
-        });
-    }
+    // private void initializeUrlField() {
+    //     mUrlTextView = (EditText) findViewById(R.id.url);
+    //     mUrlTextView.setOnEditorActionListener(new OnEditorActionListener() {
+    //         @Override
+    //         public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+    //             if ((actionId != EditorInfo.IME_ACTION_GO) && (event == null
+    //                     || event.getKeyCode() != KeyEvent.KEYCODE_ENTER
+    //                     || event.getAction() != KeyEvent.ACTION_DOWN)) {
+    //                 return false;
+    //             }
+    //             loadUrl(mUrlTextView.getText().toString());
+    //             setKeyboardVisibilityForUrl(false);
+    //             getContentView().requestFocus();
+    //             return true;
+    //         }
+    //     });
+    //     mUrlTextView.setOnFocusChangeListener(new OnFocusChangeListener() {
+    //         @Override
+    //         public void onFocusChange(View v, boolean hasFocus) {
+    //             setKeyboardVisibilityForUrl(hasFocus);
+    //             mNextButton.setVisibility(hasFocus ? GONE : VISIBLE);
+    //             mPrevButton.setVisibility(hasFocus ? GONE : VISIBLE);
+    //             mStopReloadButton.setVisibility(hasFocus ? GONE : VISIBLE);
+    //             if (!hasFocus) {
+    //                 mUrlTextView.setText(mWebContents.getVisibleUrl());
+    //             }
+    //         }
+    //     });
+    //     mUrlTextView.setOnKeyListener(new OnKeyListener() {
+    //         @Override
+    //         public boolean onKey(View v, int keyCode, KeyEvent event) {
+    //             if (keyCode == KeyEvent.KEYCODE_BACK) {
+    //                 getContentView().requestFocus();
+    //                 return true;
+    //             }
+    //             return false;
+    //         }
+    //     });
+    // }
+
+    //   private void initializeNavigationButtons() {
+    //     mPrevButton = (ImageButton) findViewById(R.id.prev);
+    //     mPrevButton.setOnClickListener(new OnClickListener() {
+    //         @Override
+    //         public void onClick(View v) {
+    //             if (mNavigationController.canGoBack()) mNavigationController.goBack();
+    //         }
+    //     });
+
+    //     mNextButton = (ImageButton) findViewById(R.id.next);
+    //     mNextButton.setOnClickListener(new OnClickListener() {
+    //         @Override
+    //         public void onClick(View v) {
+    //             if (mNavigationController.canGoForward()) mNavigationController.goForward();
+    //         }
+    //     });
+    //     mStopReloadButton = (ImageButton) findViewById(R.id.stop_reload_button);
+    //     mStopReloadButton.setOnClickListener(new OnClickListener() {
+    //         @Override
+    //         public void onClick(View v) {
+    //             if (mLoading) mWebContents.stop();
+    //             else mNavigationController.reload(true);
+    //         }
+    //     });
+    // }
 
 
     public void loadUrl(String url) {
@@ -182,7 +256,7 @@ public class BisonView extends LinearLayout {
         } else {
             mNavigationController.loadUrl(new LoadUrlParams(sanitizeUrl(url)));
         }
-        mUrlTextView.clearFocus();
+        //mUrlTextView.clearFocus();
         // TODO(aurimas): Remove this when crbug.com/174541 is fixed.
         getContentView().clearFocus();
         getContentView().requestFocus();
@@ -195,51 +269,25 @@ public class BisonView extends LinearLayout {
         return url;
     }
 
-    private void initializeNavigationButtons() {
-        mPrevButton = (ImageButton) findViewById(R.id.prev);
-        mPrevButton.setOnClickListener(new OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (mNavigationController.canGoBack()) mNavigationController.goBack();
-            }
-        });
-
-        mNextButton = (ImageButton) findViewById(R.id.next);
-        mNextButton.setOnClickListener(new OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (mNavigationController.canGoForward()) mNavigationController.goForward();
-            }
-        });
-        mStopReloadButton = (ImageButton) findViewById(R.id.stop_reload_button);
-        mStopReloadButton.setOnClickListener(new OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (mLoading) mWebContents.stop();
-                else mNavigationController.reload(true);
-            }
-        });
-    }
-
     @SuppressWarnings("unused")
     @CalledByNative
     private void onUpdateUrl(String url) {
-        mUrlTextView.setText(url);
+        //mUrlTextView.setText(url);
     }
 
     @SuppressWarnings("unused")
     @CalledByNative
     private void onLoadProgressChanged(double progress) {
-        removeCallbacks(mClearProgressRunnable);
-        mProgressDrawable.setLevel((int) (10000.0 * progress));
-        if (progress == 1.0) postDelayed(mClearProgressRunnable, COMPLETED_PROGRESS_TIMEOUT_MS);
+        //removeCallbacks(mClearProgressRunnable);
+        // mProgressDrawable.setLevel((int) (10000.0 * progress));
+        // if (progress == 1.0) postDelayed(mClearProgressRunnable, COMPLETED_PROGRESS_TIMEOUT_MS);
     }
 
     @CalledByNative
     private void toggleFullscreenModeForTab(boolean enterFullscreen) {
         mIsFullscreen = enterFullscreen;
-        LinearLayout toolBar = (LinearLayout) findViewById(R.id.toolbar);
-        toolBar.setVisibility(enterFullscreen ? GONE : VISIBLE);
+        // LinearLayout toolBar = (LinearLayout) findViewById(R.id.toolbar);
+        // toolBar.setVisibility(enterFullscreen ? GONE : VISIBLE);
     }
 
     @CalledByNative
@@ -251,12 +299,21 @@ public class BisonView extends LinearLayout {
     @CalledByNative
     private void setIsLoading(boolean loading) {
         mLoading = loading;
-        if (mLoading) {
-            mStopReloadButton
-                    .setImageResource(android.R.drawable.ic_menu_close_clear_cancel);
-        } else {
-            //mStopReloadButton.setImageResource(R.drawable.ic_refresh);
+        // if (mLoading) {
+        //     mStopReloadButton
+        //             .setImageResource(android.R.drawable.ic_menu_close_clear_cancel);
+        // } else {
+        //     //mStopReloadButton.setImageResource(R.drawable.ic_refresh);
+        // }
+    }
+
+    public void destroy(){
+        removeAllViews();
+        if (mContentViewRenderView != null ){
+            mContentViewRenderView.destroy();
+            mContentViewRenderView = null;
         }
+
     }
 
     public BisonViewAndroidDelegate getViewAndroidDelegate() {
@@ -283,12 +340,13 @@ public class BisonView extends LinearLayout {
         mNavigationController = mWebContents.getNavigationController();
         if (getParent() != null) mWebContents.onShow();
         if (mWebContents.getVisibleUrl() != null) {
-            mUrlTextView.setText(mWebContents.getVisibleUrl());
+            //mUrlTextView.setText(mWebContents.getVisibleUrl());
         }
-        ((FrameLayout) findViewById(R.id.contentview_holder)).addView(cv,
-                new FrameLayout.LayoutParams(
-                        FrameLayout.LayoutParams.MATCH_PARENT,
-                        FrameLayout.LayoutParams.MATCH_PARENT));
+        // ((FrameLayout) findViewById(R.id.contentview_holder)).addView(cv,
+        //         new FrameLayout.LayoutParams(
+        //                 FrameLayout.LayoutParams.MATCH_PARENT,
+        //                 FrameLayout.LayoutParams.MATCH_PARENT));
+        addView(cv);
         cv.requestFocus();
         mContentViewRenderView.setCurrentWebContents(mWebContents);
     }
@@ -351,11 +409,11 @@ public class BisonView extends LinearLayout {
      */
     @CalledByNative
     private void enableUiControl(int controlId, boolean enabled) {
-        if (controlId == 0) {
-            mPrevButton.setEnabled(enabled);
-        } else if (controlId == 1) {
-            mNextButton.setEnabled(enabled);
-        }
+        // if (controlId == 0) {
+        //     mPrevButton.setEnabled(enabled);
+        // } else if (controlId == 1) {
+        //     mNextButton.setEnabled(enabled);
+        // }
     }
 
     public ViewGroup getContentView() {
@@ -379,6 +437,8 @@ public class BisonView extends LinearLayout {
 
     @NativeMethods
     interface Natives {
+        long init(BisonView caller);
+        WebContents getWebContents(long nativeBisonView);
         void closeShell(long BisonViewPtr);
     }
 }
