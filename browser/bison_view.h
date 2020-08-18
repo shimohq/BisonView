@@ -78,12 +78,11 @@ class BisonView : public WebContentsDelegate, public WebContentsObserver {
                            const std::string& data,
                            const GURL& base_url);
 
-#if defined(OS_ANDROID)
   // Android-only path to allow loading long data strings.
   void LoadDataAsStringWithBaseURL(const GURL& url,
                                    const std::string& data,
                                    const GURL& base_url);
-#endif
+
   void GoBackOrForward(int offset);
   void Reload();
   void ReloadBypassingCache();
@@ -147,10 +146,10 @@ class BisonView : public WebContentsDelegate, public WebContentsObserver {
                       bool* was_blocked) override;
   void LoadingStateChanged(WebContents* source,
                            bool to_different_document) override;
-#if defined(OS_ANDROID)
+
   void LoadProgressChanged(WebContents* source, double progress) override;
   void SetOverlayMode(bool use_overlay_mode) override;
-#endif
+
   void EnterFullscreenModeForTab(
       WebContents* web_contents,
       const GURL& origin,
@@ -241,12 +240,11 @@ class BisonView : public WebContentsDelegate, public WebContentsObserver {
   void PlatformSetIsLoading(bool loading);
   // Set the title of shell window
   void PlatformSetTitle(const base::string16& title);
-#if defined(OS_ANDROID)
+
   void PlatformToggleFullscreenModeForTab(WebContents* web_contents,
                                           bool enter_fullscreen);
   bool PlatformIsFullscreenForTabOrPending(
       const WebContents* web_contents) const;
-#endif
 
   // Helper method for the two public LoadData methods.
   void LoadDataWithBaseURLInternal(const GURL& url,
@@ -275,22 +273,6 @@ class BisonView : public WebContentsDelegate, public WebContentsObserver {
   gfx::NativeWindow window_;
 
   gfx::Size content_size_;
-
-#if defined(OS_ANDROID)
-  // base::android::ScopedJavaGlobalRef<jobject> java_object_;
-#elif defined(USE_AURA)
-#if defined(OS_CHROMEOS)
-  static wm::WMTestHelper* wm_test_helper_;
-#else
-  static wm::WMState* wm_state_;
-#endif
-#if defined(TOOLKIT_VIEWS)
-  static views::ViewsDelegate* views_delegate_;
-
-  views::Widget* window_widget_;
-#endif  // defined(TOOLKIT_VIEWS)
-  static ShellPlatformDataAura* platform_;
-#endif  // defined(USE_AURA)
 
   bool headless_;
   bool delay_popup_contents_delegate_for_testing_ = false;

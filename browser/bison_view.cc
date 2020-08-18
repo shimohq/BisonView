@@ -244,14 +244,12 @@ void BisonView::LoadDataWithBaseURL(const GURL& url,
   LoadDataWithBaseURLInternal(url, data, base_url, load_as_string);
 }
 
-#if defined(OS_ANDROID)
 void BisonView::LoadDataAsStringWithBaseURL(const GURL& url,
                                             const std::string& data,
                                             const GURL& base_url) {
   bool load_as_string = true;
   LoadDataWithBaseURLInternal(url, data, base_url, load_as_string);
 }
-#endif
 
 void BisonView::LoadDataWithBaseURLInternal(const GURL& url,
                                             const std::string& data,
@@ -403,9 +401,7 @@ void BisonView::ExitFullscreenModeForTab(WebContents* web_contents) {
 
 void BisonView::ToggleFullscreenModeForTab(WebContents* web_contents,
                                            bool enter_fullscreen) {
-#if defined(OS_ANDROID)
   PlatformToggleFullscreenModeForTab(web_contents, enter_fullscreen);
-#endif
   if (is_fullscreen_ != enter_fullscreen) {
     is_fullscreen_ = enter_fullscreen;
     web_contents->GetRenderViewHost()
@@ -443,11 +439,7 @@ void BisonView::CloseContents(WebContents* source) {
 }
 
 bool BisonView::CanOverscrollContent() {
-#if defined(USE_AURA)
-  return true;
-#else
   return false;
-#endif
 }
 
 void BisonView::DidNavigateMainFramePostCommit(WebContents* web_contents) {
