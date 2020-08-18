@@ -16,8 +16,8 @@ source_set("browser") {
     "bison_download_manager_delegate.h",
     "bison_permission_manager.cc",
     "bison_permission_manager.h",
-    "bison_view.cc",
-    "bison_view.h",
+    "bison_contents.cc",
+    "bison_contents.h",
     # "bison_view_manager.cc",
     # "bison_view_manager.h",
   ]

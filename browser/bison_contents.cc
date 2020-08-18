@@ -1,4 +1,4 @@
-#include "bison_view.h"
+#include "bison_contents.h"
 
 #include <stddef.h>
 
@@ -20,7 +20,8 @@
 #include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/threading/thread_task_runner_handle.h"
-#include "bison/bison_jni_headers/BisonView_jni.h"
+// jiang jni.h
+#include "bison/bison_jni_headers/BisonContents_jni.h"
 #include "bison_browser_main_parts.h"
 #include "bison_content_browser_client.h"
 #include "bison_devtools_frontend.h"
@@ -62,12 +63,14 @@ namespace bison {
 // Null until/unless the default main message loop is running.
 base::NoDestructor<base::OnceClosure> g_quit_main_message_loop;
 
-std::vector<BisonView*> BisonView::windows_;
-base::OnceCallback<void(BisonView*)> BisonView::bison_view_created_callback_;
+std::vector<BisonContents*> BisonContents::windows_;
+base::OnceCallback<void(BisonContents*)>
+    BisonContents::bison_view_created_callback_;
 
-class BisonView::DevToolsWebContentsObserver : public WebContentsObserver {
+class BisonContents::DevToolsWebContentsObserver : public WebContentsObserver {
  public:
-  DevToolsWebContentsObserver(BisonView* bison_view, WebContents* web_contents)
+  DevToolsWebContentsObserver(BisonContents* bison_view,
+                              WebContents* web_contents)
       : WebContentsObserver(web_contents), bison_view_(bison_view) {}
 
   // WebContentsObserver
@@ -76,13 +79,13 @@ class BisonView::DevToolsWebContentsObserver : public WebContentsObserver {
   }
 
  private:
-  BisonView* bison_view_;
+  BisonContents* bison_view_;
 
   DISALLOW_COPY_AND_ASSIGN(DevToolsWebContentsObserver);
 };
 
-BisonView::BisonView(std::unique_ptr<WebContents> web_contents,
-                     bool should_set_delegate)
+BisonContents::BisonContents(std::unique_ptr<WebContents> web_contents,
+                             bool should_set_delegate)
     : WebContentsObserver(web_contents.get()),
       web_contents_(std::move(web_contents)),
       devtools_frontend_(nullptr),
@@ -99,7 +102,7 @@ BisonView::BisonView(std::unique_ptr<WebContents> web_contents,
     std::move(bison_view_created_callback_).Run(this);
 }
 
-BisonView::~BisonView() {
+BisonContents::~BisonContents() {
   PlatformCleanUp();
 
   for (size_t i = 0; i < windows_.size(); ++i) {
@@ -127,11 +130,12 @@ BisonView::~BisonView() {
   }
 }
 
-BisonView* BisonView::CreateBisonView(std::unique_ptr<WebContents> web_contents,
-                                      bool should_set_delegate) {
+BisonContents* BisonContents::CreateBisonContents(
+    std::unique_ptr<WebContents> web_contents,
+    bool should_set_delegate) {
   // WebContents* raw_web_contents = web_contents.get();
-  BisonView* bison_view =
-      new BisonView(std::move(web_contents), should_set_delegate);
+  BisonContents* bison_view =
+      new BisonContents(std::move(web_contents), should_set_delegate);
   // bison_view->PlatformCreateWindow();
 
   // bison_view->PlatformSetContents();
@@ -141,9 +145,9 @@ BisonView* BisonView::CreateBisonView(std::unique_ptr<WebContents> web_contents,
   return bison_view;
 }
 
-void BisonView::CloseAllWindows() {
+void BisonContents::CloseAllWindows() {
   DevToolsAgentHost::DetachAllClients();
-  std::vector<BisonView*> open_windows(windows_);
+  std::vector<BisonContents*> open_windows(windows_);
   for (size_t i = 0; i < open_windows.size(); ++i)
     open_windows[i]->Close();
 
@@ -158,23 +162,24 @@ void BisonView::CloseAllWindows() {
   PlatformExit();
 }
 
-void BisonView::SetMainMessageLoopQuitClosure(base::OnceClosure quit_closure) {
+void BisonContents::SetMainMessageLoopQuitClosure(
+    base::OnceClosure quit_closure) {
   *g_quit_main_message_loop = std::move(quit_closure);
 }
 
-void BisonView::QuitMainMessageLoopForTesting() {
+void BisonContents::QuitMainMessageLoopForTesting() {
   DCHECK(*g_quit_main_message_loop);
   std::move(*g_quit_main_message_loop).Run();
 }
 
-void BisonView::SetBisonViewCreatedCallback(
-    base::OnceCallback<void(BisonView*)> bison_view_created_callback) {
+void BisonContents::SetBisonContentsCreatedCallback(
+    base::OnceCallback<void(BisonContents*)> bison_view_created_callback) {
   DCHECK(!bison_view_created_callback_);
   bison_view_created_callback_ = std::move(bison_view_created_callback);
 }
 
-BisonView* BisonView::FromWebContents(WebContents* web_contents) {
-  for (BisonView* window : windows_) {
+BisonContents* BisonContents::FromWebContents(WebContents* web_contents) {
+  for (BisonContents* window : windows_) {
     if (window->web_contents() && window->web_contents() == web_contents) {
       return window;
     }
@@ -182,21 +187,21 @@ BisonView* BisonView::FromWebContents(WebContents* web_contents) {
   return nullptr;
 }
 
-void BisonView::Initialize() {}
+void BisonContents::Initialize() {}
 
-BisonView* BisonView::CreateNewWindow(
+BisonContents* BisonContents::CreateNewWindow(
     BrowserContext* browser_context,
     const scoped_refptr<SiteInstance>& site_instance) {
   WebContents::CreateParams create_params(browser_context, site_instance);
   std::unique_ptr<WebContents> web_contents =
       WebContents::Create(create_params);
-  BisonView* bison_view =
-      CreateBisonView(std::move(web_contents), true /* should_set_delegate */);
+  BisonContents* bison_view = CreateBisonContents(
+      std::move(web_contents), true /* should_set_delegate */);
 
   return bison_view;
 }
 
-BisonView* BisonView::CreateNewWindowWithSessionStorageNamespace(
+BisonContents* BisonContents::CreateNewWindowWithSessionStorageNamespace(
     BrowserContext* browser_context,
     const GURL& url,
     const scoped_refptr<SiteInstance>& site_instance,
@@ -213,23 +218,23 @@ BisonView* BisonView::CreateNewWindowWithSessionStorageNamespace(
   session_storages[""] = session_storage_namespace;
   std::unique_ptr<WebContents> web_contents =
       WebContents::CreateWithSessionStorage(create_params, session_storages);
-  BisonView* bison_view =
-      CreateBisonView(std::move(web_contents), true /* should_set_delegate */);
+  BisonContents* bison_view = CreateBisonContents(
+      std::move(web_contents), true /* should_set_delegate */);
   if (!url.is_empty())
     bison_view->LoadURL(url);
   return bison_view;
 }
 
-void BisonView::LoadURL(const GURL& url) {
+void BisonContents::LoadURL(const GURL& url) {
   LoadURLForFrame(
       url, std::string(),
       ui::PageTransitionFromInt(ui::PAGE_TRANSITION_TYPED |
                                 ui::PAGE_TRANSITION_FROM_ADDRESS_BAR));
 }
 
-void BisonView::LoadURLForFrame(const GURL& url,
-                                const std::string& frame_name,
-                                ui::PageTransition transition_type) {
+void BisonContents::LoadURLForFrame(const GURL& url,
+                                    const std::string& frame_name,
+                                    ui::PageTransition transition_type) {
   NavigationController::LoadURLParams params(url);
   params.frame_name = frame_name;
   params.transition_type = transition_type;
@@ -237,24 +242,24 @@ void BisonView::LoadURLForFrame(const GURL& url,
   web_contents_->Focus();
 }
 
-void BisonView::LoadDataWithBaseURL(const GURL& url,
-                                    const std::string& data,
-                                    const GURL& base_url) {
+void BisonContents::LoadDataWithBaseURL(const GURL& url,
+                                        const std::string& data,
+                                        const GURL& base_url) {
   bool load_as_string = false;
   LoadDataWithBaseURLInternal(url, data, base_url, load_as_string);
 }
 
-void BisonView::LoadDataAsStringWithBaseURL(const GURL& url,
-                                            const std::string& data,
-                                            const GURL& base_url) {
+void BisonContents::LoadDataAsStringWithBaseURL(const GURL& url,
+                                                const std::string& data,
+                                                const GURL& base_url) {
   bool load_as_string = true;
   LoadDataWithBaseURLInternal(url, data, base_url, load_as_string);
 }
 
-void BisonView::LoadDataWithBaseURLInternal(const GURL& url,
-                                            const std::string& data,
-                                            const GURL& base_url,
-                                            bool load_as_string) {
+void BisonContents::LoadDataWithBaseURLInternal(const GURL& url,
+                                                const std::string& data,
+                                                const GURL& base_url,
+                                                bool load_as_string) {
   NavigationController::LoadURLParams params(GURL::EmptyGURL());
   const std::string data_url_header = "data:text/html;charset=utf-8,";
   if (load_as_string) {
@@ -274,36 +279,36 @@ void BisonView::LoadDataWithBaseURLInternal(const GURL& url,
   web_contents_->Focus();
 }
 
-void BisonView::AddNewContents(WebContents* source,
-                               std::unique_ptr<WebContents> new_contents,
-                               WindowOpenDisposition disposition,
-                               const gfx::Rect& initial_rect,
-                               bool user_gesture,
-                               bool* was_blocked) {
+void BisonContents::AddNewContents(WebContents* source,
+                                   std::unique_ptr<WebContents> new_contents,
+                                   WindowOpenDisposition disposition,
+                                   const gfx::Rect& initial_rect,
+                                   bool user_gesture,
+                                   bool* was_blocked) {
   VLOG(0) << "AddNewContents";
 }
 
-void BisonView::GoBackOrForward(int offset) {
+void BisonContents::GoBackOrForward(int offset) {
   web_contents_->GetController().GoToOffset(offset);
   web_contents_->Focus();
 }
 
-void BisonView::Reload() {
+void BisonContents::Reload() {
   web_contents_->GetController().Reload(ReloadType::NORMAL, false);
   web_contents_->Focus();
 }
 
-void BisonView::ReloadBypassingCache() {
+void BisonContents::ReloadBypassingCache() {
   web_contents_->GetController().Reload(ReloadType::BYPASSING_CACHE, false);
   web_contents_->Focus();
 }
 
-void BisonView::Stop() {
+void BisonContents::Stop() {
   web_contents_->Stop();
   web_contents_->Focus();
 }
 
-void BisonView::UpdateNavigationControls(bool to_different_document) {
+void BisonContents::UpdateNavigationControls(bool to_different_document) {
   int current_index = web_contents_->GetController().GetCurrentEntryIndex();
   int max_index = web_contents_->GetController().GetEntryCount() - 1;
 
@@ -313,7 +318,7 @@ void BisonView::UpdateNavigationControls(bool to_different_document) {
                           to_different_document && web_contents_->IsLoading());
 }
 
-void BisonView::ShowDevTools() {
+void BisonContents::ShowDevTools() {
   if (!devtools_frontend_) {
     devtools_frontend_ = BisonDevToolsFrontend::Show(web_contents());
     devtools_observer_.reset(new DevToolsWebContentsObserver(
@@ -324,7 +329,7 @@ void BisonView::ShowDevTools() {
   devtools_frontend_->Focus();
 }
 
-void BisonView::CloseDevTools() {
+void BisonContents::CloseDevTools() {
   if (!devtools_frontend_)
     return;
   devtools_observer_.reset();
@@ -332,14 +337,14 @@ void BisonView::CloseDevTools() {
   devtools_frontend_ = nullptr;
 }
 
-gfx::NativeView BisonView::GetContentView() {
+gfx::NativeView BisonContents::GetContentView() {
   if (!web_contents_)
     return nullptr;
   return web_contents_->GetNativeView();
 }
 
-WebContents* BisonView::OpenURLFromTab(WebContents* source,
-                                       const OpenURLParams& params) {
+WebContents* BisonContents::OpenURLFromTab(WebContents* source,
+                                           const OpenURLParams& params) {
   VLOG(0) << "OpenURLFromTab params";
   WebContents* target = nullptr;
   switch (params.disposition) {
@@ -382,25 +387,25 @@ WebContents* BisonView::OpenURLFromTab(WebContents* source,
   return target;
 }
 
-void BisonView::LoadingStateChanged(WebContents* source,
-                                    bool to_different_document) {
+void BisonContents::LoadingStateChanged(WebContents* source,
+                                        bool to_different_document) {
   UpdateNavigationControls(to_different_document);
   PlatformSetIsLoading(source->IsLoading());
 }
 
-void BisonView::EnterFullscreenModeForTab(
+void BisonContents::EnterFullscreenModeForTab(
     WebContents* web_contents,
     const GURL& origin,
     const blink::mojom::FullscreenOptions& options) {
   ToggleFullscreenModeForTab(web_contents, true);
 }
 
-void BisonView::ExitFullscreenModeForTab(WebContents* web_contents) {
+void BisonContents::ExitFullscreenModeForTab(WebContents* web_contents) {
   ToggleFullscreenModeForTab(web_contents, false);
 }
 
-void BisonView::ToggleFullscreenModeForTab(WebContents* web_contents,
-                                           bool enter_fullscreen) {
+void BisonContents::ToggleFullscreenModeForTab(WebContents* web_contents,
+                                               bool enter_fullscreen) {
   PlatformToggleFullscreenModeForTab(web_contents, enter_fullscreen);
   if (is_fullscreen_ != enter_fullscreen) {
     is_fullscreen_ = enter_fullscreen;
@@ -410,7 +415,8 @@ void BisonView::ToggleFullscreenModeForTab(WebContents* web_contents,
   }
 }
 
-bool BisonView::IsFullscreenForTabOrPending(const WebContents* web_contents) {
+bool BisonContents::IsFullscreenForTabOrPending(
+    const WebContents* web_contents) {
 #if defined(OS_ANDROID)
   return PlatformIsFullscreenForTabOrPending(web_contents);
 #else
@@ -418,7 +424,7 @@ bool BisonView::IsFullscreenForTabOrPending(const WebContents* web_contents) {
 #endif
 }
 
-blink::mojom::DisplayMode BisonView::GetDisplayMode(
+blink::mojom::DisplayMode BisonContents::GetDisplayMode(
     const WebContents* web_contents) {
   // TODO: should return blink::mojom::DisplayModeFullscreen wherever user puts
   // a browser window into fullscreen (not only in case of renderer-initiated
@@ -428,25 +434,25 @@ blink::mojom::DisplayMode BisonView::GetDisplayMode(
              : blink::mojom::DisplayMode::kBrowser;
 }
 
-void BisonView::RequestToLockMouse(WebContents* web_contents,
-                                   bool user_gesture,
-                                   bool last_unlocked_by_target) {
+void BisonContents::RequestToLockMouse(WebContents* web_contents,
+                                       bool user_gesture,
+                                       bool last_unlocked_by_target) {
   web_contents->GotResponseToLockMouseRequest(true);
 }
 
-void BisonView::CloseContents(WebContents* source) {
+void BisonContents::CloseContents(WebContents* source) {
   Close();
 }
 
-bool BisonView::CanOverscrollContent() {
+bool BisonContents::CanOverscrollContent() {
   return false;
 }
 
-void BisonView::DidNavigateMainFramePostCommit(WebContents* web_contents) {
+void BisonContents::DidNavigateMainFramePostCommit(WebContents* web_contents) {
   PlatformSetAddressBarURL(web_contents->GetVisibleURL());
 }
 
-// JavaScriptDialogManager* BisonView::GetJavaScriptDialogManager(
+// JavaScriptDialogManager* BisonContents::GetJavaScriptDialogManager(
 //     WebContents* source) {
 //   if (!dialog_manager_) {
 //     dialog_manager_.reset(new ShellJavaScriptDialogManager);
@@ -454,7 +460,7 @@ void BisonView::DidNavigateMainFramePostCommit(WebContents* web_contents) {
 //   return dialog_manager_.get();
 // }
 
-std::unique_ptr<BluetoothChooser> BisonView::RunBluetoothChooser(
+std::unique_ptr<BluetoothChooser> BisonContents::RunBluetoothChooser(
     RenderFrameHost* frame,
     const BluetoothChooser::EventHandler& event_handler) {
   // BlinkTestController* blink_test_controller = BlinkTestController::Get();
@@ -463,14 +469,15 @@ std::unique_ptr<BluetoothChooser> BisonView::RunBluetoothChooser(
   return nullptr;
 }
 
-std::unique_ptr<BluetoothScanningPrompt> BisonView::ShowBluetoothScanningPrompt(
+std::unique_ptr<BluetoothScanningPrompt>
+BisonContents::ShowBluetoothScanningPrompt(
     RenderFrameHost* frame,
     const BluetoothScanningPrompt::EventHandler& event_handler) {
   // return std::make_unique<FakeBluetoothScanningPrompt>(event_handler);
   return nullptr;
 }
 
-bool BisonView::DidAddMessageToConsole(
+bool BisonContents::DidAddMessageToConsole(
     WebContents* source,
     blink::mojom::ConsoleMessageLevel log_level,
     const base::string16& message,
@@ -479,9 +486,10 @@ bool BisonView::DidAddMessageToConsole(
   return false;
 }
 
-void BisonView::PortalWebContentsCreated(WebContents* portal_web_contents) {}
+void BisonContents::PortalWebContentsCreated(WebContents* portal_web_contents) {
+}
 
-void BisonView::RendererUnresponsive(
+void BisonContents::RendererUnresponsive(
     WebContents* source,
     RenderWidgetHost* render_widget_host,
     base::RepeatingClosure hang_monitor_restarter) {
@@ -490,11 +498,11 @@ void BisonView::RendererUnresponsive(
   //   blink_test_controller->RendererUnresponsive();
 }
 
-void BisonView::ActivateContents(WebContents* contents) {
+void BisonContents::ActivateContents(WebContents* contents) {
   contents->GetRenderViewHost()->GetWidget()->Focus();
 }
 
-std::unique_ptr<WebContents> BisonView::SwapWebContents(
+std::unique_ptr<WebContents> BisonContents::SwapWebContents(
     WebContents* old_contents,
     std::unique_ptr<WebContents> new_contents,
     bool did_start_load,
@@ -514,10 +522,11 @@ std::unique_ptr<WebContents> BisonView::SwapWebContents(
   return new_contents;
 }
 
-bool BisonView::ShouldAllowRunningInsecureContent(WebContents* web_contents,
-                                                  bool allowed_per_prefs,
-                                                  const url::Origin& origin,
-                                                  const GURL& resource_url) {
+bool BisonContents::ShouldAllowRunningInsecureContent(
+    WebContents* web_contents,
+    bool allowed_per_prefs,
+    const url::Origin& origin,
+    const GURL& resource_url) {
   // bool allowed_by_test = false;
   // BlinkTestController* blink_test_controller = BlinkTestController::Get();
   // if (blink_test_controller && switches::IsRunWebTestsSwitchPresent()) {
@@ -530,7 +539,7 @@ bool BisonView::ShouldAllowRunningInsecureContent(WebContents* web_contents,
   return allowed_per_prefs;
 }
 
-PictureInPictureResult BisonView::EnterPictureInPicture(
+PictureInPictureResult BisonContents::EnterPictureInPicture(
     WebContents* web_contents,
     const viz::SurfaceId& surface_id,
     const gfx::Size& natural_size) {
@@ -539,118 +548,121 @@ PictureInPictureResult BisonView::EnterPictureInPicture(
   return PictureInPictureResult::kSuccess;
 }
 
-bool BisonView::ShouldResumeRequestsForCreatedWindow() {
+bool BisonContents::ShouldResumeRequestsForCreatedWindow() {
   return !delay_popup_contents_delegate_for_testing_;
 }
 
-void BisonView::TitleWasSet(NavigationEntry* entry) {
+void BisonContents::TitleWasSet(NavigationEntry* entry) {
   if (entry)
     PlatformSetTitle(entry->GetTitle());
 }
 
-void BisonView::OnDevToolsWebContentsDestroyed() {
+void BisonContents::OnDevToolsWebContentsDestroyed() {
   devtools_observer_.reset();
   devtools_frontend_ = nullptr;
 }
 
-void BisonView::PlatformInitialize(const gfx::Size& default_window_size) {}
+void BisonContents::PlatformInitialize(const gfx::Size& default_window_size) {}
 
-void BisonView::PlatformExit() {
+void BisonContents::PlatformExit() {
   // DestroyShellManager();
 }
 
-void BisonView::PlatformCleanUp() {
+void BisonContents::PlatformCleanUp() {
   JNIEnv* env = AttachCurrentThread();
   if (java_object_.is_null())
     return;
-  Java_BisonView_onNativeDestroyed(env, java_object_);
+  Java_BisonContents_onNativeDestroyed(env, java_object_);
 }
 
-void BisonView::PlatformEnableUIControl(UIControl control, bool is_enabled) {
+void BisonContents::PlatformEnableUIControl(UIControl control,
+                                            bool is_enabled) {
   JNIEnv* env = AttachCurrentThread();
   if (java_object_.is_null())
     return;
-  Java_BisonView_enableUiControl(env, java_object_, control, is_enabled);
+  Java_BisonContents_enableUiControl(env, java_object_, control, is_enabled);
 }
 
-void BisonView::PlatformSetAddressBarURL(const GURL& url) {
+void BisonContents::PlatformSetAddressBarURL(const GURL& url) {
   JNIEnv* env = AttachCurrentThread();
   ScopedJavaLocalRef<jstring> j_url = ConvertUTF8ToJavaString(env, url.spec());
-  Java_BisonView_onUpdateUrl(env, java_object_, j_url);
+  Java_BisonContents_onUpdateUrl(env, java_object_, j_url);
 }
 
-void BisonView::PlatformSetIsLoading(bool loading) {
+void BisonContents::PlatformSetIsLoading(bool loading) {
   JNIEnv* env = AttachCurrentThread();
-  Java_BisonView_setIsLoading(env, java_object_, loading);
+  Java_BisonContents_setIsLoading(env, java_object_, loading);
 }
 
-void BisonView::PlatformCreateWindow() {
+void BisonContents::PlatformCreateWindow() {
   // java_object_.Reset(CreateShellView(this));
 }
 
-void BisonView::PlatformSetContents() {
+void BisonContents::PlatformSetContents() {
   JNIEnv* env = AttachCurrentThread();
-  Java_BisonView_initFromNativeTabContents(
+  Java_BisonContents_initFromNativeTabContents(
       env, java_object_, web_contents()->GetJavaWebContents());
 }
 
-void BisonView::PlatformResizeSubViews() {
+void BisonContents::PlatformResizeSubViews() {
   // Not needed; subviews are bound.
 }
 
-void BisonView::SizeTo(const gfx::Size& content_size) {
+void BisonContents::SizeTo(const gfx::Size& content_size) {
   JNIEnv* env = AttachCurrentThread();
-  Java_BisonView_sizeTo(env, java_object_, content_size.width(),
-                        content_size.height());
+  Java_BisonContents_sizeTo(env, java_object_, content_size.width(),
+                            content_size.height());
 }
 
-void BisonView::PlatformSetTitle(const base::string16& title) {
+void BisonContents::PlatformSetTitle(const base::string16& title) {
   NOTIMPLEMENTED() << ": " << title;
 }
 
-void BisonView::LoadProgressChanged(WebContents* source, double progress) {
+void BisonContents::LoadProgressChanged(WebContents* source, double progress) {
   JNIEnv* env = AttachCurrentThread();
-  Java_BisonView_onLoadProgressChanged(env, java_object_, progress);
+  Java_BisonContents_onLoadProgressChanged(env, java_object_, progress);
 }
 
-void BisonView::SetOverlayMode(bool use_overlay_mode) {
+void BisonContents::SetOverlayMode(bool use_overlay_mode) {
   JNIEnv* env = base::android::AttachCurrentThread();
-  return Java_BisonView_setOverlayMode(env, java_object_, use_overlay_mode);
+  return Java_BisonContents_setOverlayMode(env, java_object_, use_overlay_mode);
 }
 
-void BisonView::PlatformToggleFullscreenModeForTab(WebContents* web_contents,
-                                                   bool enter_fullscreen) {
+void BisonContents::PlatformToggleFullscreenModeForTab(
+    WebContents* web_contents,
+    bool enter_fullscreen) {
   JNIEnv* env = AttachCurrentThread();
-  Java_BisonView_toggleFullscreenModeForTab(env, java_object_,
-                                            enter_fullscreen);
+  Java_BisonContents_toggleFullscreenModeForTab(env, java_object_,
+                                                enter_fullscreen);
 }
 
-bool BisonView::PlatformIsFullscreenForTabOrPending(
+bool BisonContents::PlatformIsFullscreenForTabOrPending(
     const WebContents* web_contents) const {
   JNIEnv* env = AttachCurrentThread();
-  return Java_BisonView_isFullscreenForTabOrPending(env, java_object_);
+  return Java_BisonContents_isFullscreenForTabOrPending(env, java_object_);
 }
 
-void BisonView::Close() {
+void BisonContents::Close() {
   // RemoveShellView(java_object_);
   delete this;
 }
 
-ScopedJavaLocalRef<jobject> BisonView::GetWebContents(JNIEnv* env) {
+ScopedJavaLocalRef<jobject> BisonContents::GetWebContents(JNIEnv* env) {
   return web_contents()->GetJavaWebContents();
 }
 
 // static
-jlong JNI_BisonView_Init(JNIEnv* env, const JavaParamRef<jobject>& obj) {
+jlong JNI_BisonContents_Init(JNIEnv* env, const JavaParamRef<jobject>& obj) {
   BisonBrowserContext* browserContext =
       BisonContentBrowserClient::Get()->browser_context();
-  BisonView* bison_view = BisonView::CreateNewWindow(browserContext, NULL);
+  BisonContents* bison_view =
+      BisonContents::CreateNewWindow(browserContext, NULL);
   bison_view->java_object_.Reset(obj);
   return reinterpret_cast<intptr_t>(bison_view);
 }
 
-void JNI_BisonView_CloseShell(JNIEnv* env, jlong bisonViewPtr) {
-  BisonView* bisonView = reinterpret_cast<BisonView*>(bisonViewPtr);
+void JNI_BisonContents_CloseShell(JNIEnv* env, jlong bisonViewPtr) {
+  BisonContents* bisonView = reinterpret_cast<BisonContents*>(bisonViewPtr);
   bisonView->Close();
 }
 

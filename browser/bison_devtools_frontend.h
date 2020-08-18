@@ -18,7 +18,7 @@ using content::WebContentsObserver;
 
 namespace bison {
 
-class BisonView;
+class BisonContents;
 
 class BisonDevToolsFrontend : public BisonDevToolsDelegate,
                               public WebContentsObserver {
@@ -30,18 +30,18 @@ class BisonDevToolsFrontend : public BisonDevToolsDelegate,
   void InspectElementAt(int x, int y);
   void Close() override;
 
-  BisonView* frontend_shell() const { return frontend_bison_view_; }
+  BisonContents* frontend_shell() const { return frontend_bison_view_; }
 
  private:
   // WebContentsObserver overrides
   void DocumentAvailableInMainFrame() override;
   void WebContentsDestroyed() override;
 
-  BisonDevToolsFrontend(BisonView* frontend_bison_view,
+  BisonDevToolsFrontend(BisonContents* frontend_bison_view,
                         WebContents* inspected_contents);
   ~BisonDevToolsFrontend() override;
 
-  BisonView* frontend_bison_view_;
+  BisonContents* frontend_bison_view_;
   std::unique_ptr<BisonDevToolsBindings> devtools_bindings_;
 
   DISALLOW_COPY_AND_ASSIGN(BisonDevToolsFrontend);

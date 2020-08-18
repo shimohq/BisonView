@@ -13,7 +13,7 @@
 #include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversions.h"
 #include "bison/grit/bison_resources.h"
-#include "bison_view.h"
+#include "bison_contents.h"
 #include "build/build_config.h"
 #include "content/public/browser/android/devtools_auth.h"
 #include "content/public/browser/browser_context.h"
@@ -134,7 +134,8 @@ void BisonDevToolsManagerDelegate::ClientDetached(
 
 scoped_refptr<DevToolsAgentHost> BisonDevToolsManagerDelegate::CreateNewTarget(
     const GURL& url) {
-  BisonView* bisonView = BisonView::CreateNewWindow(browser_context_, nullptr);
+  BisonContents* bisonView =
+      BisonContents::CreateNewWindow(browser_context_, nullptr);
   bisonView->LoadURL(url);
   return DevToolsAgentHost::GetOrCreateFor(bisonView->web_contents());
 }

@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include "base/android/scoped_java_ref.h"
 #include "base/callback_forward.h"
 #include "base/memory/ref_counted.h"
 #include "base/strings/string_piece.h"
@@ -19,25 +20,6 @@
 #include "ipc/ipc_channel.h"
 #include "ui/gfx/geometry/size.h"
 #include "ui/gfx/native_widget_types.h"
-
-#if defined(OS_ANDROID)
-#include "base/android/scoped_java_ref.h"
-#elif defined(USE_AURA)
-#if defined(OS_CHROMEOS)
-namespace wm {
-class WMTestHelper;
-}
-#endif  // defined(OS_CHROMEOS)
-
-namespace views {
-class Widget;
-class ViewsDelegate;
-}  // namespace views
-
-namespace wm {
-class WMState;
-}
-#endif  // defined(USE_AURA)
 
 namespace content {
 class BrowserContext;
@@ -66,9 +48,9 @@ namespace bison {
 class BisonDevToolsFrontend;
 // class ShellJavaScriptDialogManager;
 
-class BisonView : public WebContentsDelegate, public WebContentsObserver {
+class BisonContents : public WebContentsDelegate, public WebContentsObserver {
  public:
-  ~BisonView() override;
+  ~BisonContents() override;
 
   void LoadURL(const GURL& url);
   void LoadURLForFrame(const GURL& url,
@@ -98,28 +80,28 @@ class BisonView : public WebContentsDelegate, public WebContentsObserver {
   // Do one time initialization at application startup.
   static void Initialize();
 
-  static BisonView* CreateNewWindow(
+  static BisonContents* CreateNewWindow(
       BrowserContext* browser_context,
       const scoped_refptr<SiteInstance>& site_instance);
 
-  static BisonView* CreateNewWindowWithSessionStorageNamespace(
+  static BisonContents* CreateNewWindowWithSessionStorageNamespace(
       BrowserContext* browser_context,
       const GURL& url,
       const scoped_refptr<SiteInstance>& site_instance,
       const gfx::Size& initial_size,
       scoped_refptr<SessionStorageNamespace> session_storage_namespace);
 
-  // Returns the BisonView object corresponding to the given WebContents.
-  static BisonView* FromWebContents(WebContents* web_contents);
+  // Returns the BisonContents object corresponding to the given WebContents.
+  static BisonContents* FromWebContents(WebContents* web_contents);
 
   // Returns the currently open windows.
-  static std::vector<BisonView*>& windows() { return windows_; }
+  static std::vector<BisonContents*>& windows() { return windows_; }
 
   // Closes all windows, pumps teardown tasks, then returns. The main message
   // loop will be signalled to quit, before the call returns.
   static void CloseAllWindows();
 
-  // Stores the supplied |quit_closure|, to be run when the last BisonView
+  // Stores the supplied |quit_closure|, to be run when the last BisonContents
   // instance is destroyed.
   static void SetMainMessageLoopQuitClosure(base::OnceClosure quit_closure);
 
@@ -129,8 +111,8 @@ class BisonView : public WebContentsDelegate, public WebContentsObserver {
   static void QuitMainMessageLoopForTesting();
 
   // Used for content_browsertests. Called once.
-  static void SetBisonViewCreatedCallback(
-      base::OnceCallback<void(BisonView*)> bison_view_created_callback);
+  static void SetBisonContentsCreatedCallback(
+      base::OnceCallback<void(BisonContents*)> bison_view_created_callback);
 
   WebContents* web_contents() const { return web_contents_.get(); }
   gfx::NativeWindow window() { return window_; }
@@ -210,12 +192,13 @@ class BisonView : public WebContentsDelegate, public WebContentsObserver {
 
   class DevToolsWebContentsObserver;
 
-  BisonView(std::unique_ptr<WebContents> web_contents,
-            bool should_set_delegate);
+  BisonContents(std::unique_ptr<WebContents> web_contents,
+                bool should_set_delegate);
 
   // Helper to create a new Shell given a newly created WebContents.
-  static BisonView* CreateBisonView(std::unique_ptr<WebContents> web_contents,
-                                    bool should_set_delegate);
+  static BisonContents* CreateBisonContents(
+      std::unique_ptr<WebContents> web_contents,
+      bool should_set_delegate);
 
   // Helper for one time initialization of application
   static void PlatformInitialize(const gfx::Size& default_window_size);
@@ -279,9 +262,9 @@ class BisonView : public WebContentsDelegate, public WebContentsObserver {
 
   // A container of all the open windows. We use a vector so we can keep track
   // of ordering.
-  static std::vector<BisonView*> windows_;
+  static std::vector<BisonContents*> windows_;
 
-  static base::OnceCallback<void(BisonView*)> bison_view_created_callback_;
+  static base::OnceCallback<void(BisonContents*)> bison_view_created_callback_;
 };
 
 }  // namespace bison

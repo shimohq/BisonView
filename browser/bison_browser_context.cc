@@ -70,8 +70,8 @@ BisonBrowserContext::BisonBrowserContext(bool off_the_record,
   VLOG(0) << "new BisonBrowserContext delay_services_creation:"
           << delay_services_creation;
   if (!delay_services_creation) {
-    // BrowserContextDependencyManager::GetInstance()
-    //     ->CreateBrowserContextServices(this);
+    BrowserContextDependencyManager::GetInstance()
+        ->CreateBrowserContextServices(this);
   }
 }
 
@@ -101,26 +101,8 @@ BisonBrowserContext::~BisonBrowserContext() {
 }
 
 void BisonBrowserContext::InitWhileIOAllowed() {
-#if defined(OS_WIN)
-  CHECK(base::PathService::Get(base::DIR_LOCAL_APP_DATA, &path_));
-  path_ = path_.Append(std::wstring(L"content_shell"));
-#elif defined(OS_LINUX)
-  std::unique_ptr<base::Environment> env(base::Environment::Create());
-  base::FilePath config_dir(base::nix::GetXDGDirectory(
-      env.get(), base::nix::kXdgConfigHomeEnvVar, base::nix::kDotConfigDir));
-  path_ = config_dir.Append("content_shell");
-#elif defined(OS_MACOSX)
-  CHECK(base::PathService::Get(base::DIR_APP_DATA, &path_));
-  path_ = path_.Append("Chromium Content Shell");
-#elif defined(OS_ANDROID)
   CHECK(base::PathService::Get(base::DIR_ANDROID_APP_DATA, &path_));
-  path_ = path_.Append(FILE_PATH_LITERAL("content_shell"));
-#elif defined(OS_FUCHSIA)
-  CHECK(base::PathService::Get(base::DIR_APP_DATA, &path_));
-  path_ = path_.Append(FILE_PATH_LITERAL("content_shell"));
-#else
-  NOTIMPLEMENTED();
-#endif
+  path_ = path_.Append(FILE_PATH_LITERAL("bison"));
 
   if (!base::PathExists(path_))
     base::CreateDirectory(path_);

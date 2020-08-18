@@ -22,7 +22,6 @@ import android.widget.TextView.OnEditorActionListener;
 
 import org.chromium.base.Callback;
 import org.chromium.base.annotations.CalledByNative;
-import org.chromium.base.annotations.JNINamespace;
 import org.chromium.base.annotations.NativeMethods;
 import org.chromium.components.embedder_support.view.ContentView;
 import org.chromium.components.embedder_support.view.ContentViewRenderView;
@@ -35,17 +34,7 @@ import org.chromium.ui.base.ActivityWindowAndroid;
 import org.chromium.ui.base.ViewAndroidDelegate;
 import org.chromium.ui.base.WindowAndroid;
 
-@JNINamespace("bison")
 public class BisonView extends FrameLayout {
-
-    private static final long COMPLETED_PROGRESS_TIMEOUT_MS = 200;
-
-    private final Runnable mClearProgressRunnable = new Runnable() {
-        @Override
-        public void run() {
-            mProgressDrawable.setLevel(0);
-        }
-    };
 
     private WebContents mWebContents;
     private NavigationController mNavigationController;
@@ -56,7 +45,7 @@ public class BisonView extends FrameLayout {
 
     private ClipDrawable mProgressDrawable;
 
-    private long mNativeBisonView;
+    
     private ContentViewRenderView mContentViewRenderView;
     private WindowAndroid mWindow;
     private BisonViewAndroidDelegate mViewAndroidDelegate;
@@ -67,6 +56,8 @@ public class BisonView extends FrameLayout {
     private Callback<Boolean> mOverlayModeChangedCallbackForTesting;
 
     private ViewGroup mContentViewHodler;
+
+    private BisonContents mBisonContents;
 
     /**
      * Constructor for inflating via XML.
@@ -84,37 +75,9 @@ public class BisonView extends FrameLayout {
         addView(mContentViewRenderView);
     }
 
-    /**
-     * Set the SurfaceView being renderered to as soon as it is available.
-     */
-    public void setContentViewRenderView(ContentViewRenderView contentViewRenderView) {
-        // FrameLayout contentViewHolder = (FrameLayout) findViewById(R.id.contentview_holder);
-        // if (contentViewRenderView == null) {
-        //     if (mContentViewRenderView != null) {
-        //         mContentViewHodler.removeView(mContentViewRenderView);
-        //     }
-        // } else {
-        //     mContentViewHodler.addView(contentViewRenderView,
-        //             new FrameLayout.LayoutParams(
-        //                     FrameLayout.LayoutParams.MATCH_PARENT,
-        //                     FrameLayout.LayoutParams.MATCH_PARENT));
-        // }
-        // if (contentViewRenderView == null ) {
-        //     if (mContentViewRenderView != null) {
-        //         removeView(mContentViewRenderView);
-        //     }
-        // }else {
-        //     addView(contentViewRenderView);
-        // }
-        // mContentViewRenderView = contentViewRenderView;
-        
-        
-        
-    }
-
     public void init() {
-        mNativeBisonView = BisonViewJni.get().init(this);
-        initFromNativeTabContents(BisonViewJni.get().getWebContents(mNativeBisonView));
+        mBisonContents = new BisonContents();
+        initFromNativeTabContents(mBisonContents.getWebContents());
     }
 
     @Override
@@ -138,11 +101,6 @@ public class BisonView extends FrameLayout {
         
     }
 
-    public void initialize(long nativeBisonView, WindowAndroid window) {
-        mNativeBisonView = nativeBisonView;
-        mWindow = window;
-    }
-
     @SuppressWarnings("unused")
     public Activity getActivity() {
         return (Activity)getContext();
@@ -150,103 +108,17 @@ public class BisonView extends FrameLayout {
 
     
     public void close() {
-        if (mNativeBisonView == 0) return;
-        BisonViewJni.get().closeShell(mNativeBisonView);
+        
     }
-
-    @CalledByNative
-    private void onNativeDestroyed() {
-        mWindow = null;
-        mNativeBisonView = 0;
-        mWebContents = null;
-    }
-
 
     public boolean isDestroyed() {
-        return mNativeBisonView == 0;
+        return false;
     }
 
 
     public boolean isLoading() {
         return mLoading;
     }
-
-    @Override
-    protected void onFinishInflate() {
-        super.onFinishInflate();
-
-        // View toolbar = findViewById(R.id.toolbar);
-        // mProgressDrawable = (ClipDrawable) toolbar.getBackground();
-        // initializeUrlField();
-        // initializeNavigationButtons();
-    }
-
-    // private void initializeUrlField() {
-    //     mUrlTextView = (EditText) findViewById(R.id.url);
-    //     mUrlTextView.setOnEditorActionListener(new OnEditorActionListener() {
-    //         @Override
-    //         public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
-    //             if ((actionId != EditorInfo.IME_ACTION_GO) && (event == null
-    //                     || event.getKeyCode() != KeyEvent.KEYCODE_ENTER
-    //                     || event.getAction() != KeyEvent.ACTION_DOWN)) {
-    //                 return false;
-    //             }
-    //             loadUrl(mUrlTextView.getText().toString());
-    //             setKeyboardVisibilityForUrl(false);
-    //             getContentView().requestFocus();
-    //             return true;
-    //         }
-    //     });
-    //     mUrlTextView.setOnFocusChangeListener(new OnFocusChangeListener() {
-    //         @Override
-    //         public void onFocusChange(View v, boolean hasFocus) {
-    //             setKeyboardVisibilityForUrl(hasFocus);
-    //             mNextButton.setVisibility(hasFocus ? GONE : VISIBLE);
-    //             mPrevButton.setVisibility(hasFocus ? GONE : VISIBLE);
-    //             mStopReloadButton.setVisibility(hasFocus ? GONE : VISIBLE);
-    //             if (!hasFocus) {
-    //                 mUrlTextView.setText(mWebContents.getVisibleUrl());
-    //             }
-    //         }
-    //     });
-    //     mUrlTextView.setOnKeyListener(new OnKeyListener() {
-    //         @Override
-    //         public boolean onKey(View v, int keyCode, KeyEvent event) {
-    //             if (keyCode == KeyEvent.KEYCODE_BACK) {
-    //                 getContentView().requestFocus();
-    //                 return true;
-    //             }
-    //             return false;
-    //         }
-    //     });
-    // }
-
-    //   private void initializeNavigationButtons() {
-    //     mPrevButton = (ImageButton) findViewById(R.id.prev);
-    //     mPrevButton.setOnClickListener(new OnClickListener() {
-    //         @Override
-    //         public void onClick(View v) {
-    //             if (mNavigationController.canGoBack()) mNavigationController.goBack();
-    //         }
-    //     });
-
-    //     mNextButton = (ImageButton) findViewById(R.id.next);
-    //     mNextButton.setOnClickListener(new OnClickListener() {
-    //         @Override
-    //         public void onClick(View v) {
-    //             if (mNavigationController.canGoForward()) mNavigationController.goForward();
-    //         }
-    //     });
-    //     mStopReloadButton = (ImageButton) findViewById(R.id.stop_reload_button);
-    //     mStopReloadButton.setOnClickListener(new OnClickListener() {
-    //         @Override
-    //         public void onClick(View v) {
-    //             if (mLoading) mWebContents.stop();
-    //             else mNavigationController.reload(true);
-    //         }
-    //     });
-    // }
-
 
     public void loadUrl(String url) {
         if (url == null) return;
@@ -267,44 +139,6 @@ public class BisonView extends FrameLayout {
         if (url == null) return null;
         if (url.startsWith("www.") || url.indexOf(":") == -1) url = "http://" + url;
         return url;
-    }
-
-    @SuppressWarnings("unused")
-    @CalledByNative
-    private void onUpdateUrl(String url) {
-        //mUrlTextView.setText(url);
-    }
-
-    @SuppressWarnings("unused")
-    @CalledByNative
-    private void onLoadProgressChanged(double progress) {
-        //removeCallbacks(mClearProgressRunnable);
-        // mProgressDrawable.setLevel((int) (10000.0 * progress));
-        // if (progress == 1.0) postDelayed(mClearProgressRunnable, COMPLETED_PROGRESS_TIMEOUT_MS);
-    }
-
-    @CalledByNative
-    private void toggleFullscreenModeForTab(boolean enterFullscreen) {
-        mIsFullscreen = enterFullscreen;
-        // LinearLayout toolBar = (LinearLayout) findViewById(R.id.toolbar);
-        // toolBar.setVisibility(enterFullscreen ? GONE : VISIBLE);
-    }
-
-    @CalledByNative
-    private boolean isFullscreenForTabOrPending() {
-        return mIsFullscreen;
-    }
-
-    @SuppressWarnings("unused")
-    @CalledByNative
-    private void setIsLoading(boolean loading) {
-        mLoading = loading;
-        // if (mLoading) {
-        //     mStopReloadButton
-        //             .setImageResource(android.R.drawable.ic_menu_close_clear_cancel);
-        // } else {
-        //     //mStopReloadButton.setImageResource(R.drawable.ic_refresh);
-        // }
     }
 
     public void destroy(){
@@ -384,37 +218,11 @@ public class BisonView extends FrameLayout {
         };
     }
 
-    @CalledByNative
-    public void setOverlayMode(boolean useOverlayMode) {
-        mContentViewRenderView.setOverlayVideoMode(useOverlayMode);
-        if (mOverlayModeChangedCallbackForTesting != null) {
-            mOverlayModeChangedCallbackForTesting.onResult(useOverlayMode);
-        }
-    }
-
-    @CalledByNative
-    public void sizeTo(int width, int height) {
-        mWebContents.setSize(width, height);
-    }
 
     public void setOverayModeChangedCallbackForTesting(Callback<Boolean> callback) {
         mOverlayModeChangedCallbackForTesting = callback;
     }
 
-    /**
-     * Enable/Disable navigation(Prev/Next) button if navigation is allowed/disallowed
-     * in respective direction.
-     * @param controlId Id of button to update
-     * @param enabled enable/disable value
-     */
-    @CalledByNative
-    private void enableUiControl(int controlId, boolean enabled) {
-        // if (controlId == 0) {
-        //     mPrevButton.setEnabled(enabled);
-        // } else if (controlId == 1) {
-        //     mNextButton.setEnabled(enabled);
-        // }
-    }
 
     public ViewGroup getContentView() {
         ViewAndroidDelegate viewDelegate = mWebContents.getViewAndroidDelegate();
@@ -435,10 +243,5 @@ public class BisonView extends FrameLayout {
         }
     }
 
-    @NativeMethods
-    interface Natives {
-        long init(BisonView caller);
-        WebContents getWebContents(long nativeBisonView);
-        void closeShell(long BisonViewPtr);
-    }
+    
 }

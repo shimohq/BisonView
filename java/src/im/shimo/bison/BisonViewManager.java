@@ -86,7 +86,7 @@ public class BisonViewManager {
     }
 
     private void showBisonView(BisonView bisonView) {
-        bisonView.setContentViewRenderView(mContentViewRenderView);
+        // bisonView.setContentViewRenderView(mContentViewRenderView);
         WebContents webContents = mActiveShell.getWebContents();
         // if (webContents != null) {
         //     mContentViewRenderView.setCurrentWebContents(webContents);
@@ -98,7 +98,7 @@ public class BisonViewManager {
     private void removeBisonView(BisonView bisonView) {
         if (bisonView == mActiveShell) mActiveShell = null;
         if (bisonView.getParent() == null) return;
-        bisonView.setContentViewRenderView(null);
+        // bisonView.setContentViewRenderView(null);
         //removeView(bisonView);
     }
 

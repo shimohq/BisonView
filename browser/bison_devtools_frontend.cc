@@ -6,9 +6,9 @@
 #include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversions.h"
 #include "bison_browser_context.h"
+#include "bison_contents.h"
 #include "bison_devtools_bindings.h"
 #include "bison_devtools_manager_delegate.h"
-#include "bison_view.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/browser/web_contents_observer.h"
 
@@ -25,7 +25,7 @@ static GURL GetFrontendURL() {
 // static
 BisonDevToolsFrontend* BisonDevToolsFrontend::Show(
     WebContents* inspected_contents) {
-  BisonView* bison_view = BisonView::CreateNewWindow(
+  BisonContents* bison_view = BisonContents::CreateNewWindow(
       inspected_contents->GetBrowserContext(), nullptr);
   BisonDevToolsFrontend* devtools_frontend =
       new BisonDevToolsFrontend(bison_view, inspected_contents);
@@ -57,7 +57,7 @@ void BisonDevToolsFrontend::WebContentsDestroyed() {
   delete this;
 }
 
-BisonDevToolsFrontend::BisonDevToolsFrontend(BisonView* frontend_bison_view,
+BisonDevToolsFrontend::BisonDevToolsFrontend(BisonContents* frontend_bison_view,
                                              WebContents* inspected_contents)
     : WebContentsObserver(frontend_bison_view->web_contents()),
       frontend_bison_view_(frontend_bison_view),

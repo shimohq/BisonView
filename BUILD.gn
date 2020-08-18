@@ -31,14 +31,14 @@ config("bison_lib_warnings") {
 generate_jni("bison_jni_headers") {
   sources = [
     "java/src/im/shimo/bison/BisonView.java",
-    "java/src/im/shimo/bison/BisonViewManager.java",
+    "java/src/im/shimo/bison/BisonContents.java",
   ]
 }
 
 android_library("bison_java"){
   java_files = [
     "java/src/im/shimo/bison/BisonView.java",
-    # "java/src/im/shimo/bison/BisonViewManager.java",
+    "java/src/im/shimo/bison/BisonContents.java",
     "java/src/im/shimo/bison/BisonViewAndroidDelegate.java",
   ]
 

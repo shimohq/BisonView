@@ -6,8 +6,8 @@
 
 // #include "content/shell/android/shell_descriptors.h"
 #include "bison_browser_context.h"
+#include "bison_contents.h"
 #include "bison_devtools_manager_delegate.h"
-#include "bison_view.h"
 // #include "content/shell/common/shell_switches.h"
 
 #include "base/base_switches.h"
@@ -161,7 +161,7 @@ int BisonBrowserMainParts::PreCreateThreads() {
 
 void BisonBrowserMainParts::PreMainMessageLoopRun() {
   InitializeBrowserContexts();
-  BisonView::Initialize();
+
   net::NetModule::SetResourceProvider(PlatformResourceProvider);
   BisonDevToolsManagerDelegate::StartHttpHandler(browser_context_.get());
   InitializeMessageLoopContext();
@@ -185,7 +185,7 @@ void BisonBrowserMainParts::PostMainMessageLoopRun() {
 
 void BisonBrowserMainParts::PreDefaultMainMessageLoopRun(
     base::OnceClosure quit_closure) {
-  BisonView::SetMainMessageLoopQuitClosure(std::move(quit_closure));
+  BisonContents::SetMainMessageLoopQuitClosure(std::move(quit_closure));
 }
 
 void BisonBrowserMainParts::PostDestroyThreads() {
