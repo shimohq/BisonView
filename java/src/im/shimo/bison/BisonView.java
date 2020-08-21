@@ -23,9 +23,12 @@ import android.widget.TextView.OnEditorActionListener;
 import org.chromium.base.Callback;
 import org.chromium.base.annotations.CalledByNative;
 import org.chromium.base.annotations.NativeMethods;
+import org.chromium.base.library_loader.LibraryLoader;
+import org.chromium.base.library_loader.LibraryProcessType;
 import org.chromium.components.embedder_support.view.ContentView;
 import org.chromium.components.embedder_support.view.ContentViewRenderView;
 import org.chromium.content_public.browser.ActionModeCallbackHelper;
+import org.chromium.content_public.browser.BrowserStartupController;
 import org.chromium.content_public.browser.LoadUrlParams;
 import org.chromium.content_public.browser.NavigationController;
 import org.chromium.content_public.browser.SelectionPopupController;
@@ -64,6 +67,8 @@ public class BisonView extends FrameLayout {
      */
     public BisonView(Context context, AttributeSet attrs) {
         super(context, attrs);
+        LibraryLoader.getInstance().ensureInitialized(LibraryProcessType.PROCESS_BROWSER);
+
         mContentViewHodler = new FrameLayout(context);
         addView(mContentViewHodler,new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,FrameLayout.LayoutParams.MATCH_PARENT));
@@ -73,11 +78,25 @@ public class BisonView extends FrameLayout {
         mContentViewRenderView.onNativeLibraryLoaded(mWindow);
         mWindow.setAnimationPlaceholderView(mContentViewRenderView.getSurfaceView());
         addView(mContentViewRenderView);
+        BrowserStartupController.get(LibraryProcessType.PROCESS_BROWSER)
+                .startBrowserProcessesAsync(
+                        true, false, new BrowserStartupController.StartupCallback() {
+                            @Override
+                            public void onSuccess() {
+                                init();
+                            }
+
+                            @Override
+                            public void onFailure() {
+                                
+                            }
+                        });
     }
 
     public void init() {
         mBisonContents = new BisonContents();
         initFromNativeTabContents(mBisonContents.getWebContents());
+        loadUrl("https://www.baidu.com");
     }
 
     @Override

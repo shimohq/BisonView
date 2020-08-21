@@ -84,11 +84,13 @@ def _AddResources(aar_zip, resource_zips, include_globs):
 
 
 def main(args):
+  # print ('args',args)
   args = build_utils.ExpandFileArgs(args)
   parser = argparse.ArgumentParser()
 
   build_utils.AddDepfileOption(parser)
   parser.add_argument('--output', required=True, help='Path to output aar.')
+  # parser.add_argument('--native-jars', required=True, help='GN list of jar inputs.')
   parser.add_argument('--jars', required=True, help='GN list of jar inputs.')
   parser.add_argument('--dependencies-res-zips', required=True,
                       help='GN list of resource zips')
@@ -114,8 +116,10 @@ def main(args):
   parser.add_argument(
       '--resource-included-globs',
       help='GN-list of globs for paths to include in R.txt and resources zips.')
-
+  
   options = parser.parse_args(args)
+
+  
 
   if options.native_libraries and not options.abi:
     parser.error('You must provide --abi if you have native libs')
@@ -132,10 +136,20 @@ def main(args):
       options.jar_included_globs)
   options.resource_included_globs = build_utils.ParseGnList(
       options.resource_included_globs)
+
+
+  # options.r_text_files = [r_text_file for r_text_file in options.r_text_files if "third_party" not in r_text_file]
+  # options.jars = [jar for jar in options.jars if "third_party" not in jar]
+  # options.dependencies_res_zips = [res_zip for res_zip in options.dependencies_res_zips if "third_party" not in res_zip]
+
+  print("options.r_text_files",options.r_text_files)
+  print ("=======options.jars========")
+  print ("\n".join(options.jars))
+  print ("=======options.jars========")
   
-  print ("=======options.dependencies_res_zips========")
-  print (options.dependencies_res_zips)
-  print ("=======options.dependencies_res_zips========")
+  # print ("=======options.dependencies_res_zips========")
+  # print (options.dependencies_res_zips)
+  # print ("=======options.dependencies_res_zips========")
 
   with tempfile.NamedTemporaryFile(delete=False) as staging_file:
     try:
@@ -182,7 +196,7 @@ def main(args):
 
         #gen/bison/core/chrome_100_percent.pak
         build_utils.AddToZipHermetic(
-          z,os.path.join("assets","chrome_100_percent.pak"),src_path="gen/bison/core/chrome_100_percent.pak")
+          z,os.path.join("assets","bison.pak"),src_path="bison.pak")
           
     except:
       os.unlink(staging_file.name)

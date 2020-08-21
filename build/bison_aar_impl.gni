@@ -1,25 +1,12 @@
 import("//build/config/android/rules.gni")
 
 
-
-template("my_action_test"){
-
-  action(target_name){
-
-  }
-
-}
-
-
 template("build_aar_impl") {
   forward_variables_from(invoker, [ "testonly" ])
 
-
-  # print ("invoker",invoker)
-
   _deps = []
   if (defined(invoker.deps)) {
-    _deps = invoker.deps
+    _deps += invoker.deps
   }
 
   _direct_deps_only =

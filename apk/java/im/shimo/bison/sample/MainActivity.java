@@ -38,41 +38,23 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(final Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        LibraryLoader.getInstance().ensureInitialized(LibraryProcessType.PROCESS_BROWSER);
         setContentView(R.layout.main_activity);
         mBisonView = findViewById(R.id.bison_view);
-
-        mStartupUrl = getUrlFromIntent(getIntent());
-
-        BrowserStartupController.get(LibraryProcessType.PROCESS_BROWSER)
-                .startBrowserProcessesAsync(
-                        true, false, new BrowserStartupController.StartupCallback() {
-                            @Override
-                            public void onSuccess() {
-                                finishInitialization(savedInstanceState);
-                            }
-
-                            @Override
-                            public void onFailure() {
-                                initializationFailed();
-                            }
-                        });
-
     }
 
-    private void finishInitialization(Bundle savedInstanceState) {
-        String url = "http://www.baidu.com";
+    // private void finishInitialization(Bundle savedInstanceState) {
+    //     String url = "http://www.baidu.com";
         
 
-        if (savedInstanceState != null
-                && savedInstanceState.containsKey(ACTIVE_SHELL_URL_KEY)) {
-            url = savedInstanceState.getString(ACTIVE_SHELL_URL_KEY);
-        }
-        mBisonView.init();
-        mBisonView.loadUrl(url);
-        // mBisonViewManager.launchShell();
-        // mBisonViewManager.loadUrl(url);
-    }
+    //     if (savedInstanceState != null
+    //             && savedInstanceState.containsKey(ACTIVE_SHELL_URL_KEY)) {
+    //         url = savedInstanceState.getString(ACTIVE_SHELL_URL_KEY);
+    //     }
+    //     mBisonView.init();
+    //     mBisonView.loadUrl(url);
+    //     // mBisonViewManager.launchShell();
+    //     // mBisonViewManager.loadUrl(url);
+    // }
 
     private void initializationFailed() {
         Log.e(TAG, "ContentView initialization failed.");
@@ -82,89 +64,89 @@ public class MainActivity extends Activity {
         finish();
     }
 
-    @Override
-    protected void onSaveInstanceState(Bundle outState) {
-        super.onSaveInstanceState(outState);
-        WebContents webContents = getActiveWebContents();
-        if (webContents != null) {
-            outState.putString(ACTIVE_SHELL_URL_KEY, webContents.getLastCommittedUrl());
-        }
+    // @Override
+    // protected void onSaveInstanceState(Bundle outState) {
+    //     super.onSaveInstanceState(outState);
+    //     WebContents webContents = getActiveWebContents();
+    //     if (webContents != null) {
+    //         outState.putString(ACTIVE_SHELL_URL_KEY, webContents.getLastCommittedUrl());
+    //     }
 
-        //mWindowAndroid.saveInstanceState(outState);
-    }
+    //     //mWindowAndroid.saveInstanceState(outState);
+    // }
 
-    @Override
-    public boolean onKeyUp(int keyCode, KeyEvent event) {
-        if (keyCode == KeyEvent.KEYCODE_BACK) {
-            WebContents webContents = getActiveWebContents();
-            if (webContents != null && webContents.getNavigationController().canGoBack()) {
-                webContents.getNavigationController().goBack();
-                return true;
-            }
-        }
+    // @Override
+    // public boolean onKeyUp(int keyCode, KeyEvent event) {
+    //     if (keyCode == KeyEvent.KEYCODE_BACK) {
+    //         WebContents webContents = getActiveWebContents();
+    //         if (webContents != null && webContents.getNavigationController().canGoBack()) {
+    //             webContents.getNavigationController().goBack();
+    //             return true;
+    //         }
+    //     }
 
-        return super.onKeyUp(keyCode, event);
-    }
+    //     return super.onKeyUp(keyCode, event);
+    // }
 
-    @Override
-    protected void onNewIntent(Intent intent) {
-        if (getCommandLineParamsFromIntent(intent) != null) {
-            Log.i(TAG, "Ignoring command line params: can only be set when creating the activity.");
-        }
+    // @Override
+    // protected void onNewIntent(Intent intent) {
+    //     if (getCommandLineParamsFromIntent(intent) != null) {
+    //         Log.i(TAG, "Ignoring command line params: can only be set when creating the activity.");
+    //     }
 
-        if (MemoryPressureListener.handleDebugIntent(this, intent.getAction())) return;
+    //     if (MemoryPressureListener.handleDebugIntent(this, intent.getAction())) return;
 
-        String url = getUrlFromIntent(intent);
-        if (mBisonView!=null){
-            mBisonView.loadUrl(url);
-        }
-    }
+    //     String url = getUrlFromIntent(intent);
+    //     if (mBisonView!=null){
+    //         mBisonView.loadUrl(url);
+    //     }
+    // }
 
-    @Override
-    protected void onStart() {
-        super.onStart();
+    // @Override
+    // protected void onStart() {
+    //     super.onStart();
 
-        WebContents webContents = getActiveWebContents();
-        if (webContents != null) webContents.onShow();
-    }
+    //     WebContents webContents = getActiveWebContents();
+    //     if (webContents != null) webContents.onShow();
+    // }
 
-    @Override
-    public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        mWindowAndroid.onActivityResult(requestCode, resultCode, data);
-    }
+    // @Override
+    // public void onActivityResult(int requestCode, int resultCode, Intent data) {
+    //     super.onActivityResult(requestCode, resultCode, data);
+    //     mWindowAndroid.onActivityResult(requestCode, resultCode, data);
+    // }
 
-    @Override
-    public void startActivity(Intent i) {
-        mLastSentIntent = i;
-        super.startActivity(i);
-    }
+    // @Override
+    // public void startActivity(Intent i) {
+    //     mLastSentIntent = i;
+    //     super.startActivity(i);
+    // }
 
-    @Override
-    protected void onDestroy() {
-        if (mBisonView != null) mBisonView.destroy();
-        super.onDestroy();
-    }
+    // @Override
+    // protected void onDestroy() {
+    //     if (mBisonView != null) mBisonView.destroy();
+    //     super.onDestroy();
+    // }
 
-    public Intent getLastSentIntent() {
-        return mLastSentIntent;
-    }
+    // public Intent getLastSentIntent() {
+    //     return mLastSentIntent;
+    // }
 
-    private static String getUrlFromIntent(Intent intent) {
-        return intent != null ? intent.getDataString() : null;
-    }
+    // private static String getUrlFromIntent(Intent intent) {
+    //     return intent != null ? intent.getDataString() : null;
+    // }
 
-    private static String[] getCommandLineParamsFromIntent(Intent intent) {
-        return intent != null ? intent.getStringArrayExtra(COMMAND_LINE_ARGS_KEY) : null;
-    }
+    // private static String[] getCommandLineParamsFromIntent(Intent intent) {
+    //     return intent != null ? intent.getStringArrayExtra(COMMAND_LINE_ARGS_KEY) : null;
+    // }
 
-    /**
-     * @return The {@link WebContents} owned by the currently visible {@link Shell} or null if
-     *         one is not showing.
-     */
-    public WebContents getActiveWebContents() {
-        // BisonView bisonView = getActiveShell();
-        return mBisonView != null ? mBisonView.getWebContents() : null;
-    }
+    // /**
+    //  * @return The {@link WebContents} owned by the currently visible {@link Shell} or null if
+    //  *         one is not showing.
+    //  */
+    // public WebContents getActiveWebContents() {
+    //     // BisonView bisonView = getActiveShell();
+    //     return mBisonView != null ? mBisonView.getWebContents() : null;
+    // }
 
 }

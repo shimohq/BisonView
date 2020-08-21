@@ -16,6 +16,7 @@ group("bison") {
   deps = [
     # "core:bison_core_aar",
     "apk:bison_apk_java",
+    "aar:bison_view_aar",
     # "aar:bison_view_aar",
   ]
 }
@@ -30,7 +31,6 @@ config("bison_lib_warnings") {
 
 generate_jni("bison_jni_headers") {
   sources = [
-    "java/src/im/shimo/bison/BisonView.java",
     "java/src/im/shimo/bison/BisonContents.java",
   ]
 }
@@ -43,12 +43,13 @@ android_library("bison_java"){
   ]
 
   deps = [
-    ":bison_java_resources",
+    # ":bison_java_resources",
     "//base:base_java",
     "//base:jni_java",
     "//components/embedder_support/android:content_view_java",
     "//components/embedder_support/android:view_java",
     "//components/viz/service:service_java",
+    # ActivityWindowAndroid requires
     "//ui/android:ui_java",
     "//content/public/android:content_java",
   ]
@@ -62,9 +63,11 @@ android_resources("bison_java_resources"){
   custom_package = "im.shimo.bison"
 }
 
-shared_library("libbison_view") {
+shared_library("libbison") {
   sources = [
     "lib/bison_view_library_loader.cc",
+    "lib/bison_main_delegate.cc",
+    "lib/bison_main_delegate.h",
   ]
 
   deps = [
@@ -85,13 +88,8 @@ shared_library("libbison_view") {
 }
 
 source_set("bison_lib") {
-  sources = [
-    "lib/bison_main_delegate.cc",
-    "lib/bison_main_delegate.h",
-  ]
 
   deps = [
-    ":bison_lib_descriptors",
     "browser",
     "common",
     "gpu",
@@ -100,15 +98,6 @@ source_set("bison_lib") {
     "//base",
     "//content/public/gpu",
     "//ui/gfx",
-  ]
-}
-
-source_set("bison_lib_descriptors") {
-  sources = [
-    "lib/bison_descriptors.h",
-  ]
-  public_deps = [
-    "//content/public/common:content_descriptors",
   ]
 }
 

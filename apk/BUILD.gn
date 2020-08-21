@@ -60,7 +60,7 @@ android_apk("bison_sample_apk") {
     ":bison_apk_java",
     ":bison_apk_assets",
   ]
-  shared_libraries = [ "//bison:libbison_view" ]
+  shared_libraries = [ "//bison:libbison" ]
 }
 
 
