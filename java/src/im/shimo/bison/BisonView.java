@@ -78,25 +78,27 @@ public class BisonView extends FrameLayout {
         mContentViewRenderView.onNativeLibraryLoaded(mWindow);
         mWindow.setAnimationPlaceholderView(mContentViewRenderView.getSurfaceView());
         addView(mContentViewRenderView);
-        BrowserStartupController.get(LibraryProcessType.PROCESS_BROWSER)
-                .startBrowserProcessesAsync(
-                        true, false, new BrowserStartupController.StartupCallback() {
-                            @Override
-                            public void onSuccess() {
-                                init();
-                            }
+        // BrowserStartupController.get(LibraryProcessType.PROCESS_BROWSER)
+        //         .startBrowserProcessesAsync(
+        //                 true, false, new BrowserStartupController.StartupCallback() {
+        //                     @Override
+        //                     public void onSuccess() {
+        //                         init();
+        //                     }
 
-                            @Override
-                            public void onFailure() {
+        //                     @Override
+        //                     public void onFailure() {
                                 
-                            }
-                        });
+        //                     }
+        //                 });
+        BrowserStartupController.get(LibraryProcessType.PROCESS_BROWSER)
+                    .startBrowserProcessesSync(false);
+        init();
     }
 
     public void init() {
         mBisonContents = new BisonContents();
         initFromNativeTabContents(mBisonContents.getWebContents());
-        loadUrl("https://www.baidu.com");
     }
 
     @Override

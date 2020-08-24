@@ -40,6 +40,7 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main_activity);
         mBisonView = findViewById(R.id.bison_view);
+        mBisonView.loadUrl("https://www.baidu.com");
     }
 
     // private void finishInitialization(Bundle savedInstanceState) {

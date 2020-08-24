@@ -46,6 +46,11 @@ android_aar("bison_view_aar") {
     "com/google/*",
     "META-INF/*",
     "*.stamp",
+
+
+
+    "im/shimo/bison/BisonView.class",
+    "im/shimo/bison/BisonView\$*.class",
   ]
 
 }
@@ -97,10 +102,22 @@ java_prebuilt("package_impl_native_java") {
   supports_android = true
   requires_android = true
   deps = [
-    "//ui/android:ui_java",
-    "//content/public/android:content_java",
+    # "//ui/android:ui_java",
+    # "//content/public/android:content_java",
+    # "//components/embedder_support/android:content_view_java",
+    # "//components/embedder_support/android:view_java",
+    # "//components/viz/service:service_java",
+
+    "//base:base_java",
+    "//base:jni_java",
     "//components/embedder_support/android:content_view_java",
     "//components/embedder_support/android:view_java",
+    "//components/viz/service:service_java",
+    # ActivityWindowAndroid requires
+    "//ui/android:ui_java",
+    "//content/public/android:content_java",
+
+
     ":repackage_native",
   ]
 }
