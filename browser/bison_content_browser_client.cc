@@ -60,7 +60,6 @@
 #include "base/android/apk_assets.h"
 #include "base/android/path_utils.h"
 #include "components/crash/content/app/crashpad.h"
-#include "content/shell/android/shell_descriptors.h"
 #endif
 
 #if defined(OS_CHROMEOS)
@@ -460,41 +459,6 @@ blink::UserAgentMetadata BisonContentBrowserClient::GetUserAgentMetadata() {
   return GetBisonUserAgentMetadata();
 }
 
-// #if defined(OS_LINUX) || defined(OS_ANDROID)
-// void BisonContentBrowserClient::GetAdditionalMappedFilesForChildProcess(
-//     const base::CommandLine& command_line,
-//     int child_process_id,
-//     content::PosixFileDescriptorInfo* mappings) {
-// #if defined(OS_ANDROID)
-//   mappings->ShareWithRegion(
-//       kShellPakDescriptor,
-//       base::GlobalDescriptors::GetInstance()->Get(kShellPakDescriptor),
-//       base::GlobalDescriptors::GetInstance()->GetRegion(kShellPakDescriptor));
-// #endif
-//   int crash_signal_fd = GetCrashSignalFD(command_line);
-//   if (crash_signal_fd >= 0) {
-//     mappings->Share(service_manager::kCrashDumpSignal, crash_signal_fd);
-//   }
-// }
-// #endif  // defined(OS_LINUX) || defined(OS_ANDROID)
-
-// #if defined(OS_WIN)
-// bool BisonContentBrowserClient::PreSpawnRenderer(sandbox::TargetPolicy*
-// policy,
-//                                                  RendererSpawnFlags flags) {
-//   // Add sideloaded font files for testing. See also DIR_WINDOWS_FONTS
-//   // addition in |StartSandboxedProcess|.
-//   std::vector<std::string> font_files = switches::GetSideloadFontFiles();
-//   for (std::vector<std::string>::const_iterator i(font_files.begin());
-//        i != font_files.end(); ++i) {
-//     policy->AddRule(sandbox::TargetPolicy::SUBSYS_FILES,
-//                     sandbox::TargetPolicy::FILES_ALLOW_READONLY,
-//                     base::UTF8ToWide(*i).c_str());
-//   }
-//   return true;
-// }
-// #endif  // OS_WIN
-
 mojo::Remote<network::mojom::NetworkContext>
 BisonContentBrowserClient::CreateNetworkContext(
     BrowserContext* context,
@@ -529,6 +493,40 @@ BisonContentBrowserClient::CreateNetworkContext(
 std::vector<base::FilePath>
 BisonContentBrowserClient::GetNetworkContextsParentDirectory() {
   return {browser_context()->GetPath()};
+}
+
+bool BisonContentBrowserClient::ShouldOverrideUrlLoading(
+    int frame_tree_node_id,
+    bool browser_initiated,
+    const GURL& gurl,
+    const std::string& request_method,
+    bool has_user_gesture,
+    bool is_redirect,
+    bool is_main_frame,
+    ui::PageTransition transition,
+    bool* ignore_navigation) {
+  if (request_method != "GET")
+    return true;
+
+  bool application_initiated =
+      browser_initiated || transition & ui::PAGE_TRANSITION_FORWARD_BACK;
+
+  if (application_initiated && !is_redirect)
+    return true;
+
+  if (!is_main_frame &&
+      (gurl.SchemeIs(url::kHttpScheme) || gurl.SchemeIs(url::kHttpsScheme) ||
+       gurl.SchemeIs(url::kAboutScheme)))
+    return true;
+
+  // WebContents* web_contents =
+  //     WebContents::FromFrameTreeNodeId(frame_tree_node_id);
+  // if (web_contents == nullptr)
+  //   return true;
+
+  // base::string16 url = base::UTF8ToUTF16(gurl.possibly_invalid_spec());
+
+  return false;
 }
 
 BisonBrowserContext* BisonContentBrowserClient::browser_context() {

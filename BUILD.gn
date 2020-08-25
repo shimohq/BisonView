@@ -15,10 +15,8 @@ import("config.gni")
 
 group("bison") {
   deps = [
-    # "core:bison_core_aar",
     "apk:bison_apk_java",
-    "aar:bison_view_aar",
-    # "aar:bison_view_aar",
+    "aar:bison_view_aar"
   ]
 }
 
@@ -38,10 +36,12 @@ generate_jni("bison_jni_headers") {
 
 android_library("bison_java"){
   java_files = [
-    "java/src/im/shimo/bison/BisonView.java",
     "java/src/im/shimo/bison/BisonContents.java",
+    "java/src/im/shimo/bison/BisonView.java",
     "java/src/im/shimo/bison/BisonViewAndroidDelegate.java",
+    "java/src/im/shimo/bison/BisonViewClient.java",
     "java/src/im/shimo/bison/CallbackConverter.java",
+    
   ]
 
   deps = bison_java_deps

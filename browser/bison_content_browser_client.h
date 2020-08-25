@@ -110,16 +110,21 @@ class BisonContentBrowserClient : public content::ContentBrowserClient {
   //       content::PosixFileDescriptorInfo* mappings) override;
   // #endif  // defined(OS_LINUX) || defined(OS_ANDROID)
 
-#if defined(OS_WIN)
-  bool PreSpawnRenderer(sandbox::TargetPolicy* policy,
-                        RendererSpawnFlags flags) override;
-#endif
-
   mojo::Remote<network::mojom::NetworkContext> CreateNetworkContext(
       BrowserContext* context,
       bool in_memory,
       const base::FilePath& relative_partition_path) override;
   std::vector<base::FilePath> GetNetworkContextsParentDirectory() override;
+
+  bool ShouldOverrideUrlLoading(int frame_tree_node_id,
+                                bool browser_initiated,
+                                const GURL& gurl,
+                                const std::string& request_method,
+                                bool has_user_gesture,
+                                bool is_redirect,
+                                bool is_main_frame,
+                                ui::PageTransition transition,
+                                bool* ignore_navigation) override;
 
   BisonBrowserContext* browser_context();
   BisonBrowserContext* off_the_record_browser_context();

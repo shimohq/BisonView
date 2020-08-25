@@ -58,6 +58,9 @@ class BisonContents extends FrameLayout {
     private ContentViewRenderView mContentViewRenderView;
     private BisonViewAndroidDelegate mViewAndroidDelegate;
 
+
+    private BisonViewClient mBisonViewClient;
+
     public BisonContents(Context context) {
         super(context);
         mNativeBisonContents = BisonContentsJni.get().init(this);
@@ -68,9 +71,7 @@ class BisonContents extends FrameLayout {
         mContentViewRenderView.onNativeLibraryLoaded(mWindow);
         mWindow.setAnimationPlaceholderView(mContentViewRenderView.getSurfaceView());
 
-        
         addView(mContentViewRenderView);
-
 
         ContentView cv = ContentView.createContentView(context, mWebContents);
         mViewAndroidDelegate = new BisonViewAndroidDelegate(cv);
@@ -179,23 +180,23 @@ class BisonContents extends FrameLayout {
     }
 
     public void evaluateJavaScript(String script, Callback<String> callback) {
-
         JavaScriptCallback jsCallback = null;
         if (callback != null) {
             jsCallback = jsonResult -> {
                 PostTask.postTask(UiThreadTaskTraits.DEFAULT, () -> callback.onResult(jsonResult));
             };
         }
-
         mWebContents.evaluateJavaScript(script,jsCallback);
+    }
+
+    public void setBisonViewClient(BisonViewClient client) {
+        this.mBisonViewClient = client;
     }
 
     
     public WebContents getWebContents() {
         return mWebContents;
     }
-
-
 
     private static String fixupMimeType(String mimeType) {
         return TextUtils.isEmpty(mimeType) ? "text/html" : mimeType;

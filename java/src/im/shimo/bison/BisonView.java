@@ -96,6 +96,11 @@ public class BisonView extends FrameLayout {
         mBisonContents.evaluateJavaScript(script, CallbackConverter.fromValueCallback(resultCallback));
     }
 
+
+    public void setBisonViewClient(BisonViewClient client) {
+        mBisonContents.setBisonViewClient(client);
+    }
+
     public void destroy(){
         removeAllViews();
         if (mContentViewRenderView != null ){
