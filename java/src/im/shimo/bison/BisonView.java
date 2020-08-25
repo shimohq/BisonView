@@ -40,25 +40,16 @@ import org.chromium.ui.base.WindowAndroid;
 public class BisonView extends FrameLayout {
 
     private WebContents mWebContents;
-    private NavigationController mNavigationController;
     private EditText mUrlTextView;
-    private ImageButton mPrevButton;
-    private ImageButton mNextButton;
-    private ImageButton mStopReloadButton;
-
-    private ClipDrawable mProgressDrawable;
 
     
     private ContentViewRenderView mContentViewRenderView;
-    private WindowAndroid mWindow;
     private BisonViewAndroidDelegate mViewAndroidDelegate;
 
     private boolean mLoading;
     private boolean mIsFullscreen;
 
     private Callback<Boolean> mOverlayModeChangedCallbackForTesting;
-
-    private ViewGroup mContentViewHodler;
 
     private BisonContents mBisonContents;
 
@@ -68,68 +59,10 @@ public class BisonView extends FrameLayout {
     public BisonView(Context context, AttributeSet attrs) {
         super(context, attrs);
         LibraryLoader.getInstance().ensureInitialized(LibraryProcessType.PROCESS_BROWSER);
-
-        mContentViewHodler = new FrameLayout(context);
-        addView(mContentViewHodler,new FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,FrameLayout.LayoutParams.MATCH_PARENT));
-        
-        mWindow = new ActivityWindowAndroid(getActivity(), true);
-        mContentViewRenderView = new ContentViewRenderView(getContext());
-        mContentViewRenderView.onNativeLibraryLoaded(mWindow);
-        mWindow.setAnimationPlaceholderView(mContentViewRenderView.getSurfaceView());
-        addView(mContentViewRenderView);
-        // BrowserStartupController.get(LibraryProcessType.PROCESS_BROWSER)
-        //         .startBrowserProcessesAsync(
-        //                 true, false, new BrowserStartupController.StartupCallback() {
-        //                     @Override
-        //                     public void onSuccess() {
-        //                         init();
-        //                     }
-
-        //                     @Override
-        //                     public void onFailure() {
-                                
-        //                     }
-        //                 });
         BrowserStartupController.get(LibraryProcessType.PROCESS_BROWSER)
                     .startBrowserProcessesSync(false);
-        init();
-    }
-
-    public void init() {
-        mBisonContents = new BisonContents();
-        initFromNativeTabContents(mBisonContents.getWebContents());
-    }
-
-    @Override
-    public void addView(View child){
-        FrameLayout.LayoutParams layoutParams = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.MATCH_PARENT);
-        if (mContentViewHodler != null){
-            mContentViewHodler.addView(child,layoutParams);
-        }else{
-            super.addView(child,layoutParams);
-        }
-    }
-
-    @Override
-    public void removeView(View view) {
-        if (mContentViewHodler !=null){
-            mContentViewHodler.removeView(view);
-        }else{
-            super.removeView(view);
-        }
-        
-    }
-
-    @SuppressWarnings("unused")
-    public Activity getActivity() {
-        return (Activity)getContext();
-    }
-
-    
-    public void close() {
-        
+        mBisonContents = new BisonContents(context);        
+        addView(mBisonContents);
     }
 
     public boolean isDestroyed() {
@@ -142,24 +75,16 @@ public class BisonView extends FrameLayout {
     }
 
     public void loadUrl(String url) {
-        if (url == null) return;
-
-        if (TextUtils.equals(url, mWebContents.getLastCommittedUrl())) {
-            mNavigationController.reload(true);
-        } else {
-            mNavigationController.loadUrl(new LoadUrlParams(sanitizeUrl(url)));
-        }
-        //mUrlTextView.clearFocus();
-        // TODO(aurimas): Remove this when crbug.com/174541 is fixed.
-        getContentView().clearFocus();
-        getContentView().requestFocus();
+        mBisonContents.loadUrl(url);
     }
 
+    public void loadData(String data, String mimeType, String encoding) {
+        mBisonContents.loadData(data, mimeType, encoding);
+    }
 
-    public static String sanitizeUrl(String url) {
-        if (url == null) return null;
-        if (url.startsWith("www.") || url.indexOf(":") == -1) url = "http://" + url;
-        return url;
+    public void loadDataWithBaseURL(String baseUrl, String data,
+            String mimeType, String encoding, String failUrl) {
+        mBisonContents.loadData(baseUrl,data, mimeType, encoding,failUrl);
     }
 
     public void destroy(){
@@ -169,99 +94,6 @@ public class BisonView extends FrameLayout {
             mContentViewRenderView = null;
         }
 
-    }
-
-    public BisonViewAndroidDelegate getViewAndroidDelegate() {
-        return mViewAndroidDelegate;
-    }
-
-    /**
-     * Initializes the ContentView based on the native tab contents pointer passed in.
-     * @param webContents A {@link WebContents} object.
-     */
-    @SuppressWarnings("unused")
-    @CalledByNative
-    private void initFromNativeTabContents(WebContents webContents) {
-        Context context = getContext();
-        ContentView cv = ContentView.createContentView(context, webContents);
-        mViewAndroidDelegate = new BisonViewAndroidDelegate(cv);
-        assert (mWebContents != webContents);
-        if (mWebContents != null) mWebContents.clearNativeReference();
-        webContents.initialize(
-                "", mViewAndroidDelegate, cv, mWindow, WebContents.createDefaultInternalsHolder());
-        mWebContents = webContents;
-        SelectionPopupController.fromWebContents(webContents)
-                .setActionModeCallback(defaultActionCallback());
-        mNavigationController = mWebContents.getNavigationController();
-        if (getParent() != null) mWebContents.onShow();
-        if (mWebContents.getVisibleUrl() != null) {
-            //mUrlTextView.setText(mWebContents.getVisibleUrl());
-        }
-        // ((FrameLayout) findViewById(R.id.contentview_holder)).addView(cv,
-        //         new FrameLayout.LayoutParams(
-        //                 FrameLayout.LayoutParams.MATCH_PARENT,
-        //                 FrameLayout.LayoutParams.MATCH_PARENT));
-        addView(cv);
-        cv.requestFocus();
-        mContentViewRenderView.setCurrentWebContents(mWebContents);
-    }
-
-    /**
-     * {link @ActionMode.Callback} that uses the default implementation in
-     * {@link SelectionPopupController}.
-     */
-    private ActionMode.Callback defaultActionCallback() {
-        final ActionModeCallbackHelper helper =
-                SelectionPopupController.fromWebContents(mWebContents)
-                        .getActionModeCallbackHelper();
-
-        return new ActionMode.Callback() {
-            @Override
-            public boolean onCreateActionMode(ActionMode mode, Menu menu) {
-                helper.onCreateActionMode(mode, menu);
-                return true;
-            }
-
-            @Override
-            public boolean onPrepareActionMode(ActionMode mode, Menu menu) {
-                return helper.onPrepareActionMode(mode, menu);
-            }
-
-            @Override
-            public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
-                return helper.onActionItemClicked(mode, item);
-            }
-
-            @Override
-            public void onDestroyActionMode(ActionMode mode) {
-                helper.onDestroyActionMode();
-            }
-        };
-    }
-
-
-    public void setOverayModeChangedCallbackForTesting(Callback<Boolean> callback) {
-        mOverlayModeChangedCallbackForTesting = callback;
-    }
-
-
-    public ViewGroup getContentView() {
-        ViewAndroidDelegate viewDelegate = mWebContents.getViewAndroidDelegate();
-        return viewDelegate != null ? viewDelegate.getContainerView() : null;
-    }
-
-    public WebContents getWebContents() {
-        return mWebContents;
-    }
-
-    private void setKeyboardVisibilityForUrl(boolean visible) {
-        InputMethodManager imm = (InputMethodManager) getContext().getSystemService(
-                Context.INPUT_METHOD_SERVICE);
-        if (visible) {
-            imm.showSoftInput(mUrlTextView, InputMethodManager.SHOW_IMPLICIT);
-        } else {
-            imm.hideSoftInputFromWindow(mUrlTextView.getWindowToken(), 0);
-        }
     }
 
     

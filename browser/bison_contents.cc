@@ -552,6 +552,11 @@ bool BisonContents::ShouldResumeRequestsForCreatedWindow() {
   return !delay_popup_contents_delegate_for_testing_;
 }
 
+void BisonContents::DidFinishNavigation(
+    content::NavigationHandle* navigation_handle) {
+  VLOG(0) << "DidFinishNavigation";
+}
+
 void BisonContents::TitleWasSet(NavigationEntry* entry) {
   if (entry)
     PlatformSetTitle(entry->GetTitle());

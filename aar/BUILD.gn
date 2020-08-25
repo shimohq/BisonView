@@ -49,8 +49,8 @@ android_aar("bison_view_aar") {
 
 
 
-    "im/shimo/bison/BisonView.class",
-    "im/shimo/bison/BisonView\$*.class",
+    # "im/shimo/bison/BisonView.class",
+    # "im/shimo/bison/BisonView\$*.class",
   ]
 
 }
@@ -116,6 +116,7 @@ java_prebuilt("package_impl_native_java") {
     # ActivityWindowAndroid requires
     "//ui/android:ui_java",
     "//content/public/android:content_java",
+    # "//services/device/public/mojom",
 
 
     ":repackage_native",

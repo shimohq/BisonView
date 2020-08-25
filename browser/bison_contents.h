@@ -60,7 +60,6 @@ class BisonContents : public WebContentsDelegate, public WebContentsObserver {
                            const std::string& data,
                            const GURL& base_url);
 
-  // Android-only path to allow loading long data strings.
   void LoadDataAsStringWithBaseURL(const GURL& url,
                                    const std::string& data,
                                    const GURL& base_url);
@@ -239,7 +238,11 @@ class BisonContents : public WebContentsDelegate, public WebContentsObserver {
 
   void ToggleFullscreenModeForTab(WebContents* web_contents,
                                   bool enter_fullscreen);
-  // WebContentsObserver
+  // WebContentsObserver overrides
+
+  void DidFinishNavigation(
+      content::NavigationHandle* navigation_handle) override;
+
   void TitleWasSet(NavigationEntry* entry) override;
 
   void OnDevToolsWebContentsDestroyed();
