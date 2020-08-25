@@ -19,6 +19,7 @@ import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.TextView.OnEditorActionListener;
+import android.webkit.ValueCallback;
 
 import org.chromium.base.Callback;
 import org.chromium.base.annotations.CalledByNative;
@@ -78,6 +79,10 @@ public class BisonView extends FrameLayout {
         mBisonContents.loadUrl(url);
     }
 
+    public void postUrl(String url, byte[] postData) {
+        mBisonContents.postUrl(url, postData);
+    }
+
     public void loadData(String data, String mimeType, String encoding) {
         mBisonContents.loadData(data, mimeType, encoding);
     }
@@ -85,6 +90,10 @@ public class BisonView extends FrameLayout {
     public void loadDataWithBaseURL(String baseUrl, String data,
             String mimeType, String encoding, String failUrl) {
         mBisonContents.loadData(baseUrl,data, mimeType, encoding,failUrl);
+    }
+
+    public void evaluateJavascript(String script, ValueCallback<String> resultCallback){
+        mBisonContents.evaluateJavaScript(script, CallbackConverter.fromValueCallback(resultCallback));
     }
 
     public void destroy(){

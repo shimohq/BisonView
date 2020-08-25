@@ -25,6 +25,7 @@ namespace content {
 class BrowserContext;
 class SiteInstance;
 class WebContents;
+class NavigationHandle;
 }  // namespace content
 
 class GURL;
@@ -75,9 +76,6 @@ class BisonContents : public WebContentsDelegate, public WebContentsObserver {
 
   // Resizes the web content view to the given dimensions.
   void SizeTo(const gfx::Size& content_size);
-
-  // Do one time initialization at application startup.
-  static void Initialize();
 
   static BisonContents* CreateNewWindow(
       BrowserContext* browser_context,

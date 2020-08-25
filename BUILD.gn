@@ -9,6 +9,7 @@ import("//build/config/android/config.gni")
 import("//tools/grit/grit_rule.gni")
 import("//tools/grit/repack.gni")
 import("//tools/v8_context_snapshot/v8_context_snapshot.gni")
+import("config.gni")
 
 
 
@@ -40,20 +41,10 @@ android_library("bison_java"){
     "java/src/im/shimo/bison/BisonView.java",
     "java/src/im/shimo/bison/BisonContents.java",
     "java/src/im/shimo/bison/BisonViewAndroidDelegate.java",
+    "java/src/im/shimo/bison/CallbackConverter.java",
   ]
 
-  deps = [
-    # ":bison_java_resources",
-    "//base:base_java",
-    "//base:jni_java",
-    "//components/embedder_support/android:content_view_java",
-    "//components/embedder_support/android:view_java",
-    "//components/viz/service:service_java",
-    # "//services/device/public/mojom",
-    # ActivityWindowAndroid requires
-    "//ui/android:ui_java",
-    "//content/public/android:content_java",
-  ]
+  deps = bison_java_deps
 
   annotation_processor_deps = [ "//base/android/jni_generator:jni_processor" ]
 

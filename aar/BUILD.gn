@@ -2,6 +2,7 @@
 import("//build/config/android/config.gni")
 import("//build/config/android/rules.gni")
 import("//bison/aar/aar.gni")
+import("//bison/config.gni")
 
 
 _jar_excluded_patterns = [
@@ -101,26 +102,7 @@ java_prebuilt("package_impl_native_java") {
   jar_path = "$_package_dir/impl_native_java.jar"
   supports_android = true
   requires_android = true
-  deps = [
-    # "//ui/android:ui_java",
-    # "//content/public/android:content_java",
-    # "//components/embedder_support/android:content_view_java",
-    # "//components/embedder_support/android:view_java",
-    # "//components/viz/service:service_java",
-
-    "//base:base_java",
-    "//base:jni_java",
-    "//components/embedder_support/android:content_view_java",
-    "//components/embedder_support/android:view_java",
-    "//components/viz/service:service_java",
-    # ActivityWindowAndroid requires
-    "//ui/android:ui_java",
-    "//content/public/android:content_java",
-    # "//services/device/public/mojom",
-
-
-    ":repackage_native",
-  ]
+  deps = bison_java_deps + [":repackage_native"]
 }
 
 _registration_header = "$target_gen_dir/bison_jni_registration.h"
@@ -152,9 +134,7 @@ android_java_prebuilt("repackage_native_java") {
   jar_path = _native_intermediate_jar_path
 
   enable_bytecode_rewriter = false
-  deps = [
-    ":repackage_native_impl",
-  ]
+  deps = bison_java_deps + [":repackage_native_impl",]
 }
 
 repackage_jars("repackage_native_impl") {

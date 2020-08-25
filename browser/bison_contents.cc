@@ -32,6 +32,7 @@
 #include "content/public/browser/devtools_agent_host.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_entry.h"
+#include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/picture_in_picture_window_controller.h"
 #include "content/public/browser/render_process_host.h"
 #include "content/public/browser/render_view_host.h"
@@ -186,8 +187,6 @@ BisonContents* BisonContents::FromWebContents(WebContents* web_contents) {
   }
   return nullptr;
 }
-
-void BisonContents::Initialize() {}
 
 BisonContents* BisonContents::CreateNewWindow(
     BrowserContext* browser_context,
@@ -510,6 +509,7 @@ std::unique_ptr<WebContents> BisonContents::SwapWebContents(
   DCHECK_EQ(old_contents, web_contents_.get());
   new_contents->SetDelegate(this);
   web_contents_->SetDelegate(nullptr);
+  VLOG(0) << "SwapWebContents";
   for (auto* bison_view_devtools_bindings :
        BisonDevToolsBindings::GetInstancesForWebContents(old_contents)) {
     bison_view_devtools_bindings->UpdateInspectedWebContents(
@@ -554,6 +554,12 @@ bool BisonContents::ShouldResumeRequestsForCreatedWindow() {
 
 void BisonContents::DidFinishNavigation(
     content::NavigationHandle* navigation_handle) {
+  net::Error error_code = navigation_handle->GetNetErrorCode();
+  if (error_code != net::ERR_BLOCKED_BY_CLIENT &&
+      error_code != net::ERR_BLOCKED_BY_ADMINISTRATOR &&
+      error_code != net::ERR_ABORTED) {
+    return;
+  }
   VLOG(0) << "DidFinishNavigation";
 }
 
@@ -570,7 +576,7 @@ void BisonContents::OnDevToolsWebContentsDestroyed() {
 void BisonContents::PlatformInitialize(const gfx::Size& default_window_size) {}
 
 void BisonContents::PlatformExit() {
-  // DestroyShellManager();
+  VLOG(0) << "Destroy";
 }
 
 void BisonContents::PlatformCleanUp() {

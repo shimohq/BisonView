@@ -20,23 +20,30 @@ import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.TextView.OnEditorActionListener;
+import android.webkit.ValueCallback;
 
 import org.chromium.base.Log;
 import org.chromium.base.Callback;
 import org.chromium.base.annotations.CalledByNative;
 import org.chromium.base.annotations.JNINamespace;
 import org.chromium.base.annotations.NativeMethods;
+import org.chromium.base.task.PostTask;
 import org.chromium.components.embedder_support.view.ContentView;
 import org.chromium.components.embedder_support.view.ContentViewRenderView;
 import org.chromium.content_public.browser.ActionModeCallbackHelper;
+import org.chromium.content_public.browser.JavaScriptCallback;
 import org.chromium.content_public.browser.LoadUrlParams;
 import org.chromium.content_public.browser.NavigationController;
 import org.chromium.content_public.browser.SelectionPopupController;
 import org.chromium.content_public.browser.WebContents;
+import org.chromium.content_public.browser.UiThreadTaskTraits;
 import org.chromium.content_public.common.ContentUrlConstants;
 import org.chromium.ui.base.ActivityWindowAndroid;
 import org.chromium.ui.base.ViewAndroidDelegate;
 import org.chromium.ui.base.WindowAndroid;
+
+import java.util.HashMap;
+import java.util.Map;
 
 @JNINamespace("bison")
 class BisonContents extends FrameLayout {
@@ -128,10 +135,17 @@ class BisonContents extends FrameLayout {
         // getContentView().requestFocus();
     }
 
+    public void postUrl(String url, byte[] postData) {
+        LoadUrlParams params = LoadUrlParams.createLoadHttpPostParams(url, postData);
+        Map<String, String> headers = new HashMap<String, String>();
+        headers.put("Content-Type", "application/x-www-form-urlencoded");
+        params.setExtraHeaders(headers);
+        loadUrl(params);
+    }
+
     private void loadUrl(LoadUrlParams params) {
         mNavigationController.loadUrl(params);
     }
-
 
     public void loadData(String data, String mimeType, String encoding) {
         loadUrl(LoadUrlParams.createLoadDataParams(
@@ -162,6 +176,18 @@ class BisonContents extends FrameLayout {
             }
         }
         loadUrl(loadUrlParams);
+    }
+
+    public void evaluateJavaScript(String script, Callback<String> callback) {
+
+        JavaScriptCallback jsCallback = null;
+        if (callback != null) {
+            jsCallback = jsonResult -> {
+                PostTask.postTask(UiThreadTaskTraits.DEFAULT, () -> callback.onResult(jsonResult));
+            };
+        }
+
+        mWebContents.evaluateJavaScript(script,jsCallback);
     }
 
     
