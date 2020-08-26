@@ -242,15 +242,7 @@ class BisonContents extends FrameLayout {
         //mUrlTextView.setText(url);
     }
 
-    @SuppressWarnings("unused")
-    @CalledByNative
-    private void onLoadProgressChanged(double progress) {
-        // jiang 这里需要 bisonView  想哈这儿应该怎么搞。。
-        // 新加一个类？ bridge? core? or BisonContentsClient?
-        if (mBisonChromeClient !=null ) {
-            //mBisonChromeClient.onProgressChanged(progress);
-        }
-    }
+    
 
     @CalledByNative
     private void toggleFullscreenModeForTab(boolean enterFullscreen) {
@@ -339,10 +331,19 @@ class BisonContents extends FrameLayout {
     }
 
     @CalledByNative
-    private void onUpdateTitle(String title){
+    private void onUpdateTitle(String title) {
         mBisonChrome.onTitleUpdate(title);
     }
 
+    @SuppressWarnings("unused")
+    @CalledByNative
+    private void onLoadProgressChanged(double progress) {
+        // jiang 这里需要 bisonView  想哈这儿应该怎么搞。。
+        // 新加一个类？ bridge? core? or BisonContentsClient?
+        if (mBisonChromeClient != null) {
+            mBisonChrome.onProgressChanged((int) progress);
+        }
+    }
 
 
     @NativeMethods

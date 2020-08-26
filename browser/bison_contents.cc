@@ -20,13 +20,11 @@
 #include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/threading/thread_task_runner_handle.h"
-// jiang jni.h
-#include "bison/bison_jni_headers/BisonContents_jni.h"
+#include "bison/bison_jni_headers/BisonContents_jni.h"  // jiang jni.h
 #include "bison_browser_main_parts.h"
 #include "bison_content_browser_client.h"
 #include "bison_devtools_frontend.h"
-// #include "bison_view_manager.h"
-// #include "bison_javascript_dialog_manager.h"
+#include "bison_javascript_dialog_manager.h"
 // #include "bison_switches.h"
 #include "build/build_config.h"
 #include "content/public/browser/devtools_agent_host.h"
@@ -427,13 +425,13 @@ void BisonContents::DidNavigateMainFramePostCommit(WebContents* web_contents) {
   PlatformSetAddressBarURL(web_contents->GetVisibleURL());
 }
 
-// JavaScriptDialogManager* BisonContents::GetJavaScriptDialogManager(
-//     WebContents* source) {
-//   if (!dialog_manager_) {
-//     dialog_manager_.reset(new ShellJavaScriptDialogManager);
-//   }
-//   return dialog_manager_.get();
-// }
+JavaScriptDialogManager* BisonContents::GetJavaScriptDialogManager(
+    WebContents* source) {
+  if (!dialog_manager_) {
+    dialog_manager_.reset(new BisonJavaScriptDialogManager);
+  }
+  return dialog_manager_.get();
+}
 
 std::unique_ptr<BluetoothChooser> BisonContents::RunBluetoothChooser(
     RenderFrameHost* frame,
@@ -540,8 +538,12 @@ void BisonContents::DidFinishNavigation(
 }
 
 void BisonContents::TitleWasSet(NavigationEntry* entry) {
-  if (entry)
-    PlatformSetTitle(entry->GetTitle());
+  if (entry) {
+    JNIEnv* env = AttachCurrentThread();
+    ScopedJavaLocalRef<jstring> jstring_title =
+        ConvertUTF8ToJavaString(env, base::UTF16ToUTF8(entry->GetTitle()));
+    Java_BisonContents_onUpdateTitle(env, java_object_, jstring_title);
+  }
 }
 
 void BisonContents::OnDevToolsWebContentsDestroyed() {
@@ -599,13 +601,6 @@ void BisonContents::SizeTo(const gfx::Size& content_size) {
   JNIEnv* env = AttachCurrentThread();
   Java_BisonContents_sizeTo(env, java_object_, content_size.width(),
                             content_size.height());
-}
-
-void BisonContents::PlatformSetTitle(const base::string16& title) {
-  JNIEnv* env = AttachCurrentThread();
-  ScopedJavaLocalRef<jstring> jstring_title =
-      ConvertUTF8ToJavaString(env, base::UTF16ToUTF8(title));
-  Java_BisonContents_onUpdateTitle(env, java_object_, jstring_title);
 }
 
 void BisonContents::LoadProgressChanged(WebContents* source, double progress) {

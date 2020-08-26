@@ -78,4 +78,13 @@ public class BisonView extends FrameLayout implements BisonChromeEventListener {
             mBisonChromeClient.onReceivedTitle(this, title);
         }
     }
+
+     @Override
+    public void onProgressChanged(int newProgress) {
+        if (mBisonChromeClient != null) {
+            mBisonChromeClient.onProgressChanged(this, newProgress);
+        }
+    }
+
+
 }

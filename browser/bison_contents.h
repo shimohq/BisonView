@@ -33,6 +33,7 @@ class GURL;
 using content::BluetoothChooser;
 using content::BluetoothScanningPrompt;
 using content::BrowserContext;
+using content::JavaScriptDialogManager;
 using content::NavigationEntry;
 using content::OpenURLParams;
 using content::PictureInPictureResult;
@@ -47,7 +48,7 @@ using content::WebContentsObserver;
 namespace bison {
 
 class BisonDevToolsFrontend;
-// class ShellJavaScriptDialogManager;
+class BisonJavaScriptDialogManager;
 
 class BisonContents : public WebContentsDelegate, public WebContentsObserver {
  public:
@@ -136,8 +137,8 @@ class BisonContents : public WebContentsDelegate, public WebContentsObserver {
   void CloseContents(WebContents* source) override;
   bool CanOverscrollContent() override;
   void DidNavigateMainFramePostCommit(WebContents* web_contents) override;
-  // JavaScriptDialogManager* GetJavaScriptDialogManager(
-  //     WebContents* source) override;
+  JavaScriptDialogManager* GetJavaScriptDialogManager(
+      WebContents* source) override;
   std::unique_ptr<BluetoothChooser> RunBluetoothChooser(
       RenderFrameHost* frame,
       const BluetoothChooser::EventHandler& event_handler) override;
@@ -211,8 +212,6 @@ class BisonContents : public WebContentsDelegate, public WebContentsObserver {
   void PlatformSetAddressBarURL(const GURL& url);
   // Sets whether the spinner is spinning.
   void PlatformSetIsLoading(bool loading);
-  // Set the title of shell window
-  void PlatformSetTitle(const base::string16& title);
 
   void PlatformToggleFullscreenModeForTab(WebContents* web_contents,
                                           bool enter_fullscreen);
@@ -238,7 +237,7 @@ class BisonContents : public WebContentsDelegate, public WebContentsObserver {
 
   void OnDevToolsWebContentsDestroyed();
 
-  // std::unique_ptr<ShellJavaScriptDialogManager> dialog_manager_;
+  std::unique_ptr<BisonJavaScriptDialogManager> dialog_manager_;
 
   std::unique_ptr<WebContents> web_contents_;
 
