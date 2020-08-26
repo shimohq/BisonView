@@ -200,30 +200,6 @@ BisonContents* BisonContents::CreateNewWindow(
   return bison_view;
 }
 
-BisonContents* BisonContents::CreateNewWindowWithSessionStorageNamespace(
-    BrowserContext* browser_context,
-    const GURL& url,
-    const scoped_refptr<SiteInstance>& site_instance,
-    const gfx::Size& initial_size,
-    scoped_refptr<SessionStorageNamespace> session_storage_namespace) {
-  WebContents::CreateParams create_params(browser_context, site_instance);
-  if (base::CommandLine::ForCurrentProcess()->HasSwitch(
-          switches::kForcePresentationReceiverForTesting)) {
-    create_params.starting_sandbox_flags =
-        blink::kPresentationReceiverSandboxFlags;
-  }
-  std::map<std::string, scoped_refptr<SessionStorageNamespace>>
-      session_storages;
-  session_storages[""] = session_storage_namespace;
-  std::unique_ptr<WebContents> web_contents =
-      WebContents::CreateWithSessionStorage(create_params, session_storages);
-  BisonContents* bison_view = CreateBisonContents(
-      std::move(web_contents), true /* should_set_delegate */);
-  if (!url.is_empty())
-    bison_view->LoadURL(url);
-  return bison_view;
-}
-
 void BisonContents::LoadURL(const GURL& url) {
   LoadURLForFrame(
       url, std::string(),
@@ -626,7 +602,10 @@ void BisonContents::SizeTo(const gfx::Size& content_size) {
 }
 
 void BisonContents::PlatformSetTitle(const base::string16& title) {
-  NOTIMPLEMENTED() << ": " << title;
+  JNIEnv* env = AttachCurrentThread();
+  ScopedJavaLocalRef<jstring> jstring_title =
+      ConvertUTF8ToJavaString(env, base::UTF16ToUTF8(title));
+  Java_BisonContents_onUpdateTitle(env, java_object_, jstring_title);
 }
 
 void BisonContents::LoadProgressChanged(WebContents* source, double progress) {
@@ -666,10 +645,10 @@ ScopedJavaLocalRef<jobject> BisonContents::GetWebContents(JNIEnv* env) {
 jlong JNI_BisonContents_Init(JNIEnv* env, const JavaParamRef<jobject>& obj) {
   BisonBrowserContext* browserContext =
       BisonContentBrowserClient::Get()->browser_context();
-  BisonContents* bison_view =
+  BisonContents* bison_contents =
       BisonContents::CreateNewWindow(browserContext, NULL);
-  bison_view->java_object_.Reset(obj);
-  return reinterpret_cast<intptr_t>(bison_view);
+  bison_contents->java_object_.Reset(obj);
+  return reinterpret_cast<intptr_t>(bison_contents);
 }
 
 void JNI_BisonContents_CloseShell(JNIEnv* env, jlong bisonViewPtr) {

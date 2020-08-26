@@ -81,13 +81,6 @@ class BisonContents : public WebContentsDelegate, public WebContentsObserver {
       BrowserContext* browser_context,
       const scoped_refptr<SiteInstance>& site_instance);
 
-  static BisonContents* CreateNewWindowWithSessionStorageNamespace(
-      BrowserContext* browser_context,
-      const GURL& url,
-      const scoped_refptr<SiteInstance>& site_instance,
-      const gfx::Size& initial_size,
-      scoped_refptr<SessionStorageNamespace> session_storage_namespace);
-
   // Returns the BisonContents object corresponding to the given WebContents.
   static BisonContents* FromWebContents(WebContents* web_contents);
 
@@ -236,8 +229,8 @@ class BisonContents : public WebContentsDelegate, public WebContentsObserver {
 
   void ToggleFullscreenModeForTab(WebContents* web_contents,
                                   bool enter_fullscreen);
-  // WebContentsObserver overrides
 
+  // WebContentsObserver overrides
   void DidFinishNavigation(
       content::NavigationHandle* navigation_handle) override;
 

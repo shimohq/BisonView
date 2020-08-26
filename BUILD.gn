@@ -37,6 +37,8 @@ generate_jni("bison_jni_headers") {
 android_library("bison_java"){
   java_files = [
     "java/src/im/shimo/bison/BisonContents.java",
+    "java/src/im/shimo/bison/BisonChromeClient.java",
+    "java/src/im/shimo/bison/BisonChromeEventListener.java",
     "java/src/im/shimo/bison/BisonView.java",
     "java/src/im/shimo/bison/BisonViewAndroidDelegate.java",
     "java/src/im/shimo/bison/BisonViewClient.java",

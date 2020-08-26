@@ -28,6 +28,16 @@ class BisonContentRendererClient : public ContentRendererClient {
   void RenderThreadStarted() override;
   void RenderViewCreated(content::RenderView* render_view) override;
   bool HasErrorPage(int http_status_code) override;
+
+  bool HandleNavigation(RenderFrame* render_frame,
+                        bool is_content_initiated,
+                        bool render_view_was_created_by_renderer,
+                        blink::WebFrame* frame,
+                        const blink::WebURLRequest& request,
+                        blink::WebNavigationType type,
+                        blink::WebNavigationPolicy default_policy,
+                        bool is_redirect) override;
+
   void PrepareErrorPage(RenderFrame* render_frame,
                         const blink::WebURLError& error,
                         const std::string& http_method,

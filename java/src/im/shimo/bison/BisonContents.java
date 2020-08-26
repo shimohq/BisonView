@@ -1,29 +1,15 @@
 package im.shimo.bison;
 
-import android.app.Activity;
 import android.content.Context;
-import android.graphics.drawable.ClipDrawable;
 import android.text.TextUtils;
-import android.util.AttributeSet;
 import android.util.Base64;
 import android.view.ActionMode;
-import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.View;
-import android.view.ViewGroup;
-import android.view.inputmethod.EditorInfo;
-import android.view.inputmethod.InputMethodManager;
-import android.widget.EditText;
 import android.widget.FrameLayout;
-import android.widget.ImageButton;
-import android.widget.LinearLayout;
-import android.widget.TextView;
-import android.widget.TextView.OnEditorActionListener;
-import android.webkit.ValueCallback;
 
-import org.chromium.base.Log;
 import org.chromium.base.Callback;
+import org.chromium.base.Log;
 import org.chromium.base.annotations.CalledByNative;
 import org.chromium.base.annotations.JNINamespace;
 import org.chromium.base.annotations.NativeMethods;
@@ -35,11 +21,10 @@ import org.chromium.content_public.browser.JavaScriptCallback;
 import org.chromium.content_public.browser.LoadUrlParams;
 import org.chromium.content_public.browser.NavigationController;
 import org.chromium.content_public.browser.SelectionPopupController;
-import org.chromium.content_public.browser.WebContents;
 import org.chromium.content_public.browser.UiThreadTaskTraits;
+import org.chromium.content_public.browser.WebContents;
 import org.chromium.content_public.common.ContentUrlConstants;
 import org.chromium.ui.base.ActivityWindowAndroid;
-import org.chromium.ui.base.ViewAndroidDelegate;
 import org.chromium.ui.base.WindowAndroid;
 
 import java.util.HashMap;
@@ -60,9 +45,12 @@ class BisonContents extends FrameLayout {
 
 
     private BisonViewClient mBisonViewClient;
+    private BisonChromeClient mBisonChromeClient;
+    private final BisonChromeEventListener mBisonChrome;
 
-    public BisonContents(Context context) {
+    public BisonContents(Context context, BisonChromeEventListener bisonChrome) {
         super(context);
+        this.mBisonChrome = bisonChrome;
         mNativeBisonContents = BisonContentsJni.get().init(this);
         mWebContents = BisonContentsJni.get().getWebContents(mNativeBisonContents);
 
@@ -82,7 +70,7 @@ class BisonContents extends FrameLayout {
                 .setActionModeCallback(defaultActionCallback());
         mNavigationController = mWebContents.getNavigationController();
         if (getParent() != null) mWebContents.onShow();
-       
+
         addView(cv);
         cv.requestFocus();
         mContentViewRenderView.setCurrentWebContents(mWebContents);
@@ -154,7 +142,7 @@ class BisonContents extends FrameLayout {
     }
 
     public void loadData(String baseUrl, String data,
-            String mimeType, String encoding, String historyUrl) {
+                         String mimeType, String encoding, String historyUrl) {
         data = fixupData(data);
         mimeType = fixupMimeType(mimeType);
         LoadUrlParams loadUrlParams;
@@ -193,7 +181,11 @@ class BisonContents extends FrameLayout {
         this.mBisonViewClient = client;
     }
 
-    
+    public void setBisonChromeClient(BisonChromeClient client){
+        this.mBisonChromeClient = client;
+    }
+
+
     public WebContents getWebContents() {
         return mWebContents;
     }
@@ -227,7 +219,7 @@ class BisonContents extends FrameLayout {
     //     RecordHistogram.recordEnumeratedHistogram(
     //             LOAD_URL_SCHEME_HISTOGRAM_NAME, value, UrlScheme.COUNT);
     // }
-    
+
 
     @CalledByNative
     private void onNativeDestroyed() {
@@ -253,9 +245,11 @@ class BisonContents extends FrameLayout {
     @SuppressWarnings("unused")
     @CalledByNative
     private void onLoadProgressChanged(double progress) {
-        //removeCallbacks(mClearProgressRunnable);
-        // mProgressDrawable.setLevel((int) (10000.0 * progress));
-        // if (progress == 1.0) postDelayed(mClearProgressRunnable, COMPLETED_PROGRESS_TIMEOUT_MS);
+        // jiang 这里需要 bisonView  想哈这儿应该怎么搞。。
+        // 新加一个类？ bridge? core? or BisonContentsClient?
+        if (mBisonChromeClient !=null ) {
+            //mBisonChromeClient.onProgressChanged(progress);
+        }
     }
 
     @CalledByNative
@@ -328,7 +322,7 @@ class BisonContents extends FrameLayout {
         // mWebContents.setSize(width, height);
     }
 
-    
+
     /**
      * Enable/Disable navigation(Prev/Next) button if navigation is allowed/disallowed
      * in respective direction.
@@ -344,9 +338,14 @@ class BisonContents extends FrameLayout {
         // }
     }
 
+    @CalledByNative
+    private void onUpdateTitle(String title){
+        mBisonChrome.onTitleUpdate(title);
+    }
+
+
 
     @NativeMethods
-
     interface Natives {
         long init(BisonContents caller);
         WebContents getWebContents(long nativeBisonContents);

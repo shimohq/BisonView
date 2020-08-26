@@ -55,6 +55,22 @@ bool BisonContentRendererClient::HasErrorPage(int http_status_code) {
   return http_status_code >= 400 && http_status_code < 600;
 }
 
+bool BisonContentRendererClient::HandleNavigation(
+    RenderFrame* render_frame,
+    bool is_content_initiated,
+    bool render_view_was_created_by_renderer,
+    blink::WebFrame* frame,
+    const blink::WebURLRequest& request,
+    blink::WebNavigationType type,
+    blink::WebNavigationPolicy default_policy,
+    bool is_redirect) {
+  VLOG(0) << "HandleNavigation";
+  if (!request.HttpMethod().Equals("GET"))
+    return false;
+
+  return false;
+}
+
 void BisonContentRendererClient::PrepareErrorPage(
     RenderFrame* render_frame,
     const blink::WebURLError& error,

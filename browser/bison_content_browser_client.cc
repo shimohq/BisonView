@@ -32,6 +32,7 @@
 #include "content/public/browser/page_navigator.h"
 #include "content/public/browser/render_process_host.h"
 #include "content/public/browser/storage_partition.h"
+#include "content/public/browser/web_contents.h"
 #include "content/public/common/content_features.h"
 #include "content/public/common/content_switches.h"
 #include "content/public/common/service_names.mojom.h"
@@ -84,6 +85,7 @@
 #endif
 
 using content::StoragePartition;
+using content::WebContents;
 
 namespace bison {
 
@@ -505,6 +507,7 @@ bool BisonContentBrowserClient::ShouldOverrideUrlLoading(
     bool is_main_frame,
     ui::PageTransition transition,
     bool* ignore_navigation) {
+  VLOG(0) << "ShouldOverrideUrlLoading";
   if (request_method != "GET")
     return true;
 
@@ -519,10 +522,10 @@ bool BisonContentBrowserClient::ShouldOverrideUrlLoading(
        gurl.SchemeIs(url::kAboutScheme)))
     return true;
 
-  // WebContents* web_contents =
-  //     WebContents::FromFrameTreeNodeId(frame_tree_node_id);
-  // if (web_contents == nullptr)
-  //   return true;
+  WebContents* web_contents =
+      WebContents::FromFrameTreeNodeId(frame_tree_node_id);
+  if (web_contents == nullptr)
+    return true;
 
   // base::string16 url = base::UTF8ToUTF16(gurl.possibly_invalid_spec());
 

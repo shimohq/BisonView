@@ -1,7 +1,3 @@
-// Copyright 2015 The Chromium Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file.
-
 #include "bison_permission_manager.h"
 
 #include "base/callback.h"
@@ -10,7 +6,6 @@
 #include "content/public/browser/permission_type.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/common/content_switches.h"
-// #include "content/shell/common/shell_switches.h"
 #include "media/base/media_switches.h"
 
 namespace bison {
