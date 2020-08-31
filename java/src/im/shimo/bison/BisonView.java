@@ -10,12 +10,16 @@ import org.chromium.base.library_loader.LibraryProcessType;
 import org.chromium.components.embedder_support.view.ContentViewRenderView;
 import org.chromium.content_public.browser.BrowserStartupController;
 
-public class BisonView extends FrameLayout implements BisonChromeEventListener {
+public class BisonView extends FrameLayout implements BisonChromeEventListener ,BisonContentsClientListener {
+
+    static final BisonChromeClient sNullChromeClient = new BisonChromeClient();
     
     private ContentViewRenderView mContentViewRenderView;
 
     private BisonContents mBisonContents;
-    private BisonChromeClient mBisonChromeClient;
+    private BisonChromeClient mBisonChromeClient = sNullChromeClient;
+    private BisonViewClient mBisonViewClient;
+    private BisonContentsClientBridge mBisonContentsClientBridge;
 
     /**
      * Constructor for inflating via XML.
@@ -25,7 +29,8 @@ public class BisonView extends FrameLayout implements BisonChromeEventListener {
         LibraryLoader.getInstance().ensureInitialized(LibraryProcessType.PROCESS_BROWSER);
         BrowserStartupController.get(LibraryProcessType.PROCESS_BROWSER)
                 .startBrowserProcessesSync(false);
-        mBisonContents = new BisonContents(context, this);
+        mBisonContentsClientBridge = new BisonContentsClientBridge(this);        
+        mBisonContents = new BisonContents(context, this, mBisonContentsClientBridge);
         addView(mBisonContents);
     }
 
@@ -68,22 +73,23 @@ public class BisonView extends FrameLayout implements BisonChromeEventListener {
             mContentViewRenderView.destroy();
             mContentViewRenderView = null;
         }
-
     }
 
 
     @Override
     public void onTitleUpdate(String title) {
-        if (mBisonChromeClient != null) {
-            mBisonChromeClient.onReceivedTitle(this, title);
-        }
+        mBisonChromeClient.onReceivedTitle(this, title);
     }
 
      @Override
     public void onProgressChanged(int newProgress) {
-        if (mBisonChromeClient != null) {
-            mBisonChromeClient.onProgressChanged(this, newProgress);
-        }
+        mBisonChromeClient.onProgressChanged(this, newProgress);
+    }
+
+
+    @Override
+    public void onJsAlert(String url, String message, JsResult result) {
+        mBisonChromeClient.onJsAlert(this, url, message, result);
     }
 
 

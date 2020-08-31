@@ -9,4 +9,14 @@ public class BisonChromeClient {
     public void onReceivedTitle(BisonView view, String title) {
     }
 
+    public boolean onJsAlert(BisonView view, String url, String message,
+            JsResult result) {
+        return false;
+    }
+
+    public boolean onJsConfirm(BisonView view, String url, String message,
+            JsResult result) {
+        return false;
+    }
+
 }

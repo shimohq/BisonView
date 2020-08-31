@@ -20,6 +20,8 @@ source_set("browser") {
     "bison_contents.h",
     "bison_javascript_dialog_manager.cc",
     "bison_javascript_dialog_manager.h",
+    "bison_contents_client_bridge.cc",
+    "bison_contents_client_bridge.h",
   ]
 
   deps = [

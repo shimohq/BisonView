@@ -47,10 +47,14 @@ class BisonContents extends FrameLayout {
     private BisonViewClient mBisonViewClient;
     private BisonChromeClient mBisonChromeClient;
     private final BisonChromeEventListener mBisonChrome;
+    private BisonContentsClientBridge mBisonContentsClientBridge;
 
-    public BisonContents(Context context, BisonChromeEventListener bisonChrome) {
+    public BisonContents(Context context, BisonChromeEventListener bisonChrome ,
+            BisonContentsClientBridge bisonContentsClientBridge) {
         super(context);
         this.mBisonChrome = bisonChrome;
+        mBisonContentsClientBridge = bisonContentsClientBridge;
+
         mNativeBisonContents = BisonContentsJni.get().init(this);
         mWebContents = BisonContentsJni.get().getWebContents(mNativeBisonContents);
 
@@ -74,6 +78,10 @@ class BisonContents extends FrameLayout {
         addView(cv);
         cv.requestFocus();
         mContentViewRenderView.setCurrentWebContents(mWebContents);
+
+        BisonContentsJni.get().setJavaPeers(mNativeBisonContents, mBisonContentsClientBridge);
+
+
     }
 
     /**
@@ -148,7 +156,6 @@ class BisonContents extends FrameLayout {
         LoadUrlParams loadUrlParams;
         baseUrl = fixupBase(baseUrl);
         historyUrl = fixupHistory(historyUrl);
-
 
         if (baseUrl.startsWith("data:")) {
             boolean isBase64 = isBase64Encoded(encoding);
@@ -350,6 +357,7 @@ class BisonContents extends FrameLayout {
     interface Natives {
         long init(BisonContents caller);
         WebContents getWebContents(long nativeBisonContents);
+        void setJavaPeers(long nativeBisonContents, BisonContentsClientBridge bisonContentsClientBridge);
         void closeShell(long BisonViewPtr);
     }
 

@@ -30,6 +30,7 @@ class NavigationHandle;
 
 class GURL;
 
+using base::android::JavaParamRef;
 using content::BluetoothChooser;
 using content::BluetoothScanningPrompt;
 using content::BrowserContext;
@@ -49,6 +50,7 @@ namespace bison {
 
 class BisonDevToolsFrontend;
 class BisonJavaScriptDialogManager;
+class BisonContentsClientBridge;
 
 class BisonContents : public WebContentsDelegate, public WebContentsObserver {
  public:
@@ -175,8 +177,11 @@ class BisonContents : public WebContentsDelegate, public WebContentsObserver {
     delay_popup_contents_delegate_for_testing_ = delay;
   }
 
+  // jiang
   base::android::ScopedJavaGlobalRef<jobject> java_object_;
   base::android::ScopedJavaLocalRef<jobject> GetWebContents(JNIEnv* env);
+  void SetJavaPeers(JNIEnv* env,
+                    const JavaParamRef<jobject>& contents_client_bridge);
 
  private:
   enum UIControl { BACK_BUTTON, FORWARD_BUTTON, STOP_BUTTON };
@@ -240,6 +245,7 @@ class BisonContents : public WebContentsDelegate, public WebContentsObserver {
   std::unique_ptr<BisonJavaScriptDialogManager> dialog_manager_;
 
   std::unique_ptr<WebContents> web_contents_;
+  std::unique_ptr<BisonContentsClientBridge> contents_client_bridge_;
 
   std::unique_ptr<DevToolsWebContentsObserver> devtools_observer_;
   BisonDevToolsFrontend* devtools_frontend_;

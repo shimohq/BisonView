@@ -23,6 +23,7 @@
 #include "bison/bison_jni_headers/BisonContents_jni.h"  // jiang jni.h
 #include "bison_browser_main_parts.h"
 #include "bison_content_browser_client.h"
+#include "bison_contents_client_bridge.h"
 #include "bison_devtools_frontend.h"
 #include "bison_javascript_dialog_manager.h"
 // #include "bison_switches.h"
@@ -630,6 +631,15 @@ bool BisonContents::PlatformIsFullscreenForTabOrPending(
 void BisonContents::Close() {
   // RemoveShellView(java_object_);
   delete this;
+}
+
+void BisonContents::SetJavaPeers(
+    JNIEnv* env,
+    const JavaParamRef<jobject>& contents_client_bridge) {
+  contents_client_bridge_.reset(
+      new BisonContentsClientBridge(env, contents_client_bridge));
+  BisonContentsClientBridge::Associate(web_contents_.get(),
+                                       contents_client_bridge_.get());
 }
 
 ScopedJavaLocalRef<jobject> BisonContents::GetWebContents(JNIEnv* env) {
