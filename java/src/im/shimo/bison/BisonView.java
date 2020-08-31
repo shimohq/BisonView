@@ -10,10 +10,10 @@ import org.chromium.base.library_loader.LibraryProcessType;
 import org.chromium.components.embedder_support.view.ContentViewRenderView;
 import org.chromium.content_public.browser.BrowserStartupController;
 
-public class BisonView extends FrameLayout implements BisonChromeEventListener ,BisonContentsClientListener {
+public class BisonView extends FrameLayout implements BisonChromeEventListener, BisonContentsClientListener {
 
     static final BisonChromeClient sNullChromeClient = new BisonChromeClient();
-    
+
     private ContentViewRenderView mContentViewRenderView;
 
     private BisonContents mBisonContents;
@@ -29,7 +29,7 @@ public class BisonView extends FrameLayout implements BisonChromeEventListener ,
         LibraryLoader.getInstance().ensureInitialized(LibraryProcessType.PROCESS_BROWSER);
         BrowserStartupController.get(LibraryProcessType.PROCESS_BROWSER)
                 .startBrowserProcessesSync(false);
-        mBisonContentsClientBridge = new BisonContentsClientBridge(this);        
+        mBisonContentsClientBridge = new BisonContentsClientBridge(this);
         mBisonContents = new BisonContents(context, this, mBisonContentsClientBridge);
         addView(mBisonContents);
     }
@@ -81,7 +81,7 @@ public class BisonView extends FrameLayout implements BisonChromeEventListener ,
         mBisonChromeClient.onReceivedTitle(this, title);
     }
 
-     @Override
+    @Override
     public void onProgressChanged(int newProgress) {
         mBisonChromeClient.onProgressChanged(this, newProgress);
     }
@@ -90,6 +90,11 @@ public class BisonView extends FrameLayout implements BisonChromeEventListener ,
     @Override
     public void onJsAlert(String url, String message, JsResult result) {
         mBisonChromeClient.onJsAlert(this, url, message, result);
+    }
+
+    @Override
+    public void onJsConfirm(String url, String message, JsResult result) {
+        mBisonChromeClient.onJsConfirm(this, url, message, result);
     }
 
 

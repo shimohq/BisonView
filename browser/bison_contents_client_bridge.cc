@@ -105,6 +105,7 @@ void BisonContentsClientBridge::RunJavaScriptDialog(
     }
     case content::JAVASCRIPT_DIALOG_TYPE_CONFIRM: {
       // devtools_instrumentation::ScopedEmbedderCallbackTask("onJsConfirm");
+      VLOG(0) << "onJsConfirm";
       Java_BisonContentsClientBridge_handleJsConfirm(env, obj, jurl, jmessage,
                                                      callback_id);
       break;

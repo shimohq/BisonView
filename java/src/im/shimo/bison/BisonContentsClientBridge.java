@@ -29,7 +29,7 @@ class BisonContentsClientBridge {
         if (mBisonContentsClientListener != null) {
             new Handler().post(() -> {
                 JsResultHandler handler = new JsResultHandler(this, id);
-                
+
                 final JsPromptResult res =
                         new JsPromptResultReceiverAdapter((JsResultReceiver) handler).getPromptResult();
                 mBisonContentsClientListener.onJsAlert(url, message, res);
@@ -41,10 +41,16 @@ class BisonContentsClientBridge {
 
     @CalledByNative
     private void handleJsConfirm(final String url, final String message, final int id) {
-        new Handler().post(() -> {
-            JsResultHandler handler = new JsResultHandler(this, id);
-            //mClient.handleJsConfirm(url, message, handler);
-        });
+        if (mBisonContentsClientListener != null) {
+            new Handler().post(() -> {
+                JsResultHandler handler = new JsResultHandler(this, id);
+                final JsPromptResult res =
+                        new JsPromptResultReceiverAdapter((JsResultReceiver) handler).getPromptResult();
+                mBisonContentsClientListener.onJsConfirm(url, message, res);
+                Log.d(TAG, "handleJsConfirm: ");
+            });
+        }
+
     }
 
     @CalledByNative
@@ -112,6 +118,7 @@ class BisonContentsClientBridge {
 
         void confirmJsResult(long nativeBisonContentsClientBridge, BisonContentsClientBridge caller,
                              int id, String prompt);
+
         void cancelJsResult(
                 long nativeBisonContentsClientBridge, BisonContentsClientBridge caller, int id);
 
