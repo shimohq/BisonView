@@ -56,10 +56,14 @@ class BisonContentsClientBridge {
     @CalledByNative
     private void handleJsPrompt(
             final String url, final String message, final String defaultValue, final int id) {
-        new Handler().post(() -> {
-            JsResultHandler handler = new JsResultHandler(this, id);
-            //mClient.handleJsPrompt(url, message, defaultValue, handler);
-        });
+        if (mBisonContentsClientListener != null) {
+            new Handler().post(() -> {
+                JsResultHandler handler = new JsResultHandler(this, id);
+                final JsPromptResult res =
+                        new JsPromptResultReceiverAdapter((JsPromptResultReceiver) handler).getPromptResult();
+                mBisonContentsClientListener.onJsPrompt(url, message,defaultValue, res);
+            });
+        }
     }
 
 

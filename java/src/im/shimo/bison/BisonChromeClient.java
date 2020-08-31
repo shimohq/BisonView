@@ -19,4 +19,9 @@ public class BisonChromeClient {
         return false;
     }
 
+    public boolean onJsPrompt(BisonView view, String url, String message,
+                              String defaultValue, JsPromptResult result) {
+        return false;
+    }
+
 }

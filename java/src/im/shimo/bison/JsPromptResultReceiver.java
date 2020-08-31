@@ -2,6 +2,6 @@ package im.shimo.bison;
 
 
 interface JsPromptResultReceiver {
-    public void confirm(String result);
-    public void cancel();
+    void confirm(String result);
+    void cancel();
 }

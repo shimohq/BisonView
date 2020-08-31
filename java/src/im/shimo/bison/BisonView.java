@@ -97,5 +97,11 @@ public class BisonView extends FrameLayout implements BisonChromeEventListener, 
         mBisonChromeClient.onJsConfirm(this, url, message, result);
     }
 
+    @Override
+    public void onJsPrompt(String url, String message, String defaultValue, JsPromptResult result) {
+        //可能还需要在包装一层， 设置一个默认的ui
+        mBisonChromeClient.onJsPrompt(this, url, message, defaultValue, result);
+    }
+
 
 }
