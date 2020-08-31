@@ -24,12 +24,12 @@ public class JsResult {
     }
 
 
-    public JsResult(ResultReceiver receiver) {
+    JsResult(ResultReceiver receiver) {
         mReceiver = receiver;
     }
 
 
-    public final boolean getResult() {
+    final boolean getResult() {
         return mResult;
     }
 
