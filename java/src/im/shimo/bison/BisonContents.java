@@ -373,8 +373,9 @@ class BisonContents extends FrameLayout {
     private void onLoadProgressChanged(double progress) {
         // jiang 这里需要 bisonView  想哈这儿应该怎么搞。。
         // 新加一个类？ bridge? core? or BisonContentsClient?
-        if (mBisonChromeClient != null) {
-            mBisonChrome.onProgressChanged((int) progress);
+        if (mBisonChrome != null) {
+            Log.w(TAG ,"progress:"+progress);
+            mBisonChrome.onProgressChanged((int) (progress*100));
         }
     }
 
