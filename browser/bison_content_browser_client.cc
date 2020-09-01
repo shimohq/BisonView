@@ -2,8 +2,8 @@
 
 #include "bison_browser_context.h"
 #include "bison_browser_main_parts.h"
+#include "bison_contents_client_bridge.h"
 #include "bison_devtools_manager_delegate.h"
-// #include "content/shell/browser/shell.h"
 
 // #include "content/shell/browser/shell_quota_permission_context.h"
 // #include "content/shell/browser/shell_web_contents_view_delegate_creator.h"
@@ -527,9 +527,14 @@ bool BisonContentBrowserClient::ShouldOverrideUrlLoading(
   if (web_contents == nullptr)
     return true;
 
-  // base::string16 url = base::UTF8ToUTF16(gurl.possibly_invalid_spec());
+  BisonContentsClientBridge* client_bridge =
+      BisonContentsClientBridge::FromWebContents(web_contents);
+  if (client_bridge == nullptr)
+    return true;
 
-  return false;
+  base::string16 url = base::UTF8ToUTF16(gurl.possibly_invalid_spec());
+  return client_bridge->ShouldOverrideUrlLoading(
+      url, has_user_gesture, is_redirect, is_main_frame, ignore_navigation);
 }
 
 BisonBrowserContext* BisonContentBrowserClient::browser_context() {

@@ -8,4 +8,10 @@ interface BisonContentsClientListener {
     void onJsConfirm(String url, String message, JsResult result);
 
     void onJsPrompt(String url, String message, String defaultValue, JsPromptResult result);
+
+    boolean shouldOverrideUrlLoading(WebResourceRequest request);
+
+
+
+
 }

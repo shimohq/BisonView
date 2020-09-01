@@ -51,6 +51,7 @@ android_library("bison_java"){
     "java/src/im/shimo/bison/BisonContentsClientListener.java",
     "java/src/im/shimo/bison/JsResult.java",
     "java/src/im/shimo/bison/JsPromptResult.java",
+    "java/src/im/shimo/bison/WebResourceRequest.java",
 
   ]
 

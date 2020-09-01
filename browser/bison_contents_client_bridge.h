@@ -38,6 +38,12 @@ class BisonContentsClientBridge {
                        const base::android::JavaRef<jstring>& prompt);
   void CancelJsResult(JNIEnv*, const base::android::JavaRef<jobject>&, int id);
 
+  bool ShouldOverrideUrlLoading(const base::string16& url,
+                                bool has_user_gesture,
+                                bool is_redirect,
+                                bool is_main_frame,
+                                bool* ignore_navigation);
+
  private:
   JavaObjectWeakGlobalRef java_ref_;
 

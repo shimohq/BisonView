@@ -4,6 +4,7 @@
 #include "base/android/jni_android.h"
 #include "base/android/jni_array.h"
 #include "base/android/jni_string.h"
+#include "base/message_loop/message_loop_current.h"
 #include "bison/bison_jni_headers/BisonContentsClientBridge_jni.h"
 #include "content/public/browser/browser_thread.h"
 
@@ -11,6 +12,7 @@ using base::android::AttachCurrentThread;
 using base::android::ConvertJavaStringToUTF16;
 using base::android::ConvertUTF16ToJavaString;
 using base::android::ConvertUTF8ToJavaString;
+using base::android::HasException;
 using base::android::JavaRef;
 using base::android::ScopedJavaLocalRef;
 using content::BrowserThread;
@@ -155,6 +157,34 @@ void BisonContentsClientBridge::CancelJsResult(JNIEnv*,
   }
   std::move(*callback).Run(false, base::string16());
   pending_js_dialog_callbacks_.Remove(id);
+}
+
+bool BisonContentsClientBridge::ShouldOverrideUrlLoading(
+    const base::string16& url,
+    bool has_user_gesture,
+    bool is_redirect,
+    bool is_main_frame,
+    bool* ignore_navigation) {
+  *ignore_navigation = false;
+  JNIEnv* env = AttachCurrentThread();
+  ScopedJavaLocalRef<jobject> obj = java_ref_.get(env);
+  if (obj.is_null())
+    return true;
+  ScopedJavaLocalRef<jstring> jurl = ConvertUTF16ToJavaString(env, url);
+  // devtools_instrumentation::ScopedEmbedderCallbackTask(
+  //     "shouldOverrideUrlLoading");
+  *ignore_navigation = Java_BisonContentsClientBridge_shouldOverrideUrlLoading(
+      env, obj, jurl, has_user_gesture, is_redirect, is_main_frame);
+  if (HasException(env)) {
+    // Tell the chromium message loop to not perform any tasks after the current
+    // one - we want to make sure we return to Java cleanly without first making
+    // any new JNI calls.
+    base::MessageLoopCurrentForUI::Get()->Abort();
+    // If we crashed we don't want to continue the navigation.
+    *ignore_navigation = true;
+    return false;
+  }
+  return true;
 }
 
 }  // namespace bison

@@ -29,7 +29,7 @@ public class BisonView extends FrameLayout implements BisonChromeEventListener, 
         LibraryLoader.getInstance().ensureInitialized(LibraryProcessType.PROCESS_BROWSER);
         BrowserStartupController.get(LibraryProcessType.PROCESS_BROWSER)
                 .startBrowserProcessesSync(false);
-        mBisonContentsClientBridge = new BisonContentsClientBridge(this);
+        mBisonContentsClientBridge = new BisonContentsClientBridge(context,this);
         mBisonContents = new BisonContents(context, this, mBisonContentsClientBridge);
         addView(mBisonContents);
     }
@@ -60,7 +60,7 @@ public class BisonView extends FrameLayout implements BisonChromeEventListener, 
     }
 
     public void setBisonViewClient(BisonViewClient client) {
-        mBisonContents.setBisonViewClient(client);
+        mBisonViewClient = client;
     }
 
     public void setBisonChromeClient(BisonChromeClient client) {
@@ -101,6 +101,15 @@ public class BisonView extends FrameLayout implements BisonChromeEventListener, 
     public void onJsPrompt(String url, String message, String defaultValue, JsPromptResult result) {
         //可能还需要在包装一层， 设置一个默认的ui
         mBisonChromeClient.onJsPrompt(this, url, message, defaultValue, result);
+    }
+
+    // jiang 感觉这里必须要移出去 
+    @Override
+    public boolean shouldOverrideUrlLoading(WebResourceRequest request){
+        if (mBisonViewClient!=null){
+            return mBisonViewClient.shouldOverrideUrlLoading(this,request);
+        }
+        return false;
     }
 
 
