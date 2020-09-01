@@ -67,6 +67,11 @@ public class BisonView extends FrameLayout implements BisonChromeEventListener, 
         mBisonChromeClient = client;
     }
 
+
+    public void addJavascriptInterface(Object obj, String interfaceName){
+        mBisonContents.addJavascriptInterface(obj,interfaceName);
+    }
+
     public void destroy() {
         removeAllViews();
         if (mContentViewRenderView != null) {

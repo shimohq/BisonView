@@ -6,6 +6,7 @@ import android.util.Base64;
 import android.view.ActionMode;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.webkit.JavascriptInterface;
 import android.widget.FrameLayout;
 
 import org.chromium.base.Callback;
@@ -18,6 +19,7 @@ import org.chromium.components.embedder_support.view.ContentView;
 import org.chromium.components.embedder_support.view.ContentViewRenderView;
 import org.chromium.content_public.browser.ActionModeCallbackHelper;
 import org.chromium.content_public.browser.JavaScriptCallback;
+import org.chromium.content_public.browser.JavascriptInjector;
 import org.chromium.content_public.browser.LoadUrlParams;
 import org.chromium.content_public.browser.NavigationController;
 import org.chromium.content_public.browser.SelectionPopupController;
@@ -27,6 +29,7 @@ import org.chromium.content_public.common.ContentUrlConstants;
 import org.chromium.ui.base.ActivityWindowAndroid;
 import org.chromium.ui.base.WindowAndroid;
 
+import java.lang.annotation.Annotation;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -48,6 +51,8 @@ class BisonContents extends FrameLayout {
     private BisonChromeClient mBisonChromeClient;
     private final BisonChromeEventListener mBisonChrome;
     private BisonContentsClientBridge mBisonContentsClientBridge;
+
+    private JavascriptInjector mJavascriptInjector;
 
     public BisonContents(Context context, BisonChromeEventListener bisonChrome ,
             BisonContentsClientBridge bisonContentsClientBridge) {
@@ -242,6 +247,27 @@ class BisonContents extends FrameLayout {
         return url;
     }
 
+    public void addJavascriptInterface(Object object, String name) {
+        //if (TRACE) Log.i(TAG, "%s addJavascriptInterface=%s", this, name);
+        //if (isDestroyed(WARN)) return;
+        Class<? extends Annotation> requiredAnnotation = JavascriptInterface.class;;
+        getJavascriptInjector().addPossiblyUnsafeInterface(object, name, requiredAnnotation);
+    }
+
+    public void disableJavascriptInterfacesInspection() {
+//        if (!isDestroyed(WARN)) {
+//            getJavascriptInjector().setAllowInspection(false);
+//        }
+        getJavascriptInjector().setAllowInspection(false);
+    }
+
+    private JavascriptInjector getJavascriptInjector() {
+        if (mJavascriptInjector == null) {
+            mJavascriptInjector = JavascriptInjector.fromWebContents(mWebContents);
+        }
+        return mJavascriptInjector;
+    }
+
 
     @SuppressWarnings("unused")
     @CalledByNative
@@ -351,6 +377,8 @@ class BisonContents extends FrameLayout {
             mBisonChrome.onProgressChanged((int) progress);
         }
     }
+
+
 
 
     @NativeMethods
