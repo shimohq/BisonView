@@ -26,8 +26,8 @@
 #include "bison_contents_client_bridge.h"
 #include "bison_devtools_frontend.h"
 #include "bison_javascript_dialog_manager.h"
-// #include "bison_switches.h"
 #include "build/build_config.h"
+#include "components/navigation_interception/intercept_navigation_delegate.h"
 #include "content/public/browser/devtools_agent_host.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_entry.h"
@@ -57,6 +57,7 @@ using content::ReloadType;
 using content::RenderFrameHost;
 using content::RenderProcessHost;
 using content::RenderWidgetHost;
+using navigation_interception::InterceptNavigationDelegate;
 
 namespace bison {
 
@@ -640,6 +641,10 @@ void BisonContents::SetJavaPeers(
       new BisonContentsClientBridge(env, contents_client_bridge));
   BisonContentsClientBridge::Associate(web_contents_.get(),
                                        contents_client_bridge_.get());
+
+  // InterceptNavigationDelegate::Associate(
+  //     web_contents_.get(), std::make_unique<InterceptNavigationDelegate>(
+  //                              env, intercept_navigation_delegate));
 }
 
 ScopedJavaLocalRef<jobject> BisonContents::GetWebContents(JNIEnv* env) {

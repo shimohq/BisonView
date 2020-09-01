@@ -4,6 +4,7 @@ bison_java_deps = [
   "//components/embedder_support/android:content_view_java",
   "//components/embedder_support/android:view_java",
   "//components/viz/service:service_java",
+  "//components/navigation_interception/android:navigation_interception_java",
   # "//services/device/public/mojom",
   # ActivityWindowAndroid requires
   "//ui/android:ui_java",

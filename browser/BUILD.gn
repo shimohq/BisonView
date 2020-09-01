@@ -28,6 +28,7 @@ source_set("browser") {
     "//base",
     "//content/public/browser",
     "//ui/gfx",
+    "//components/navigation_interception",
     "//bison:bison_jni_headers"
   ]
 }

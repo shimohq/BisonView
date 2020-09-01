@@ -182,6 +182,7 @@ class BisonContents : public WebContentsDelegate, public WebContentsObserver {
   base::android::ScopedJavaLocalRef<jobject> GetWebContents(JNIEnv* env);
   void SetJavaPeers(JNIEnv* env,
                     const JavaParamRef<jobject>& contents_client_bridge);
+  // const JavaParamRef<jobject>& intercept_navigation_delegate
 
  private:
   enum UIControl { BACK_BUTTON, FORWARD_BUTTON, STOP_BUTTON };
