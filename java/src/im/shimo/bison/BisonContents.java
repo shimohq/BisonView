@@ -48,16 +48,16 @@ class BisonContents extends FrameLayout {
 
 
     private BisonViewClient mBisonViewClient;
-    private BisonChromeClient mBisonChromeClient;
-    private final BisonChromeEventListener mBisonChrome;
+    private BisonWebChromeClient mBisonWebChromeClient;
+
     private BisonContentsClientBridge mBisonContentsClientBridge;
 
     private JavascriptInjector mJavascriptInjector;
 
-    public BisonContents(Context context, BisonChromeEventListener bisonChrome ,
+    public BisonContents(Context context,
             BisonContentsClientBridge bisonContentsClientBridge) {
         super(context);
-        this.mBisonChrome = bisonChrome;
+
         mBisonContentsClientBridge = bisonContentsClientBridge;
 
         mNativeBisonContents = BisonContentsJni.get().init(this);
@@ -83,8 +83,9 @@ class BisonContents extends FrameLayout {
         addView(cv);
         cv.requestFocus();
         mContentViewRenderView.setCurrentWebContents(mWebContents);
+        BisonWebContentsDelegate webContentsDelegate = new BisonWebContentsDelegate();
 
-        BisonContentsJni.get().setJavaPeers(mNativeBisonContents, mBisonContentsClientBridge);
+        BisonContentsJni.get().setJavaPeers(mNativeBisonContents,webContentsDelegate, mBisonContentsClientBridge);
 
 
     }
@@ -193,8 +194,8 @@ class BisonContents extends FrameLayout {
         this.mBisonViewClient = client;
     }
 
-    public void setBisonChromeClient(BisonChromeClient client){
-        this.mBisonChromeClient = client;
+    public void setBisonWebChromeClient(BisonWebChromeClient client){
+        this.mBisonWebChromeClient = client;
     }
 
 
@@ -277,17 +278,9 @@ class BisonContents extends FrameLayout {
 
     
 
-    @CalledByNative
-    private void toggleFullscreenModeForTab(boolean enterFullscreen) {
-        // mIsFullscreen = enterFullscreen;
-        // LinearLayout toolBar = (LinearLayout) findViewById(R.id.toolbar);
-        // toolBar.setVisibility(enterFullscreen ? GONE : VISIBLE);
-    }
+  
 
-    @CalledByNative
-    private boolean isFullscreenForTabOrPending() {
-        return false;
-    }
+  
 
     @SuppressWarnings("unused")
     @CalledByNative
@@ -334,13 +327,7 @@ class BisonContents extends FrameLayout {
     }
 
 
-    @CalledByNative
-    public void setOverlayMode(boolean useOverlayMode) {
-        // mContentViewRenderView.setOverlayVideoMode(useOverlayMode);
-        // if (mOverlayModeChangedCallbackForTesting != null) {
-        //     mOverlayModeChangedCallbackForTesting.onResult(useOverlayMode);
-        // }
-    }
+ 
 
     @CalledByNative
     public void sizeTo(int width, int height) {
@@ -365,19 +352,9 @@ class BisonContents extends FrameLayout {
 
     @CalledByNative
     private void onUpdateTitle(String title) {
-        mBisonChrome.onTitleUpdate(title);
+//        mBisonChrome.onTitleUpdate(title);
     }
 
-    @SuppressWarnings("unused")
-    @CalledByNative
-    private void onLoadProgressChanged(double progress) {
-        // jiang 这里需要 bisonView  想哈这儿应该怎么搞。。
-        // 新加一个类？ bridge? core? or BisonContentsClient?
-        if (mBisonChrome != null) {
-            Log.w(TAG ,"progress:"+progress);
-            mBisonChrome.onProgressChanged((int) (progress*100));
-        }
-    }
 
 
 
@@ -386,7 +363,8 @@ class BisonContents extends FrameLayout {
     interface Natives {
         long init(BisonContents caller);
         WebContents getWebContents(long nativeBisonContents);
-        void setJavaPeers(long nativeBisonContents, BisonContentsClientBridge bisonContentsClientBridge);
+        void setJavaPeers(long nativeBisonContents,BisonWebContentsDelegate webContentsDelegate,
+                BisonContentsClientBridge bisonContentsClientBridge);
         void closeShell(long BisonViewPtr);
     }
 

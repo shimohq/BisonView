@@ -1,6 +1,6 @@
 package im.shimo.bison;
 
-public class BisonChromeClient {
+public class BisonWebChromeClient {
 
     public void onProgressChanged(BisonView view, int newProgress) {
     }

@@ -10,15 +10,11 @@ import org.chromium.base.library_loader.LibraryProcessType;
 import org.chromium.components.embedder_support.view.ContentViewRenderView;
 import org.chromium.content_public.browser.BrowserStartupController;
 
-public class BisonView extends FrameLayout implements BisonChromeEventListener, BisonContentsClientListener {
+public class BisonView extends FrameLayout {
 
-    static final BisonChromeClient sNullChromeClient = new BisonChromeClient();
-
+    private final BisonContentsClient mBisonContentsClient;
     private ContentViewRenderView mContentViewRenderView;
-
     private BisonContents mBisonContents;
-    private BisonChromeClient mBisonChromeClient = sNullChromeClient;
-    private BisonViewClient mBisonViewClient;
     private BisonContentsClientBridge mBisonContentsClientBridge;
 
     /**
@@ -29,8 +25,9 @@ public class BisonView extends FrameLayout implements BisonChromeEventListener, 
         LibraryLoader.getInstance().ensureInitialized(LibraryProcessType.PROCESS_BROWSER);
         BrowserStartupController.get(LibraryProcessType.PROCESS_BROWSER)
                 .startBrowserProcessesSync(false);
-        mBisonContentsClientBridge = new BisonContentsClientBridge(context,this);
-        mBisonContents = new BisonContents(context, this, mBisonContentsClientBridge);
+        mBisonContentsClient = new BisonContentsClient(this, context);
+        mBisonContentsClientBridge = new BisonContentsClientBridge(context, mBisonContentsClient);
+        mBisonContents = new BisonContents(context, mBisonContentsClientBridge);
         addView(mBisonContents);
     }
 
@@ -60,16 +57,16 @@ public class BisonView extends FrameLayout implements BisonChromeEventListener, 
     }
 
     public void setBisonViewClient(BisonViewClient client) {
-        mBisonViewClient = client;
+        mBisonContentsClient.setBisonViewClient(client);
     }
 
-    public void setBisonChromeClient(BisonChromeClient client) {
-        mBisonChromeClient = client;
+    public void setBisonWebChromeClient(BisonWebChromeClient client) {
+        mBisonContentsClient.setBisonWebChromeClient(client);
     }
 
 
-    public void addJavascriptInterface(Object obj, String interfaceName){
-        mBisonContents.addJavascriptInterface(obj,interfaceName);
+    public void addJavascriptInterface(Object obj, String interfaceName) {
+        mBisonContents.addJavascriptInterface(obj, interfaceName);
     }
 
     public void destroy() {
@@ -79,43 +76,5 @@ public class BisonView extends FrameLayout implements BisonChromeEventListener, 
             mContentViewRenderView = null;
         }
     }
-
-
-    @Override
-    public void onTitleUpdate(String title) {
-        mBisonChromeClient.onReceivedTitle(this, title);
-    }
-
-    @Override
-    public void onProgressChanged(int newProgress) {
-        mBisonChromeClient.onProgressChanged(this, newProgress);
-    }
-
-
-    @Override
-    public void onJsAlert(String url, String message, JsResult result) {
-        mBisonChromeClient.onJsAlert(this, url, message, result);
-    }
-
-    @Override
-    public void onJsConfirm(String url, String message, JsResult result) {
-        mBisonChromeClient.onJsConfirm(this, url, message, result);
-    }
-
-    @Override
-    public void onJsPrompt(String url, String message, String defaultValue, JsPromptResult result) {
-        //可能还需要在包装一层， 设置一个默认的ui
-        mBisonChromeClient.onJsPrompt(this, url, message, defaultValue, result);
-    }
-
-    // jiang 感觉这里必须要移出去 
-    @Override
-    public boolean shouldOverrideUrlLoading(WebResourceRequest request){
-        if (mBisonViewClient!=null){
-            return mBisonViewClient.shouldOverrideUrlLoading(this,request);
-        }
-        return false;
-    }
-
 
 }

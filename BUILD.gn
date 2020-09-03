@@ -32,14 +32,14 @@ generate_jni("bison_jni_headers") {
   sources = [
     "java/src/im/shimo/bison/BisonContents.java",
     "java/src/im/shimo/bison/BisonContentsClientBridge.java",
+    "java/src/im/shimo/bison/BisonWebContentsDelegate.java",
   ]
 }
 
 android_library("bison_java"){
   java_files = [
     "java/src/im/shimo/bison/BisonContents.java",
-    "java/src/im/shimo/bison/BisonChromeClient.java",
-    "java/src/im/shimo/bison/BisonChromeEventListener.java",
+    "java/src/im/shimo/bison/BisonWebChromeClient.java",
     "java/src/im/shimo/bison/BisonView.java",
     "java/src/im/shimo/bison/BisonViewAndroidDelegate.java",
     "java/src/im/shimo/bison/BisonViewClient.java",
@@ -48,10 +48,12 @@ android_library("bison_java"){
     "java/src/im/shimo/bison/JsPromptResultReceiver.java",
     "java/src/im/shimo/bison/JsResultHandler.java",
     "java/src/im/shimo/bison/JsResultReceiver.java",
-    "java/src/im/shimo/bison/BisonContentsClientListener.java",
+    "java/src/im/shimo/bison/BisonContentsClient.java",
     "java/src/im/shimo/bison/JsResult.java",
     "java/src/im/shimo/bison/JsPromptResult.java",
     "java/src/im/shimo/bison/WebResourceRequest.java",
+    "java/src/im/shimo/bison/BisonWebContentsDelegate.java",
+    "java/src/im/shimo/bison/JsDialogHelper.java",
 
   ]
 

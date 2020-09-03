@@ -51,6 +51,7 @@ namespace bison {
 class BisonDevToolsFrontend;
 class BisonJavaScriptDialogManager;
 class BisonContentsClientBridge;
+class BisonWebContentsDelegate;
 
 class BisonContents : public WebContentsDelegate, public WebContentsObserver {
  public:
@@ -103,84 +104,81 @@ class BisonContents : public WebContentsDelegate, public WebContentsObserver {
   // already been signalled to quit.
   static void QuitMainMessageLoopForTesting();
 
-  // Used for content_browsertests. Called once.
-  static void SetBisonContentsCreatedCallback(
-      base::OnceCallback<void(BisonContents*)> bison_view_created_callback);
+  // // Used for content_browsertests. Called once.
+  // static void SetBisonContentsCreatedCallback(
+  //     base::OnceCallback<void(BisonContents*)> bison_view_created_callback);
 
   WebContents* web_contents() const { return web_contents_.get(); }
   gfx::NativeWindow window() { return window_; }
 
   // WebContentsDelegate
-  WebContents* OpenURLFromTab(WebContents* source,
-                              const OpenURLParams& params) override;
-  void AddNewContents(WebContents* source,
-                      std::unique_ptr<WebContents> new_contents,
-                      WindowOpenDisposition disposition,
-                      const gfx::Rect& initial_rect,
-                      bool user_gesture,
-                      bool* was_blocked) override;
-  void LoadingStateChanged(WebContents* source,
-                           bool to_different_document) override;
+  // WebContents* OpenURLFromTab(WebContents* source,
+  //                             const OpenURLParams& params) override;
+  // void AddNewContents(WebContents* source,
+  //                     std::unique_ptr<WebContents> new_contents,
+  //                     WindowOpenDisposition disposition,
+  //                     const gfx::Rect& initial_rect,
+  //                     bool user_gesture,
+  //                     bool* was_blocked) override;
+  // void LoadingStateChanged(WebContents* source,
+  //                          bool to_different_document) override;
 
-  void LoadProgressChanged(WebContents* source, double progress) override;
-  void SetOverlayMode(bool use_overlay_mode) override;
+  // void LoadProgressChanged(WebContents* source, double progress) override;
+  // void SetOverlayMode(bool use_overlay_mode) override;
 
-  void EnterFullscreenModeForTab(
-      WebContents* web_contents,
-      const GURL& origin,
-      const blink::mojom::FullscreenOptions& options) override;
-  void ExitFullscreenModeForTab(WebContents* web_contents) override;
-  bool IsFullscreenForTabOrPending(const WebContents* web_contents) override;
-  blink::mojom::DisplayMode GetDisplayMode(
-      const WebContents* web_contents) override;
-  void RequestToLockMouse(WebContents* web_contents,
-                          bool user_gesture,
-                          bool last_unlocked_by_target) override;
-  void CloseContents(WebContents* source) override;
-  bool CanOverscrollContent() override;
-  void DidNavigateMainFramePostCommit(WebContents* web_contents) override;
-  JavaScriptDialogManager* GetJavaScriptDialogManager(
-      WebContents* source) override;
-  std::unique_ptr<BluetoothChooser> RunBluetoothChooser(
-      RenderFrameHost* frame,
-      const BluetoothChooser::EventHandler& event_handler) override;
-  std::unique_ptr<BluetoothScanningPrompt> ShowBluetoothScanningPrompt(
-      RenderFrameHost* frame,
-      const BluetoothScanningPrompt::EventHandler& event_handler) override;
-  bool DidAddMessageToConsole(WebContents* source,
-                              blink::mojom::ConsoleMessageLevel log_level,
-                              const base::string16& message,
-                              int32_t line_no,
-                              const base::string16& source_id) override;
-  void PortalWebContentsCreated(WebContents* portal_web_contents) override;
-  void RendererUnresponsive(
-      WebContents* source,
-      RenderWidgetHost* render_widget_host,
-      base::RepeatingClosure hang_monitor_restarter) override;
-  void ActivateContents(WebContents* contents) override;
-  std::unique_ptr<content::WebContents> SwapWebContents(
-      content::WebContents* old_contents,
-      std::unique_ptr<content::WebContents> new_contents,
-      bool did_start_load,
-      bool did_finish_load) override;
-  bool ShouldAllowRunningInsecureContent(content::WebContents* web_contents,
-                                         bool allowed_per_prefs,
-                                         const url::Origin& origin,
-                                         const GURL& resource_url) override;
-  PictureInPictureResult EnterPictureInPicture(
-      content::WebContents* web_contents,
-      const viz::SurfaceId&,
-      const gfx::Size& natural_size) override;
-  bool ShouldResumeRequestsForCreatedWindow() override;
-
-  void set_delay_popup_contents_delegate_for_testing(bool delay) {
-    delay_popup_contents_delegate_for_testing_ = delay;
-  }
+  // void EnterFullscreenModeForTab(
+  //     WebContents* web_contents,
+  //     const GURL& origin,
+  //     const blink::mojom::FullscreenOptions& options) override;
+  // void ExitFullscreenModeForTab(WebContents* web_contents) override;
+  // bool IsFullscreenForTabOrPending(const WebContents* web_contents) override;
+  // blink::mojom::DisplayMode GetDisplayMode(
+  //     const WebContents* web_contents) override;
+  // void RequestToLockMouse(WebContents* web_contents,
+  //                         bool user_gesture,
+  //                         bool last_unlocked_by_target) override;
+  // void CloseContents(WebContents* source) override;
+  // bool CanOverscrollContent() override;
+  // void DidNavigateMainFramePostCommit(WebContents* web_contents) override;
+  // JavaScriptDialogManager* GetJavaScriptDialogManager(
+  //     WebContents* source) override;
+  // std::unique_ptr<BluetoothChooser> RunBluetoothChooser(
+  //     RenderFrameHost* frame,
+  //     const BluetoothChooser::EventHandler& event_handler) override;
+  // std::unique_ptr<BluetoothScanningPrompt> ShowBluetoothScanningPrompt(
+  //     RenderFrameHost* frame,
+  //     const BluetoothScanningPrompt::EventHandler& event_handler) override;
+  // bool DidAddMessageToConsole(WebContents* source,
+  //                             blink::mojom::ConsoleMessageLevel log_level,
+  //                             const base::string16& message,
+  //                             int32_t line_no,
+  //                             const base::string16& source_id) override;
+  // void PortalWebContentsCreated(WebContents* portal_web_contents) override;
+  // void RendererUnresponsive(
+  //     WebContents* source,
+  //     RenderWidgetHost* render_widget_host,
+  //     base::RepeatingClosure hang_monitor_restarter) override;
+  // void ActivateContents(WebContents* contents) override;
+  // std::unique_ptr<content::WebContents> SwapWebContents(
+  //     content::WebContents* old_contents,
+  //     std::unique_ptr<content::WebContents> new_contents,
+  //     bool did_start_load,
+  //     bool did_finish_load) override;
+  // bool ShouldAllowRunningInsecureContent(content::WebContents* web_contents,
+  //                                        bool allowed_per_prefs,
+  //                                        const url::Origin& origin,
+  //                                        const GURL& resource_url) override;
+  // PictureInPictureResult EnterPictureInPicture(
+  //     content::WebContents* web_contents,
+  //     const viz::SurfaceId&,
+  //     const gfx::Size& natural_size) override;
+  // bool ShouldResumeRequestsForCreatedWindow() override;
 
   // jiang
   base::android::ScopedJavaGlobalRef<jobject> java_object_;
   base::android::ScopedJavaLocalRef<jobject> GetWebContents(JNIEnv* env);
   void SetJavaPeers(JNIEnv* env,
+                    const JavaParamRef<jobject>& web_contents_delegate,
                     const JavaParamRef<jobject>& contents_client_bridge);
   // const JavaParamRef<jobject>& intercept_navigation_delegate
 
@@ -189,13 +187,11 @@ class BisonContents : public WebContentsDelegate, public WebContentsObserver {
 
   class DevToolsWebContentsObserver;
 
-  BisonContents(std::unique_ptr<WebContents> web_contents,
-                bool should_set_delegate);
+  BisonContents(std::unique_ptr<WebContents> web_contents);
 
   // Helper to create a new Shell given a newly created WebContents.
   static BisonContents* CreateBisonContents(
-      std::unique_ptr<WebContents> web_contents,
-      bool should_set_delegate);
+      std::unique_ptr<WebContents> web_contents);
 
   // Helper for one time initialization of application
   static void PlatformInitialize(const gfx::Size& default_window_size);
@@ -219,8 +215,8 @@ class BisonContents : public WebContentsDelegate, public WebContentsObserver {
   // Sets whether the spinner is spinning.
   void PlatformSetIsLoading(bool loading);
 
-  void PlatformToggleFullscreenModeForTab(WebContents* web_contents,
-                                          bool enter_fullscreen);
+  // void PlatformToggleFullscreenModeForTab(WebContents* web_contents,
+  //                                         bool enter_fullscreen);
   bool PlatformIsFullscreenForTabOrPending(
       const WebContents* web_contents) const;
 
@@ -246,6 +242,7 @@ class BisonContents : public WebContentsDelegate, public WebContentsObserver {
   std::unique_ptr<BisonJavaScriptDialogManager> dialog_manager_;
 
   std::unique_ptr<WebContents> web_contents_;
+  std::unique_ptr<BisonWebContentsDelegate> web_contents_delegate_;
   std::unique_ptr<BisonContentsClientBridge> contents_client_bridge_;
 
   std::unique_ptr<DevToolsWebContentsObserver> devtools_observer_;
@@ -264,7 +261,8 @@ class BisonContents : public WebContentsDelegate, public WebContentsObserver {
   // of ordering.
   static std::vector<BisonContents*> windows_;
 
-  static base::OnceCallback<void(BisonContents*)> bison_view_created_callback_;
+  // static base::OnceCallback<void(BisonContents*)>
+  // bison_view_created_callback_;
 };
 
 }  // namespace bison

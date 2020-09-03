@@ -14,5 +14,7 @@ public class BisonViewClient {
     }
 
 
+    public void onPageFinished(BisonView view, String url){
 
+    }
 }
