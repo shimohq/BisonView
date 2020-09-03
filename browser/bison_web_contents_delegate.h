@@ -3,9 +3,7 @@
 #ifndef BISON_BROWSER_BISON_WEB_CONTENTS_DELEGATE_H_
 #define BISON_BROWSER_BISON_WEB_CONTENTS_DELEGATE_H_
 
-#include "base/android/jni_weak_ref.h"
-#include "base/android/scoped_java_ref.h"
-#include "content/public/browser/web_contents_delegate.h"
+#include "components/embedder_support/android/delegate/web_contents_delegate_android.h"
 
 using content::BluetoothChooser;
 using content::BluetoothScanningPrompt;
@@ -21,14 +19,13 @@ namespace bison {
 
 class BisonJavaScriptDialogManager;
 
-class BisonWebContentsDelegate : public WebContentsDelegate {
+class BisonWebContentsDelegate
+    : public web_contents_delegate_android::WebContentsDelegateAndroid {
  public:
   BisonWebContentsDelegate(JNIEnv* env, jobject obj);
   ~BisonWebContentsDelegate() override;
 
   // WebContentsDelegate
-  WebContents* OpenURLFromTab(WebContents* source,
-                              const OpenURLParams& params) override;
   void AddNewContents(WebContents* source,
                       std::unique_ptr<WebContents> new_contents,
                       WindowOpenDisposition disposition,
@@ -37,7 +34,7 @@ class BisonWebContentsDelegate : public WebContentsDelegate {
                       bool* was_blocked) override;
   void LoadingStateChanged(WebContents* source,
                            bool to_different_document) override;
-  void LoadProgressChanged(WebContents* source, double progress) override;
+  // void LoadProgressChanged(WebContents* source, double progress) override;
   void SetOverlayMode(bool use_overlay_mode) override;
   void EnterFullscreenModeForTab(
       WebContents* web_contents,

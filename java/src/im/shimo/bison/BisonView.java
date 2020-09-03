@@ -27,7 +27,8 @@ public class BisonView extends FrameLayout {
                 .startBrowserProcessesSync(false);
         mBisonContentsClient = new BisonContentsClient(this, context);
         mBisonContentsClientBridge = new BisonContentsClientBridge(context, mBisonContentsClient);
-        mBisonContents = new BisonContents(context, mBisonContentsClientBridge);
+        BisonWebContentsDelegate webContentsDelegate = new BisonWebContentsDelegate(mBisonContentsClient);
+        mBisonContents = new BisonContents(context, webContentsDelegate, mBisonContentsClientBridge,mBisonContentsClient);
         addView(mBisonContents);
     }
 

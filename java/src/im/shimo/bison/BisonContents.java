@@ -36,6 +36,7 @@ import java.util.Map;
 @JNINamespace("bison")
 class BisonContents extends FrameLayout {
     private static final String TAG = "BisonContents";
+    private final BisonWebContentsObserver mBisonWebContentsObserver;
 
     private long mNativeBisonContents;
 
@@ -54,8 +55,8 @@ class BisonContents extends FrameLayout {
 
     private JavascriptInjector mJavascriptInjector;
 
-    public BisonContents(Context context,
-            BisonContentsClientBridge bisonContentsClientBridge) {
+    public BisonContents(Context context, BisonWebContentsDelegate webContentsDelegate,
+                         BisonContentsClientBridge bisonContentsClientBridge, BisonContentsClient bisonContentsClient) {
         super(context);
 
         mBisonContentsClientBridge = bisonContentsClientBridge;
@@ -77,15 +78,17 @@ class BisonContents extends FrameLayout {
                 "", mViewAndroidDelegate, cv, mWindow, WebContents.createDefaultInternalsHolder());
         SelectionPopupController.fromWebContents(mWebContents)
                 .setActionModeCallback(defaultActionCallback());
+        mBisonWebContentsObserver = new BisonWebContentsObserver(mWebContents,
+                this, bisonContentsClient);
         mNavigationController = mWebContents.getNavigationController();
         if (getParent() != null) mWebContents.onShow();
 
         addView(cv);
         cv.requestFocus();
         mContentViewRenderView.setCurrentWebContents(mWebContents);
-        BisonWebContentsDelegate webContentsDelegate = new BisonWebContentsDelegate();
 
-        BisonContentsJni.get().setJavaPeers(mNativeBisonContents,webContentsDelegate, mBisonContentsClientBridge);
+
+        BisonContentsJni.get().setJavaPeers(mNativeBisonContents, webContentsDelegate, mBisonContentsClientBridge);
 
 
     }
@@ -124,7 +127,7 @@ class BisonContents extends FrameLayout {
     }
 
 
-    public void loadUrl(String url){
+    public void loadUrl(String url) {
         if (url == null) return;
 
         if (TextUtils.equals(url, mWebContents.getLastCommittedUrl())) {
@@ -187,14 +190,14 @@ class BisonContents extends FrameLayout {
                 PostTask.postTask(UiThreadTaskTraits.DEFAULT, () -> callback.onResult(jsonResult));
             };
         }
-        mWebContents.evaluateJavaScript(script,jsCallback);
+        mWebContents.evaluateJavaScript(script, jsCallback);
     }
 
     public void setBisonViewClient(BisonViewClient client) {
         this.mBisonViewClient = client;
     }
 
-    public void setBisonWebChromeClient(BisonWebChromeClient client){
+    public void setBisonWebChromeClient(BisonWebChromeClient client) {
         this.mBisonWebChromeClient = client;
     }
 
@@ -251,7 +254,8 @@ class BisonContents extends FrameLayout {
     public void addJavascriptInterface(Object object, String name) {
         //if (TRACE) Log.i(TAG, "%s addJavascriptInterface=%s", this, name);
         //if (isDestroyed(WARN)) return;
-        Class<? extends Annotation> requiredAnnotation = JavascriptInterface.class;;
+        Class<? extends Annotation> requiredAnnotation = JavascriptInterface.class;
+        ;
         getJavascriptInjector().addPossiblyUnsafeInterface(object, name, requiredAnnotation);
     }
 
@@ -276,11 +280,6 @@ class BisonContents extends FrameLayout {
         //mUrlTextView.setText(url);
     }
 
-    
-
-  
-
-  
 
     @SuppressWarnings("unused")
     @CalledByNative
@@ -297,6 +296,7 @@ class BisonContents extends FrameLayout {
 
     /**
      * Initializes the ContentView based on the native tab contents pointer passed in.
+     *
      * @param webContents A {@link WebContents} object.
      */
     @SuppressWarnings("unused")
@@ -327,8 +327,6 @@ class BisonContents extends FrameLayout {
     }
 
 
- 
-
     @CalledByNative
     public void sizeTo(int width, int height) {
         // mWebContents.setSize(width, height);
@@ -338,8 +336,9 @@ class BisonContents extends FrameLayout {
     /**
      * Enable/Disable navigation(Prev/Next) button if navigation is allowed/disallowed
      * in respective direction.
+     *
      * @param controlId Id of button to update
-     * @param enabled enable/disable value
+     * @param enabled   enable/disable value
      */
     @CalledByNative
     private void enableUiControl(int controlId, boolean enabled) {
@@ -356,15 +355,15 @@ class BisonContents extends FrameLayout {
     }
 
 
-
-
-
     @NativeMethods
     interface Natives {
         long init(BisonContents caller);
+
         WebContents getWebContents(long nativeBisonContents);
-        void setJavaPeers(long nativeBisonContents,BisonWebContentsDelegate webContentsDelegate,
-                BisonContentsClientBridge bisonContentsClientBridge);
+
+        void setJavaPeers(long nativeBisonContents, BisonWebContentsDelegate webContentsDelegate,
+                          BisonContentsClientBridge bisonContentsClientBridge);
+
         void closeShell(long BisonViewPtr);
     }
 

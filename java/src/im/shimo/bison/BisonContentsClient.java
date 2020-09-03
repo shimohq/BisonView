@@ -134,6 +134,7 @@ public class BisonContentsClient {
     }
 
 
+
     private static boolean sendBrowsingIntent(Context context, String url, boolean hasUserGesture,
                                               boolean isRedirect) {
         if (!hasUserGesture && !isRedirect) {

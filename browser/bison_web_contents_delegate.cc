@@ -10,54 +10,9 @@ using content::NavigationController;
 namespace bison {
 
 BisonWebContentsDelegate::BisonWebContentsDelegate(JNIEnv* env, jobject obj)
-    : is_fullscreen_(false) {}
+    : WebContentsDelegateAndroid(env, obj), is_fullscreen_(false) {}
 
 BisonWebContentsDelegate::~BisonWebContentsDelegate() {}
-
-WebContents* BisonWebContentsDelegate::OpenURLFromTab(
-    WebContents* source,
-    const OpenURLParams& params) {
-  VLOG(0) << "OpenURLFromTab params";
-  WebContents* target = nullptr;
-  switch (params.disposition) {
-    case WindowOpenDisposition::CURRENT_TAB:
-      target = source;
-      break;
-
-    // Normally, the difference between NEW_POPUP and NEW_WINDOW is that a popup
-    // should have no toolbar, no status bar, no menu bar, no scrollbars and be
-    // not resizable.  For simplicity and to enable new testing scenarios in
-    // content bison_view and web tests, popups don't get special treatment
-    // below (i.e. they will have a toolbar and other things described here).
-    case WindowOpenDisposition::NEW_POPUP:
-    case WindowOpenDisposition::NEW_WINDOW:
-    // content_shell doesn't really support tabs, but some web tests use
-    // middle click (which translates into kNavigationPolicyNewBackgroundTab),
-    // so we treat the cases below just like a NEW_WINDOW disposition.
-    case WindowOpenDisposition::NEW_BACKGROUND_TAB:
-    case WindowOpenDisposition::NEW_FOREGROUND_TAB: {
-      break;
-    }
-
-    // No tabs in content_shell:
-    case WindowOpenDisposition::SINGLETON_TAB:
-    // No incognito mode in content_shell:
-    case WindowOpenDisposition::OFF_THE_RECORD:
-    // TODO(lukasza): Investigate if some web tests might need support for
-    // SAVE_TO_DISK disposition.  This would probably require that
-    // BlinkTestController always sets up and cleans up a temporary directory
-    // as the default downloads destinations for the duration of a test.
-    case WindowOpenDisposition::SAVE_TO_DISK:
-    // Ignoring requests with disposition == IGNORE_ACTION...
-    case WindowOpenDisposition::IGNORE_ACTION:
-    default:
-      return nullptr;
-  }
-
-  target->GetController().LoadURLWithParams(
-      NavigationController::LoadURLParams(params));
-  return target;
-}
 
 void BisonWebContentsDelegate::AddNewContents(
     WebContents* source,
@@ -75,12 +30,12 @@ void BisonWebContentsDelegate::LoadingStateChanged(WebContents* source,
   // PlatformSetIsLoading(source->IsLoading());
 }
 
-void BisonWebContentsDelegate::LoadProgressChanged(WebContents* source,
-                                                   double progress) {
-  // JNIEnv* env = AttachCurrentThread();
-  // Java_BisonWebContentsDelegate_onLoadProgressChanged(env, java_object_,
-  //                                                     progress);
-}
+// void BisonWebContentsDelegate::LoadProgressChanged(WebContents* source,
+//                                                    double progress) {
+// JNIEnv* env = AttachCurrentThread();
+// Java_BisonWebContentsDelegate_onLoadProgressChanged(env, java_object_,
+//                                                     progress);
+// }
 
 void BisonWebContentsDelegate::SetOverlayMode(bool use_overlay_mode) {
   // JNIEnv* env = base::android::AttachCurrentThread();

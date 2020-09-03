@@ -31,6 +31,7 @@ source_set("browser") {
     "//content/public/browser",
     "//ui/gfx",
     "//components/navigation_interception",
+    "//components/embedder_support/android:web_contents_delegate",
     "//bison:bison_jni_headers"
   ]
 }

@@ -32,7 +32,7 @@ generate_jni("bison_jni_headers") {
   sources = [
     "java/src/im/shimo/bison/BisonContents.java",
     "java/src/im/shimo/bison/BisonContentsClientBridge.java",
-    "java/src/im/shimo/bison/BisonWebContentsDelegate.java",
+    # "java/src/im/shimo/bison/BisonWebContentsDelegate.java",
   ]
 }
 
@@ -54,7 +54,7 @@ android_library("bison_java"){
     "java/src/im/shimo/bison/WebResourceRequest.java",
     "java/src/im/shimo/bison/BisonWebContentsDelegate.java",
     "java/src/im/shimo/bison/JsDialogHelper.java",
-
+    "java/src/im/shimo/bison/BisonWebContentsObserver.java",
   ]
 
   deps = bison_java_deps
