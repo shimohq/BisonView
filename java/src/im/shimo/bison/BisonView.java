@@ -7,13 +7,11 @@ import android.widget.FrameLayout;
 
 import org.chromium.base.library_loader.LibraryLoader;
 import org.chromium.base.library_loader.LibraryProcessType;
-import org.chromium.components.embedder_support.view.ContentViewRenderView;
 import org.chromium.content_public.browser.BrowserStartupController;
 
 public class BisonView extends FrameLayout {
 
     private final BisonContentsClient mBisonContentsClient;
-    private ContentViewRenderView mContentViewRenderView;
     private BisonContents mBisonContents;
     private BisonContentsClientBridge mBisonContentsClientBridge;
 
@@ -71,11 +69,8 @@ public class BisonView extends FrameLayout {
     }
 
     public void destroy() {
+        mBisonContents.destroy();
         removeAllViews();
-        if (mContentViewRenderView != null) {
-            mContentViewRenderView.destroy();
-            mContentViewRenderView = null;
-        }
     }
 
 }

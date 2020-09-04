@@ -78,9 +78,6 @@ class BisonContents : public WebContentsDelegate, public WebContentsObserver {
   void ShowDevTools();
   void CloseDevTools();
 
-  // Resizes the web content view to the given dimensions.
-  void SizeTo(const gfx::Size& content_size);
-
   static BisonContents* CreateNewWindow(
       BrowserContext* browser_context,
       const scoped_refptr<SiteInstance>& site_instance);
@@ -111,80 +108,16 @@ class BisonContents : public WebContentsDelegate, public WebContentsObserver {
   WebContents* web_contents() const { return web_contents_.get(); }
   gfx::NativeWindow window() { return window_; }
 
-  // WebContentsDelegate
-  // WebContents* OpenURLFromTab(WebContents* source,
-  //                             const OpenURLParams& params) override;
-  // void AddNewContents(WebContents* source,
-  //                     std::unique_ptr<WebContents> new_contents,
-  //                     WindowOpenDisposition disposition,
-  //                     const gfx::Rect& initial_rect,
-  //                     bool user_gesture,
-  //                     bool* was_blocked) override;
-  // void LoadingStateChanged(WebContents* source,
-  //                          bool to_different_document) override;
-
-  // void LoadProgressChanged(WebContents* source, double progress) override;
-  // void SetOverlayMode(bool use_overlay_mode) override;
-
-  // void EnterFullscreenModeForTab(
-  //     WebContents* web_contents,
-  //     const GURL& origin,
-  //     const blink::mojom::FullscreenOptions& options) override;
-  // void ExitFullscreenModeForTab(WebContents* web_contents) override;
-  // bool IsFullscreenForTabOrPending(const WebContents* web_contents) override;
-  // blink::mojom::DisplayMode GetDisplayMode(
-  //     const WebContents* web_contents) override;
-  // void RequestToLockMouse(WebContents* web_contents,
-  //                         bool user_gesture,
-  //                         bool last_unlocked_by_target) override;
-  // void CloseContents(WebContents* source) override;
-  // bool CanOverscrollContent() override;
-  // void DidNavigateMainFramePostCommit(WebContents* web_contents) override;
-  // JavaScriptDialogManager* GetJavaScriptDialogManager(
-  //     WebContents* source) override;
-  // std::unique_ptr<BluetoothChooser> RunBluetoothChooser(
-  //     RenderFrameHost* frame,
-  //     const BluetoothChooser::EventHandler& event_handler) override;
-  // std::unique_ptr<BluetoothScanningPrompt> ShowBluetoothScanningPrompt(
-  //     RenderFrameHost* frame,
-  //     const BluetoothScanningPrompt::EventHandler& event_handler) override;
-  // bool DidAddMessageToConsole(WebContents* source,
-  //                             blink::mojom::ConsoleMessageLevel log_level,
-  //                             const base::string16& message,
-  //                             int32_t line_no,
-  //                             const base::string16& source_id) override;
-  // void PortalWebContentsCreated(WebContents* portal_web_contents) override;
-  // void RendererUnresponsive(
-  //     WebContents* source,
-  //     RenderWidgetHost* render_widget_host,
-  //     base::RepeatingClosure hang_monitor_restarter) override;
-  // void ActivateContents(WebContents* contents) override;
-  // std::unique_ptr<content::WebContents> SwapWebContents(
-  //     content::WebContents* old_contents,
-  //     std::unique_ptr<content::WebContents> new_contents,
-  //     bool did_start_load,
-  //     bool did_finish_load) override;
-  // bool ShouldAllowRunningInsecureContent(content::WebContents* web_contents,
-  //                                        bool allowed_per_prefs,
-  //                                        const url::Origin& origin,
-  //                                        const GURL& resource_url) override;
-  // PictureInPictureResult EnterPictureInPicture(
-  //     content::WebContents* web_contents,
-  //     const viz::SurfaceId&,
-  //     const gfx::Size& natural_size) override;
-  // bool ShouldResumeRequestsForCreatedWindow() override;
-
   // jiang
   base::android::ScopedJavaGlobalRef<jobject> java_object_;
   base::android::ScopedJavaLocalRef<jobject> GetWebContents(JNIEnv* env);
   void SetJavaPeers(JNIEnv* env,
                     const JavaParamRef<jobject>& web_contents_delegate,
                     const JavaParamRef<jobject>& contents_client_bridge);
+  void Destroy(JNIEnv* env);
   // const JavaParamRef<jobject>& intercept_navigation_delegate
 
  private:
-  enum UIControl { BACK_BUTTON, FORWARD_BUTTON, STOP_BUTTON };
-
   class DevToolsWebContentsObserver;
 
   BisonContents(std::unique_ptr<WebContents> web_contents);
@@ -193,8 +126,6 @@ class BisonContents : public WebContentsDelegate, public WebContentsObserver {
   static BisonContents* CreateBisonContents(
       std::unique_ptr<WebContents> web_contents);
 
-  // Helper for one time initialization of application
-  static void PlatformInitialize(const gfx::Size& default_window_size);
   // Helper for one time deinitialization of platform specific state.
   static void PlatformExit();
 
@@ -204,16 +135,8 @@ class BisonContents : public WebContentsDelegate, public WebContentsObserver {
   void PlatformCleanUp();
   // Creates the main window GUI.
   void PlatformCreateWindow();
-  // Links the WebContents into the newly created window.
-  void PlatformSetContents();
   // Resize the content area and GUI.
   void PlatformResizeSubViews();
-  // Enable/disable a button.
-  void PlatformEnableUIControl(UIControl control, bool is_enabled);
-  // Updates the url in the url bar.
-  void PlatformSetAddressBarURL(const GURL& url);
-  // Sets whether the spinner is spinning.
-  void PlatformSetIsLoading(bool loading);
 
   // void PlatformToggleFullscreenModeForTab(WebContents* web_contents,
   //                                         bool enter_fullscreen);
@@ -234,8 +157,6 @@ class BisonContents : public WebContentsDelegate, public WebContentsObserver {
   // WebContentsObserver overrides
   void DidFinishNavigation(
       content::NavigationHandle* navigation_handle) override;
-
-  void TitleWasSet(NavigationEntry* entry) override;
 
   void OnDevToolsWebContentsDestroyed();
 

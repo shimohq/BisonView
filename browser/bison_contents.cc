@@ -94,9 +94,6 @@ BisonContents::BisonContents(std::unique_ptr<WebContents> web_contents)
       window_(nullptr),
       headless_(false) {
   windows_.push_back(this);
-
-  // if (bison_view_created_callback_)
-  //   std::move(bison_view_created_callback_).Run(this);
 }
 
 BisonContents::~BisonContents() {
@@ -116,8 +113,8 @@ BisonContents::~BisonContents() {
   web_contents_.reset();
 
   if (windows_.empty()) {
-    if (headless_)
-      PlatformExit();
+    // if (headless_)
+    PlatformExit();
     for (auto it = RenderProcessHost::AllHostsIterator(); !it.IsAtEnd();
          it.Advance()) {
       it.GetCurrentValue()->DisableKeepAliveRefCount();
@@ -267,15 +264,7 @@ void BisonContents::Stop() {
   web_contents_->Focus();
 }
 
-void BisonContents::UpdateNavigationControls(bool to_different_document) {
-  int current_index = web_contents_->GetController().GetCurrentEntryIndex();
-  int max_index = web_contents_->GetController().GetEntryCount() - 1;
-
-  PlatformEnableUIControl(BACK_BUTTON, current_index > 0);
-  PlatformEnableUIControl(FORWARD_BUTTON, current_index < max_index);
-  PlatformEnableUIControl(STOP_BUTTON,
-                          to_different_document && web_contents_->IsLoading());
-}
+void BisonContents::UpdateNavigationControls(bool to_different_document) {}
 
 void BisonContents::ShowDevTools() {
   if (!devtools_frontend_) {
@@ -324,70 +313,29 @@ void BisonContents::DidFinishNavigation(
   VLOG(0) << "DidFinishNavigation";
 }
 
-void BisonContents::TitleWasSet(NavigationEntry* entry) {
-  if (entry) {
-    JNIEnv* env = AttachCurrentThread();
-    ScopedJavaLocalRef<jstring> jstring_title =
-        ConvertUTF8ToJavaString(env, base::UTF16ToUTF8(entry->GetTitle()));
-    Java_BisonContents_onUpdateTitle(env, java_object_, jstring_title);
-  }
-}
-
 void BisonContents::OnDevToolsWebContentsDestroyed() {
   devtools_observer_.reset();
   devtools_frontend_ = nullptr;
 }
 
-void BisonContents::PlatformInitialize(const gfx::Size& default_window_size) {}
-
 void BisonContents::PlatformExit() {
-  VLOG(0) << "Destroy";
+  VLOG(0) << "exit";
 }
 
 void BisonContents::PlatformCleanUp() {
   JNIEnv* env = AttachCurrentThread();
   if (java_object_.is_null())
     return;
+  VLOG(0) << "destroy native";
   Java_BisonContents_onNativeDestroyed(env, java_object_);
-}
-
-void BisonContents::PlatformEnableUIControl(UIControl control,
-                                            bool is_enabled) {
-  JNIEnv* env = AttachCurrentThread();
-  if (java_object_.is_null())
-    return;
-  Java_BisonContents_enableUiControl(env, java_object_, control, is_enabled);
-}
-
-void BisonContents::PlatformSetAddressBarURL(const GURL& url) {
-  JNIEnv* env = AttachCurrentThread();
-  ScopedJavaLocalRef<jstring> j_url = ConvertUTF8ToJavaString(env, url.spec());
-  Java_BisonContents_onUpdateUrl(env, java_object_, j_url);
-}
-
-void BisonContents::PlatformSetIsLoading(bool loading) {
-  JNIEnv* env = AttachCurrentThread();
-  Java_BisonContents_setIsLoading(env, java_object_, loading);
 }
 
 void BisonContents::PlatformCreateWindow() {
   // java_object_.Reset(CreateShellView(this));
 }
 
-void BisonContents::PlatformSetContents() {
-  JNIEnv* env = AttachCurrentThread();
-  Java_BisonContents_initFromNativeTabContents(
-      env, java_object_, web_contents()->GetJavaWebContents());
-}
-
 void BisonContents::PlatformResizeSubViews() {
   // Not needed; subviews are bound.
-}
-
-void BisonContents::SizeTo(const gfx::Size& content_size) {
-  JNIEnv* env = AttachCurrentThread();
-  Java_BisonContents_sizeTo(env, java_object_, content_size.width(),
-                            content_size.height());
 }
 
 void BisonContents::Close() {
@@ -416,6 +364,10 @@ ScopedJavaLocalRef<jobject> BisonContents::GetWebContents(JNIEnv* env) {
   return web_contents()->GetJavaWebContents();
 }
 
+void BisonContents::Destroy(JNIEnv* env) {
+  delete this;
+}
+
 // static
 jlong JNI_BisonContents_Init(JNIEnv* env, const JavaParamRef<jobject>& obj) {
   BisonBrowserContext* browserContext =
@@ -424,11 +376,6 @@ jlong JNI_BisonContents_Init(JNIEnv* env, const JavaParamRef<jobject>& obj) {
       BisonContents::CreateNewWindow(browserContext, NULL);
   bison_contents->java_object_.Reset(obj);
   return reinterpret_cast<intptr_t>(bison_contents);
-}
-
-void JNI_BisonContents_CloseShell(JNIEnv* env, jlong bisonViewPtr) {
-  BisonContents* bisonView = reinterpret_cast<BisonContents*>(bisonViewPtr);
-  bisonView->Close();
 }
 
 }  // namespace bison

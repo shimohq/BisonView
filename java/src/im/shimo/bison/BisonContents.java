@@ -239,9 +239,9 @@ class BisonContents extends FrameLayout {
 
     @CalledByNative
     private void onNativeDestroyed() {
-        // mWindow = null;
-        // mNativeBisonView = 0;
-        // mWebContents = null;
+        mWindow = null;
+        mNativeBisonContents = 0;
+        mWebContents = null;
     }
 
 
@@ -255,7 +255,6 @@ class BisonContents extends FrameLayout {
         //if (TRACE) Log.i(TAG, "%s addJavascriptInterface=%s", this, name);
         //if (isDestroyed(WARN)) return;
         Class<? extends Annotation> requiredAnnotation = JavascriptInterface.class;
-        ;
         getJavascriptInjector().addPossiblyUnsafeInterface(object, name, requiredAnnotation);
     }
 
@@ -274,84 +273,12 @@ class BisonContents extends FrameLayout {
     }
 
 
-    @SuppressWarnings("unused")
-    @CalledByNative
-    private void onUpdateUrl(String url) {
-        //mUrlTextView.setText(url);
-    }
-
-
-    @SuppressWarnings("unused")
-    @CalledByNative
-    private void setIsLoading(boolean loading) {
-        // mLoading = loading;
-        // if (mLoading) {
-        //     mStopReloadButton
-        //             .setImageResource(android.R.drawable.ic_menu_close_clear_cancel);
-        // } else {
-        //     //mStopReloadButton.setImageResource(R.drawable.ic_refresh);
-        // }
-    }
-
-
-    /**
-     * Initializes the ContentView based on the native tab contents pointer passed in.
-     *
-     * @param webContents A {@link WebContents} object.
-     */
-    @SuppressWarnings("unused")
-    @CalledByNative
-    private void initFromNativeTabContents(WebContents webContents) {
-        // Context context = getContext();
-        // ContentView cv = ContentView.createContentView(context, webContents);
-        // mViewAndroidDelegate = new BisonViewAndroidDelegate(cv);
-        // assert (mWebContents != webContents);
-        // if (mWebContents != null) mWebContents.clearNativeReference();
-        // webContents.initialize(
-        //         "", mViewAndroidDelegate, cv, mWindow, WebContents.createDefaultInternalsHolder());
-        // mWebContents = webContents;
-        // SelectionPopupController.fromWebContents(webContents)
-        //         .setActionModeCallback(defaultActionCallback());
-        // mNavigationController = mWebContents.getNavigationController();
-        // if (getParent() != null) mWebContents.onShow();
-        // if (mWebContents.getVisibleUrl() != null) {
-        //     //mUrlTextView.setText(mWebContents.getVisibleUrl());
-        // }
-        // // ((FrameLayout) findViewById(R.id.contentview_holder)).addView(cv,
-        // //         new FrameLayout.LayoutParams(
-        // //                 FrameLayout.LayoutParams.MATCH_PARENT,
-        // //                 FrameLayout.LayoutParams.MATCH_PARENT));
-        // addView(cv);
-        // cv.requestFocus();
-        // mContentViewRenderView.setCurrentWebContents(mWebContents);
-    }
-
-
-    @CalledByNative
-    public void sizeTo(int width, int height) {
-        // mWebContents.setSize(width, height);
-    }
-
-
-    /**
-     * Enable/Disable navigation(Prev/Next) button if navigation is allowed/disallowed
-     * in respective direction.
-     *
-     * @param controlId Id of button to update
-     * @param enabled   enable/disable value
-     */
-    @CalledByNative
-    private void enableUiControl(int controlId, boolean enabled) {
-        // if (controlId == 0) {
-        //     mPrevButton.setEnabled(enabled);
-        // } else if (controlId == 1) {
-        //     mNextButton.setEnabled(enabled);
-        // }
-    }
-
-    @CalledByNative
-    private void onUpdateTitle(String title) {
-//        mBisonChrome.onTitleUpdate(title);
+    public void destroy() {
+        if (mContentViewRenderView != null) {
+            mContentViewRenderView.destroy();
+        }
+        removeAllViews();
+        BisonContentsJni.get().destroy(mNativeBisonContents);
     }
 
 
@@ -364,7 +291,7 @@ class BisonContents extends FrameLayout {
         void setJavaPeers(long nativeBisonContents, BisonWebContentsDelegate webContentsDelegate,
                           BisonContentsClientBridge bisonContentsClientBridge);
 
-        void closeShell(long BisonViewPtr);
+        void destroy(long nativeBisonContents);
     }
 
 }

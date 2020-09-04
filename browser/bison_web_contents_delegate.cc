@@ -26,8 +26,7 @@ void BisonWebContentsDelegate::AddNewContents(
 
 void BisonWebContentsDelegate::LoadingStateChanged(WebContents* source,
                                                    bool to_different_document) {
-  // UpdateNavigationControls(to_different_document);
-  // PlatformSetIsLoading(source->IsLoading());
+
 }
 
 // void BisonWebContentsDelegate::LoadProgressChanged(WebContents* source,
@@ -91,9 +90,7 @@ bool BisonWebContentsDelegate::CanOverscrollContent() {
 }
 
 void BisonWebContentsDelegate::DidNavigateMainFramePostCommit(
-    WebContents* web_contents) {
-  // PlatformSetAddressBarURL(web_contents->GetVisibleURL());
-}
+    WebContents* web_contents) {}
 
 JavaScriptDialogManager* BisonWebContentsDelegate::GetJavaScriptDialogManager(
     WebContents* source) {
@@ -144,27 +141,6 @@ void BisonWebContentsDelegate::RendererUnresponsive(
 void BisonWebContentsDelegate::ActivateContents(WebContents* contents) {
   contents->GetRenderViewHost()->GetWidget()->Focus();
 }
-
-// std::unique_ptr<WebContents> BisonWebContentsDelegate::SwapWebContents(
-//     WebContents* old_contents,
-//     std::unique_ptr<WebContents> new_contents,
-//     bool did_start_load,
-//     bool did_finish_load) {
-//   DCHECK_EQ(old_contents, web_contents_.get());
-//   new_contents->SetDelegate(this);
-//   web_contents_->SetDelegate(nullptr);
-//   VLOG(0) << "SwapWebContents";
-//   for (auto* bison_view_devtools_bindings :
-//        BisonDevToolsBindings::GetInstancesForWebContents(old_contents)) {
-//     bison_view_devtools_bindings->UpdateInspectedWebContents(
-//         new_contents.get());
-//   }
-//   std::swap(web_contents_, new_contents);
-//   PlatformSetContents();
-//   PlatformSetAddressBarURL(web_contents_->GetVisibleURL());
-//   LoadingStateChanged(web_contents_.get(), true);
-//   return new_contents;
-// }
 
 bool BisonWebContentsDelegate::ShouldAllowRunningInsecureContent(
     WebContents* web_contents,
