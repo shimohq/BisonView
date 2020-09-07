@@ -1,15 +1,5 @@
 #include "bison_content_browser_client.h"
 
-#include "bison_browser_context.h"
-#include "bison_browser_main_parts.h"
-#include "bison_contents_client_bridge.h"
-#include "bison_devtools_manager_delegate.h"
-
-// #include "content/shell/browser/shell_quota_permission_context.h"
-// #include "content/shell/browser/shell_web_contents_view_delegate_creator.h"
-// #include "content/shell/common/power_monitor_test.mojom.h"
-// #include "content/shell/common/shell_switches.h"
-
 #include <stddef.h>
 
 #include <utility>
@@ -24,6 +14,10 @@
 #include "base/path_service.h"
 #include "base/stl_util.h"
 #include "base/strings/utf_string_conversions.h"
+#include "bison_browser_context.h"
+#include "bison_browser_main_parts.h"
+#include "bison_contents_client_bridge.h"
+#include "bison_devtools_manager_delegate.h"
 #include "build/build_config.h"
 #include "content/public/browser/client_certificate_delegate.h"
 #include "content/public/browser/cors_exempt_headers.h"
@@ -39,9 +33,6 @@
 #include "content/public/common/url_constants.h"
 #include "content/public/common/user_agent.h"
 #include "content/public/common/web_preferences.h"
-#include "content/public/test/test_service.h"
-#include "content/test/data/mojo_web_test_helper_test.mojom.h"
-#include "device/bluetooth/public/mojom/test/fake_bluetooth.mojom.h"
 #include "media/mojo/buildflags.h"
 #include "net/ssl/client_cert_identity.h"
 #include "net/url_request/url_request.h"
@@ -300,10 +291,10 @@ void BisonContentBrowserClient::RunServiceInstance(
     is_media_service = true;
 #endif  // BUILDFLAG(ENABLE_CAST_RENDERER)
 
-  if (is_media_service) {
-    service_manager::Service::RunAsyncUntilTermination(
-        media::CreateMediaServiceForTesting(std::move(*receiver)));
-  }
+    // if (is_media_service) {
+    //   service_manager::Service::RunAsyncUntilTermination(
+    //       media::CreateMediaServiceForTesting(std::move(*receiver)));
+    // }
 #endif  // BUILDFLAG(ENABLE_MOJO_MEDIA_IN_BROWSER_PROCESS) ||
         // BUILDFLAG(ENABLE_CAST_RENDERER)
 }

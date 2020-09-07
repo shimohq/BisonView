@@ -20,6 +20,7 @@ public class BisonView extends FrameLayout {
      */
     public BisonView(Context context, AttributeSet attrs) {
         super(context, attrs);
+        BisonResources.resetIds(context);
         LibraryLoader.getInstance().ensureInitialized(LibraryProcessType.PROCESS_BROWSER);
         BrowserStartupController.get(LibraryProcessType.PROCESS_BROWSER)
                 .startBrowserProcessesSync(false);

@@ -47,7 +47,8 @@ android_aar("bison_view_aar") {
     "com/google/*",
     "META-INF/*",
     "*.stamp",
-
+    "*/.readme",
+    "*/*.properties"
 
 
     # "im/shimo/bison/BisonView.class",
