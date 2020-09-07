@@ -24,6 +24,10 @@ source_set("browser") {
     "bison_contents_client_bridge.h",
     "bison_web_contents_delegate.cc",
     "bison_web_contents_delegate.h",
+    "input_stream.cc",
+    "input_stream.h",
+    "android_protocol_handler.cc",
+    "android_protocol_handler.h",
   ]
 
   deps = [

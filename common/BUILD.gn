@@ -3,8 +3,8 @@ source_set("common"){
     "bison_content_client.cc",
     "bison_content_client.h",
     "bison_descriptors.h",
-    # "bison_crash_reporter_client.cc",
-    # "bison_crash_reporter_client.h",
+    "url_constants.cc",
+    "url_constants.h",
   ]
 
   deps = [
