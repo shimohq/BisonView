@@ -4,9 +4,12 @@
 
 #include <utility>
 
+#include "base/android/apk_assets.h"
+#include "base/android/path_utils.h"
 #include "base/base_switches.h"
 #include "base/bind.h"
 #include "base/command_line.h"
+#include "base/debug/leak_annotations.h"
 #include "base/feature_list.h"
 #include "base/files/file.h"
 #include "base/files/file_util.h"
@@ -19,6 +22,8 @@
 #include "bison_contents_client_bridge.h"
 #include "bison_devtools_manager_delegate.h"
 #include "build/build_config.h"
+#include "components/crash/content/app/crashpad.h"
+#include "components/crash/content/browser/crash_handler_host_linux.h"
 #include "content/public/browser/client_certificate_delegate.h"
 #include "content/public/browser/cors_exempt_headers.h"
 #include "content/public/browser/login_delegate.h"
@@ -27,6 +32,7 @@
 #include "content/public/browser/render_process_host.h"
 #include "content/public/browser/storage_partition.h"
 #include "content/public/browser/web_contents.h"
+#include "content/public/common/content_descriptors.h"
 #include "content/public/common/content_features.h"
 #include "content/public/common/content_switches.h"
 #include "content/public/common/service_names.mojom.h"
@@ -47,27 +53,6 @@
 #include "ui/base/ui_base_switches.h"
 #include "url/gurl.h"
 #include "url/origin.h"
-
-#if defined(OS_ANDROID)
-#include "base/android/apk_assets.h"
-#include "base/android/path_utils.h"
-#include "components/crash/content/app/crashpad.h"
-#endif
-
-#if defined(OS_CHROMEOS)
-#include "content/public/browser/context_factory.h"
-#endif
-
-#if defined(OS_LINUX) || defined(OS_ANDROID)
-#include "base/debug/leak_annotations.h"
-#include "components/crash/content/browser/crash_handler_host_linux.h"
-#include "content/public/common/content_descriptors.h"
-#endif
-
-#if defined(OS_WIN)
-#include "sandbox/win/src/sandbox.h"
-#include "services/service_manager/sandbox/win/sandbox_win.h"
-#endif
 
 #if BUILDFLAG(ENABLE_MOJO_MEDIA_IN_BROWSER_PROCESS) || \
     BUILDFLAG(ENABLE_CAST_RENDERER)
@@ -239,13 +224,13 @@ BisonContentBrowserClient::CreateBrowserMainParts(
     const MainFunctionParams& parameters) {
   VLOG(0) << "CreateBrowserMainParts";
   auto browser_main_parts = std::make_unique<BisonBrowserMainParts>(parameters);
-
   shell_browser_main_parts_ = browser_main_parts.get();
-
   return browser_main_parts;
 }
 
 bool BisonContentBrowserClient::IsHandledURL(const GURL& url) {
+  const std::string path = url.path();
+  VLOG(0) << "isHandledURL" << path;
   if (!url.is_valid())
     return false;
   // Keep in sync with ProtocolHandlers added by
@@ -419,16 +404,6 @@ BisonContentBrowserClient::GetDevToolsManagerDelegate() {
   return new BisonDevToolsManagerDelegate(browser_context());
 }
 
-void BisonContentBrowserClient::OpenURL(
-    SiteInstance* site_instance,
-    const OpenURLParams& params,
-    base::OnceCallback<void(WebContents*)> callback) {
-  // std::move(callback).Run(
-  //     Shell::CreateNewWindow(site_instance->GetBrowserContext(), params.url,
-  //                            nullptr, gfx::Size())
-  //         ->web_contents());
-}
-
 std::unique_ptr<LoginDelegate> BisonContentBrowserClient::CreateLoginDelegate(
     const net::AuthChallengeInfo& auth_info,
     content::WebContents* web_contents,
@@ -527,6 +502,33 @@ bool BisonContentBrowserClient::ShouldOverrideUrlLoading(
   return client_bridge->ShouldOverrideUrlLoading(
       url, has_user_gesture, is_redirect, is_main_frame, ignore_navigation);
 }
+
+// bool BisonContentBrowserClient::WillCreateURLLoaderFactory(
+//     content::BrowserContext* browser_context,
+//     content::RenderFrameHost* frame,
+//     int render_process_id,
+//     URLLoaderFactoryType type,
+//     const url::Origin& request_initiator,
+//     mojo::PendingReceiver<network::mojom::URLLoaderFactory>*
+//     factory_receiver,
+//     mojo::PendingRemote<network::mojom::TrustedURLLoaderHeaderClient>*
+//         header_client,
+//     bool* bypass_redirect_checks) {
+//   DCHECK_CURRENTLY_ON(BrowserThread::UI);
+
+//   auto proxied_receiver = std::move(*factory_receiver);
+//   network::mojom::URLLoaderFactoryPtrInfo target_factory_info;
+//   *factory_receiver = mojo::MakeRequest(&target_factory_info);
+//   int process_id =
+//       type == URLLoaderFactoryType::kNavigation ? 0 : render_process_id;
+
+//   // Android WebView has one non off-the-record browser context.
+//   base::PostTask(FROM_HERE, {content::BrowserThread::IO},
+//                  base::BindOnce(&AwProxyingURLLoaderFactory::CreateProxy,
+//                                 process_id, std::move(proxied_receiver),
+//                                 std::move(target_factory_info)));
+//   return true;
+// }
 
 BisonBrowserContext* BisonContentBrowserClient::browser_context() {
   return shell_browser_main_parts_->browser_context();

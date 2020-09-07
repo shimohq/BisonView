@@ -26,9 +26,6 @@
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/storage_partition.h"
 #include "content/public/common/content_switches.h"
-// #include "content/shell/browser/web_test/web_test_content_index_provider.h"
-// #include "content/shell/common/shell_switches.h"
-// #include "content/test/mock_background_sync_controller.h"
 
 #if defined(OS_WIN)
 #include "base/base_paths_win.h"

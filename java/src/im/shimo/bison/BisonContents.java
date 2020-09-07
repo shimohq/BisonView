@@ -25,8 +25,11 @@ import org.chromium.content_public.browser.NavigationController;
 import org.chromium.content_public.browser.SelectionPopupController;
 import org.chromium.content_public.browser.UiThreadTaskTraits;
 import org.chromium.content_public.browser.WebContents;
+import org.chromium.content_public.browser.navigation_controller.LoadURLType;
+import org.chromium.content_public.browser.navigation_controller.UserAgentOverrideOption;
 import org.chromium.content_public.common.ContentUrlConstants;
 import org.chromium.ui.base.ActivityWindowAndroid;
+import org.chromium.ui.base.PageTransition;
 import org.chromium.ui.base.WindowAndroid;
 
 import java.lang.annotation.Annotation;
@@ -129,16 +132,19 @@ class BisonContents extends FrameLayout {
 
     public void loadUrl(String url) {
         if (url == null) return;
+        loadUrl(url, null);
+    }
 
-        if (TextUtils.equals(url, mWebContents.getLastCommittedUrl())) {
-            mNavigationController.reload(true);
-        } else {
-            mNavigationController.loadUrl(new LoadUrlParams(sanitizeUrl(url)));
+    public void loadUrl(String url, Map<String, String> additionalHttpHeaders) {
+        if (url == null) {
+            return;
         }
-        //mUrlTextView.clearFocus();
-        // TODO(aurimas): Remove this when crbug.com/174541 is fixed.
-        // getContentView().clearFocus();
-        // getContentView().requestFocus();
+        LoadUrlParams params = new LoadUrlParams(url, PageTransition.TYPED);
+        if (additionalHttpHeaders != null) {
+            params.setExtraHeaders(new HashMap<>(additionalHttpHeaders));
+        }
+
+        loadUrl(params);
     }
 
     public void postUrl(String url, byte[] postData) {
@@ -150,6 +156,21 @@ class BisonContents extends FrameLayout {
     }
 
     private void loadUrl(LoadUrlParams params) {
+        if (params.getLoadUrlType() == LoadURLType.DATA && !params.isBaseUrlDataScheme()) {
+            params.setCanLoadLocalResources(true);
+            BisonContentsJni.get().grantFileSchemeAccesstoChildProcess(
+                    mNativeBisonContents);
+        }
+
+        if (params.getUrl() != null && params.getUrl().equals(mWebContents.getLastCommittedUrl())
+                && params.getTransitionType() == PageTransition.TYPED) {
+            params.setTransitionType(PageTransition.RELOAD);
+        }
+        params.setOverrideUserAgent(UserAgentOverrideOption.TRUE);
+
+        params.setTransitionType(
+                params.getTransitionType() | PageTransition.FROM_API);
+
         mNavigationController.loadUrl(params);
     }
 
@@ -201,10 +222,14 @@ class BisonContents extends FrameLayout {
         this.mBisonWebChromeClient = client;
     }
 
-
     public WebContents getWebContents() {
         return mWebContents;
     }
+
+    public void reload() {
+        mNavigationController.reload(true);
+    }
+
 
     private static String fixupMimeType(String mimeType) {
         return TextUtils.isEmpty(mimeType) ? "text/html" : mimeType;
@@ -290,6 +315,8 @@ class BisonContents extends FrameLayout {
 
         void setJavaPeers(long nativeBisonContents, BisonWebContentsDelegate webContentsDelegate,
                           BisonContentsClientBridge bisonContentsClientBridge);
+
+        void grantFileSchemeAccesstoChildProcess(long nativeBisonContents);
 
         void destroy(long nativeBisonContents);
     }

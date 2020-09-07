@@ -52,7 +52,7 @@ void BisonContentRendererClient::RenderViewCreated(
 }
 
 bool BisonContentRendererClient::HasErrorPage(int http_status_code) {
-  return http_status_code >= 400 && http_status_code < 600;
+  return http_status_code >= 400;
 }
 
 bool BisonContentRendererClient::HandleNavigation(

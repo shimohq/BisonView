@@ -29,6 +29,7 @@
 #include "bison_web_contents_delegate.h"
 #include "build/build_config.h"
 #include "components/navigation_interception/intercept_navigation_delegate.h"
+#include "content/public/browser/child_process_security_policy.h"
 #include "content/public/browser/devtools_agent_host.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_entry.h"
@@ -362,6 +363,11 @@ void BisonContents::SetJavaPeers(
 
 ScopedJavaLocalRef<jobject> BisonContents::GetWebContents(JNIEnv* env) {
   return web_contents()->GetJavaWebContents();
+}
+
+void BisonContents::GrantFileSchemeAccesstoChildProcess(JNIEnv* env) {
+  content::ChildProcessSecurityPolicy::GetInstance()->GrantRequestScheme(
+      web_contents_->GetMainFrame()->GetProcess()->GetID(), url::kFileScheme);
 }
 
 void BisonContents::Destroy(JNIEnv* env) {
