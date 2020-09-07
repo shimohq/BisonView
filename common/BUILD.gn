@@ -5,6 +5,8 @@ source_set("common"){
     "bison_descriptors.h",
     "url_constants.cc",
     "url_constants.h",
+    "bison_features.cc",
+    "bison_features.h",
   ]
 
   deps = [
