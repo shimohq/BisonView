@@ -1,13 +1,11 @@
-
-import("//build/config/android/config.gni")
-import("//build/config/android/rules.gni")
 import("//bison/aar/aar.gni")
 import("//bison/config.gni")
-
+import("//build/config/android/config.gni")
+import("//build/config/android/rules.gni")
 
 _jar_excluded_patterns = [
   # Excludes Android support libraries crbug.com/832770.
- "android/*",
+  "android/*",
   "*/library_loader/*.class",
   "*/multidex/*.class",
   "*/process_launcher/*.class",
@@ -16,8 +14,8 @@ _jar_excluded_patterns = [
   "org/chromium/base/memory/MemoryPressureMonitor*.class",
 ]
 
-
-bison_aar_manifest_xml = "$target_gen_dir/bison_aar_manifest/AndroidManifest.xml"
+bison_aar_manifest_xml =
+    "$target_gen_dir/bison_aar_manifest/AndroidManifest.xml"
 
 android_aar("bison_view_aar") {
   android_manifest = bison_aar_manifest_xml
@@ -48,13 +46,11 @@ android_aar("bison_view_aar") {
     "META-INF/*",
     "*.stamp",
     "*/.readme",
-    "*/*.properties"
-
+    "*/*.properties",
 
     # "im/shimo/bison/BisonView.class",
     # "im/shimo/bison/BisonView\$*.class",
   ]
-
 }
 
 jinja_template("bison_aar_manifest") {
@@ -62,25 +58,24 @@ jinja_template("bison_aar_manifest") {
   output = bison_aar_manifest_xml
 }
 
-
 shared_library("libbison_view") {
   sources = [
-    "lib/bison_view_library_loader.cc",
     "lib/bison_main_delegate.cc",
     "lib/bison_main_delegate.h",
+    "lib/bison_view_library_loader.cc",
   ]
 
   deps = [
     ":bison_jni_registration",
-    "//bison:bison_lib",
     "//base",
+    "//bison:bison_lib",
     "//components/crash/content/app",
     "//components/crash/content/browser",
     "//components/embedder_support/android:view",
+    "//components/keyed_service/content",
     "//content/public/app:both",
     "//content/public/browser",
     "//content/public/renderer",
-    "//components/keyed_service/content",
     "//ui/gfx",
   ]
 
@@ -88,9 +83,8 @@ shared_library("libbison_view") {
   configs += [ "//build/config/android:hide_all_but_jni" ]
 }
 
-
-
 _package_dir = "$root_out_dir/bison_view_aar"
+
 # android_library("bison_view_aar_java") {
 #   ##srcjar_deps = [ ":bison_jni_registration" ]
 
@@ -103,12 +97,12 @@ java_prebuilt("package_impl_native_java") {
   jar_path = "$_package_dir/impl_native_java.jar"
   supports_android = true
   requires_android = true
-  deps = bison_java_deps + [":repackage_native"]
+  deps = bison_java_deps + [ ":repackage_native" ]
 }
 
 _registration_header = "$target_gen_dir/bison_jni_registration.h"
 
-# TODO 差重定义shared_library 
+# TODO 差重定义shared_library
 generate_jni_registration("bison_jni_registration") {
   target = "//bison:bison_java"
   header_output = _registration_header
@@ -126,7 +120,6 @@ repackage_jars("repackage_native") {
   ]
 
   jar_excluded_patterns = _jar_excluded_patterns
-
 }
 
 _native_intermediate_jar_path = "$target_out_dir/repackage_native_impl.jar"
@@ -135,7 +128,7 @@ android_java_prebuilt("repackage_native_java") {
   jar_path = _native_intermediate_jar_path
 
   enable_bytecode_rewriter = false
-  deps = bison_java_deps + [":repackage_native_impl",]
+  deps = bison_java_deps + [ ":repackage_native_impl" ]
 }
 
 repackage_jars("repackage_native_impl") {
@@ -149,8 +142,4 @@ repackage_jars("repackage_native_impl") {
   ]
 
   jar_excluded_patterns = _jar_excluded_patterns
-
 }
-
-
-

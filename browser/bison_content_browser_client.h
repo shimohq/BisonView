@@ -86,6 +86,9 @@ class BisonContentBrowserClient : public content::ContentBrowserClient {
   void OverrideWebkitPrefs(RenderViewHost* render_view_host,
                            WebPreferences* prefs) override;
   base::FilePath GetFontLookupTableCacheDir() override;
+  std::vector<std::unique_ptr<content::NavigationThrottle>>
+  CreateThrottlesForNavigation(
+      content::NavigationHandle* navigation_handle) override;
   DevToolsManagerDelegate* GetDevToolsManagerDelegate() override;
 
   std::unique_ptr<LoginDelegate> CreateLoginDelegate(

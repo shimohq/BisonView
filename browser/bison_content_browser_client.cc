@@ -24,9 +24,14 @@
 #include "build/build_config.h"
 #include "components/crash/content/app/crashpad.h"
 #include "components/crash/content/browser/crash_handler_host_linux.h"
+#include "components/navigation_interception/intercept_navigation_delegate.h"
+#include "components/page_load_metrics/browser/metrics_navigation_throttle.h"
+#include "components/page_load_metrics/browser/metrics_web_contents_observer.h"
+#include "components/policy/content/policy_blacklist_navigation_throttle.h"
 #include "content/public/browser/client_certificate_delegate.h"
 #include "content/public/browser/cors_exempt_headers.h"
 #include "content/public/browser/login_delegate.h"
+#include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/network_service_instance.h"
 #include "content/public/browser/page_navigator.h"
 #include "content/public/browser/render_process_host.h"
@@ -338,7 +343,8 @@ std::string BisonContentBrowserClient::GetAcceptLangs(BrowserContext* context) {
 }
 
 std::string BisonContentBrowserClient::GetDefaultDownloadName() {
-  return "download";
+  NOTREACHED() << "BisonView does not use chromium downloads";
+  return std::string();
 }
 
 WebContentsViewDelegate* BisonContentBrowserClient::GetWebContentsViewDelegate(
@@ -397,6 +403,25 @@ void BisonContentBrowserClient::OverrideWebkitPrefs(
 base::FilePath BisonContentBrowserClient::GetFontLookupTableCacheDir() {
   return browser_context()->GetPath().Append(
       FILE_PATH_LITERAL("FontLookupTableCache"));
+}
+
+std::vector<std::unique_ptr<content::NavigationThrottle>>
+BisonContentBrowserClient::CreateThrottlesForNavigation(
+    content::NavigationHandle* navigation_handle) {
+  VLOG(0) << "CreateThrottlesForNavigation";
+  std::vector<std::unique_ptr<content::NavigationThrottle>> throttles;
+  if (navigation_handle->IsInMainFrame()) {
+    throttles.push_back(page_load_metrics::MetricsNavigationThrottle::Create(
+        navigation_handle));
+    throttles.push_back(
+        navigation_interception::InterceptNavigationDelegate::CreateThrottleFor(
+            navigation_handle, navigation_interception::SynchronyMode::kSync));
+
+    // throttles.push_back(std::make_unique<PolicyBlacklistNavigationThrottle>(
+    //     navigation_handle, BisonBrowserContext::FromWebContents(
+    //                            navigation_handle->GetWebContents())));
+  }
+  return throttles;
 }
 
 DevToolsManagerDelegate*

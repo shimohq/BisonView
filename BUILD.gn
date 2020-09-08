@@ -1,25 +1,22 @@
+import("//build/config/android/config.gni")
 import("//build/config/features.gni")
 import("//build/config/sanitizers/sanitizers.gni")
 import("//build/config/ui.gni")
 import("//gpu/vulkan/features.gni")
 import("//media/media_options.gni")
 import("//mojo/public/tools/bindings/mojom.gni")
-import("//build/config/android/config.gni")
+
 #import("//ppapi/buildflags/buildflags.gni")
 import("//tools/grit/grit_rule.gni")
 import("//tools/grit/repack.gni")
 import("//tools/v8_context_snapshot/v8_context_snapshot.gni")
 import("config.gni")
-
-
-
 group("bison") {
   deps = [
+    "aar:bison_view_aar",
     "apk:bison_apk_java",
-    "aar:bison_view_aar"
   ]
 }
-
 
 config("bison_lib_warnings") {
   if (is_clang) {
@@ -27,18 +24,18 @@ config("bison_lib_warnings") {
   }
 }
 
-
 generate_jni("bison_jni_headers") {
   sources = [
+    "java/src/im/shimo/bison/AndroidProtocolHandler.java",
     "java/src/im/shimo/bison/BisonContents.java",
     "java/src/im/shimo/bison/BisonContentsClientBridge.java",
     "java/src/im/shimo/bison/InputStreamUtil.java",
-    "java/src/im/shimo/bison/AndroidProtocolHandler.java",
+
     # "java/src/im/shimo/bison/BisonWebContentsDelegate.java",
   ]
 }
 
-android_library("bison_java"){
+android_library("bison_java") {
   java_files = [
     "java/src/im/shimo/bison/BisonContents.java",
     "java/src/im/shimo/bison/BisonWebChromeClient.java",
@@ -64,19 +61,18 @@ android_library("bison_java"){
   deps = bison_java_deps
 
   annotation_processor_deps = [ "//base/android/jni_generator:jni_processor" ]
-
 }
 
-android_resources("bison_java_resources"){
+android_resources("bison_java_resources") {
   resource_dirs = [ "java/res" ]
   custom_package = "im.shimo.bison"
 }
 
 shared_library("libbison") {
   sources = [
-    "lib/bison_view_library_loader.cc",
     "lib/bison_main_delegate.cc",
     "lib/bison_main_delegate.h",
+    "lib/bison_view_library_loader.cc",
   ]
 
   deps = [
@@ -85,10 +81,10 @@ shared_library("libbison") {
     "//components/crash/content/app",
     "//components/crash/content/browser",
     "//components/embedder_support/android:view",
+    "//components/keyed_service/content",
     "//content/public/app:both",
     "//content/public/browser",
     "//content/public/renderer",
-    "//components/keyed_service/content",
     "//ui/gfx",
   ]
 
@@ -97,13 +93,12 @@ shared_library("libbison") {
 }
 
 source_set("bison_lib") {
-
   deps = [
+    ":pak",
     "browser",
     "common",
     "gpu",
     "renderer",
-    ":pak",
     "//base",
     "//content/public/gpu",
     "//ui/gfx",

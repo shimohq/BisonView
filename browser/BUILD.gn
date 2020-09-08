@@ -1,11 +1,17 @@
 source_set("browser") {
   sources = [
+    "android_protocol_handler.cc",
+    "android_protocol_handler.h",
     "bison_browser_context.cc",
     "bison_browser_context.h",
     "bison_browser_main_parts.cc",
     "bison_browser_main_parts.h",
     "bison_content_browser_client.cc",
     "bison_content_browser_client.h",
+    "bison_contents.cc",
+    "bison_contents.h",
+    "bison_contents_client_bridge.cc",
+    "bison_contents_client_bridge.h",
     "bison_devtools_bindings.cc",
     "bison_devtools_bindings.h",
     "bison_devtools_frontend.cc",
@@ -14,33 +20,31 @@ source_set("browser") {
     "bison_devtools_manager_delegate.h",
     "bison_download_manager_delegate.cc",
     "bison_download_manager_delegate.h",
-    "bison_permission_manager.cc",
-    "bison_permission_manager.h",
-    "bison_contents.cc",
-    "bison_contents.h",
     "bison_javascript_dialog_manager.cc",
     "bison_javascript_dialog_manager.h",
-    "bison_contents_client_bridge.cc",
-    "bison_contents_client_bridge.h",
+    "bison_permission_manager.cc",
+    "bison_permission_manager.h",
     "bison_web_contents_delegate.cc",
     "bison_web_contents_delegate.h",
     "input_stream.cc",
     "input_stream.h",
-    "android_protocol_handler.cc",
-    "android_protocol_handler.h",
+
     # network_service
-    "network_service/input_stream_reader.cc",
-    "network_service/input_stream_reader.h",
     "network_service/android_stream_reader_url_loader.cc",
     "network_service/android_stream_reader_url_loader.h",
+    "network_service/input_stream_reader.cc",
+    "network_service/input_stream_reader.h",
   ]
 
   deps = [
     "//base",
-    "//content/public/browser",
-    "//ui/gfx",
-    "//components/navigation_interception",
+    "//bison:bison_jni_headers",
     "//components/embedder_support/android:web_contents_delegate",
-    "//bison:bison_jni_headers"
+    "//components/navigation_interception",
+     "//components/policy/content/",
+    "//components/policy/core/browser",
+    "//content/public/browser",
+    "//components/page_load_metrics/browser",
+    "//ui/gfx",
   ]
 }

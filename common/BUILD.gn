@@ -1,20 +1,16 @@
-source_set("common"){
+source_set("common") {
   sources = [
     "bison_content_client.cc",
     "bison_content_client.h",
     "bison_descriptors.h",
-    "url_constants.cc",
-    "url_constants.h",
     "bison_features.cc",
     "bison_features.h",
+    "url_constants.cc",
+    "url_constants.h",
   ]
 
   deps = [
     "//base",
     "//content/public/common",
   ]
-
-  
-
-
 }

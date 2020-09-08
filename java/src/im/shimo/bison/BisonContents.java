@@ -17,6 +17,8 @@ import org.chromium.base.annotations.NativeMethods;
 import org.chromium.base.task.PostTask;
 import org.chromium.components.embedder_support.view.ContentView;
 import org.chromium.components.embedder_support.view.ContentViewRenderView;
+import org.chromium.components.navigation_interception.InterceptNavigationDelegate;
+import org.chromium.components.navigation_interception.NavigationParams;
 import org.chromium.content_public.browser.ActionModeCallbackHelper;
 import org.chromium.content_public.browser.JavaScriptCallback;
 import org.chromium.content_public.browser.JavascriptInjector;
@@ -55,15 +57,17 @@ class BisonContents extends FrameLayout {
     private BisonWebChromeClient mBisonWebChromeClient;
 
     private BisonContentsClientBridge mBisonContentsClientBridge;
+    private final InterceptNavigationDelegateImpl mInterceptNavigationDelegate;
+
 
     private JavascriptInjector mJavascriptInjector;
+    private BisonContentsClient mContentsClient;
 
     public BisonContents(Context context, BisonWebContentsDelegate webContentsDelegate,
-                         BisonContentsClientBridge bisonContentsClientBridge, BisonContentsClient bisonContentsClient) {
+                         BisonContentsClientBridge bisonContentsClientBridge,
+                         BisonContentsClient bisonContentsClient) {
         super(context);
-
-        mBisonContentsClientBridge = bisonContentsClientBridge;
-
+        mContentsClient = bisonContentsClient;
         mNativeBisonContents = BisonContentsJni.get().init(this);
         mWebContents = BisonContentsJni.get().getWebContents(mNativeBisonContents);
 
@@ -81,17 +85,19 @@ class BisonContents extends FrameLayout {
                 "", mViewAndroidDelegate, cv, mWindow, WebContents.createDefaultInternalsHolder());
         SelectionPopupController.fromWebContents(mWebContents)
                 .setActionModeCallback(defaultActionCallback());
-        mBisonWebContentsObserver = new BisonWebContentsObserver(mWebContents,
-                this, bisonContentsClient);
+        mBisonWebContentsObserver = new BisonWebContentsObserver(mWebContents, this,
+                bisonContentsClient);
         mNavigationController = mWebContents.getNavigationController();
         if (getParent() != null) mWebContents.onShow();
-
         addView(cv);
         cv.requestFocus();
         mContentViewRenderView.setCurrentWebContents(mWebContents);
 
 
-        BisonContentsJni.get().setJavaPeers(mNativeBisonContents, webContentsDelegate, mBisonContentsClientBridge);
+        mBisonContentsClientBridge = bisonContentsClientBridge;
+        mInterceptNavigationDelegate = new InterceptNavigationDelegateImpl();
+        BisonContentsJni.get().setJavaPeers(mNativeBisonContents, webContentsDelegate,
+                mBisonContentsClientBridge, mInterceptNavigationDelegate);
 
 
     }
@@ -307,6 +313,15 @@ class BisonContents extends FrameLayout {
     }
 
 
+    private class InterceptNavigationDelegateImpl implements InterceptNavigationDelegate {
+        @Override
+        public boolean shouldIgnoreNavigation(NavigationParams navigationParams) {
+            mContentsClient.onPageStarted(navigationParams.url);
+            return false;
+        }
+    }
+
+
     @NativeMethods
     interface Natives {
         long init(BisonContents caller);
@@ -314,7 +329,8 @@ class BisonContents extends FrameLayout {
         WebContents getWebContents(long nativeBisonContents);
 
         void setJavaPeers(long nativeBisonContents, BisonWebContentsDelegate webContentsDelegate,
-                          BisonContentsClientBridge bisonContentsClientBridge);
+                          BisonContentsClientBridge bisonContentsClientBridge,
+                          InterceptNavigationDelegate interceptNavigationDelegate);
 
         void grantFileSchemeAccesstoChildProcess(long nativeBisonContents);
 

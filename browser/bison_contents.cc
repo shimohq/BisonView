@@ -347,7 +347,8 @@ void BisonContents::Close() {
 void BisonContents::SetJavaPeers(
     JNIEnv* env,
     const JavaParamRef<jobject>& web_contents_delegate,
-    const JavaParamRef<jobject>& contents_client_bridge) {
+    const JavaParamRef<jobject>& contents_client_bridge,
+    const JavaParamRef<jobject>& intercept_navigation_delegate) {
   web_contents_delegate_.reset(
       new BisonWebContentsDelegate(env, web_contents_delegate));
   web_contents_->SetDelegate(web_contents_delegate_.get());
@@ -356,9 +357,9 @@ void BisonContents::SetJavaPeers(
   BisonContentsClientBridge::Associate(web_contents_.get(),
                                        contents_client_bridge_.get());
 
-  // InterceptNavigationDelegate::Associate(
-  //     web_contents_.get(), std::make_unique<InterceptNavigationDelegate>(
-  //                              env, intercept_navigation_delegate));
+  InterceptNavigationDelegate::Associate(
+      web_contents_.get(), std::make_unique<InterceptNavigationDelegate>(
+                               env, intercept_navigation_delegate));
 }
 
 ScopedJavaLocalRef<jobject> BisonContents::GetWebContents(JNIEnv* env) {

@@ -1,6 +1,7 @@
 #include "bison_web_contents_delegate.h"
 
 #include "bison_javascript_dialog_manager.h"
+#include "components/navigation_interception/intercept_navigation_delegate.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/render_view_host.h"
 #include "content/public/browser/render_widget_host.h"
@@ -170,6 +171,14 @@ PictureInPictureResult BisonWebContentsDelegate::EnterPictureInPicture(
 
 bool BisonWebContentsDelegate::ShouldResumeRequestsForCreatedWindow() {
   return false;
+}
+
+void BisonWebContentsDelegate::UpdateUserGestureCarryoverInfo(
+    content::WebContents* web_contents) {
+  auto* intercept_navigation_delegate =
+      navigation_interception::InterceptNavigationDelegate::Get(web_contents);
+  if (intercept_navigation_delegate)
+    intercept_navigation_delegate->UpdateLastUserGestureCarryoverTimestamp();
 }
 
 }  // namespace bison

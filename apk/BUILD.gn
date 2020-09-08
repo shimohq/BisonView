@@ -3,10 +3,10 @@ import("//build/config/android/rules.gni")
 import("//third_party/icu/config.gni")
 import("//tools/v8_context_snapshot/v8_context_snapshot.gni")
 
-bison_apk_manifest_xml = "$target_gen_dir/bison_apk_manifest/AndroidManifest.xml"
+bison_apk_manifest_xml =
+    "$target_gen_dir/bison_apk_manifest/AndroidManifest.xml"
 
 android_library("bison_apk_java") {
-  
   java_files = [
     "java/im/shimo/bison/sample/App.java",
     "java/im/shimo/bison/sample/MainActivity.java",
@@ -33,11 +33,9 @@ android_resources("bison_apk_resources") {
   android_manifest_dep = ":bison_apk_manifest"
 }
 
-
-android_assets("bison_apk_assets"){
-  
+android_assets("bison_apk_assets") {
   sources = [
-    "$root_out_dir/bison.pak"
+    "$root_out_dir/bison.pak",
   ]
   disable_compression = true
   deps = [
@@ -57,15 +55,11 @@ android_apk("bison_sample_apk") {
   android_manifest_dep = ":bison_apk_manifest"
 
   deps = [
-    ":bison_apk_java",
     ":bison_apk_assets",
+    ":bison_apk_java",
   ]
   shared_libraries = [ "//bison:libbison" ]
 }
-
-
-
-
 
 jinja_template("bison_apk_manifest") {
   input = "AndroidManifest.xml.jinja2"

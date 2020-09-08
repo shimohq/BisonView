@@ -14,6 +14,7 @@
 #include "base/memory/ref_counted.h"
 #include "base/strings/string_piece.h"
 #include "build/build_config.h"
+#include "components/navigation_interception/intercept_navigation_delegate.h"
 #include "content/public/browser/session_storage_namespace.h"
 #include "content/public/browser/web_contents_delegate.h"
 #include "content/public/browser/web_contents_observer.h"
@@ -45,6 +46,7 @@ using content::SiteInstance;
 using content::WebContents;
 using content::WebContentsDelegate;
 using content::WebContentsObserver;
+using navigation_interception::InterceptNavigationDelegate;
 
 namespace bison {
 
@@ -113,7 +115,8 @@ class BisonContents : public WebContentsDelegate, public WebContentsObserver {
   base::android::ScopedJavaLocalRef<jobject> GetWebContents(JNIEnv* env);
   void SetJavaPeers(JNIEnv* env,
                     const JavaParamRef<jobject>& web_contents_delegate,
-                    const JavaParamRef<jobject>& contents_client_bridge);
+                    const JavaParamRef<jobject>& contents_client_bridge,
+                    const JavaParamRef<jobject>& intercept_navigation_delegate);
 
   void GrantFileSchemeAccesstoChildProcess(JNIEnv* env);
 

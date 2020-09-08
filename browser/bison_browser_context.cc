@@ -57,6 +57,11 @@ BisonBrowserContext::BisonResourceContext::BisonResourceContext() {}
 
 BisonBrowserContext::BisonResourceContext::~BisonResourceContext() {}
 
+BisonBrowserContext* BisonBrowserContext::FromWebContents(
+    content::WebContents* web_contents) {
+  return static_cast<BisonBrowserContext*>(web_contents->GetBrowserContext());
+}
+
 BisonBrowserContext::BisonBrowserContext(bool off_the_record,
                                          bool delay_services_creation)
     : resource_context_(new BisonResourceContext),

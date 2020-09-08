@@ -36,6 +36,9 @@ class BisonBrowserContext : public content::BrowserContext {
                       bool delay_services_creation = false);
   ~BisonBrowserContext() override;
 
+  static BisonBrowserContext* FromWebContents(
+      content::WebContents* web_contents);
+
   void set_guest_manager_for_testing(
       content::BrowserPluginGuestManager* guest_manager) {
     guest_manager_ = guest_manager;
