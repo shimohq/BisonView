@@ -29,6 +29,7 @@
 #include "bison_web_contents_delegate.h"
 #include "build/build_config.h"
 #include "components/navigation_interception/intercept_navigation_delegate.h"
+#include "content/public/browser/browser_thread.h"
 #include "content/public/browser/child_process_security_policy.h"
 #include "content/public/browser/devtools_agent_host.h"
 #include "content/public/browser/navigation_controller.h"
@@ -51,6 +52,7 @@ using base::android::JavaParamRef;
 using base::android::ScopedJavaLocalRef;
 using content::BluetoothChooser;
 using content::BluetoothScanningPrompt;
+using content::BrowserThread;
 using content::DevToolsAgentHost;
 using content::NavigationController;
 using content::NavigationEntry;
@@ -70,6 +72,8 @@ std::vector<BisonContents*> BisonContents::windows_;
 // base::OnceCallback<void(BisonContents*)>
 //     BisonContents::bison_view_created_callback_;
 
+const void* const kBisonContentsUserDataKey = &kBisonContentsUserDataKey;
+
 class BisonContents::DevToolsWebContentsObserver : public WebContentsObserver {
  public:
   DevToolsWebContentsObserver(BisonContents* bison_view,
@@ -87,14 +91,30 @@ class BisonContents::DevToolsWebContentsObserver : public WebContentsObserver {
   DISALLOW_COPY_AND_ASSIGN(DevToolsWebContentsObserver);
 };
 
+class BisonContentsUserData : public base::SupportsUserData::Data {
+ public:
+  explicit BisonContentsUserData(BisonContents* ptr) : contents_(ptr) {}
+
+  static BisonContents* GetContents(WebContents* web_contents) {
+    if (!web_contents)
+      return NULL;
+    BisonContentsUserData* data = static_cast<BisonContentsUserData*>(
+        web_contents->GetUserData(kBisonContentsUserDataKey));
+    return data ? data->contents_ : NULL;
+  }
+
+ private:
+  BisonContents* contents_;
+};
+
 BisonContents::BisonContents(std::unique_ptr<WebContents> web_contents)
     : WebContentsObserver(web_contents.get()),
       web_contents_(std::move(web_contents)),
       devtools_frontend_(nullptr),
       is_fullscreen_(false),
-      window_(nullptr),
       headless_(false) {
-  windows_.push_back(this);
+  web_contents_->SetUserData(bison::kBisonContentsUserDataKey,
+                             std::make_unique<BisonContentsUserData>(this));
 }
 
 BisonContents::~BisonContents() {
@@ -133,26 +153,7 @@ BisonContents* BisonContents::CreateBisonContents(
 
   // bison_view->PlatformSetContents();
 
-  // bison_view->PlatformResizeSubViews();
-
   return bison_view;
-}
-
-void BisonContents::CloseAllWindows() {
-  DevToolsAgentHost::DetachAllClients();
-  std::vector<BisonContents*> open_windows(windows_);
-  for (size_t i = 0; i < open_windows.size(); ++i)
-    open_windows[i]->Close();
-
-  // Pump the message loop to allow window teardown tasks to run.
-  base::RunLoop().RunUntilIdle();
-
-  // If there were no windows open then the message loop quit closure will
-  // not have been run.
-  if (*g_quit_main_message_loop)
-    std::move(*g_quit_main_message_loop).Run();
-
-  PlatformExit();
 }
 
 void BisonContents::SetMainMessageLoopQuitClosure(
@@ -172,12 +173,8 @@ void BisonContents::QuitMainMessageLoopForTesting() {
 // }
 
 BisonContents* BisonContents::FromWebContents(WebContents* web_contents) {
-  for (BisonContents* window : windows_) {
-    if (window->web_contents() && window->web_contents() == web_contents) {
-      return window;
-    }
-  }
-  return nullptr;
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  return BisonContentsUserData::GetContents(web_contents);
 }
 
 BisonContents* BisonContents::CreateNewWindow(
@@ -333,10 +330,6 @@ void BisonContents::PlatformCleanUp() {
 
 void BisonContents::PlatformCreateWindow() {
   // java_object_.Reset(CreateShellView(this));
-}
-
-void BisonContents::PlatformResizeSubViews() {
-  // Not needed; subviews are bound.
 }
 
 void BisonContents::Close() {

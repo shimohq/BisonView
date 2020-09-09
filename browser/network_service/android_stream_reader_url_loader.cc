@@ -155,7 +155,7 @@ void AndroidStreamReaderURLLoader::OnInputStreamOpened(
       // The original request has been restarted with a new loader or
       // completed. We can clean up this loader.
       // Generally speaking this can happen in the following cases
-      // (see aw_proxying_url_loader_factory.cc for delegate implementation):
+      // (see bison_proxying_url_loader_factory.cc for delegate implementation):
       //   1. InterceptResponseDelegate :
       //     - intercepted requests with custom response,
       //     - no restart required

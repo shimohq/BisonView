@@ -28,21 +28,38 @@ source_set("browser") {
     "bison_web_contents_delegate.h",
     "input_stream.cc",
     "input_stream.h",
+    "bison_contents_io_thread_client.cc",
+    "bison_contents_io_thread_client.h",
+    "bison_settings.cc",
+    "bison_settings.h",
+
 
     # network_service
     "network_service/android_stream_reader_url_loader.cc",
     "network_service/android_stream_reader_url_loader.h",
+    "network_service/bison_web_resource_intercept_response.cc",
+    "network_service/bison_web_resource_intercept_response.h",
+    "network_service/bison_web_resource_response.cc",
+    "network_service/bison_web_resource_response.h",
+    "network_service/bison_web_resource_request.cc",
+    "network_service/bison_web_resource_request.h",
     "network_service/input_stream_reader.cc",
     "network_service/input_stream_reader.h",
+    "network_service/net_helpers.cc",
+    "network_service/net_helpers.h",
+    "renderer_host/bison_render_view_host_ext.cc",
+    "renderer_host/bison_render_view_host_ext.h",
   ]
 
   deps = [
     "//base",
     "//bison:bison_jni_headers",
+    "//bison/common",
     "//components/embedder_support/android:web_contents_delegate",
     "//components/navigation_interception",
      "//components/policy/content/",
     "//components/policy/core/browser",
+    "//components/version_info",
     "//content/public/browser",
     "//components/page_load_metrics/browser",
     "//ui/gfx",

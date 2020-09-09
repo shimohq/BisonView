@@ -9,9 +9,8 @@
 #include "base/callback.h"
 #include "base/compiler_specific.h"
 #include "base/files/file_path.h"
-#include "build/build_config.h"
 #include "content/public/browser/content_browser_client.h"
-//#include "content/shell/browser/shell_speech_recognition_manager_delegate.h"
+#include "mojo/public/cpp/bindings/remote.h"
 #include "services/service_manager/public/cpp/binder_registry.h"
 #include "storage/browser/quota/quota_settings.h"
 
@@ -34,8 +33,8 @@ namespace bison {
 class BisonBrowserContext;
 class BisonBrowserMainParts;
 
-std::string GetBisonUserAgent();
-blink::UserAgentMetadata GetBisonUserAgentMetadata();
+std::string GetUserAgent();
+std::string GetProduct();
 
 class BisonContentBrowserClient : public content::ContentBrowserClient {
  public:
@@ -102,14 +101,12 @@ class BisonContentBrowserClient : public content::ContentBrowserClient {
       LoginAuthRequiredCallback auth_required_callback) override;
 
   std::string GetUserAgent() override;
-  blink::UserAgentMetadata GetUserAgentMetadata() override;
+  std::string GetProduct() override;
 
-  // #if defined(OS_LINUX) || defined(OS_ANDROID)
-  //   void GetAdditionalMappedFilesForChildProcess(
-  //       const base::CommandLine& command_line,
-  //       int child_process_id,
-  //       content::PosixFileDescriptorInfo* mappings) override;
-  // #endif  // defined(OS_LINUX) || defined(OS_ANDROID)
+  void GetAdditionalMappedFilesForChildProcess(
+      const base::CommandLine& command_line,
+      int child_process_id,
+      content::PosixFileDescriptorInfo* mappings) override;
 
   mojo::Remote<network::mojom::NetworkContext> CreateNetworkContext(
       BrowserContext* context,

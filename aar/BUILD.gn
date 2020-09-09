@@ -78,7 +78,7 @@ shared_library("libbison_view") {
     "//content/public/renderer",
     "//ui/gfx",
   ]
-
+  ldflags = [ "-Wl,-shared,-Bsymbolic" ]
   configs -= [ "//build/config/android:hide_all_but_jni_onload" ]
   configs += [ "//build/config/android:hide_all_but_jni" ]
 }

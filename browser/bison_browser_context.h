@@ -98,6 +98,7 @@ class BisonBrowserContext : public content::BrowserContext {
   bool off_the_record_;
   base::FilePath path_;
   content::BrowserPluginGuestManager* guest_manager_;
+
   std::unique_ptr<SimpleFactoryKey> key_;
 
   DISALLOW_COPY_AND_ASSIGN(BisonBrowserContext);

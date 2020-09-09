@@ -29,8 +29,12 @@ generate_jni("bison_jni_headers") {
     "java/src/im/shimo/bison/AndroidProtocolHandler.java",
     "java/src/im/shimo/bison/BisonContents.java",
     "java/src/im/shimo/bison/BisonContentsClientBridge.java",
+    "java/src/im/shimo/bison/BisonWebResourceInterceptResponse.java",
+    "java/src/im/shimo/bison/BisonWebResourceResponse.java",
     "java/src/im/shimo/bison/InputStreamUtil.java",
-
+    "java/src/im/shimo/bison/BisonContentsBackgroundThreadClient.java",
+    "java/src/im/shimo/bison/BisonContentsIoThreadClient.java",
+    "java/src/im/shimo/bison/BisonSettings.java",
     # "java/src/im/shimo/bison/BisonWebContentsDelegate.java",
   ]
 }
@@ -56,6 +60,11 @@ android_library("bison_java") {
     "java/src/im/shimo/bison/BisonWebContentsObserver.java",
     "java/src/im/shimo/bison/BisonResources.java",
     "java/src/im/shimo/bison/AndroidProtocolHandler.java",
+    "java/src/im/shimo/bison/BisonWebResourceResponse.java",
+    "java/src/im/shimo/bison/BisonWebResourceInterceptResponse.java",
+    "java/src/im/shimo/bison/BisonContentsBackgroundThreadClient.java",
+    "java/src/im/shimo/bison/BisonContentsIoThreadClient.java",
+    "java/src/im/shimo/bison/BisonSettings.java",
   ]
 
   deps = bison_java_deps

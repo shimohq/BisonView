@@ -13,6 +13,7 @@
 #include "base/callback_forward.h"
 #include "base/memory/ref_counted.h"
 #include "base/strings/string_piece.h"
+#include "bison/browser/renderer_host/bison_render_view_host_ext.h"
 #include "build/build_config.h"
 #include "components/navigation_interception/intercept_navigation_delegate.h"
 #include "content/public/browser/session_storage_namespace.h"
@@ -87,13 +88,6 @@ class BisonContents : public WebContentsDelegate, public WebContentsObserver {
   // Returns the BisonContents object corresponding to the given WebContents.
   static BisonContents* FromWebContents(WebContents* web_contents);
 
-  // Returns the currently open windows.
-  static std::vector<BisonContents*>& windows() { return windows_; }
-
-  // Closes all windows, pumps teardown tasks, then returns. The main message
-  // loop will be signalled to quit, before the call returns.
-  static void CloseAllWindows();
-
   // Stores the supplied |quit_closure|, to be run when the last BisonContents
   // instance is destroyed.
   static void SetMainMessageLoopQuitClosure(base::OnceClosure quit_closure);
@@ -103,12 +97,11 @@ class BisonContents : public WebContentsDelegate, public WebContentsObserver {
   // already been signalled to quit.
   static void QuitMainMessageLoopForTesting();
 
-  // // Used for content_browsertests. Called once.
-  // static void SetBisonContentsCreatedCallback(
-  //     base::OnceCallback<void(BisonContents*)> bison_view_created_callback);
+  BisonRenderViewHostExt* render_view_host_ext() {
+    return render_view_host_ext_.get();
+  }
 
   WebContents* web_contents() const { return web_contents_.get(); }
-  gfx::NativeWindow window() { return window_; }
 
   // jiang
   base::android::ScopedJavaGlobalRef<jobject> java_object_;
@@ -141,8 +134,6 @@ class BisonContents : public WebContentsDelegate, public WebContentsObserver {
   void PlatformCleanUp();
   // Creates the main window GUI.
   void PlatformCreateWindow();
-  // Resize the content area and GUI.
-  void PlatformResizeSubViews();
 
   // void PlatformToggleFullscreenModeForTab(WebContents* web_contents,
   //                                         bool enter_fullscreen);
@@ -171,13 +162,11 @@ class BisonContents : public WebContentsDelegate, public WebContentsObserver {
   std::unique_ptr<WebContents> web_contents_;
   std::unique_ptr<BisonWebContentsDelegate> web_contents_delegate_;
   std::unique_ptr<BisonContentsClientBridge> contents_client_bridge_;
-
+  std::unique_ptr<BisonRenderViewHostExt> render_view_host_ext_;
   std::unique_ptr<DevToolsWebContentsObserver> devtools_observer_;
   BisonDevToolsFrontend* devtools_frontend_;
 
   bool is_fullscreen_;
-
-  gfx::NativeWindow window_;
 
   gfx::Size content_size_;
 

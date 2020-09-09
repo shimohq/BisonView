@@ -17,6 +17,7 @@
 #include "base/path_service.h"
 #include "base/stl_util.h"
 #include "base/strings/utf_string_conversions.h"
+#include "bison/common/bison_descriptors.h"
 #include "bison_browser_context.h"
 #include "bison_browser_main_parts.h"
 #include "bison_contents_client_bridge.h"
@@ -28,6 +29,7 @@
 #include "components/page_load_metrics/browser/metrics_navigation_throttle.h"
 #include "components/page_load_metrics/browser/metrics_web_contents_observer.h"
 #include "components/policy/content/policy_blacklist_navigation_throttle.h"
+#include "components/version_info/version_info.h"
 #include "content/public/browser/client_certificate_delegate.h"
 #include "content/public/browser/cors_exempt_headers.h"
 #include "content/public/browser/login_delegate.h"
@@ -181,33 +183,16 @@ BisonContentBrowserClient* g_browser_client;
 
 }  // namespace
 
-std::string GetBisonUserAgent() {
-  std::string product = "Chrome/bison_1";
+std::string GetProduct() {
+  return version_info::GetProductNameAndVersionForUserAgent();
+}
+
+std::string GetUserAgent() {
+  std::string product = "Chrome/Bison" + GetProduct();
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
-  if (base::FeatureList::IsEnabled(blink::features::kFreezeUserAgent)) {
-    return content::GetFrozenUserAgent(
-               command_line->HasSwitch(switches::kUseMobileUserAgent))
-        .as_string();
-  }
   if (command_line->HasSwitch(switches::kUseMobileUserAgent))
     product += " Mobile";
   return content::BuildUserAgentFromProduct(product);
-}
-
-blink::UserAgentMetadata GetBisonUserAgentMetadata() {
-  blink::UserAgentMetadata metadata;
-
-  metadata.brand = "bison";
-  // metadata.full_version = CONTENT_VERSION;
-  metadata.full_version = "99.77.34.5";
-  metadata.major_version = "99";
-  metadata.platform = content::BuildOSCpuInfo(false);
-
-  // TODO(mkwst): Split these out from BuildOSCpuInfo().
-  metadata.architecture = "";
-  metadata.model = "";
-
-  return metadata;
 }
 
 BisonContentBrowserClient* BisonContentBrowserClient::Get() {
@@ -444,12 +429,27 @@ std::unique_ptr<LoginDelegate> BisonContentBrowserClient::CreateLoginDelegate(
   return nullptr;
 }
 
-std::string BisonContentBrowserClient::GetUserAgent() {
-  return GetBisonUserAgent();
+std::string BisonContentBrowserClient::GetProduct() {
+  return bison::GetProduct();
 }
 
-blink::UserAgentMetadata BisonContentBrowserClient::GetUserAgentMetadata() {
-  return GetBisonUserAgentMetadata();
+std::string BisonContentBrowserClient::GetUserAgent() {
+  return bison::GetUserAgent();
+}
+
+void BisonContentBrowserClient::GetAdditionalMappedFilesForChildProcess(
+    const base::CommandLine& command_line,
+    int child_process_id,
+    content::PosixFileDescriptorInfo* mappings) {
+  mappings->ShareWithRegion(
+      kBisonPakDescriptor,
+      base::GlobalDescriptors::GetInstance()->Get(kBisonPakDescriptor),
+      base::GlobalDescriptors::GetInstance()->GetRegion(kBisonPakDescriptor));
+
+  // int crash_signal_fd = GetCrashSignalFD(command_line);
+  // if (crash_signal_fd >= 0) {
+  //   mappings->Share(service_manager::kCrashDumpSignal, crash_signal_fd);
+  // }
 }
 
 mojo::Remote<network::mojom::NetworkContext>

@@ -4,6 +4,12 @@ source_set("renderer") {
     "bison_content_renderer_client.h",
     "bison_render_view_observer.cc",
     "bison_render_view_observer.h",
+    "bison_render_thread_observer.cc",
+    "bison_render_thread_observer.h",
+    "bison_render_view_ext.cc",
+    "bison_render_view_ext.h",
+    "bison_render_frame_ext.cc",
+    "bison_render_frame_ext.h",
   ]
 
   deps = [
