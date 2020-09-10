@@ -1,5 +1,3 @@
-
-
 // create by jiang947
 
 #ifndef BISON_BROWSER_BISON_CONTENTS_CLIENT_BRIDGE_H_
@@ -9,6 +7,7 @@
 #include "base/android/scoped_java_ref.h"
 #include "base/containers/id_map.h"
 #include "base/supports_user_data.h"
+#include "bison/browser/network_service/bison_web_resource_request.h"
 #include "content/public/browser/javascript_dialog_manager.h"
 #include "content/public/browser/web_contents.h"
 
@@ -16,6 +15,18 @@ namespace bison {
 
 class BisonContentsClientBridge {
  public:
+  struct HttpErrorInfo {
+    HttpErrorInfo();
+    ~HttpErrorInfo();
+
+    int status_code;
+    std::string status_text;
+    std::string mime_type;
+    std::string encoding;
+    std::vector<std::string> response_header_names;
+    std::vector<std::string> response_header_values;
+  };
+
   static void Associate(content::WebContents* web_contents,
                         BisonContentsClientBridge* handler);
   static BisonContentsClientBridge* FromWebContents(
@@ -43,6 +54,9 @@ class BisonContentsClientBridge {
                                 bool is_redirect,
                                 bool is_main_frame,
                                 bool* ignore_navigation);
+
+  void OnReceivedHttpError(const BisonWebResourceRequest& request,
+                           std::unique_ptr<HttpErrorInfo> error_info);
 
  private:
   JavaObjectWeakGlobalRef java_ref_;

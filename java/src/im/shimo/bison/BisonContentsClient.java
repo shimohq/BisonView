@@ -78,6 +78,7 @@ public class BisonContentsClient {
     protected void handleJsPrompt(String url, String message, String defaultValue,
                                   JsPromptResultReceiver receiver) {
 
+
     }
 
     private boolean showDefaultJsDialog(JsPromptResult res, int jsDialogType, String defaultValue,
@@ -138,6 +139,11 @@ public class BisonContentsClient {
         return mBisonViewClient.shouldOverrideUrlLoading(mBisonView, request);
     }
 
+    public BisonWebResourceResponse shouldInterceptRequest(BisonWebResourceRequest request){
+        //mBisonViewClient.shouldOverrideUrlLoading(mBisonView,request)
+        return null;
+    }
+
 
 
     private static boolean sendBrowsingIntent(Context context, String url, boolean hasUserGesture,
@@ -189,6 +195,14 @@ public class BisonContentsClient {
         }
 
         return false;
+    }
+
+    public void postOnLoadResource(String url) {
+
+    }
+
+    public void postOnReceivedError(BisonWebResourceRequest request, BisonWebResourceError bisonWebResourceError) {
+
     }
 
 
@@ -269,4 +283,6 @@ public class BisonContentsClient {
         public HashMap<String, String> requestHeaders;
     }
 
+    public static class BisonWebResourceError {
+    }
 }

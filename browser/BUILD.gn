@@ -32,6 +32,8 @@ source_set("browser") {
     "bison_contents_io_thread_client.h",
     "bison_settings.cc",
     "bison_settings.h",
+    "bison_cookie_access_policy.cc",
+    "bison_cookie_access_policy.h",
 
 
     # network_service
@@ -47,6 +49,8 @@ source_set("browser") {
     "network_service/input_stream_reader.h",
     "network_service/net_helpers.cc",
     "network_service/net_helpers.h",
+    "network_service/bison_proxying_url_loader_factory.cc",
+    "network_service/bison_proxying_url_loader_factory.h",
     "renderer_host/bison_render_view_host_ext.cc",
     "renderer_host/bison_render_view_host_ext.h",
   ]

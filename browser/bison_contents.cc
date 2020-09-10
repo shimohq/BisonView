@@ -21,6 +21,7 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/threading/thread_task_runner_handle.h"
 #include "bison/bison_jni_headers/BisonContents_jni.h"  // jiang jni.h
+#include "bison/browser/bison_contents_io_thread_client.h"
 #include "bison_browser_main_parts.h"
 #include "bison_content_browser_client.h"
 #include "bison_contents_client_bridge.h"
@@ -341,6 +342,7 @@ void BisonContents::SetJavaPeers(
     JNIEnv* env,
     const JavaParamRef<jobject>& web_contents_delegate,
     const JavaParamRef<jobject>& contents_client_bridge,
+    const JavaParamRef<jobject>& io_thread_client,
     const JavaParamRef<jobject>& intercept_navigation_delegate) {
   web_contents_delegate_.reset(
       new BisonWebContentsDelegate(env, web_contents_delegate));
@@ -349,6 +351,8 @@ void BisonContents::SetJavaPeers(
       new BisonContentsClientBridge(env, contents_client_bridge));
   BisonContentsClientBridge::Associate(web_contents_.get(),
                                        contents_client_bridge_.get());
+
+  BisonContentsIoThreadClient::Associate(web_contents_.get(), io_thread_client);
 
   InterceptNavigationDelegate::Associate(
       web_contents_.get(), std::make_unique<InterceptNavigationDelegate>(

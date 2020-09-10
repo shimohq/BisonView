@@ -187,4 +187,39 @@ bool BisonContentsClientBridge::ShouldOverrideUrlLoading(
   return true;
 }
 
+void BisonContentsClientBridge::OnReceivedHttpError(
+    const BisonWebResourceRequest& request,
+    std::unique_ptr<HttpErrorInfo> http_error_info) {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  VLOG(0) << "OnReceivedHttpError";
+  // JNIEnv* env = AttachCurrentThread();
+  // ScopedJavaLocalRef<jobject> obj = java_ref_.get(env);
+  // if (obj.is_null())
+  //   return;
+
+  // AwWebResourceRequest::AwJavaWebResourceRequest java_web_resource_request;
+  // AwWebResourceRequest::ConvertToJava(env, request,
+  // &java_web_resource_request);
+
+  // ScopedJavaLocalRef<jstring> jstring_mime_type =
+  //     ConvertUTF8ToJavaString(env, http_error_info->mime_type);
+  // ScopedJavaLocalRef<jstring> jstring_encoding =
+  //     ConvertUTF8ToJavaString(env, http_error_info->encoding);
+  // ScopedJavaLocalRef<jstring> jstring_reason =
+  //     ConvertUTF8ToJavaString(env, http_error_info->status_text);
+  // ScopedJavaLocalRef<jobjectArray> jstringArray_response_header_names =
+  //     ToJavaArrayOfStrings(env, http_error_info->response_header_names);
+  // ScopedJavaLocalRef<jobjectArray> jstringArray_response_header_values =
+  //     ToJavaArrayOfStrings(env, http_error_info->response_header_values);
+
+  // Java_AwContentsClientBridge_onReceivedHttpError(
+  //     env, obj, java_web_resource_request.jurl, request.is_main_frame,
+  //     request.has_user_gesture, java_web_resource_request.jmethod,
+  //     java_web_resource_request.jheader_names,
+  //     java_web_resource_request.jheader_values, jstring_mime_type,
+  //     jstring_encoding, http_error_info->status_code, jstring_reason,
+  //     jstringArray_response_header_names,
+  //     jstringArray_response_header_values);
+  }
+
 }  // namespace bison

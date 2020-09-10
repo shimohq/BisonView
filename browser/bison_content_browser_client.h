@@ -123,17 +123,17 @@ class BisonContentBrowserClient : public content::ContentBrowserClient {
                                 bool is_main_frame,
                                 ui::PageTransition transition,
                                 bool* ignore_navigation) override;
-  // bool WillCreateURLLoaderFactory(
-  //     content::BrowserContext* browser_context,
-  //     content::RenderFrameHost* frame,
-  //     int render_process_id,
-  //     URLLoaderFactoryType type,
-  //     const url::Origin& request_initiator,
-  //     mojo::PendingReceiver<network::mojom::URLLoaderFactory>*
-  //     factory_receiver,
-  //     mojo::PendingRemote<network::mojom::TrustedURLLoaderHeaderClient>*
-  //         header_client,
-  //     bool* bypass_redirect_checks) override;
+  bool WillCreateURLLoaderFactory(
+      content::BrowserContext* browser_context,
+      content::RenderFrameHost* frame,
+      int render_process_id,
+      URLLoaderFactoryType type,
+      const url::Origin& request_initiator,
+      mojo::PendingReceiver<network::mojom::URLLoaderFactory>*
+      factory_receiver,
+      mojo::PendingRemote<network::mojom::TrustedURLLoaderHeaderClient>*
+          header_client,
+      bool* bypass_redirect_checks) override;
 
   BisonBrowserContext* browser_context();
   BisonBrowserContext* off_the_record_browser_context();

@@ -65,6 +65,7 @@ android_library("bison_java") {
     "java/src/im/shimo/bison/BisonContentsBackgroundThreadClient.java",
     "java/src/im/shimo/bison/BisonContentsIoThreadClient.java",
     "java/src/im/shimo/bison/BisonSettings.java",
+    "java/src/im/shimo/bison/InputStreamUtil.java",
   ]
 
   deps = bison_java_deps

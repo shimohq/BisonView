@@ -24,7 +24,6 @@
 #include "content/public/browser/download_item_utils.h"
 #include "content/public/browser/download_manager.h"
 #include "content/public/browser/web_contents.h"
-#include "content/shell/common/shell_switches.h"
 #include "net/base/filename_util.h"
 
 #if defined(OS_WIN)

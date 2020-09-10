@@ -246,9 +246,7 @@ public class BisonSettings {
 
     }
 
-    public BisonSettings(Context context, boolean allowEmptyDocumentPersistence,
-                         boolean allowGeolocationOnInsecureOrigins,
-                         boolean doNotUpdateSelectionOnMutatingSelectionRange) {
+    public BisonSettings(Context context) {
         synchronized (mSettingsLock) {
             mHasInternetPermission = true;
             mBlockNetworkLoads = false;
@@ -282,8 +280,7 @@ public class BisonSettings {
             //mAppTargetSdkVersion <= Build.VERSION_CODES.M;
             mAllowEmptyDocumentPersistence = false;
             mAllowGeolocationOnInsecureOrigins = false;
-            mDoNotUpdateSelectionOnMutatingSelectionRange =
-                    doNotUpdateSelectionOnMutatingSelectionRange;
+            mDoNotUpdateSelectionOnMutatingSelectionRange = false;
         }
         // Defer initializing the native side until a native WebContents instance is set.
     }

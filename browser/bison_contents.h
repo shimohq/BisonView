@@ -109,6 +109,7 @@ class BisonContents : public WebContentsDelegate, public WebContentsObserver {
   void SetJavaPeers(JNIEnv* env,
                     const JavaParamRef<jobject>& web_contents_delegate,
                     const JavaParamRef<jobject>& contents_client_bridge,
+                    const JavaParamRef<jobject>& io_thread_client,
                     const JavaParamRef<jobject>& intercept_navigation_delegate);
 
   void GrantFileSchemeAccesstoChildProcess(JNIEnv* env);

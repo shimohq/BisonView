@@ -56,8 +56,12 @@ class BisonContents extends FrameLayout {
     private BisonViewClient mBisonViewClient;
     private BisonWebChromeClient mBisonWebChromeClient;
 
-    private BisonContentsClientBridge mBisonContentsClientBridge;
+    private final BisonContentsClientBridge mBisonContentsClientBridge;
+    private final BisonContentsBackgroundThreadClient mBackgroundThreadClient;
+    private final BisonContentsIoThreadClient mIoThreadClient;
     private final InterceptNavigationDelegateImpl mInterceptNavigationDelegate;
+
+    private BisonSettings mSettings;
 
 
     private JavascriptInjector mJavascriptInjector;
@@ -93,11 +97,18 @@ class BisonContents extends FrameLayout {
         cv.requestFocus();
         mContentViewRenderView.setCurrentWebContents(mWebContents);
 
+        mSettings = new BisonSettings(context);
 
         mBisonContentsClientBridge = bisonContentsClientBridge;
+        mBackgroundThreadClient = new BackgroundThreadClientImpl();
+        mIoThreadClient = new IoThreadClientImpl();
         mInterceptNavigationDelegate = new InterceptNavigationDelegateImpl();
+
+
         BisonContentsJni.get().setJavaPeers(mNativeBisonContents, webContentsDelegate,
-                mBisonContentsClientBridge, mInterceptNavigationDelegate);
+                mBisonContentsClientBridge, mIoThreadClient, mInterceptNavigationDelegate);
+
+
 
 
     }
@@ -155,7 +166,7 @@ class BisonContents extends FrameLayout {
 
     public void postUrl(String url, byte[] postData) {
         LoadUrlParams params = LoadUrlParams.createLoadHttpPostParams(url, postData);
-        Map<String, String> headers = new HashMap<String, String>();
+        Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/x-www-form-urlencoded");
         params.setExtraHeaders(headers);
         loadUrl(params);
@@ -313,6 +324,85 @@ class BisonContents extends FrameLayout {
     }
 
 
+
+
+    private class IoThreadClientImpl extends BisonContentsIoThreadClient {
+        // All methods are called on the IO thread.
+
+        @Override
+        public int getCacheMode() {
+            return mSettings.getCacheMode();
+        }
+
+        @Override
+        public BisonContentsBackgroundThreadClient getBackgroundThreadClient() {
+            return mBackgroundThreadClient;
+        }
+
+        @Override
+        public boolean shouldBlockContentUrls() {
+            return !mSettings.getAllowContentAccess();
+        }
+
+        @Override
+        public boolean shouldBlockFileUrls() {
+            return !mSettings.getAllowFileAccess();
+        }
+
+        @Override
+        public boolean shouldBlockNetworkLoads() {
+            return mSettings.getBlockNetworkLoads();
+        }
+
+        @Override
+        public boolean shouldAcceptThirdPartyCookies() {
+            return mSettings.getAcceptThirdPartyCookies();
+        }
+
+        @Override
+        public boolean getSafeBrowsingEnabled() {
+            return mSettings.getSafeBrowsingEnabled();
+        }
+    }
+
+    private class BackgroundThreadClientImpl extends BisonContentsBackgroundThreadClient {
+        @Override
+        public BisonWebResourceResponse shouldInterceptRequest(BisonContentsClient.BisonWebResourceRequest request) {
+            String url = request.url;
+            BisonWebResourceResponse webResourceResponse;
+            // Return the response directly if the url is default video poster url.
+            //webResourceResponse = mDefaultVideoPosterRequestHandler.shouldInterceptRequest(url);
+            //if (webResourceResponse != null) return webResourceResponse;
+
+            webResourceResponse = mContentsClient.shouldInterceptRequest(request);
+
+            if (webResourceResponse == null) {
+                mContentsClient.postOnLoadResource(url);
+            }
+
+            //if (webResourceResponse != null) {
+            //    String mimeType = webResourceResponse.getMimeType();
+            //    if (mimeType == null) {
+            //        AwHistogramRecorder.recordMimeType(
+            //                AwHistogramRecorder.MimeType.NULL_FROM_SHOULD_INTERCEPT_REQUEST);
+            //    } else {
+            //        AwHistogramRecorder.recordMimeType(
+            //                AwHistogramRecorder.MimeType.NONNULL_FROM_SHOULD_INTERCEPT_REQUEST);
+            //    }
+            //}
+            if (webResourceResponse != null && webResourceResponse.getData() == null) {
+                // In this case the intercepted URLRequest job will simulate an empty response
+                // which doesn't trigger the onReceivedError callback. For WebViewClassic
+                // compatibility we synthesize that callback.  http://crbug.com/180950
+                mContentsClient.postOnReceivedError(
+                        request, new BisonContentsClient.BisonWebResourceError());
+            }
+            return webResourceResponse;
+        }
+        // All methods are called on the background thread.
+
+    }
+
     private class InterceptNavigationDelegateImpl implements InterceptNavigationDelegate {
         @Override
         public boolean shouldIgnoreNavigation(NavigationParams navigationParams) {
@@ -330,6 +420,7 @@ class BisonContents extends FrameLayout {
 
         void setJavaPeers(long nativeBisonContents, BisonWebContentsDelegate webContentsDelegate,
                           BisonContentsClientBridge bisonContentsClientBridge,
+                          BisonContentsIoThreadClient ioThreadClient,
                           InterceptNavigationDelegate interceptNavigationDelegate);
 
         void grantFileSchemeAccesstoChildProcess(long nativeBisonContents);

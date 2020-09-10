@@ -2,10 +2,15 @@
 
 #include <stddef.h>
 
+#include <memory>
+#include <string>
 #include <utility>
+#include <vector>
 
 #include "base/android/apk_assets.h"
+#include "base/android/locale_utils.h"
 #include "base/android/path_utils.h"
+#include "base/base_paths_android.h"
 #include "base/base_switches.h"
 #include "base/bind.h"
 #include "base/command_line.h"
@@ -13,10 +18,14 @@
 #include "base/feature_list.h"
 #include "base/files/file.h"
 #include "base/files/file_util.h"
+#include "base/files/scoped_file.h"
+#include "base/memory/ptr_util.h"
 #include "base/no_destructor.h"
 #include "base/path_service.h"
 #include "base/stl_util.h"
 #include "base/strings/utf_string_conversions.h"
+#include "base/task/post_task.h"
+#include "bison/browser/network_service/bison_proxying_url_loader_factory.h"
 #include "bison/common/bison_descriptors.h"
 #include "bison_browser_context.h"
 #include "bison_browser_main_parts.h"
@@ -30,6 +39,8 @@
 #include "components/page_load_metrics/browser/metrics_web_contents_observer.h"
 #include "components/policy/content/policy_blacklist_navigation_throttle.h"
 #include "components/version_info/version_info.h"
+#include "content/public/browser/browser_task_traits.h" // 
+#include "content/public/browser/browser_thread.h"
 #include "content/public/browser/client_certificate_delegate.h"
 #include "content/public/browser/cors_exempt_headers.h"
 #include "content/public/browser/login_delegate.h"
@@ -67,6 +78,7 @@
 #include "media/mojo/services/media_service_factory.h"  // nogncheck
 #endif
 
+using content::BrowserThread;
 using content::StoragePartition;
 using content::WebContents;
 
@@ -528,32 +540,31 @@ bool BisonContentBrowserClient::ShouldOverrideUrlLoading(
       url, has_user_gesture, is_redirect, is_main_frame, ignore_navigation);
 }
 
-// bool BisonContentBrowserClient::WillCreateURLLoaderFactory(
-//     content::BrowserContext* browser_context,
-//     content::RenderFrameHost* frame,
-//     int render_process_id,
-//     URLLoaderFactoryType type,
-//     const url::Origin& request_initiator,
-//     mojo::PendingReceiver<network::mojom::URLLoaderFactory>*
-//     factory_receiver,
-//     mojo::PendingRemote<network::mojom::TrustedURLLoaderHeaderClient>*
-//         header_client,
-//     bool* bypass_redirect_checks) {
-//   DCHECK_CURRENTLY_ON(BrowserThread::UI);
+bool BisonContentBrowserClient::WillCreateURLLoaderFactory(
+    content::BrowserContext* browser_context,
+    content::RenderFrameHost* frame,
+    int render_process_id,
+    URLLoaderFactoryType type,
+    const url::Origin& request_initiator,
+    mojo::PendingReceiver<network::mojom::URLLoaderFactory>* factory_receiver,
+    mojo::PendingRemote<network::mojom::TrustedURLLoaderHeaderClient>*
+        header_client,
+    bool* bypass_redirect_checks) {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
 
-//   auto proxied_receiver = std::move(*factory_receiver);
-//   network::mojom::URLLoaderFactoryPtrInfo target_factory_info;
-//   *factory_receiver = mojo::MakeRequest(&target_factory_info);
-//   int process_id =
-//       type == URLLoaderFactoryType::kNavigation ? 0 : render_process_id;
+  auto proxied_receiver = std::move(*factory_receiver);
+  network::mojom::URLLoaderFactoryPtrInfo target_factory_info;
+  *factory_receiver = mojo::MakeRequest(&target_factory_info);
+  int process_id =
+      type == URLLoaderFactoryType::kNavigation ? 0 : render_process_id;
 
-//   // Android WebView has one non off-the-record browser context.
-//   base::PostTask(FROM_HERE, {content::BrowserThread::IO},
-//                  base::BindOnce(&AwProxyingURLLoaderFactory::CreateProxy,
-//                                 process_id, std::move(proxied_receiver),
-//                                 std::move(target_factory_info)));
-//   return true;
-// }
+  // BisonView has one non off-the-record browser context.
+  base::PostTask(FROM_HERE, {content::BrowserThread::IO},
+                 base::BindOnce(&BisonProxyingURLLoaderFactory::CreateProxy,
+                                process_id, std::move(proxied_receiver),
+                                std::move(target_factory_info)));
+  return true;
+}
 
 BisonBrowserContext* BisonContentBrowserClient::browser_context() {
   return shell_browser_main_parts_->browser_context();
