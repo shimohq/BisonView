@@ -196,11 +196,11 @@ BisonContentBrowserClient* g_browser_client;
 }  // namespace
 
 std::string GetProduct() {
-  return version_info::GetProductNameAndVersionForUserAgent();
+  return "Chromium/" + version_info::GetVersionNumber();
 }
 
 std::string GetUserAgent() {
-  std::string product = "Chrome/Bison" + GetProduct();
+  std::string product = "Bison/1.0 " + GetProduct();
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
   if (command_line->HasSwitch(switches::kUseMobileUserAgent))
     product += " Mobile";

@@ -29,7 +29,7 @@ class BisonDevToolsManagerDelegate : public DevToolsManagerDelegate {
 
   // DevToolsManagerDelegate implementation.
   BrowserContext* GetDefaultBrowserContext() override;
-  scoped_refptr<DevToolsAgentHost> CreateNewTarget(const GURL& url) override;
+  std::string GetTargetDescription(content::WebContents* web_contents) override;
   std::string GetDiscoveryPageHTML() override;
   bool HasBundledFrontendResources() override;
   void ClientAttached(content::DevToolsAgentHost* agent_host,

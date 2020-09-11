@@ -132,16 +132,37 @@ void BisonDevToolsManagerDelegate::ClientDetached(
   clients_.erase(client);
 }
 
-scoped_refptr<DevToolsAgentHost> BisonDevToolsManagerDelegate::CreateNewTarget(
-    const GURL& url) {
-  BisonContents* bisonView =
-      BisonContents::CreateNewWindow(browser_context_, nullptr);
-  bisonView->LoadURL(url);
-  return DevToolsAgentHost::GetOrCreateFor(bisonView->web_contents());
+std::string BisonDevToolsManagerDelegate::GetTargetDescription(
+    content::WebContents* web_contents) {
+  // android_webview::BrowserViewRenderer* bvr =
+  //     android_webview::BrowserViewRenderer::FromWebContents(web_contents);
+  // if (!bvr)
+  //   return "";
+  // base::DictionaryValue description;
+  // description.SetBoolean("attached", bvr->attached_to_window());
+  // description.SetBoolean("visible", bvr->IsVisible());
+  // gfx::Rect screen_rect = bvr->GetScreenRect();
+  // description.SetInteger("screenX", screen_rect.x());
+  // description.SetInteger("screenY", screen_rect.y());
+  // description.SetBoolean("empty", screen_rect.size().IsEmpty());
+  // if (!screen_rect.size().IsEmpty()) {
+  //   description.SetInteger("width", screen_rect.width());
+  //   description.SetInteger("height", screen_rect.height());
+  // }
+  // std::string json;
+  // base::JSONWriter::Write(description, &json);
+  return "";
 }
 
+
 std::string BisonDevToolsManagerDelegate::GetDiscoveryPageHTML() {
-  return std::string();
+  const char html[] =
+      "<html>"
+      "<head><title>BisonView remote debugging</title></head>"
+      "<body>Please use <a href=\'chrome://inspect\'>chrome://inspect</a>"
+      "</body>"
+      "</html>";
+  return html;
 }
 
 bool BisonDevToolsManagerDelegate::HasBundledFrontendResources() {

@@ -11,15 +11,21 @@ import org.chromium.content_public.browser.BrowserStartupController;
 
 public class BisonView extends FrameLayout {
 
-    private final BisonContentsClient mBisonContentsClient;
+    private BisonContentsClient mBisonContentsClient;
     private BisonContents mBisonContents;
     private BisonContentsClientBridge mBisonContentsClientBridge;
 
-    /**
-     * Constructor for inflating via XML.
-     */
+    public BisonView(Context context) {
+        super(context);
+        init(context);
+    }
+
     public BisonView(Context context, AttributeSet attrs) {
         super(context, attrs);
+        init(context);
+    }
+
+    private void init(Context context){
         BisonResources.resetIds(context);
         LibraryLoader.getInstance().ensureInitialized(LibraryProcessType.PROCESS_BROWSER);
         BrowserStartupController.get(LibraryProcessType.PROCESS_BROWSER)
@@ -67,6 +73,10 @@ public class BisonView extends FrameLayout {
 
     public void addJavascriptInterface(Object obj, String interfaceName) {
         mBisonContents.addJavascriptInterface(obj, interfaceName);
+    }
+
+    public BisonSettings getSettings(){
+        return mBisonContents.getSettings();
     }
 
     public void destroy() {

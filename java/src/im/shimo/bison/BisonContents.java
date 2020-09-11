@@ -315,6 +315,10 @@ class BisonContents extends FrameLayout {
     }
 
 
+    public BisonSettings getSettings() {
+        return mSettings;
+    }
+
     public void destroy() {
         if (mContentViewRenderView != null) {
             mContentViewRenderView.destroy();
@@ -322,7 +326,6 @@ class BisonContents extends FrameLayout {
         removeAllViews();
         BisonContentsJni.get().destroy(mNativeBisonContents);
     }
-
 
 
 
