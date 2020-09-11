@@ -243,6 +243,11 @@ class BisonContents extends FrameLayout {
         return mWebContents;
     }
 
+
+    public void stopLoading() {
+        mWebContents.stop();
+    }
+
     public void reload() {
         mNavigationController.reload(true);
     }
@@ -326,6 +331,7 @@ class BisonContents extends FrameLayout {
         removeAllViews();
         BisonContentsJni.get().destroy(mNativeBisonContents);
     }
+
 
 
 

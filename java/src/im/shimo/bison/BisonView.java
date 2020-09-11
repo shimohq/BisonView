@@ -58,6 +58,14 @@ public class BisonView extends FrameLayout {
         mBisonContents.loadData(baseUrl, data, mimeType, encoding, failUrl);
     }
 
+    public void stopLoading() {
+        mBisonContents.stopLoading();
+    }
+
+    public void reload() {
+        mBisonContents.reload();
+    }
+
     public void evaluateJavascript(String script, ValueCallback<String> resultCallback) {
         mBisonContents.evaluateJavaScript(script, CallbackConverter.fromValueCallback(resultCallback));
     }
