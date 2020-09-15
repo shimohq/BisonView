@@ -25,6 +25,8 @@
 #include "base/stl_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/task/post_task.h"
+#include "bison/browser/bison_content_browser_overlay_manifest.h"
+#include "bison/browser/bison_content_renderer_overlay_manifest.h"
 #include "bison/browser/network_service/bison_proxying_url_loader_factory.h"
 #include "bison/common/bison_descriptors.h"
 #include "bison_browser_context.h"
@@ -39,7 +41,7 @@
 #include "components/page_load_metrics/browser/metrics_web_contents_observer.h"
 #include "components/policy/content/policy_blacklist_navigation_throttle.h"
 #include "components/version_info/version_info.h"
-#include "content/public/browser/browser_task_traits.h" // 
+#include "content/public/browser/browser_task_traits.h"  //
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/client_certificate_delegate.h"
 #include "content/public/browser/cors_exempt_headers.h"
@@ -139,59 +141,6 @@ BisonContentBrowserClient* g_browser_client;
 //   return -1;
 // }
 // #endif  // defined(OS_ANDROID)
-
-// const service_manager::Manifest& GetContentBrowserOverlayManifest() {
-//   static base::NoDestructor<service_manager::Manifest> manifest{
-//       service_manager::ManifestBuilder()
-//           .ExposeCapability(
-//               "renderer",
-//               service_manager::Manifest::InterfaceList<
-//                   mojom::MojoWebTestHelper, mojom::FakeBluetoothChooser,
-//                   mojom::FakeBluetoothChooserFactory,
-//                   mojom::WebTestBluetoothFakeAdapterSetter,
-//                   bluetooth::mojom::FakeBluetooth>())
-//           .ExposeInterfaceFilterCapability_Deprecated(
-//               "navigation:frame", "renderer",
-//               service_manager::Manifest::InterfaceList<
-//                   mojom::MojoWebTestHelper>())
-//           .Build()};
-//   return *manifest;
-// }
-
-// const service_manager::Manifest& GetContentGpuOverlayManifest() {
-//   static base::NoDestructor<service_manager::Manifest> manifest{
-//       service_manager::ManifestBuilder()
-//           .ExposeCapability("browser",
-//           service_manager::Manifest::InterfaceList<
-//                                            mojom::PowerMonitorTest>())
-//           .Build()};
-//   return *manifest;
-// }
-
-// const service_manager::Manifest& GetContentRendererOverlayManifest() {
-//   static base::NoDestructor<service_manager::Manifest> manifest{
-//       service_manager::ManifestBuilder()
-//           .ExposeCapability(
-//               "browser",
-//               service_manager::Manifest::InterfaceList<mojom::PowerMonitorTest,
-//                                                        mojom::TestService>())
-//           .ExposeInterfaceFilterCapability_Deprecated(
-//               "navigation:frame", "browser",
-//               service_manager::Manifest::InterfaceList<mojom::WebTestControl>())
-//           .Build()};
-//   return *manifest;
-// }
-
-// const service_manager::Manifest& GetContentUtilityOverlayManifest() {
-//   static base::NoDestructor<service_manager::Manifest> manifest{
-//       service_manager::ManifestBuilder()
-//           .ExposeCapability(
-//               "browser",
-//               service_manager::Manifest::InterfaceList<mojom::PowerMonitorTest,
-//                                                        mojom::TestService>())
-//           .Build()};
-//   return *manifest;
-// }
 
 }  // namespace
 
@@ -295,16 +244,18 @@ bool BisonContentBrowserClient::ShouldTerminateOnServiceQuit(
 
 base::Optional<service_manager::Manifest>
 BisonContentBrowserClient::GetServiceManifestOverlay(base::StringPiece name) {
+  // Check failed: false. The Service Manager prevented service
+  // "content_renderer" from binding interface "ws.mojom.Gpu" in target service
+  // "content_browser". You probably need to update one or more service
+  // manifests to ensure that "content_browser" exposes "ws.mojom.Gpu" through a
+  // capability
+  // and that "content_renderer" requires that capability from the
+  // "content_browser" service.
   VLOG(0) << "GetServiceManifestOverlay : name " << name;
-  // if (name == content::mojom::kBrowserServiceName)
-  //   return GetContentBrowserOverlayManifest();
-  // if (name == content::mojom::kGpuServiceName)
-  // return GetContentGpuOverlayManifest();
-  // if (name == content::mojom::kRendererServiceName)
-  // return GetContentRendererOverlayManifest();
-  // if (name == content::mojom::kUtilityServiceName)
-  // return GetContentUtilityOverlayManifest();
-
+  if (name == content::mojom::kBrowserServiceName)
+    return GetContentBrowserOverlayManifest();
+  if (name == content::mojom::kRendererServiceName)
+    return GetContentRendererOverlayManifest();
   return base::nullopt;
 }
 

@@ -21,11 +21,14 @@
 #include "cc/base/switches.h"
 #include "components/crash/core/common/crash_key.h"
 #include "components/viz/common/switches.h"
+#include "components/viz/common/features.h"
 #include "content/common/content_constants_internal.h"
 #include "content/public/browser/browser_main_runner.h"
 #include "content/public/common/content_switches.h"
 #include "content/public/common/url_constants.h"
+#include "content/public/common/content_features.h"
 #include "gpu/config/gpu_switches.h"
+#include "gpu/config/gpu_finch_features.h"
 #include "ipc/ipc_buildflags.h"
 #include "media/base/media_switches.h"
 #include "net/cookies/cookie_monster.h"
@@ -38,7 +41,11 @@
 #include "ui/base/ui_base_switches.h"
 #include "ui/display/display_switches.h"
 #include "ui/gl/gl_implementation.h"
+#include "ui/events/gesture_detection/gesture_configuration.h"
 #include "ui/gl/gl_switches.h"
+#include "bison/browser/scoped_add_feature_flags.h"
+#include "gin/v8_initializer.h"
+#include "content/public/common/content_descriptor_keys.h"
 
 #if BUILDFLAG(IPC_MESSAGE_LOG_ENABLED)
 #define IPC_MESSAGE_MACROS_LOG_ENABLED
@@ -55,9 +62,9 @@
 
 namespace {
 
-void InitLogging(const base::CommandLine& command_line) {
+void InitLogging(const base::CommandLine* command_line) {
   base::FilePath log_filename =
-      command_line.GetSwitchValuePath(switches::kLogFile);
+      command_line->GetSwitchValuePath(switches::kLogFile);
   if (log_filename.empty()) {
     base::PathService::Get(base::DIR_EXE, &log_filename);
     log_filename = log_filename.AppendASCII("bison.log");
@@ -70,6 +77,7 @@ void InitLogging(const base::CommandLine& command_line) {
   logging::InitLogging(settings);
   logging::SetLogItems(true /* Process ID */, true /* Thread ID */,
                        true /* Timestamp */, false /* Tick count */);
+  VLOG(0) << "log file at:" << log_filename.value().c_str();
 }
 
 }  // namespace
@@ -81,16 +89,111 @@ BisonMainDelegate::BisonMainDelegate() {}
 BisonMainDelegate::~BisonMainDelegate() {}
 
 bool BisonMainDelegate::BasicStartupComplete(int* exit_code) {
-  base::CommandLine& command_line = *base::CommandLine::ForCurrentProcess();
-  int dummy;
-  if (!exit_code)
-    exit_code = &dummy;
+  content_client_.reset(new BisonContentClient);
+  SetContentClient(content_client_.get());
+
+  base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
+  InitLogging(cl);
+
+  cl->AppendSwitch(switches::kDisableOverscrollEdgeEffect);
+
+  cl->AppendSwitch(switches::kDisablePullToRefreshEffect);
+
+  cl->AppendSwitch(switches::kDisableSharedWorkers);
+
+  cl->AppendSwitch(switches::kDisableFileSystem);
+
+  cl->AppendSwitch(switches::kDisableNotifications);
+  
+  cl->AppendSwitch(switches::kDisableSpeechSynthesisAPI);
+
+  cl->AppendSwitch(switches::kDisablePermissionsAPI);
+
+  cl->AppendSwitch(switches::kEnableAggressiveDOMStorageFlushing);
+
+  cl->AppendSwitch(switches::kDisablePresentationAPI);
+
+  cl->AppendSwitch(switches::kDisableRemotePlaybackAPI);
+
+  cl->AppendSwitch(switches::kDisableMediaSessionAPI);
+
+
+#if defined(V8_USE_EXTERNAL_STARTUP_DATA)
+  if (cl->GetSwitchValueASCII(switches::kProcessType).empty()) {
+    // Browser process (no type specified).
+
+    // content::RegisterMediaUrlInterceptor(new BisonMediaUrlInterceptor());
+    // BrowserViewRenderer::CalculateTileMemoryPolicy();
+
+    // WebView apps can override WebView#computeScroll to achieve custom
+    // scroll/fling. As a result, fling animations may not be ticked,
+    // potentially
+    // confusing the tap suppression controller. Simply disable it for WebView
+    ui::GestureConfiguration::GetInstance()
+        ->set_fling_touchscreen_tap_suppression_enabled(false);
+
+    base::android::RegisterApkAssetWithFileDescriptorStore(
+        content::kV8NativesDataDescriptor,
+        gin::V8Initializer::GetNativesFilePath());
+#if defined(USE_V8_CONTEXT_SNAPSHOT)
+    gin::V8Initializer::V8SnapshotFileType file_type =
+        gin::V8Initializer::V8SnapshotFileType::kWithAdditionalContext;
+#else
+    gin::V8Initializer::V8SnapshotFileType file_type =
+        gin::V8Initializer::V8SnapshotFileType::kDefault;
+#endif
+    base::android::RegisterApkAssetWithFileDescriptorStore(
+        content::kV8Snapshot32DataDescriptor,
+        gin::V8Initializer::GetSnapshotFilePath(true, file_type));
+    base::android::RegisterApkAssetWithFileDescriptorStore(
+        content::kV8Snapshot64DataDescriptor,
+        gin::V8Initializer::GetSnapshotFilePath(false, file_type));
+  }
+#endif  // V8_USE_EXTERNAL_STARTUP_DATA
+
+  // if (cl->HasSwitch(switches::kWebViewSandboxedRenderer)) {
+  //   content::RenderProcessHost::SetMaxRendererProcessCount(1u);
+  //   cl->AppendSwitch(switches::kInProcessGPU);
+  // }
+
+  {
+    ScopedAddFeatureFlags features(cl);
+
+    features.DisableIfNotSet(::features::kWebPayments);
+
+    features.DisableIfNotSet(::features::kWebAuth);
+
+    // features.DisableIfNotSet(::features::kVizDisplayCompositor);
+
+    features.DisableIfNotSet(media::kUseAndroidOverlay);
+
+    // features.EnableIfNotSet(media::kDisableSurfaceLayerForVideo);
+
+    features.DisableIfNotSet(media::kMediaDrmPersistentLicense);
+    
+    features.DisableIfNotSet(media::kPictureInPictureAPI);
+
+    // features.DisableIfNotSet(
+    //     autofill::features::kAutofillRestrictUnownedFieldsToFormlessCheckout);
+
+    features.DisableIfNotSet(::features::kBackgroundFetch);
+
+    // features.DisableIfNotSet(::features::kAndroidSurfaceControl);
+
+    features.DisableIfNotSet(::features::kSmsReceiver);
+
+    features.DisableIfNotSet(::features::kWebXr);
+
+    //features.EnableIfNotSet(::features::kDisableDeJelly);
+  }
+
+
 
   content::Compositor::Initialize();
 
-  InitLogging(command_line);
-  content_client_.reset(new BisonContentClient);
-  SetContentClient(content_client_.get());
+
+  
+  
 
   return false;
 }

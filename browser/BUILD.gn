@@ -34,7 +34,12 @@ source_set("browser") {
     "bison_settings.h",
     "bison_cookie_access_policy.cc",
     "bison_cookie_access_policy.h",
-
+    "bison_content_browser_overlay_manifest.cc",
+    "bison_content_browser_overlay_manifest.h",
+    "bison_content_renderer_overlay_manifest.cc",
+    "bison_content_renderer_overlay_manifest.h",
+    "scoped_add_feature_flags.cc",
+    "scoped_add_feature_flags.h",
 
     # network_service
     "network_service/android_stream_reader_url_loader.cc",
@@ -59,13 +64,17 @@ source_set("browser") {
     "//base",
     "//bison:bison_jni_headers",
     "//bison/common",
+    "//bison/common:common_mojom",
     "//components/embedder_support/android:web_contents_delegate",
     "//components/navigation_interception",
      "//components/policy/content/",
+     "//components/safe_browsing",
     "//components/policy/core/browser",
     "//components/version_info",
     "//content/public/browser",
     "//components/page_load_metrics/browser",
+    "//services/viz/public/mojom",
+    "//services/viz/privileged/mojom",
     "//ui/gfx",
   ]
 }
