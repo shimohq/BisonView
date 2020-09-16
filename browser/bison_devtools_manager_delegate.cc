@@ -134,6 +134,7 @@ void BisonDevToolsManagerDelegate::ClientDetached(
 
 std::string BisonDevToolsManagerDelegate::GetTargetDescription(
     content::WebContents* web_contents) {
+  // jiang 这里貌似要自己来玩 surface;
   // android_webview::BrowserViewRenderer* bvr =
   //     android_webview::BrowserViewRenderer::FromWebContents(web_contents);
   // if (!bvr)

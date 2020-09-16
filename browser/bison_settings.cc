@@ -246,6 +246,7 @@ void BisonSettings::UpdateRendererPreferencesLocked(
     update_prefs = true;
   }
 
+  // 这里貌似是 切换的语言位置，暂时不实现
   // BisonContentBrowserClient::GetAcceptLangsImpl() 未完成
   // if (prefs->accept_languages.compare(
   //         BisonContentBrowserClient::GetAcceptLangsImpl())) {

@@ -1,12 +1,31 @@
 // create by jiang947
 #include "bison_contents_client_bridge.h"
 
+#include <memory>
+#include <utility>
+
+#include "bison/bison_jni_headers/BisonContentsClientBridge_jni.h"
+
 #include "base/android/jni_android.h"
 #include "base/android/jni_array.h"
 #include "base/android/jni_string.h"
+#include "base/macros.h"
+#include "base/memory/ref_counted.h"
 #include "base/message_loop/message_loop_current.h"
-#include "bison/bison_jni_headers/BisonContentsClientBridge_jni.h"
 #include "content/public/browser/browser_thread.h"
+#include "content/public/browser/client_certificate_delegate.h"
+#include "content/public/browser/render_frame_host.h"
+#include "content/public/browser/render_process_host.h"
+#include "content/public/browser/web_contents.h"
+#include "net/cert/x509_certificate.h"
+#include "net/cert/x509_util.h"
+#include "net/http/http_response_headers.h"
+#include "net/ssl/ssl_cert_request_info.h"
+#include "net/ssl/ssl_client_cert_type.h"
+#include "net/ssl/ssl_platform_key_android.h"
+#include "net/ssl/ssl_private_key.h"
+#include "ui/base/l10n/l10n_util.h"
+#include "url/gurl.h"
 
 using base::android::AttachCurrentThread;
 using base::android::ConvertJavaStringToUTF16;
@@ -15,8 +34,10 @@ using base::android::ConvertUTF8ToJavaString;
 using base::android::HasException;
 using base::android::JavaRef;
 using base::android::ScopedJavaLocalRef;
+using base::android::ToJavaArrayOfStrings;
 using content::BrowserThread;
 using content::WebContents;
+using std::vector;
 
 namespace bison {
 
@@ -45,6 +66,10 @@ class UserData : public base::SupportsUserData::Data {
 
 }  // namespace
 
+BisonContentsClientBridge::HttpErrorInfo::HttpErrorInfo() : status_code(0) {}
+
+BisonContentsClientBridge::HttpErrorInfo::~HttpErrorInfo() {}
+
 // static
 void BisonContentsClientBridge::Associate(WebContents* web_contents,
                                           BisonContentsClientBridge* handler) {
@@ -72,6 +97,38 @@ BisonContentsClientBridge::~BisonContentsClientBridge() {
   ScopedJavaLocalRef<jobject> obj = java_ref_.get(env);
   if (!obj.is_null()) {
     Java_BisonContentsClientBridge_setNativeContentsClientBridge(env, obj, 0);
+  }
+}
+
+void BisonContentsClientBridge::AllowCertificateError(
+    int cert_error,
+    net::X509Certificate* cert,
+    const GURL& request_url,
+    CertErrorCallback callback,
+    bool* cancel_request) {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  JNIEnv* env = AttachCurrentThread();
+
+  ScopedJavaLocalRef<jobject> obj = java_ref_.get(env);
+  if (obj.is_null())
+    return;
+
+  base::StringPiece der_string =
+      net::x509_util::CryptoBufferAsStringPiece(cert->cert_buffer());
+  ScopedJavaLocalRef<jbyteArray> jcert = base::android::ToJavaByteArray(
+      env, reinterpret_cast<const uint8_t*>(der_string.data()),
+      der_string.length());
+  ScopedJavaLocalRef<jstring> jurl(
+      ConvertUTF8ToJavaString(env, request_url.spec()));
+  // We need to add the callback before making the call to java side,
+  // as it may do a synchronous callback prior to returning.
+  int request_id = pending_cert_error_callbacks_.Add(
+      std::make_unique<CertErrorCallback>(std::move(callback)));
+  *cancel_request = !Java_BisonContentsClientBridge_allowCertificateError(
+      env, obj, cert_error, jcert, jurl, request_id);
+  // if the request is cancelled, then cancel the stored callback
+  if (*cancel_request) {
+    pending_cert_error_callbacks_.Remove(request_id);
   }
 }
 
@@ -187,6 +244,44 @@ bool BisonContentsClientBridge::ShouldOverrideUrlLoading(
   return true;
 }
 
+void BisonContentsClientBridge::ProceedSslError(JNIEnv* env,
+                                                const JavaRef<jobject>& obj,
+                                                jboolean proceed,
+                                                jint id) {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  CertErrorCallback* callback = pending_cert_error_callbacks_.Lookup(id);
+  if (!callback || callback->is_null()) {
+    LOG(WARNING) << "Ignoring unexpected ssl error proceed callback";
+    return;
+  }
+  std::move(*callback).Run(
+      proceed ? content::CERTIFICATE_REQUEST_RESULT_TYPE_CONTINUE
+              : content::CERTIFICATE_REQUEST_RESULT_TYPE_CANCEL);
+  pending_cert_error_callbacks_.Remove(id);
+}
+
+// This method is inspired by OnSystemRequestCompletion() in
+// chrome/browser/ui/android/ssl_client_certificate_request.cc
+void BisonContentsClientBridge::ProvideClientCertificateResponse(
+    JNIEnv* env,
+    const JavaRef<jobject>& obj,
+    int request_id,
+    const JavaRef<jobjectArray>& encoded_chain_ref,
+    const JavaRef<jobject>& private_key_ref) {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+
+  std::unique_ptr<content::ClientCertificateDelegate> delegate =
+      pending_client_cert_request_delegates_.Replace(request_id, nullptr);
+  pending_client_cert_request_delegates_.Remove(request_id);
+  DCHECK(delegate);
+
+  if (encoded_chain_ref.is_null() || private_key_ref.is_null()) {
+    LOG(ERROR) << "No client certificate selected";
+    delegate->ContinueWithCertificate(nullptr, nullptr);
+    return;
+  }
+}
+
 void BisonContentsClientBridge::OnReceivedHttpError(
     const BisonWebResourceRequest& request,
     std::unique_ptr<HttpErrorInfo> http_error_info) {
@@ -220,6 +315,27 @@ void BisonContentsClientBridge::OnReceivedHttpError(
   //     jstring_encoding, http_error_info->status_code, jstring_reason,
   //     jstringArray_response_header_names,
   //     jstringArray_response_header_values);
+}
+
+std::unique_ptr<BisonContentsClientBridge::HttpErrorInfo>
+BisonContentsClientBridge::ExtractHttpErrorInfo(
+    const net::HttpResponseHeaders* response_headers) {
+  auto http_error_info = std::make_unique<HttpErrorInfo>();
+  {
+    size_t headers_iterator = 0;
+    std::string header_name, header_value;
+    while (response_headers->EnumerateHeaderLines(
+        &headers_iterator, &header_name, &header_value)) {
+      http_error_info->response_header_names.push_back(header_name);
+      http_error_info->response_header_values.push_back(header_value);
+    }
   }
+
+  response_headers->GetMimeTypeAndCharset(&http_error_info->mime_type,
+                                          &http_error_info->encoding);
+  http_error_info->status_code = response_headers->response_code();
+  http_error_info->status_text = response_headers->GetStatusText();
+  return http_error_info;
+}
 
 }  // namespace bison

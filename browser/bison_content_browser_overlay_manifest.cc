@@ -9,7 +9,7 @@
 #include "third_party/blink/public/mojom/input/input_host.mojom.h"
 
 namespace bison {
-
+// 后面有时间删除 safe_browsing
 const service_manager::Manifest& GetContentBrowserOverlayManifest() {
   // jiang unuse spellcheck::mojom::SpellCheckHost
   static base::NoDestructor<service_manager::Manifest> manifest{

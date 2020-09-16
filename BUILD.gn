@@ -66,11 +66,41 @@ android_library("bison_java") {
     "java/src/im/shimo/bison/BisonContentsIoThreadClient.java",
     "java/src/im/shimo/bison/BisonSettings.java",
     "java/src/im/shimo/bison/InputStreamUtil.java",
+    "java/src/im/shimo/bison/BisonContentsClientCallbackHelper.java",
+    "java/src/im/shimo/bison/BisonSafeBrowsingResponse.java",
+    "java/src/im/shimo/bison/SslUtil.java",
+    "java/src/im/shimo/bison/PrivilegedProcessService.java",
+    "java/src/im/shimo/bison/PrivilegedProcessService0.java",
+    "java/src/im/shimo/bison/PrivilegedProcessService1.java",
+    "java/src/im/shimo/bison/PrivilegedProcessService2.java",
+    "java/src/im/shimo/bison/SandboxedProcessService.java",
+  ]
+
+  srcjar_deps = [
+    ":generate_sandboxed_service_srcjar",
   ]
 
   deps = bison_java_deps
 
   annotation_processor_deps = [ "//base/android/jni_generator:jni_processor" ]
+}
+
+action("generate_sandboxed_service_srcjar") {
+  script = "//bison/build/generate_child_service.py"
+  depfile = "$target_gen_dir/$target_name.d"
+
+  _srcjar_path = "${target_gen_dir}/${target_name}.srcjar"
+  _rebased_srcjar_path = rebase_path(_srcjar_path, root_build_dir)
+
+  args = [
+    "--depfile",
+    rebase_path(depfile, root_build_dir),
+    "40",
+    _rebased_srcjar_path,
+  ]
+  outputs = [
+    _srcjar_path,
+  ]
 }
 
 android_resources("bison_java_resources") {

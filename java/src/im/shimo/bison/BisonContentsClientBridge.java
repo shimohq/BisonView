@@ -1,12 +1,21 @@
 package im.shimo.bison;
 
 import android.content.Context;
+import android.net.http.SslCertificate;
+import android.net.http.SslError;
 import android.os.Handler;
+import android.util.Log;
 
+import org.chromium.base.Callback;
 import org.chromium.base.annotations.CalledByNative;
 import org.chromium.base.annotations.CalledByNativeUnchecked;
 import org.chromium.base.annotations.JNINamespace;
 import org.chromium.base.annotations.NativeMethods;
+import org.chromium.content_public.browser.UiThreadTaskTraits;
+import org.chromium.base.task.PostTask;
+
+
+import java.security.PrivateKey;
 
 @JNINamespace("bison")
 class BisonContentsClientBridge {
@@ -22,9 +31,38 @@ class BisonContentsClientBridge {
         mClient = client;
     }
 
+    
+
     @CalledByNative
     private void setNativeContentsClientBridge(long nativeContentsClientBridge) {
         this.mNativeContentsClientBridge = nativeContentsClientBridge;
+    }
+
+     @CalledByNative
+    private boolean allowCertificateError(int certError, byte[] derBytes, final String url,
+            final int id) {
+        final SslCertificate cert = SslUtil.getCertificateFromDerBytes(derBytes);
+        if (cert == null) {    
+            return false;
+        }
+        final SslError sslError = SslUtil.sslErrorFromNetErrorCode(certError, cert, url);
+        final Callback<Boolean> callback = value
+                -> PostTask.runOrPostTask(UiThreadTaskTraits.DEFAULT,
+                        () -> proceedSslError(value.booleanValue(), id));
+        
+        //new Handler().post(() -> mClient.onReceivedSslError(callback, sslError));
+
+        // Record UMA on ssl error
+        // Use sparse histogram in case new values are added in future releases
+        // RecordHistogram.recordSparseHistogram(
+        //         "Android.WebView.onReceivedSslError.ErrorCode", sslError.getPrimaryError());
+        return true;
+    }
+
+    private void proceedSslError(boolean proceed, int id) {
+        if (mNativeContentsClientBridge == 0) return;
+        BisonContentsClientBridgeJni.get().proceedSslError(
+                mNativeContentsClientBridge, this, proceed, id);
     }
 
     @CalledByNative
@@ -77,12 +115,16 @@ class BisonContentsClientBridge {
     @NativeMethods
     interface Natives {
 
-        void confirmJsResult(long nativeBisonContentsClientBridge, BisonContentsClientBridge caller,
-                             int id, String prompt);
+        void confirmJsResult(long nativeBisonContentsClientBridge, BisonContentsClientBridge caller, int id, String prompt);
+        void cancelJsResult(long nativeBisonContentsClientBridge, BisonContentsClientBridge caller, int id);
 
-        void cancelJsResult(
-                long nativeBisonContentsClientBridge, BisonContentsClientBridge caller, int id);
-
+        // void takeSafeBrowsingAction(long nativeBisonContentsClientBridge,
+        //        BisonContentsClientBridge caller, int action, boolean reporting, int requestId);
+        void proceedSslError(long nativeBisonContentsClientBridge, BisonContentsClientBridge caller, boolean proceed, int id);        
+        void provideClientCertificateResponse(long nativeBisonContentsClientBridge,
+                BisonContentsClientBridge caller, int id, byte[][] certChain, PrivateKey androidKey);
+        
+        
     }
 
 

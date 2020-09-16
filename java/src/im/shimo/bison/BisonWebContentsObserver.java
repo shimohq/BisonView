@@ -40,8 +40,7 @@ public class BisonWebContentsObserver extends WebContentsObserver {
         if (validatedUrl.length() == 0) validatedUrl = ContentUrlConstants.ABOUT_BLANK_DISPLAY_URL;
         BisonContentsClient client = mBisonContentsClient.get();
         if (client != null && validatedUrl.equals(mLastDidFinishLoadUrl)) {
-//            client.getCallbackHelper().postOnPageFinished(validatedUrl);
-            client.onPageFinished(validatedUrl);
+           client.getCallbackHelper().postOnPageFinished(validatedUrl);
             mLastDidFinishLoadUrl = null;
         }
     }
@@ -54,8 +53,8 @@ public class BisonWebContentsObserver extends WebContentsObserver {
         if (isMainFrame && errorCode == NetError.ERR_ABORTED) {
             // Need to call onPageFinished for backwards compatibility with the classic webview.
             // See also AwContents.IoThreadClientImpl.onReceivedError.
-//            client.getCallbackHelper().postOnPageFinished(failingUrl);
-            client.onPageFinished(failingUrl);
+           client.getCallbackHelper().postOnPageFinished(failingUrl);
+            
         }
     }
 
@@ -63,7 +62,7 @@ public class BisonWebContentsObserver extends WebContentsObserver {
     public void titleWasSet(String title) {
         BisonContentsClient client = mBisonContentsClient.get();
         if (client == null) return;
-        //client.updateTitle(title, true);
+        client.updateTitle(title, true);
     }
 
     @Override
@@ -84,14 +83,14 @@ public class BisonWebContentsObserver extends WebContentsObserver {
         if (client != null) {
 
             if (!navigation.isSameDocument() && !navigation.isErrorPage()) {
-//                client.getCallbackHelper().postOnPageStarted(url);
-                client.onPageStarted(url);
+               client.getCallbackHelper().postOnPageStarted(url);
+                
             }
 
             boolean isReload = navigation.pageTransition() != null
                     && ((navigation.pageTransition() & PageTransition.CORE_MASK)
                     == PageTransition.RELOAD);
-            //client.getCallbackHelper().postDoUpdateVisitedHistory(url, isReload);
+            client.getCallbackHelper().postDoUpdateVisitedHistory(url, isReload);
         }
 
         // Only invoke the onPageCommitVisible callback when navigating to a different document,
@@ -100,23 +99,23 @@ public class BisonWebContentsObserver extends WebContentsObserver {
             PostTask.postTask(UiThreadTaskTraits.DEFAULT, () -> {
                 BisonContents bisonContents = mBisonContents.get();
                 if (bisonContents != null) {
-//                    awContents.insertVisualStateCallbackIfNotDestroyed(
-//                            0, new VisualStateCallback() {
-//                                @Override
-//                                public void onComplete(long requestId) {
-//                                    AwContentsClient client1 = mAwContentsClient.get();
-//                                    if (client1 == null) return;
-//                                    client1.onPageCommitVisible(url);
-//                                }
-//                            });
+                //    bisonContents.insertVisualStateCallbackIfNotDestroyed(
+                //            0, new VisualStateCallback() {
+                //                @Override
+                //                public void onComplete(long requestId) {
+                //                    BisonContentsClient client1 = client.get();
+                //                    if (client1 == null) return;
+                //                    client1.onPageCommitVisible(url);
+                //                }
+                //            });
                 }
             });
         }
 
         if (client != null && navigation.isFragmentNavigation()) {
             // Note fragment navigations do not have a matching onPageStarted.
-//            client.getCallbackHelper().postOnPageFinished(url);
-            client.onPageFinished(url);
+           client.getCallbackHelper().postOnPageFinished(url);
+            
         }
     }
 

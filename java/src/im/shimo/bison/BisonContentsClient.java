@@ -3,12 +3,17 @@ package im.shimo.bison;
 import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Picture;
+import android.os.Looper;
+import android.os.Message;
 import android.provider.Browser;
 import android.view.WindowManager;
+import android.text.TextUtils;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import org.chromium.base.Callback;
 import org.chromium.base.ContextUtils;
 import org.chromium.base.Log;
 import org.chromium.content_public.common.ContentUrlConstants;
@@ -25,10 +30,14 @@ public class BisonContentsClient {
     private BisonViewClient mBisonViewClient = sNullBisonViewClient;
     private BisonView mBisonView;
     private Context mContext;
+    private final BisonContentsClientCallbackHelper mCallbackHelper;
+
+    private String mTitle = "";
 
     public BisonContentsClient(BisonView bisonView, Context context) {
         mBisonView = bisonView;
         mContext = context;
+        mCallbackHelper = new BisonContentsClientCallbackHelper(Looper.myLooper(),this);
     }
 
     public boolean hasBisonViewClient() {
@@ -139,11 +148,10 @@ public class BisonContentsClient {
         return mBisonViewClient.shouldOverrideUrlLoading(mBisonView, request);
     }
 
-    public BisonWebResourceResponse shouldInterceptRequest(BisonWebResourceRequest request){
+    public BisonWebResourceResponse shouldInterceptRequest(BisonWebResourceRequest request) {
         //mBisonViewClient.shouldOverrideUrlLoading(mBisonView,request)
         return null;
     }
-
 
 
     private static boolean sendBrowsingIntent(Context context, String url, boolean hasUserGesture,
@@ -205,6 +213,47 @@ public class BisonContentsClient {
 
     }
 
+    public void onLoadResource(String url) {
+
+    }
+
+    public void onDownloadStart(String url, String userAgent, String contentDisposition, String mimeType, long contentLength) {
+    }
+
+    public void onReceivedLoginRequest(String realm, String account, String args) {
+    }
+
+    public void onReceivedError(BisonWebResourceRequest request, BisonWebResourceError error) {
+    }
+
+    public void onSafeBrowsingHit(BisonWebResourceRequest request, int threatType, Callback<BisonSafeBrowsingResponse> callback) {
+    }
+
+    public void onNewPicture(Picture picture) {
+    }
+
+    public void onScaleChangedScaled(float oldScale, float newScale) {
+    }
+
+    public void onReceivedHttpError(BisonWebResourceRequest request, BisonWebResourceResponse response) {
+    }
+
+    public void doUpdateVisitedHistory(String url, boolean isReload) {
+    }
+
+    public void onFormResubmission(Message dontResend, Message resend) {
+    }
+
+    public final void updateTitle(String title, boolean forceNotification) {
+        if (!forceNotification && TextUtils.equals(mTitle, title)) return;
+        mTitle = title;
+        mCallbackHelper.postOnReceivedTitle(mTitle);
+    }
+
+    public BisonContentsClientCallbackHelper getCallbackHelper() {
+        return mCallbackHelper;
+    }
+
 
     private static class JsPromptResultReceiverAdapter implements JsResult.ResultReceiver {
 
@@ -246,10 +295,11 @@ public class BisonContentsClient {
 
     static class BisonWebResourceRequest {
         // Prefer using other constructors over this one.
-        public BisonWebResourceRequest() {}
+        public BisonWebResourceRequest() {
+        }
 
         public BisonWebResourceRequest(String url, boolean isMainFrame, boolean hasUserGesture,
-                                    String method, @Nullable HashMap<String, String> requestHeaders) {
+                                       String method, @Nullable HashMap<String, String> requestHeaders) {
             this.url = url;
             this.isMainFrame = isMainFrame;
             this.hasUserGesture = hasUserGesture;
@@ -260,8 +310,8 @@ public class BisonContentsClient {
         }
 
         public BisonWebResourceRequest(String url, boolean isMainFrame, boolean hasUserGesture,
-                                    String method, @NonNull String[] requestHeaderNames,
-                                    @NonNull String[] requestHeaderValues) {
+                                       String method, @NonNull String[] requestHeaderNames,
+                                       @NonNull String[] requestHeaderValues) {
             this(url, isMainFrame, hasUserGesture, method,
                     new HashMap<String, String>(requestHeaderValues.length));
             for (int i = 0; i < requestHeaderNames.length; ++i) {

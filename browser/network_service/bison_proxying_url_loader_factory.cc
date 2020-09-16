@@ -451,21 +451,20 @@ BisonContentsClientBridge* GetBisonContentsClientBridgeFromID(
   return BisonContentsClientBridge::FromWebContents(wc);
 }
 
-// void OnReceivedHttpErrorOnUiThread(
-//     int process_id,
-//     int render_frame_id,
-//     const BisonWebResourceRequest& request,
-//     std::unique_ptr<BisonContentsClientBridge::HttpErrorInfo>
-//     http_error_info) {
-//   auto* client =
-//       GetBisonContentsClientBridgeFromID(process_id, render_frame_id);
-//   if (!client) {
-//     DLOG(WARNING) << "client is null, onReceivedHttpError dropped for "
-//                   << request.url;
-//     return;
-//   }
-//   client->OnReceivedHttpError(request, std::move(http_error_info));
-// }
+void OnReceivedHttpErrorOnUiThread(
+    int process_id,
+    int render_frame_id,
+    const BisonWebResourceRequest& request,
+    std::unique_ptr<BisonContentsClientBridge::HttpErrorInfo> http_error_info) {
+  auto* client =
+      GetBisonContentsClientBridgeFromID(process_id, render_frame_id);
+  if (!client) {
+    DLOG(WARNING) << "client is null, onReceivedHttpError dropped for "
+                  << request.url;
+    return;
+  }
+  client->OnReceivedHttpError(request, std::move(http_error_info));
+}
 
 void OnReceivedErrorOnUiThread(int process_id,
                                int render_frame_id,
@@ -479,6 +478,7 @@ void OnReceivedErrorOnUiThread(int process_id,
                   << request.url;
     return;
   }
+  VLOG(0) << "OnReceivedErrorOnUiThread";
   // client->OnReceivedError(request, error_code, safebrowsing_hit);
 }
 
@@ -501,24 +501,25 @@ void OnReceivedErrorOnUiThread(int process_id,
 
 void InterceptedRequest::OnReceiveResponse(
     network::mojom::URLResponseHeadPtr head) {
+  VLOG(0) << "OnReceiveResponse";
   // intercept response headers here
   // pause/resume proxied_client_binding_ if necessary
 
-  // if (head->headers && head->headers->response_code() >= 400) {
-  //   // In Android WebView the WebViewClient.onReceivedHttpError callback
-  //   // is invoked for any resource (main page, iframe, image, etc.) with
-  //   // status code >= 400.
-  //   std::unique_ptr<BisonContentsClientBridge::HttpErrorInfo> error_info =
-  //       BisonContentsClientBridge::ExtractHttpErrorInfo(head->headers.get());
+  if (head->headers && head->headers->response_code() >= 400) {
+    // In Android BisonView the WebViewClient.onReceivedHttpError callback
+    // is invoked for any resource (main page, iframe, image, etc.) with
+    // status code >= 400.
+    std::unique_ptr<BisonContentsClientBridge::HttpErrorInfo> error_info =
+        BisonContentsClientBridge::ExtractHttpErrorInfo(head->headers.get());
 
-  //   base::PostTask(FROM_HERE, {content::BrowserThread::UI},
-  //                  base::BindOnce(&OnReceivedHttpErrorOnUiThread,
-  //                  process_id_,
-  //                                 request_.render_frame_id,
-  //                                 BisonWebResourceRequest(request_),
-  //                                 std::move(error_info)));
-  // }
+    base::PostTask(FROM_HERE, {content::BrowserThread::UI},
+                   base::BindOnce(&OnReceivedHttpErrorOnUiThread, process_id_,
+                                  request_.render_frame_id,
+                                  BisonWebResourceRequest(request_),
+                                  std::move(error_info)));
+  }
 
+  // BisonView 不支持 x-aoto-login
   // if (request_.resource_type ==
   //     static_cast<int>(content::ResourceType::kMainFrame)) {
   //   // Check for x-auto-login-header
@@ -640,18 +641,14 @@ void InterceptedRequest::OnURLLoaderClientError() {
 
 void InterceptedRequest::OnURLLoaderError(uint32_t custom_reason,
                                           const std::string& description) {
-  // if (custom_reason == network::mojom::URLLoader::kClientDisconnectReason) {
-  //   if (description == safe_browsing::kCustomCancelReasonForURLLoader) {
-  //     SendErrorCallback(safe_browsing::GetNetErrorCodeForSafeBrowsing(),
-  //     true);
-  //   } else {
-  //     int parsed_error_code;
-  //     if (base::StringToInt(base::StringPiece(description),
-  //                           &parsed_error_code)) {
-  //       SendErrorCallback(parsed_error_code, false);
-  //     }
-  //   }
-  // }
+  if (custom_reason == network::mojom::URLLoader::kClientDisconnectReason) {
+    // 不用 safe_browsing
+    int parsed_error_code;
+    if (base::StringToInt(base::StringPiece(description),
+                          &parsed_error_code)) {
+      SendErrorCallback(parsed_error_code, false);
+    }
+  }
 
   // If CallOnComplete was already called, then this object is ready to be
   // deleted.
