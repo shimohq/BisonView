@@ -129,22 +129,28 @@ bool BisonMainDelegate::BasicStartupComplete(int* exit_code) {
     // scroll/fling. As a result, fling animations may not be ticked,
     // potentially
     // confusing the tap suppression controller. Simply disable it for WebView
+    VLOG(0) << "defined USE_V8_CONTEXT_SNAPSHOT";
     ui::GestureConfiguration::GetInstance()
         ->set_fling_touchscreen_tap_suppression_enabled(false);
 
+    // base::android::RegisterApkAssetWithFileDescriptorStore(
+    //     content::kV8NativesDataDescriptor,
+    //     gin::V8Initializer::GetNativesFilePath());
     base::android::RegisterApkAssetWithFileDescriptorStore(
         content::kV8NativesDataDescriptor,
-        gin::V8Initializer::GetNativesFilePath());
+        base::FilePath(FILE_PATH_LITERAL("assets")).AppendASCII("bison_natives_blob.bin"));
 #if defined(USE_V8_CONTEXT_SNAPSHOT)
+    VLOG(0) << "defined USE_V8_CONTEXT_SNAPSHOT";
     gin::V8Initializer::V8SnapshotFileType file_type =
         gin::V8Initializer::V8SnapshotFileType::kWithAdditionalContext;
 #else
     gin::V8Initializer::V8SnapshotFileType file_type =
         gin::V8Initializer::V8SnapshotFileType::kDefault;
 #endif
+    VLOG(0) << gin::V8Initializer::GetSnapshotFilePath(true, file_type);
     base::android::RegisterApkAssetWithFileDescriptorStore(
         content::kV8Snapshot32DataDescriptor,
-        gin::V8Initializer::GetSnapshotFilePath(true, file_type));
+        base::FilePath(FILE_PATH_LITERAL("assets")).AppendASCII("bison_snapshot_blob_32"));
     base::android::RegisterApkAssetWithFileDescriptorStore(
         content::kV8Snapshot64DataDescriptor,
         gin::V8Initializer::GetSnapshotFilePath(false, file_type));

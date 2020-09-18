@@ -187,11 +187,11 @@ def main(args):
 
         # TODO jiang 这里先写固定值,后面有时间再改成重配置读取
         build_utils.AddToZipHermetic(
-          z,os.path.join("assets","icudtl.dat"),src_path="icudtl.dat")
+          z,os.path.join("assets","bison_icudtl.dat"),src_path="icudtl.dat")
         build_utils.AddToZipHermetic(
-          z,os.path.join("assets","natives_blob.bin"),src_path="natives_blob.bin")
+          z,os.path.join("assets","bison_natives_blob.bin"),src_path="natives_blob.bin")
         build_utils.AddToZipHermetic(
-          z,os.path.join("assets","snapshot_blob_32.bin"),src_path="snapshot_blob.bin")
+          z,os.path.join("assets","bison_snapshot_blob_32.bin"),src_path="snapshot_blob.bin")
           # snapshot_blob_32    snapshot_blob_32.bin
 
         #gen/bison/core/chrome_100_percent.pak

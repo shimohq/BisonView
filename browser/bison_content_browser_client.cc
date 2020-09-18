@@ -251,13 +251,16 @@ BisonContentBrowserClient::GetServiceManifestOverlay(base::StringPiece name) {
   // capability
   // and that "content_renderer" requires that capability from the
   // "content_browser" service.
-  VLOG(0) << "GetServiceManifestOverlay : name " << name;
+  // VLOG(0) << "GetServiceManifestOverlay : name " << name;
   if (name == content::mojom::kBrowserServiceName)
     return GetContentBrowserOverlayManifest();
   if (name == content::mojom::kRendererServiceName)
     return GetContentRendererOverlayManifest();
   return base::nullopt;
 }
+
+
+
 
 void BisonContentBrowserClient::AppendExtraCommandLineSwitches(
     base::CommandLine* command_line,
@@ -408,6 +411,7 @@ void BisonContentBrowserClient::GetAdditionalMappedFilesForChildProcess(
       kBisonPakDescriptor,
       base::GlobalDescriptors::GetInstance()->Get(kBisonPakDescriptor),
       base::GlobalDescriptors::GetInstance()->GetRegion(kBisonPakDescriptor));
+  //jiang 这里可以定义v8 的文件位置？
 
   // int crash_signal_fd = GetCrashSignalFD(command_line);
   // if (crash_signal_fd >= 0) {

@@ -24,6 +24,7 @@
 #include "content/public/browser/devtools_agent_host.h"
 #include "content/public/browser/storage_partition.h"
 #include "content/public/common/content_switches.h"
+#include "content/public/browser/render_frame_host.h"
 #include "content/public/common/main_function_params.h"
 #include "content/public/common/url_constants.h"
 #include "device/bluetooth/bluetooth_adapter_factory.h"
@@ -102,21 +103,14 @@ BisonBrowserMainParts::BisonBrowserMainParts(
 
 BisonBrowserMainParts::~BisonBrowserMainParts() {}
 
-#if !defined(OS_MACOSX)
+
 void BisonBrowserMainParts::PreMainMessageLoopStart() {
-#if defined(USE_AURA) && defined(USE_X11)
-  ui::TouchFactory::SetTouchDeviceListFromCommandLine();
-#endif
+  content::RenderFrameHost::AllowInjectingJavaScript();
 }
-#endif
+
 
 void BisonBrowserMainParts::PostMainMessageLoopStart() {
-#if defined(OS_CHROMEOS)
-  chromeos::DBusThreadManager::Initialize();
-  bluez::BluezDBusManager::InitializeFake();
-#elif defined(OS_LINUX)
-  bluez::DBusBluezManagerWrapperLinux::Initialize();
-#endif
+
 }
 
 int BisonBrowserMainParts::PreEarlyInitialization() {

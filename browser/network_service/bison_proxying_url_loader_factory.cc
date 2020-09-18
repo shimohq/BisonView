@@ -501,7 +501,7 @@ void OnReceivedErrorOnUiThread(int process_id,
 
 void InterceptedRequest::OnReceiveResponse(
     network::mojom::URLResponseHeadPtr head) {
-  VLOG(0) << "OnReceiveResponse";
+  //VLOG(0) << "OnReceiveResponse";
   // intercept response headers here
   // pause/resume proxied_client_binding_ if necessary
 
