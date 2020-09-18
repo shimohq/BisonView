@@ -587,23 +587,24 @@ public class BisonSettings {
     /**
      * See {@link android.webkit.WebSettings#setSaveFormData}.
      */
-    public void setSaveFormData(final boolean enable) {
-        if (TRACE) Log.i(LOGTAG, "setSaveFormData=" + enable);
-        synchronized (mSettingsLock) {
-            if (mAutoCompleteEnabled != enable) {
-                mAutoCompleteEnabled = enable;
-                mEventHandler.runOnUiThreadBlockingAndLocked(() -> {
-                    if (mNativeBisonSettings != 0) {
-                        BisonSettingsJni.get().updateFormDataPreferencesLocked(
-                                mNativeBisonSettings, this);
-                    }
-                });
-            }
-        }
-    }
+    // public void setSaveFormData(final boolean enable) {
+    //     if (TRACE) Log.i(LOGTAG, "setSaveFormData=" + enable);
+    //     synchronized (mSettingsLock) {
+    //         if (mAutoCompleteEnabled != enable) {
+    //             mAutoCompleteEnabled = enable;
+    //             mEventHandler.runOnUiThreadBlockingAndLocked(() -> {
+    //                 if (mNativeBisonSettings != 0) {
+    //                     BisonSettingsJni.get().updateFormDataPreferencesLocked(
+    //                             mNativeBisonSettings, this);
+    //                 }
+    //             });
+    //         }
+    //     }
+    // }
 
     /**
      * See {@link android.webkit.WebSettings#getSaveFormData}.
+     * jiang bison not support autofill
      */
     // public boolean getSaveFormData() {
     //     synchronized (mSettingsLock) {
@@ -1924,7 +1925,7 @@ public class BisonSettings {
 
         String getDefaultUserAgent();
 
-        void updateFormDataPreferencesLocked(long nativeBisonSettings, BisonSettings caller);
+        //void updateFormDataPreferencesLocked(long nativeBisonSettings, BisonSettings caller);
 
         void updateRendererPreferencesLocked(long nativeBisonSettings, BisonSettings caller);
 

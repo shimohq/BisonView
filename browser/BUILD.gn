@@ -68,7 +68,6 @@ source_set("browser") {
     "//components/embedder_support/android:web_contents_delegate",
     "//components/navigation_interception",
     "//components/policy/content/",
-    "//components/safe_browsing",
     "//components/policy/core/browser",
     "//components/version_info",
     "//content/public/browser",

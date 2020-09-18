@@ -143,7 +143,7 @@ void BisonSettings::UpdateEverythingLocked(JNIEnv* env,
   UpdateWebkitPreferencesLocked(env, obj);
   UpdateUserAgentLocked(env, obj);
   ResetScrollAndScaleState(env, obj);
-  UpdateFormDataPreferencesLocked(env, obj);
+  // UpdateFormDataPreferencesLocked(env, obj);
   UpdateRendererPreferencesLocked(env, obj);
   UpdateOffscreenPreRasterLocked(env, obj);
   UpdateWillSuppressErrorStateLocked(env, obj);
@@ -216,20 +216,19 @@ void BisonSettings::UpdateWillSuppressErrorStateLocked(
   rvhe->SetWillSuppressErrorPage(suppress);
 }
 
-void BisonSettings::UpdateFormDataPreferencesLocked(
-    JNIEnv* env,
-    const JavaParamRef<jobject>& obj) {
-  // if (!web_contents())
-  //   return;
-  // BisonContents* contents = BisonContents::FromWebContents(web_contents());
-  // if (!contents)
-  //   return;
+// jiang : bison not support auto fill
+// void BisonSettings::UpdateFormDataPreferencesLocked(
+//     JNIEnv* env,
+//     const JavaParamRef<jobject>& obj) {
+//   if (!web_contents())
+//     return;
+//   BisonContents* contents = BisonContents::FromWebContents(web_contents());
+//   if (!contents)
+//     return;
 
-  // contents->SetSaveFormData(Java_BisonSettings_getSaveFormDataLocked(env,
-  // obj));
-
-  // auto fill ?
-}
+//   contents->SetSaveFormData(Java_BisonSettings_getSaveFormDataLocked(env,
+//   obj));
+// }
 
 void BisonSettings::UpdateRendererPreferencesLocked(
     JNIEnv* env,
