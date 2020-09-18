@@ -253,11 +253,11 @@ public class BisonSettings {
             mEventHandler = new EventHandler();
 
 
-//            isAccessFromFileURLsGrantedByDefault =mAppTargetSdkVersion < Build.VERSION_CODES.JELLY_BEAN
-//            if (isAccessFromFileURLsGrantedByDefault) {
-//                mAllowUniversalAccessFromFileURLs = true;
-//                mAllowFileAccessFromFileURLs = true;
-//            }
+        //    isAccessFromFileURLsGrantedByDefault =mAppTargetSdkVersion < Build.VERSION_CODES.JELLY_BEAN
+        //    if (isAccessFromFileURLsGrantedByDefault) {
+        //        mAllowUniversalAccessFromFileURLs = true;
+        //        mAllowFileAccessFromFileURLs = true;
+        //    }
 
             mUserAgent = LazyDefaultUserAgent.sInstance;
 
@@ -676,6 +676,7 @@ public class BisonSettings {
     @CalledByNative
     private String getUserAgentLocked() {
         assert Thread.holdsLock(mSettingsLock);
+        Log.d(TAG,"getUserAgentLocked:"+mUserAgent);
         return mUserAgent;
     }
 

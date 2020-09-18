@@ -183,6 +183,7 @@ void BisonSettings::UpdateWebkitPreferencesLocked(
       web_contents()->GetRenderViewHost();
   if (!render_view_host)
     return;
+  VLOG(0) << "OnWebkitPreferencesChanged";
   render_view_host->OnWebkitPreferencesChanged();
 }
 
