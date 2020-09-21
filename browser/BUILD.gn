@@ -14,8 +14,6 @@ source_set("browser") {
     "bison_contents_client_bridge.h",
     "bison_devtools_bindings.cc",
     "bison_devtools_bindings.h",
-    "bison_devtools_frontend.cc",
-    "bison_devtools_frontend.h",
     "bison_devtools_manager_delegate.cc",
     "bison_devtools_manager_delegate.h",
     "bison_download_manager_delegate.cc",

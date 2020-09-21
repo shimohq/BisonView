@@ -1,5 +1,6 @@
 #include "bison_web_contents_delegate.h"
 
+#include "base/lazy_instance.h"
 #include "bison_javascript_dialog_manager.h"
 #include "components/navigation_interception/intercept_navigation_delegate.h"
 #include "content/public/browser/navigation_controller.h"
@@ -10,10 +11,33 @@ using content::NavigationController;
 
 namespace bison {
 
+namespace {
+base::LazyInstance<BisonJavaScriptDialogManager>::Leaky
+    g_javascript_dialog_manager = LAZY_INSTANCE_INITIALIZER;
+}  // namespace bison
+
 BisonWebContentsDelegate::BisonWebContentsDelegate(JNIEnv* env, jobject obj)
     : WebContentsDelegateAndroid(env, obj), is_fullscreen_(false) {}
 
 BisonWebContentsDelegate::~BisonWebContentsDelegate() {}
+
+
+// jiang 当js无响应回调
+// void BisonWebContentsDelegate::RendererUnresponsive(
+//     content::WebContents* source,
+//     content::RenderWidgetHost* render_widget_host,
+//     base::RepeatingClosure hang_monitor_restarter) {
+//   BisonContents* bison_contents = BisonContents::FromWebContents(source);
+//   if (!bison_contents)
+//     return;
+
+//   content::RenderProcessHost* render_process_host =
+//       render_widget_host->GetProcess();
+//   if (render_process_host->IsInitializedAndNotDead()) {
+//     bison_contents->RendererUnresponsive(render_widget_host->GetProcess());
+//     hang_monitor_restarter.Run();
+//   }
+// }
 
 void BisonWebContentsDelegate::AddNewContents(
     WebContents* source,
@@ -95,10 +119,7 @@ void BisonWebContentsDelegate::DidNavigateMainFramePostCommit(
 
 JavaScriptDialogManager* BisonWebContentsDelegate::GetJavaScriptDialogManager(
     WebContents* source) {
-  if (!dialog_manager_) {
-    dialog_manager_.reset(new BisonJavaScriptDialogManager);
-  }
-  return dialog_manager_.get();
+  return g_javascript_dialog_manager.Pointer();
 }
 
 std::unique_ptr<BluetoothChooser> BisonWebContentsDelegate::RunBluetoothChooser(

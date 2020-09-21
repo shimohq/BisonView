@@ -25,7 +25,6 @@
 #include "bison_browser_main_parts.h"
 #include "bison_content_browser_client.h"
 #include "bison_contents_client_bridge.h"
-#include "bison_devtools_frontend.h"
 #include "bison_javascript_dialog_manager.h"
 #include "bison_web_contents_delegate.h"
 #include "build/build_config.h"
@@ -111,7 +110,6 @@ class BisonContentsUserData : public base::SupportsUserData::Data {
 BisonContents::BisonContents(std::unique_ptr<WebContents> web_contents)
     : WebContentsObserver(web_contents.get()),
       web_contents_(std::move(web_contents)),
-      devtools_frontend_(nullptr),
       is_fullscreen_(false),
       headless_(false) {
   web_contents_->SetUserData(bison::kBisonContentsUserDataKey,
@@ -136,7 +134,6 @@ BisonContents::~BisonContents() {
 
   if (windows_.empty()) {
     // if (headless_)
-    PlatformExit();
     for (auto it = RenderProcessHost::AllHostsIterator(); !it.IsAtEnd();
          it.Advance()) {
       it.GetCurrentValue()->DisableKeepAliveRefCount();
@@ -265,25 +262,6 @@ void BisonContents::Stop() {
 
 void BisonContents::UpdateNavigationControls(bool to_different_document) {}
 
-void BisonContents::ShowDevTools() {
-  if (!devtools_frontend_) {
-    devtools_frontend_ = BisonDevToolsFrontend::Show(web_contents());
-    devtools_observer_.reset(new DevToolsWebContentsObserver(
-        this, devtools_frontend_->frontend_shell()->web_contents()));
-  }
-
-  devtools_frontend_->Activate();
-  devtools_frontend_->Focus();
-}
-
-void BisonContents::CloseDevTools() {
-  if (!devtools_frontend_)
-    return;
-  devtools_observer_.reset();
-  devtools_frontend_->Close();
-  devtools_frontend_ = nullptr;
-}
-
 gfx::NativeView BisonContents::GetContentView() {
   if (!web_contents_)
     return nullptr;
@@ -314,12 +292,8 @@ void BisonContents::DidFinishNavigation(
 
 void BisonContents::OnDevToolsWebContentsDestroyed() {
   devtools_observer_.reset();
-  devtools_frontend_ = nullptr;
 }
 
-void BisonContents::PlatformExit() {
-  VLOG(0) << "exit";
-}
 
 void BisonContents::PlatformCleanUp() {
   JNIEnv* env = AttachCurrentThread();
@@ -331,11 +305,6 @@ void BisonContents::PlatformCleanUp() {
 
 void BisonContents::PlatformCreateWindow() {
   // java_object_.Reset(CreateShellView(this));
-}
-
-void BisonContents::Close() {
-  // RemoveShellView(java_object_);
-  delete this;
 }
 
 void BisonContents::SetJavaPeers(

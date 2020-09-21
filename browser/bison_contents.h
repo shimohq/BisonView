@@ -51,7 +51,6 @@ using navigation_interception::InterceptNavigationDelegate;
 
 namespace bison {
 
-class BisonDevToolsFrontend;
 class BisonJavaScriptDialogManager;
 class BisonContentsClientBridge;
 class BisonWebContentsDelegate;
@@ -77,9 +76,6 @@ class BisonContents : public WebContentsDelegate, public WebContentsObserver {
   void ReloadBypassingCache();
   void Stop();
   void UpdateNavigationControls(bool to_different_document);
-  void Close();
-  void ShowDevTools();
-  void CloseDevTools();
 
   static BisonContents* CreateNewWindow(
       BrowserContext* browser_context,
@@ -126,9 +122,6 @@ class BisonContents : public WebContentsDelegate, public WebContentsObserver {
   static BisonContents* CreateBisonContents(
       std::unique_ptr<WebContents> web_contents);
 
-  // Helper for one time deinitialization of platform specific state.
-  static void PlatformExit();
-
   // All the methods that begin with Platform need to be implemented by the
   // platform specific Shell implementation.
   // Called from the destructor to let each platform do any necessary cleanup.
@@ -165,7 +158,6 @@ class BisonContents : public WebContentsDelegate, public WebContentsObserver {
   std::unique_ptr<BisonContentsClientBridge> contents_client_bridge_;
   std::unique_ptr<BisonRenderViewHostExt> render_view_host_ext_;
   std::unique_ptr<DevToolsWebContentsObserver> devtools_observer_;
-  BisonDevToolsFrontend* devtools_frontend_;
 
   bool is_fullscreen_;
 

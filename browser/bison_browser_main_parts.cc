@@ -20,28 +20,25 @@
 #include "base/threading/thread_restrictions.h"
 #include "build/build_config.h"
 #include "cc/base/switches.h"
+#include "components/crash/content/browser/child_exit_observer_android.h"
+#include "components/crash/content/browser/child_process_crash_observer_android.h"
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/devtools_agent_host.h"
+#include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/storage_partition.h"
 #include "content/public/common/content_switches.h"
-#include "content/public/browser/render_frame_host.h"
 #include "content/public/common/main_function_params.h"
 #include "content/public/common/url_constants.h"
 #include "device/bluetooth/bluetooth_adapter_factory.h"
+#include "net/android/network_change_notifier_factory_android.h"
 #include "net/base/filename_util.h"
 #include "net/base/net_module.h"
+#include "net/base/network_change_notifier.h"
 #include "net/grit/net_resources.h"
 #include "services/service_manager/embedder/result_codes.h"
 #include "ui/base/material_design/material_design_controller.h"
 #include "ui/base/resource/resource_bundle.h"
 #include "url/gurl.h"
-
-#if defined(OS_ANDROID)
-#include "components/crash/content/browser/child_exit_observer_android.h"
-#include "components/crash/content/browser/child_process_crash_observer_android.h"
-#include "net/android/network_change_notifier_factory_android.h"
-#include "net/base/network_change_notifier.h"
-#endif
 
 #if defined(USE_X11)
 #include "ui/base/x/x11_util.h"  // nogncheck
@@ -97,33 +94,22 @@ scoped_refptr<base::RefCountedMemory> PlatformResourceProvider(int key) {
 
 BisonBrowserMainParts::BisonBrowserMainParts(
     const MainFunctionParams& parameters)
-    : parameters_(parameters), run_message_loop_(true) {
+    : parameters_(parameters){
   VLOG(0) << "on new BisonBrowserMainParts ";
 }
 
 BisonBrowserMainParts::~BisonBrowserMainParts() {}
 
-
 void BisonBrowserMainParts::PreMainMessageLoopStart() {
   content::RenderFrameHost::AllowInjectingJavaScript();
 }
 
-
-void BisonBrowserMainParts::PostMainMessageLoopStart() {
-
-}
+void BisonBrowserMainParts::PostMainMessageLoopStart() {}
 
 int BisonBrowserMainParts::PreEarlyInitialization() {
-#if defined(USE_X11)
-  ui::SetDefaultX11ErrorHandlers();
-#endif
-#if !defined(OS_CHROMEOS) && defined(USE_AURA) && defined(OS_LINUX)
-  ui::InitializeInputMethodForTesting();
-#endif
-#if defined(OS_ANDROID)
   net::NetworkChangeNotifier::SetFactory(
       new net::NetworkChangeNotifierFactoryAndroid());
-#endif
+
   return service_manager::RESULT_CODE_NORMAL_EXIT;
 }
 
@@ -132,13 +118,7 @@ void BisonBrowserMainParts::InitializeBrowserContexts() {
   set_off_the_record_browser_context(new BisonBrowserContext(true));
 }
 
-void BisonBrowserMainParts::InitializeMessageLoopContext() {
-  VLOG(0) << "InitializeMessageLoopContext";
-  ui::MaterialDesignController::Initialize();
-  // Shell::CreateNewWindow 这里暂时注释 还没有想好怎么搞
-  // Shell::CreateNewWindow(browser_context_.get(), GetStartupURL(), nullptr,
-  //                        gfx::Size());
-}
+
 
 int BisonBrowserMainParts::PreCreateThreads() {
 #if defined(OS_ANDROID)
@@ -158,17 +138,15 @@ void BisonBrowserMainParts::PreMainMessageLoopRun() {
 
   net::NetModule::SetResourceProvider(PlatformResourceProvider);
   BisonDevToolsManagerDelegate::StartHttpHandler(browser_context_.get());
-  InitializeMessageLoopContext();
 
   if (parameters_.ui_task) {
     parameters_.ui_task->Run();
     delete parameters_.ui_task;
-    run_message_loop_ = false;
   }
 }
 
 bool BisonBrowserMainParts::MainMessageLoopRun(int* result_code) {
-  return !run_message_loop_;
+  return true;
 }
 
 void BisonBrowserMainParts::PostMainMessageLoopRun() {

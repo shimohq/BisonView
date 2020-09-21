@@ -39,7 +39,6 @@ class BisonBrowserMainParts : public content::BrowserMainParts {
 
  protected:
   virtual void InitializeBrowserContexts();
-  virtual void InitializeMessageLoopContext();
 
   void set_browser_context(BisonBrowserContext* context) {
     browser_context_.reset(context);
@@ -54,7 +53,7 @@ class BisonBrowserMainParts : public content::BrowserMainParts {
 
   // For running content_browsertests.
   const MainFunctionParams parameters_;
-  bool run_message_loop_;
+  
 
   DISALLOW_COPY_AND_ASSIGN(BisonBrowserMainParts);
 };

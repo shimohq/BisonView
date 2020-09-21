@@ -88,7 +88,6 @@ class BisonWebContentsDelegate
       content::WebContents* web_contents) override;
 
  private:
-  std::unique_ptr<BisonJavaScriptDialogManager> dialog_manager_;
   bool is_fullscreen_;
 };
 

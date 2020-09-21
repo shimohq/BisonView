@@ -63,6 +63,7 @@ void BisonRenderViewExt::UpdateContentsSize() {
     return;
 
   last_sent_contents_size_ = contents_size;
+  VLOG(0) << "UpdateContentsSize :" <<contents_size.width() <<" " << contents_size.height() ;
   main_render_frame->Send(new BisonViewHostMsg_OnContentsSizeChanged(
       main_render_frame->GetRoutingID(), contents_size));
 }

@@ -415,7 +415,10 @@ class BisonContents extends FrameLayout {
     private class InterceptNavigationDelegateImpl implements InterceptNavigationDelegate {
         @Override
         public boolean shouldIgnoreNavigation(NavigationParams navigationParams) {
-            mContentsClient.onPageStarted(navigationParams.url);
+            if (!navigationParams.isRendererInitiated){
+                mContentsClient.onPageStarted(navigationParams.url);
+            }
+            
             return false;
         }
     }
