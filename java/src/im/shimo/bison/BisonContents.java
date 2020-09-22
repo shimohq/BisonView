@@ -30,12 +30,15 @@ import org.chromium.content_public.browser.WebContents;
 import org.chromium.content_public.browser.navigation_controller.LoadURLType;
 import org.chromium.content_public.browser.navigation_controller.UserAgentOverrideOption;
 import org.chromium.content_public.common.ContentUrlConstants;
+import org.chromium.content_public.common.Referrer;
 import org.chromium.ui.base.ActivityWindowAndroid;
 import org.chromium.ui.base.PageTransition;
 import org.chromium.ui.base.WindowAndroid;
+import org.chromium.network.mojom.ReferrerPolicy;
 
 import java.lang.annotation.Annotation;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 
 @JNINamespace("bison")
@@ -150,6 +153,7 @@ class BisonContents extends FrameLayout {
     public void loadUrl(String url) {
         if (url == null) return;
         loadUrl(url, null);
+        //mNavigationController.loadUrl(new LoadUrlParams(url));
     }
 
     public void loadUrl(String url, Map<String, String> additionalHttpHeaders) {
@@ -157,6 +161,7 @@ class BisonContents extends FrameLayout {
             return;
         }
         LoadUrlParams params = new LoadUrlParams(url, PageTransition.TYPED);
+        // LoadUrlParams params = new LoadUrlParams(url);
         if (additionalHttpHeaders != null) {
             params.setExtraHeaders(new HashMap<>(additionalHttpHeaders));
         }
@@ -175,20 +180,44 @@ class BisonContents extends FrameLayout {
     private void loadUrl(LoadUrlParams params) {
         if (params.getLoadUrlType() == LoadURLType.DATA && !params.isBaseUrlDataScheme()) {
             params.setCanLoadLocalResources(true);
-            BisonContentsJni.get().grantFileSchemeAccesstoChildProcess(
-                    mNativeBisonContents);
+            BisonContentsJni.get().grantFileSchemeAccesstoChildProcess(mNativeBisonContents);
         }
 
         if (params.getUrl() != null && params.getUrl().equals(mWebContents.getLastCommittedUrl())
                 && params.getTransitionType() == PageTransition.TYPED) {
             params.setTransitionType(PageTransition.RELOAD);
         }
-        params.setOverrideUserAgent(UserAgentOverrideOption.TRUE);
+        //params.setOverrideUserAgent(UserAgentOverrideOption.TRUE);
+
+
+        final String referer = "referer";
+        Map<String, String> extraHeaders = params.getExtraHeaders();
+        if (extraHeaders != null) {
+            for (String header : extraHeaders.keySet()) {
+                if (referer.equals(header.toLowerCase(Locale.US))) {
+                    params.setReferrer(
+                            new Referrer(extraHeaders.remove(header), ReferrerPolicy.DEFAULT));
+                    params.setExtraHeaders(extraHeaders);
+                    break;
+                }
+            }
+        }
 
         params.setTransitionType(
                 params.getTransitionType() | PageTransition.FROM_API);
+                
+        BisonContentsJni.get().setExtraHeadersForUrl(mNativeBisonContents, 
+                params.getUrl(), params.getExtraHttpRequestHeadersString());
+        params.setExtraHeaders(new HashMap<String, String>());
 
         mNavigationController.loadUrl(params);
+
+        // WebViewClassic的行为使用WebKit中的populateVisitedLinks回调。
+        // Chromium不会使用此使用代码路径，也不会使用此行为的最佳模拟来在WebView的第一个URL加载上调用一次请求访问的链接。
+        // if (!mHasRequestedVisitedHistoryFromClient) {
+        //     mHasRequestedVisitedHistoryFromClient = true;
+        //     requestVisitedHistoryFromClient();
+        // }
     }
 
     public void loadData(String data, String mimeType, String encoding) {
@@ -435,6 +464,8 @@ class BisonContents extends FrameLayout {
                           BisonContentsIoThreadClient ioThreadClient,
                           InterceptNavigationDelegate interceptNavigationDelegate);
 
+        void setExtraHeadersForUrl(
+                long nativeBisonContents, String url, String extraHeaders);
         void grantFileSchemeAccesstoChildProcess(long nativeBisonContents);
 
         void destroy(long nativeBisonContents);

@@ -11,4 +11,5 @@ bison_java_deps = [
   "//ui/android:ui_java",
   "//net/android:net_java",
   "//content/public/android:content_java",
+  "//services/network/public/mojom:mojom_java",
 ]

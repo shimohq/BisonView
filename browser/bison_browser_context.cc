@@ -14,6 +14,7 @@
 #include "base/path_service.h"
 #include "base/task/post_task.h"
 #include "base/threading/thread.h"
+#include "bison/browser/bison_resource_context.h"
 #include "bison_download_manager_delegate.h"
 #include "bison_permission_manager.h"
 #include "build/build_config.h"
@@ -26,16 +27,6 @@
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/storage_partition.h"
 #include "content/public/common/content_switches.h"
-
-#if defined(OS_WIN)
-#include "base/base_paths_win.h"
-#elif defined(OS_LINUX)
-#include "base/nix/xdg_util.h"
-#elif defined(OS_MACOSX)
-#include "base/base_paths_mac.h"
-#elif defined(OS_FUCHSIA)
-#include "base/base_paths_fuchsia.h"
-#endif
 
 using content::BackgroundFetchDelegate;
 using content::BackgroundSyncController;
@@ -53,28 +44,14 @@ using content::StorageNotificationService;
 
 namespace bison {
 
-BisonBrowserContext::BisonResourceContext::BisonResourceContext() {}
-
-BisonBrowserContext::BisonResourceContext::~BisonResourceContext() {}
-
 BisonBrowserContext* BisonBrowserContext::FromWebContents(
     content::WebContents* web_contents) {
   return static_cast<BisonBrowserContext*>(web_contents->GetBrowserContext());
 }
 
-BisonBrowserContext::BisonBrowserContext(bool off_the_record,
-                                         bool delay_services_creation)
-    : resource_context_(new BisonResourceContext),
-      ignore_certificate_errors_(false),
-      off_the_record_(off_the_record),
-      guest_manager_(nullptr) {
+BisonBrowserContext::BisonBrowserContext(bool off_the_record)
+    : off_the_record_(off_the_record) {
   InitWhileIOAllowed();
-  VLOG(0) << "new BisonBrowserContext delay_services_creation:"
-          << delay_services_creation;
-  if (!delay_services_creation) {
-    BrowserContextDependencyManager::GetInstance()
-        ->CreateBrowserContextServices(this);
-  }
 }
 
 BisonBrowserContext::~BisonBrowserContext() {
@@ -145,19 +122,22 @@ DownloadManagerDelegate* BisonBrowserContext::GetDownloadManagerDelegate() {
 }
 
 ResourceContext* BisonBrowserContext::GetResourceContext() {
+  if (!resource_context_) {
+    resource_context_.reset(new BisonResourceContext);
+  }
   return resource_context_.get();
 }
 
 BrowserPluginGuestManager* BisonBrowserContext::GetGuestManager() {
-  return guest_manager_;
+  return NULL;
 }
 
 storage::SpecialStoragePolicy* BisonBrowserContext::GetSpecialStoragePolicy() {
-  return nullptr;
+  return NULL;
 }
 
 PushMessagingService* BisonBrowserContext::GetPushMessagingService() {
-  return nullptr;
+  return NULL;
 }
 
 StorageNotificationService*
@@ -187,12 +167,6 @@ BackgroundFetchDelegate* BisonBrowserContext::GetBackgroundFetchDelegate() {
 
 content::BackgroundSyncController*
 BisonBrowserContext::GetBackgroundSyncController() {
-  //   // if (!background_sync_controller_)
-  //   // background_sync_controller_.reset(new MockBackgroundSyncController());
-  //   // background_sync_controller_.reset(new BackgroundSyncController());
-
-  //   // return background_sync_controller_.get();
-  //   VLOG(0) << "jiang GetBackgroundSyncController null";
   return nullptr;
 }
 

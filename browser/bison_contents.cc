@@ -39,6 +39,7 @@
 #include "content/public/browser/render_process_host.h"
 #include "content/public/browser/render_view_host.h"
 #include "content/public/browser/render_widget_host.h"
+#include "content/public/browser/resource_context.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/common/content_switches.h"
 #include "media/media_buildflags.h"
@@ -294,7 +295,6 @@ void BisonContents::OnDevToolsWebContentsDestroyed() {
   devtools_observer_.reset();
 }
 
-
 void BisonContents::PlatformCleanUp() {
   JNIEnv* env = AttachCurrentThread();
   if (java_object_.is_null())
@@ -330,6 +330,20 @@ void BisonContents::SetJavaPeers(
 
 ScopedJavaLocalRef<jobject> BisonContents::GetWebContents(JNIEnv* env) {
   return web_contents()->GetJavaWebContents();
+}
+
+void BisonContents::SetExtraHeadersForUrl(
+    JNIEnv* env,
+    const JavaParamRef<jstring>& url,
+    const JavaParamRef<jstring>& jextra_headers) {
+  std::string extra_headers;
+  if (jextra_headers)
+    extra_headers = ConvertJavaStringToUTF8(env, jextra_headers);
+  BisonResourceContext* resource_context = static_cast<BisonResourceContext*>(
+      BisonBrowserContext::FromWebContents(web_contents_.get())
+          ->GetResourceContext());
+  resource_context->SetExtraHeaders(GURL(ConvertJavaStringToUTF8(env, url)),
+                                    extra_headers);
 }
 
 void BisonContents::GrantFileSchemeAccesstoChildProcess(JNIEnv* env) {

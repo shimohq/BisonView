@@ -38,6 +38,8 @@ source_set("browser") {
     "bison_content_renderer_overlay_manifest.h",
     "scoped_add_feature_flags.cc",
     "scoped_add_feature_flags.h",
+    "bison_resource_context.cc",
+    "bison_resource_context.h",
 
     # network_service
     "network_service/android_stream_reader_url_loader.cc",

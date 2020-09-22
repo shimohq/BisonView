@@ -108,6 +108,10 @@ class BisonContents : public WebContentsDelegate, public WebContentsObserver {
                     const JavaParamRef<jobject>& io_thread_client,
                     const JavaParamRef<jobject>& intercept_navigation_delegate);
 
+  void SetExtraHeadersForUrl(
+      JNIEnv* env,
+      const base::android::JavaParamRef<jstring>& url,
+      const base::android::JavaParamRef<jstring>& extra_headers);
   void GrantFileSchemeAccesstoChildProcess(JNIEnv* env);
 
   void Destroy(JNIEnv* env);

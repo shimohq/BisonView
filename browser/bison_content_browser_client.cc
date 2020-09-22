@@ -28,6 +28,7 @@
 #include "bison/browser/bison_content_browser_overlay_manifest.h"
 #include "bison/browser/bison_content_renderer_overlay_manifest.h"
 #include "bison/browser/network_service/bison_proxying_url_loader_factory.h"
+#include "bison/browser/bison_settings.h"
 #include "bison/common/bison_descriptors.h"
 #include "bison_browser_context.h"
 #include "bison_browser_main_parts.h"
@@ -343,11 +344,10 @@ base::OnceClosure BisonContentBrowserClient::SelectClientCertificate(
 void BisonContentBrowserClient::OverrideWebkitPrefs(
     RenderViewHost* render_view_host,
     WebPreferences* prefs) {
-  if (base::CommandLine::ForCurrentProcess()->HasSwitch(
-          switches::kForceDarkMode)) {
-    prefs->preferred_color_scheme = blink::PreferredColorScheme::kDark;
-  } else {
-    prefs->preferred_color_scheme = blink::PreferredColorScheme::kLight;
+  BisonSettings* bison_settings = BisonSettings::FromWebContents(
+      content::WebContents::FromRenderViewHost(render_view_host));
+  if (bison_settings) {
+    bison_settings->PopulateWebPreferences(prefs);
   }
 }
 
