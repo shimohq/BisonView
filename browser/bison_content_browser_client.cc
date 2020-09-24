@@ -171,11 +171,16 @@ BisonContentBrowserClient::~BisonContentBrowserClient() {
   g_browser_client = nullptr;
 }
 
+BisonBrowserContext* BisonContentBrowserClient::InitBrowserContext() {
+  browser_context_ = std::make_unique<BisonBrowserContext>();
+  return browser_context_.get();
+}
+
 std::unique_ptr<BrowserMainParts>
 BisonContentBrowserClient::CreateBrowserMainParts(
     const MainFunctionParams& parameters) {
   VLOG(0) << "CreateBrowserMainParts";
-  auto browser_main_parts = std::make_unique<BisonBrowserMainParts>(parameters);
+  auto browser_main_parts = std::make_unique<BisonBrowserMainParts>(this);
   shell_browser_main_parts_ = browser_main_parts.get();
   return browser_main_parts;
 }
@@ -351,11 +356,6 @@ void BisonContentBrowserClient::OverrideWebkitPrefs(
   }
 }
 
-base::FilePath BisonContentBrowserClient::GetFontLookupTableCacheDir() {
-  return browser_context()->GetPath().Append(
-      FILE_PATH_LITERAL("FontLookupTableCache"));
-}
-
 std::vector<std::unique_ptr<content::NavigationThrottle>>
 BisonContentBrowserClient::CreateThrottlesForNavigation(
     content::NavigationHandle* navigation_handle) {
@@ -450,11 +450,6 @@ BisonContentBrowserClient::CreateNetworkContext(
   return network_context;
 }
 
-std::vector<base::FilePath>
-BisonContentBrowserClient::GetNetworkContextsParentDirectory() {
-  return {browser_context()->GetPath()};
-}
-
 bool BisonContentBrowserClient::ShouldOverrideUrlLoading(
     int frame_tree_node_id,
     bool browser_initiated,
@@ -521,9 +516,9 @@ bool BisonContentBrowserClient::WillCreateURLLoaderFactory(
   return true;
 }
 
-BisonBrowserContext* BisonContentBrowserClient::browser_context() {
-  return shell_browser_main_parts_->browser_context();
-}
+// BisonBrowserContext* BisonContentBrowserClient::browser_context() {
+//   return shell_browser_main_parts_->browser_context();
+// }
 
 
 void BisonContentBrowserClient::ExposeInterfacesToFrame(

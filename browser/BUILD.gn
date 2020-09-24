@@ -56,6 +56,12 @@ source_set("browser") {
     "network_service/net_helpers.h",
     "network_service/bison_proxying_url_loader_factory.cc",
     "network_service/bison_proxying_url_loader_factory.h",
+
+    "network_service/bison_network_change_notifier_factory.cc",
+    "network_service/bison_network_change_notifier_factory.h",
+    "network_service/bison_network_change_notifier.cc",
+    "network_service/bison_network_change_notifier.h",
+
     "renderer_host/bison_render_view_host_ext.cc",
     "renderer_host/bison_render_view_host_ext.h",
   ]

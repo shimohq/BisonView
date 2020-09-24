@@ -44,6 +44,8 @@ class BisonContentBrowserClient : public content::ContentBrowserClient {
   BisonContentBrowserClient();
   ~BisonContentBrowserClient() override;
 
+  BisonBrowserContext* InitBrowserContext();
+
   // ContentBrowserClient overrides.
   std::unique_ptr<BrowserMainParts> CreateBrowserMainParts(
       const MainFunctionParams& parameters) override;
@@ -84,7 +86,6 @@ class BisonContentBrowserClient : public content::ContentBrowserClient {
   //     override;
   void OverrideWebkitPrefs(RenderViewHost* render_view_host,
                            WebPreferences* prefs) override;
-  base::FilePath GetFontLookupTableCacheDir() override;
   std::vector<std::unique_ptr<content::NavigationThrottle>>
   CreateThrottlesForNavigation(
       content::NavigationHandle* navigation_handle) override;
@@ -112,7 +113,6 @@ class BisonContentBrowserClient : public content::ContentBrowserClient {
       BrowserContext* context,
       bool in_memory,
       const base::FilePath& relative_partition_path) override;
-  std::vector<base::FilePath> GetNetworkContextsParentDirectory() override;
 
   bool ShouldOverrideUrlLoading(int frame_tree_node_id,
                                 bool browser_initiated,
@@ -135,7 +135,7 @@ class BisonContentBrowserClient : public content::ContentBrowserClient {
           header_client,
       bool* bypass_redirect_checks) override;
 
-  BisonBrowserContext* browser_context();
+  // BisonBrowserContext* browser_context();
   
   BisonBrowserMainParts* shell_browser_main_parts() {
     return shell_browser_main_parts_;
@@ -177,6 +177,10 @@ class BisonContentBrowserClient : public content::ContentBrowserClient {
 
   // Owned by content::BrowserMainLoop.
   BisonBrowserMainParts* shell_browser_main_parts_;
+
+  std::unique_ptr<BisonBrowserContext> browser_context_;
+
+
 };
 
 // The delay for sending reports when running with --run-web-tests

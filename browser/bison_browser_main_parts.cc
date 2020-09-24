@@ -1,14 +1,4 @@
-// Copyright 2013 The Chromium Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file.
-
-#include "bison_browser_main_parts.h"
-
-// #include "content/shell/android/shell_descriptors.h"
-#include "bison_browser_context.h"
-#include "bison_contents.h"
-#include "bison_devtools_manager_delegate.h"
-// #include "content/shell/common/shell_switches.h"
+#include "bison/browser/bison_browser_main_parts.h"
 
 #include "base/base_switches.h"
 #include "base/bind.h"
@@ -18,6 +8,11 @@
 #include "base/message_loop/message_loop_current.h"
 #include "base/threading/thread.h"
 #include "base/threading/thread_restrictions.h"
+#include "bison/browser/bison_browser_context.h"
+#include "bison/browser/bison_content_browser_client.h"
+#include "bison/browser/bison_contents.h"
+#include "bison/browser/bison_devtools_manager_delegate.h"
+#include "bison/browser/network_service/bison_network_change_notifier_factory.h"
 #include "build/build_config.h"
 #include "cc/base/switches.h"
 #include "components/crash/content/browser/child_exit_observer_android.h"
@@ -40,87 +35,33 @@
 #include "ui/base/resource/resource_bundle.h"
 #include "url/gurl.h"
 
-#if defined(USE_X11)
-#include "ui/base/x/x11_util.h"  // nogncheck
-#endif
-#if defined(USE_AURA) && defined(USE_X11)
-#include "ui/events/devices/x11/touch_factory_x11.h"  // nogncheck
-#endif
-#if !defined(OS_CHROMEOS) && defined(USE_AURA) && defined(OS_LINUX)
-#include "ui/base/ime/init/input_method_initializer.h"
-#endif
-#if defined(OS_CHROMEOS)
-#include "chromeos/dbus/dbus_thread_manager.h"
-#include "device/bluetooth/dbus/bluez_dbus_manager.h"
-#elif defined(OS_LINUX)
-#include "device/bluetooth/dbus/dbus_bluez_manager_wrapper_linux.h"
-#endif
-
 namespace bison {
 
-namespace {
-
-// GURL GetStartupURL() {
-//   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
-//   if (command_line->HasSwitch(switches::kBrowserTest))
-//     return GURL();
-//   const base::CommandLine::StringVector& args = command_line->GetArgs();
-
-// #if defined(OS_ANDROID)
-//   // Delay renderer creation on Android until surface is ready.
-//   return GURL();
-// #endif
-
-//   if (args.empty())
-//     return GURL("https://www.google.com/");
-
-//   GURL url(args[0]);
-//   if (url.is_valid() && url.has_scheme())
-//     return url;
-
-//   return net::FilePathToFileURL(
-//       base::MakeAbsoluteFilePath(base::FilePath(args[0])));
-// }
-
-scoped_refptr<base::RefCountedMemory> PlatformResourceProvider(int key) {
-  if (key == IDR_DIR_HEADER_HTML) {
-    return ui::ResourceBundle::GetSharedInstance().LoadDataResourceBytes(
-        IDR_DIR_HEADER_HTML);
-  }
-  return nullptr;
-}
-
-}  // namespace
-
 BisonBrowserMainParts::BisonBrowserMainParts(
-    const MainFunctionParams& parameters)
-    : parameters_(parameters){
-  VLOG(0) << "on new BisonBrowserMainParts ";
-}
+    BisonContentBrowserClient* browser_client)
+    : browser_client_(browser_client) {}
 
 BisonBrowserMainParts::~BisonBrowserMainParts() {}
 
-void BisonBrowserMainParts::PreMainMessageLoopStart() {
-  content::RenderFrameHost::AllowInjectingJavaScript();
-}
-
-void BisonBrowserMainParts::PostMainMessageLoopStart() {}
-
 int BisonBrowserMainParts::PreEarlyInitialization() {
-  net::NetworkChangeNotifier::SetFactory(
-      new net::NetworkChangeNotifierFactoryAndroid());
+  if (!net::NetworkChangeNotifier::GetFactory()) {
+    net::NetworkChangeNotifier::SetFactory(
+        new BisonNetworkChangeNotifierFactory());
+  }
+
+  // Creates a SingleThreadTaskExecutor for Android WebView if doesn't exist.
+  DCHECK(!main_task_executor_.get());
+  if (!base::MessageLoopCurrent::IsSet()) {
+    main_task_executor_ = std::make_unique<base::SingleThreadTaskExecutor>(
+        base::MessagePumpType::UI);
+  }
 
   return service_manager::RESULT_CODE_NORMAL_EXIT;
 }
 
-void BisonBrowserMainParts::InitializeBrowserContexts() {
-  set_browser_context(new BisonBrowserContext());
-}
-
-
+void BisonBrowserMainParts::InitializeBrowserContexts() {}
 
 int BisonBrowserMainParts::PreCreateThreads() {
-#if defined(OS_ANDROID)
   const base::CommandLine* command_line =
       base::CommandLine::ForCurrentProcess();
   crash_reporter::ChildExitObserver::Create();
@@ -128,45 +69,31 @@ int BisonBrowserMainParts::PreCreateThreads() {
     crash_reporter::ChildExitObserver::GetInstance()->RegisterClient(
         std::make_unique<crash_reporter::ChildProcessCrashObserver>());
   }
-#endif
+  VLOG(0) << "PreCreateThreads";
   return 0;
 }
 
 void BisonBrowserMainParts::PreMainMessageLoopRun() {
+  content::RenderFrameHost::AllowInjectingJavaScript();
   InitializeBrowserContexts();
+  //jiang 
+  browser_client_->InitBrowserContext();
+  VLOG(0) << "PreMainMessageLoopRun";
+  //net::NetModule::SetResourceProvider(PlatformResourceProvider);
+  //BisonDevToolsManagerDelegate::StartHttpHandler(browser_context_.get());
 
-  net::NetModule::SetResourceProvider(PlatformResourceProvider);
-  BisonDevToolsManagerDelegate::StartHttpHandler(browser_context_.get());
-
-  if (parameters_.ui_task) {
-    parameters_.ui_task->Run();
-    delete parameters_.ui_task;
-  }
 }
 
 bool BisonBrowserMainParts::MainMessageLoopRun(int* result_code) {
   return true;
 }
 
-void BisonBrowserMainParts::PostMainMessageLoopRun() {
-  BisonDevToolsManagerDelegate::StopHttpHandler();
-  browser_context_.reset();
-}
+// jiang 运行没有问题后就可以删掉了
+// void BisonBrowserMainParts::PreDefaultMainMessageLoopRun(
+//     base::OnceClosure quit_closure) {
+//   BisonContents::SetMainMessageLoopQuitClosure(std::move(quit_closure));
+// }
 
-void BisonBrowserMainParts::PreDefaultMainMessageLoopRun(
-    base::OnceClosure quit_closure) {
-  BisonContents::SetMainMessageLoopQuitClosure(std::move(quit_closure));
-}
-
-void BisonBrowserMainParts::PostDestroyThreads() {
-#if defined(OS_CHROMEOS)
-  device::BluetoothAdapterFactory::Shutdown();
-  bluez::BluezDBusManager::Shutdown();
-  chromeos::DBusThreadManager::Shutdown();
-#elif defined(OS_LINUX)
-  device::BluetoothAdapterFactory::Shutdown();
-  bluez::DBusBluezManagerWrapperLinux::Shutdown();
-#endif
-}
+void BisonBrowserMainParts::PostDestroyThreads() {}
 
 }  // namespace bison
