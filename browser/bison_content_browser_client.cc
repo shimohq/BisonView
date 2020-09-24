@@ -377,7 +377,7 @@ BisonContentBrowserClient::CreateThrottlesForNavigation(
 
 DevToolsManagerDelegate*
 BisonContentBrowserClient::GetDevToolsManagerDelegate() {
-  return new BisonDevToolsManagerDelegate(browser_context());
+  return new BisonDevToolsManagerDelegate();
 }
 
 std::unique_ptr<LoginDelegate> BisonContentBrowserClient::CreateLoginDelegate(

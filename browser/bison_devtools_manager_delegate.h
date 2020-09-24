@@ -20,26 +20,20 @@ namespace bison {
 
 class BisonDevToolsManagerDelegate : public DevToolsManagerDelegate {
  public:
+  BisonDevToolsManagerDelegate();
+  ~BisonDevToolsManagerDelegate() override;
+
+
   static void StartHttpHandler(BrowserContext* browser_context);
   static void StopHttpHandler();
   static int GetHttpHandlerPort();
 
-  explicit BisonDevToolsManagerDelegate(BrowserContext* browser_context);
-  ~BisonDevToolsManagerDelegate() override;
-
   // DevToolsManagerDelegate implementation.
-  BrowserContext* GetDefaultBrowserContext() override;
   std::string GetTargetDescription(content::WebContents* web_contents) override;
   std::string GetDiscoveryPageHTML() override;
-  bool HasBundledFrontendResources() override;
-  void ClientAttached(content::DevToolsAgentHost* agent_host,
-                      content::DevToolsAgentHostClient* client) override;
-  void ClientDetached(content::DevToolsAgentHost* agent_host,
-                      content::DevToolsAgentHostClient* client) override;
+  bool IsBrowserTargetDiscoverable() override;
 
  private:
-  BrowserContext* browser_context_;
-  base::flat_set<content::DevToolsAgentHostClient*> clients_;
   DISALLOW_COPY_AND_ASSIGN(BisonDevToolsManagerDelegate);
 };
 

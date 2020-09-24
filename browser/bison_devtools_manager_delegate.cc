@@ -108,29 +108,11 @@ void BisonDevToolsManagerDelegate::StopHttpHandler() {
   DevToolsAgentHost::StopRemoteDebuggingServer();
 }
 
-BisonDevToolsManagerDelegate::BisonDevToolsManagerDelegate(
-    BrowserContext* browser_context)
-    : browser_context_(browser_context) {}
+BisonDevToolsManagerDelegate::BisonDevToolsManagerDelegate() {}
 
 BisonDevToolsManagerDelegate::~BisonDevToolsManagerDelegate() {}
 
-BrowserContext* BisonDevToolsManagerDelegate::GetDefaultBrowserContext() {
-  return browser_context_;
-}
 
-void BisonDevToolsManagerDelegate::ClientAttached(
-    content::DevToolsAgentHost* agent_host,
-    content::DevToolsAgentHostClient* client) {
-  // Make sure we don't receive notifications twice for the same client.
-  CHECK(clients_.find(client) == clients_.end());
-  clients_.insert(client);
-}
-
-void BisonDevToolsManagerDelegate::ClientDetached(
-    content::DevToolsAgentHost* agent_host,
-    content::DevToolsAgentHostClient* client) {
-  clients_.erase(client);
-}
 
 std::string BisonDevToolsManagerDelegate::GetTargetDescription(
     content::WebContents* web_contents) {
@@ -155,7 +137,6 @@ std::string BisonDevToolsManagerDelegate::GetTargetDescription(
   return "";
 }
 
-
 std::string BisonDevToolsManagerDelegate::GetDiscoveryPageHTML() {
   const char html[] =
       "<html>"
@@ -166,8 +147,8 @@ std::string BisonDevToolsManagerDelegate::GetDiscoveryPageHTML() {
   return html;
 }
 
-bool BisonDevToolsManagerDelegate::HasBundledFrontendResources() {
-  return false;
+bool BisonDevToolsManagerDelegate::IsBrowserTargetDiscoverable() {
+  return true;
 }
 
 }  // namespace bison
