@@ -356,9 +356,11 @@ void BisonContents::Destroy(JNIEnv* env) {
 }
 
 // static
-jlong JNI_BisonContents_Init(JNIEnv* env, const JavaParamRef<jobject>& obj) {
+jlong JNI_BisonContents_Init(JNIEnv* env,
+                             const JavaParamRef<jobject>& obj,
+                             jlong bison_browser_context) {
   BisonBrowserContext* browserContext =
-      BisonContentBrowserClient::Get()->browser_context();
+      reinterpret_cast<BisonBrowserContext*>(bison_browser_context);
   BisonContents* bison_contents =
       BisonContents::CreateNewWindow(browserContext, NULL);
   bison_contents->java_object_.Reset(obj);

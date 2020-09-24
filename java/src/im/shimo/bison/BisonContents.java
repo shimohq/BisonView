@@ -69,13 +69,15 @@ class BisonContents extends FrameLayout {
 
     private JavascriptInjector mJavascriptInjector;
     private BisonContentsClient mContentsClient;
+    private BisonBrowserContext mBrowserContext;
 
-    public BisonContents(Context context, BisonWebContentsDelegate webContentsDelegate,
+    public BisonContents(Context context, BisonBrowserContext bisonBrowserContext,  BisonWebContentsDelegate webContentsDelegate,
                          BisonContentsClientBridge bisonContentsClientBridge,
                          BisonContentsClient bisonContentsClient) {
         super(context);
+        mBrowserContext = bisonBrowserContext;
         mContentsClient = bisonContentsClient;
-        mNativeBisonContents = BisonContentsJni.get().init(this);
+        mNativeBisonContents = BisonContentsJni.get().init(this,mBrowserContext.getNativePointer());
         mWebContents = BisonContentsJni.get().getWebContents(mNativeBisonContents);
 
         mWindow = new ActivityWindowAndroid(context, true);
@@ -455,7 +457,7 @@ class BisonContents extends FrameLayout {
 
     @NativeMethods
     interface Natives {
-        long init(BisonContents caller);
+        long init(BisonContents caller,long nativeBisonBrowserContext);
 
         WebContents getWebContents(long nativeBisonContents);
 

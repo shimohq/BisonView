@@ -114,8 +114,7 @@ int BisonBrowserMainParts::PreEarlyInitialization() {
 }
 
 void BisonBrowserMainParts::InitializeBrowserContexts() {
-  set_browser_context(new BisonBrowserContext(false));
-  set_off_the_record_browser_context(new BisonBrowserContext(true));
+  set_browser_context(new BisonBrowserContext());
 }
 
 
@@ -152,7 +151,6 @@ bool BisonBrowserMainParts::MainMessageLoopRun(int* result_code) {
 void BisonBrowserMainParts::PostMainMessageLoopRun() {
   BisonDevToolsManagerDelegate::StopHttpHandler();
   browser_context_.reset();
-  off_the_record_browser_context_.reset();
 }
 
 void BisonBrowserMainParts::PreDefaultMainMessageLoopRun(

@@ -525,10 +525,6 @@ BisonBrowserContext* BisonContentBrowserClient::browser_context() {
   return shell_browser_main_parts_->browser_context();
 }
 
-BisonBrowserContext*
-BisonContentBrowserClient::off_the_record_browser_context() {
-  return shell_browser_main_parts_->off_the_record_browser_context();
-}
 
 void BisonContentBrowserClient::ExposeInterfacesToFrame(
     service_manager::BinderRegistryWithArgs<content::RenderFrameHost*>*

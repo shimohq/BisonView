@@ -5,6 +5,7 @@
 
 #include <memory>
 
+#include "base/android/jni_weak_ref.h"
 #include "base/compiler_specific.h"
 #include "base/files/file_path.h"
 #include "base/macros.h"
@@ -32,11 +33,19 @@ class BisonDownloadManagerDelegate;
 class BisonBrowserContext : public content::BrowserContext{
  public:
   
-  BisonBrowserContext(bool off_the_record);
+  BisonBrowserContext();
   ~BisonBrowserContext() override;
+
+  static BisonBrowserContext* GetDefault();
 
   static BisonBrowserContext* FromWebContents(
       content::WebContents* web_contents);
+
+
+
+
+  
+  bool IsDefaultBrowserContext() { return true; }
 
   // BrowserContext implementation.
   base::FilePath GetPath() override;
@@ -62,7 +71,7 @@ class BisonBrowserContext : public content::BrowserContext{
 
   
 
-
+  base::android::ScopedJavaLocalRef<jobject> GetJavaBrowserContext();
 
  protected:
 
@@ -79,10 +88,11 @@ class BisonBrowserContext : public content::BrowserContext{
   void InitWhileIOAllowed();
   void FinishInitWhileIOAllowed();
 
-  bool off_the_record_;
   base::FilePath path_;
 
   std::unique_ptr<SimpleFactoryKey> key_;
+
+  base::android::ScopedJavaGlobalRef<jobject> obj_;
 
   DISALLOW_COPY_AND_ASSIGN(BisonBrowserContext);
 };

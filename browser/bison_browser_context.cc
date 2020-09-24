@@ -6,6 +6,11 @@
 
 #include <utility>
 
+#include "bison/bison_jni_headers/BisonBrowserContext_jni.h"
+#include "bison/browser/bison_download_manager_delegate.h"
+#include "bison/browser/bison_permission_manager.h"
+#include "bison/browser/bison_resource_context.h"
+
 #include "base/bind.h"
 #include "base/command_line.h"
 #include "base/environment.h"
@@ -14,9 +19,7 @@
 #include "base/path_service.h"
 #include "base/task/post_task.h"
 #include "base/threading/thread.h"
-#include "bison/browser/bison_resource_context.h"
-#include "bison_download_manager_delegate.h"
-#include "bison_permission_manager.h"
+
 #include "build/build_config.h"
 #include "components/keyed_service/content/browser_context_dependency_manager.h"
 #include "components/keyed_service/core/simple_dependency_manager.h"
@@ -44,19 +47,33 @@ using content::StorageNotificationService;
 
 namespace bison {
 
+namespace {
+BisonBrowserContext* g_browser_context = NULL;
+}  // namespace
+
+// static
+BisonBrowserContext* BisonBrowserContext::GetDefault() {
+  // TODO(joth): rather than store in a global here, lookup this instance
+  // from the Java-side peer.
+  return g_browser_context;
+}
+
 BisonBrowserContext* BisonBrowserContext::FromWebContents(
     content::WebContents* web_contents) {
   return static_cast<BisonBrowserContext*>(web_contents->GetBrowserContext());
 }
 
-BisonBrowserContext::BisonBrowserContext(bool off_the_record)
-    : off_the_record_(off_the_record) {
+BisonBrowserContext::BisonBrowserContext() {
+  DCHECK(!g_browser_context);
+  g_browser_context = this;
   InitWhileIOAllowed();
 }
 
 BisonBrowserContext::~BisonBrowserContext() {
+  DCHECK_EQ(this, g_browser_context);
   NotifyWillBeDestroyed(this);
-
+  g_browser_context = NULL;
+  
   // The SimpleDependencyManager should always be passed after the
   // BrowserContextDependencyManager. This is because the KeyedService instances
   // in the BrowserContextDependencyManager's dependency graph can depend on the
@@ -91,7 +108,7 @@ void BisonBrowserContext::InitWhileIOAllowed() {
 
 void BisonBrowserContext::FinishInitWhileIOAllowed() {
   BrowserContext::Initialize(this, path_);
-  key_ = std::make_unique<SimpleFactoryKey>(path_, off_the_record_);
+  key_ = std::make_unique<SimpleFactoryKey>(path_, IsOffTheRecord());
   SimpleKeyMap::GetInstance()->Associate(this, key_.get());
 }
 
@@ -108,7 +125,7 @@ base::FilePath BisonBrowserContext::GetPath() {
 }
 
 bool BisonBrowserContext::IsOffTheRecord() {
-  return off_the_record_;
+  return false;
 }
 
 DownloadManagerDelegate* BisonBrowserContext::GetDownloadManagerDelegate() {
@@ -182,6 +199,21 @@ ContentIndexProvider* BisonBrowserContext::GetContentIndexProvider() {
   // return content_index_provider_.get();
   VLOG(0) << "jiang GetContentIndexProvider null";
   return nullptr;
+}
+
+base::android::ScopedJavaLocalRef<jobject>
+JNI_BisonBrowserContext_GetDefaultJava(JNIEnv* env) {
+  return g_browser_context->GetJavaBrowserContext();
+}
+
+base::android::ScopedJavaLocalRef<jobject>
+BisonBrowserContext::GetJavaBrowserContext() {
+  if (!obj_) {
+    JNIEnv* env = base::android::AttachCurrentThread();
+    obj_ = Java_BisonBrowserContext_create(
+        env, reinterpret_cast<intptr_t>(this), IsDefaultBrowserContext());
+  }
+  return base::android::ScopedJavaLocalRef<jobject>(obj_);
 }
 
 }  // namespace bison

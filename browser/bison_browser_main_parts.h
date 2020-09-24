@@ -33,9 +33,7 @@ class BisonBrowserMainParts : public content::BrowserMainParts {
   void PostDestroyThreads() override;
 
   BisonBrowserContext* browser_context() { return browser_context_.get(); }
-  BisonBrowserContext* off_the_record_browser_context() {
-    return off_the_record_browser_context_.get();
-  }
+  
 
  protected:
   virtual void InitializeBrowserContexts();
@@ -43,13 +41,9 @@ class BisonBrowserMainParts : public content::BrowserMainParts {
   void set_browser_context(BisonBrowserContext* context) {
     browser_context_.reset(context);
   }
-  void set_off_the_record_browser_context(BisonBrowserContext* context) {
-    off_the_record_browser_context_.reset(context);
-  }
 
  private:
   std::unique_ptr<BisonBrowserContext> browser_context_;
-  std::unique_ptr<BisonBrowserContext> off_the_record_browser_context_;
 
   // For running content_browsertests.
   const MainFunctionParams parameters_;

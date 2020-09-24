@@ -136,7 +136,7 @@ class BisonContentBrowserClient : public content::ContentBrowserClient {
       bool* bypass_redirect_checks) override;
 
   BisonBrowserContext* browser_context();
-  BisonBrowserContext* off_the_record_browser_context();
+  
   BisonBrowserMainParts* shell_browser_main_parts() {
     return shell_browser_main_parts_;
   }
