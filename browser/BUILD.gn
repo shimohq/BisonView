@@ -42,6 +42,8 @@ source_set("browser") {
     "bison_resource_context.h",
     "cookie_manager.cc",
     "cookie_manager.h",
+    "bison_quota_manager_bridge.cc",
+    "bison_quota_manager_bridge.h",
 
     # network_service
     "network_service/android_stream_reader_url_loader.cc",

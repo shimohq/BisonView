@@ -132,6 +132,6 @@ public class BisonBrowserContext {
     @NativeMethods
     interface Natives {
         BisonBrowserContext getDefaultJava();
-        //long getQuotaManagerBridge(long nativeBisonBrowserContext);
+        long getQuotaManagerBridge(long nativeBisonBrowserContext);
     }
 }

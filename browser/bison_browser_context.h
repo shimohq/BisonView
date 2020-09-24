@@ -30,6 +30,7 @@ class ZoomLevelDelegate;
 namespace bison {
 
 class BisonDownloadManagerDelegate;
+class BisonQuotaManagerBridge;
 
 class BisonBrowserContext : public content::BrowserContext{
  public:
@@ -50,6 +51,8 @@ class BisonBrowserContext : public content::BrowserContext{
   // Get the list of authentication schemes to support.
   static std::vector<std::string> GetAuthSchemes();
 
+  BisonQuotaManagerBridge* GetQuotaManagerBridge();
+  jlong GetQuotaManagerBridge(JNIEnv* env);
 
   CookieManager* GetCookieManager();
 
@@ -99,6 +102,8 @@ class BisonBrowserContext : public content::BrowserContext{
   void FinishInitWhileIOAllowed();
 
   base::FilePath path_;
+
+  scoped_refptr<BisonQuotaManagerBridge> quota_manager_bridge_;
 
   std::unique_ptr<SimpleFactoryKey> key_;
 

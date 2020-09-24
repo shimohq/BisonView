@@ -6,6 +6,7 @@
 #include "bison/browser/bison_content_browser_client.h"
 #include "bison/browser/bison_download_manager_delegate.h"
 #include "bison/browser/bison_permission_manager.h"
+#include "bison/browser/bison_quota_manager_bridge.h"
 #include "bison/browser/bison_resource_context.h"
 #include "bison/browser/cookie_manager.h"
 #include "bison/browser/network_service/net_helpers.h"
@@ -163,6 +164,14 @@ std::vector<std::string> BisonBrowserContext::GetAuthSchemes() {
                                                 "negotiate"};
   return supported_schemes;
 }
+
+BisonQuotaManagerBridge* BisonBrowserContext::GetQuotaManagerBridge() {
+  if (!quota_manager_bridge_.get()) {
+    quota_manager_bridge_ = BisonQuotaManagerBridge::Create(this);
+  }
+  return quota_manager_bridge_.get();
+}
+
 
 CookieManager* BisonBrowserContext::GetCookieManager() {
   // TODO(amalova): create cookie manager for non-default profile
@@ -329,6 +338,10 @@ BisonBrowserContext::GetJavaBrowserContext() {
         env, reinterpret_cast<intptr_t>(this), IsDefaultBrowserContext());
   }
   return base::android::ScopedJavaLocalRef<jobject>(obj_);
+}
+
+jlong BisonBrowserContext::GetQuotaManagerBridge(JNIEnv* env) {
+  return reinterpret_cast<intptr_t>(GetQuotaManagerBridge());
 }
 
 }  // namespace bison
