@@ -5,7 +5,8 @@
 
 #include <memory>
 
-#include "base/android/jni_weak_ref.h"
+#include "bison/browser/bison_resource_context.h"
+#include "bison/browser/network_service/bison_proxy_config_monitor.h"
 #include "base/compiler_specific.h"
 #include "base/files/file_path.h"
 #include "base/macros.h"
@@ -32,7 +33,6 @@ class BisonDownloadManagerDelegate;
 
 class BisonBrowserContext : public content::BrowserContext{
  public:
-  
   BisonBrowserContext();
   ~BisonBrowserContext() override;
 
@@ -47,9 +47,14 @@ class BisonBrowserContext : public content::BrowserContext{
   static base::FilePath GetContextStoragePath();
 
 
+  // Get the list of authentication schemes to support.
+  static std::vector<std::string> GetAuthSchemes();
 
-  
+
   CookieManager* GetCookieManager();
+
+  // TODO(amalova): implement for non-default browser context
+  // jiang 这个方法可以干掉
   bool IsDefaultBrowserContext() { return true; }
 
   // BrowserContext implementation.
@@ -72,14 +77,14 @@ class BisonBrowserContext : public content::BrowserContext{
       override;
   content::ContentIndexProvider* GetContentIndexProvider() override;
 
+  network::mojom::NetworkContextParamsPtr GetNetworkContextParams(
+      bool in_memory,
+      const base::FilePath& relative_partition_path);
 
-
-  
 
   base::android::ScopedJavaLocalRef<jobject> GetJavaBrowserContext();
 
  protected:
-
   std::unique_ptr<BisonResourceContext> resource_context_;
   std::unique_ptr<BisonDownloadManagerDelegate> download_manager_delegate_;
   std::unique_ptr<content::PermissionControllerDelegate> permission_manager_;

@@ -38,6 +38,11 @@ std::string GetProduct();
 
 class BisonContentBrowserClient : public content::ContentBrowserClient {
  public:
+  // Sets whether the net stack should check the cleartext policy from the
+  // platform. For details, see
+  // https://developer.android.com/reference/android/security/NetworkSecurityPolicy.html#isCleartextTrafficPermitted().
+  static void set_check_cleartext_permitted(bool permitted);
+  static bool get_check_cleartext_permitted();
   // Gets the current instance.
   static BisonContentBrowserClient* Get();
 
@@ -109,6 +114,9 @@ class BisonContentBrowserClient : public content::ContentBrowserClient {
       int child_process_id,
       content::PosixFileDescriptorInfo* mappings) override;
 
+  // content::ContentBrowserClient:
+  void OnNetworkServiceCreated(
+      network::mojom::NetworkService* network_service) override;
   mojo::Remote<network::mojom::NetworkContext> CreateNetworkContext(
       BrowserContext* context,
       bool in_memory,
@@ -156,6 +164,8 @@ class BisonContentBrowserClient : public content::ContentBrowserClient {
     login_request_callback_ = std::move(login_request_callback);
   }
 
+  static void DisableCreatingThreadPool();
+
  protected:
   virtual void ExposeInterfacesToFrame(
       service_manager::BinderRegistryWithArgs<content::RenderFrameHost*>*
@@ -171,16 +181,14 @@ class BisonContentBrowserClient : public content::ContentBrowserClient {
       should_terminate_on_service_quit_callback_;
   base::OnceCallback<void(bool is_main_frame)> login_request_callback_;
 
+  std::unique_ptr<BisonBrowserContext> browser_context_;
+
   std::unique_ptr<
       service_manager::BinderRegistryWithArgs<content::RenderFrameHost*>>
       frame_interfaces_;
 
   // Owned by content::BrowserMainLoop.
   BisonBrowserMainParts* shell_browser_main_parts_;
-
-  std::unique_ptr<BisonBrowserContext> browser_context_;
-
-
 };
 
 // The delay for sending reports when running with --run-web-tests

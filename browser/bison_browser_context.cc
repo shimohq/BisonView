@@ -1,16 +1,15 @@
-// Copyright 2013 The Chromium Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file.
-
-#include "bison_browser_context.h"
+#include "bison/browser/bison_browser_context.h"
 
 #include <utility>
 
 #include "bison/bison_jni_headers/BisonBrowserContext_jni.h"
+#include "bison/browser/bison_content_browser_client.h"
 #include "bison/browser/bison_download_manager_delegate.h"
 #include "bison/browser/bison_permission_manager.h"
 #include "bison/browser/bison_resource_context.h"
 #include "bison/browser/cookie_manager.h"
+#include "bison/browser/network_service/net_helpers.h"
+#include "bison/common/bison_features.h"
 
 #include "base/bind.h"
 #include "base/command_line.h"
@@ -20,15 +19,16 @@
 #include "base/path_service.h"
 #include "base/task/post_task.h"
 #include "base/threading/thread.h"
-
 #include "build/build_config.h"
 #include "components/keyed_service/content/browser_context_dependency_manager.h"
 #include "components/keyed_service/core/simple_dependency_manager.h"
 #include "components/keyed_service/core/simple_factory_key.h"
 #include "components/keyed_service/core/simple_key_map.h"
 #include "components/network_session_configurator/common/network_switches.h"
+#include "components/variations/net/variations_http_headers.h"
 #include "content/public/browser/browser_task_traits.h"
 #include "content/public/browser/browser_thread.h"
+#include "content/public/browser/cors_exempt_headers.h"
 #include "content/public/browser/storage_partition.h"
 #include "content/public/common/content_switches.h"
 
@@ -157,6 +157,13 @@ void BisonBrowserContext::FinishInitWhileIOAllowed() {
 //   return std::unique_ptr<ZoomLevelDelegate>();
 // }
 // #endif  // !defined(OS_ANDROID)
+// static
+std::vector<std::string> BisonBrowserContext::GetAuthSchemes() {
+  std::vector<std::string> supported_schemes = {"basic", "digest", "ntlm",
+                                                "negotiate"};
+  return supported_schemes;
+}
+
 CookieManager* BisonBrowserContext::GetCookieManager() {
   // TODO(amalova): create cookie manager for non-default profile
   return CookieManager::GetInstance();
@@ -241,6 +248,72 @@ ContentIndexProvider* BisonBrowserContext::GetContentIndexProvider() {
   // return content_index_provider_.get();
   VLOG(0) << "jiang GetContentIndexProvider null";
   return nullptr;
+}
+
+network::mojom::NetworkContextParamsPtr
+BisonBrowserContext::GetNetworkContextParams(
+    bool in_memory,
+    const base::FilePath& relative_partition_path) {
+  VLOG(0) << "GetNetworkContextParams";
+  network::mojom::NetworkContextParamsPtr context_params =
+      network::mojom::NetworkContextParams::New();
+  context_params->user_agent = bison::GetUserAgent();
+
+  // TODO(ntfschr): set this value to a proper value based on the user's
+  // preferred locales (http://crbug.com/898555). For now, set this to
+  // "en-US,en" instead of "en-us,en", since Android guarantees region codes
+  // will be uppercase.
+  context_params->accept_language =
+      net::HttpUtil::GenerateAcceptLanguageHeader("en-US,en");
+
+  // HTTP cache
+  context_params->http_cache_enabled = true;
+  context_params->http_cache_max_size = GetHttpCacheSize();
+  context_params->http_cache_path = GetCacheDir();
+
+  // jiang ?? 这里会...
+  // // BisonView should persist and restore cookies between app sessions
+  // // (including session cookies).
+  // context_params->cookie_path = BisonBrowserContext::GetCookieStorePath();
+  // context_params->restore_old_session_cookies = true;
+  // context_params->persist_session_cookies = true;
+  // context_params->cookie_manager_params =
+  //     network::mojom::CookieManagerParams::New();
+  // context_params->cookie_manager_params->allow_file_scheme_cookies =
+  //     GetCookieManager()->AllowFileSchemeCookies();
+
+  context_params->initial_ssl_config = network::mojom::SSLConfig::New();
+  // Allow SHA-1 to be used for locally-installed trust anchors, as WebView
+  // should behave like the Android system would.
+  context_params->initial_ssl_config->sha1_local_anchors_enabled = true;
+  // Do not enforce the Legacy Symantec PKI policies outlined in
+  // https://security.googleblog.com/2017/09/chromes-plan-to-distrust-symantec.html,
+  // defer to the Android system.
+  context_params->initial_ssl_config->symantec_enforcement_disabled = true;
+
+  // WebView does not currently support Certificate Transparency
+  // (http://crbug.com/921750).
+  context_params->enforce_chrome_ct_policy = false;
+
+  // WebView does not support ftp yet.
+  context_params->enable_ftp_url_support = false;
+
+  context_params->enable_brotli =
+      base::FeatureList::IsEnabled(bison::features::kWebViewBrotliSupport);
+
+  context_params->check_clear_text_permitted =
+      BisonContentBrowserClient::get_check_cleartext_permitted();
+
+  // Update the cors_exempt_header_list to include internally-added headers, to
+  // avoid triggering CORS checks.
+  content::UpdateCorsExemptHeader(context_params.get());
+  // variations::UpdateCorsExemptHeaderForVariations(context_params.get());
+
+  // Add proxy settings
+  BisonProxyConfigMonitor::GetInstance()->AddProxyToNetworkContextParams(
+      context_params);
+
+  return context_params;
 }
 
 base::android::ScopedJavaLocalRef<jobject>

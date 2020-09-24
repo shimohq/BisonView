@@ -63,6 +63,8 @@ source_set("browser") {
     "network_service/bison_network_change_notifier_factory.h",
     "network_service/bison_network_change_notifier.cc",
     "network_service/bison_network_change_notifier.h",
+    "network_service/bison_proxy_config_monitor.cc",
+    "network_service/bison_proxy_config_monitor.h",
 
     "renderer_host/bison_render_view_host_ext.cc",
     "renderer_host/bison_render_view_host_ext.h",
@@ -81,6 +83,9 @@ source_set("browser") {
     "//content/public/browser",
     "//components/page_load_metrics/browser",
     "//services/viz/public/mojom",
+    "//components/variations",
+    "//components/variations/net",
+    "//components/variations/service",
     "//services/viz/privileged/mojom",
     "//ui/gfx",
   ]

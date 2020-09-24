@@ -1,4 +1,4 @@
-#include "bison_content_browser_client.h"
+#include "bison/browser/bison_content_browser_client.h"
 
 #include <stddef.h>
 
@@ -6,6 +6,20 @@
 #include <string>
 #include <utility>
 #include <vector>
+
+#include "bison/browser/bison_browser_context.h"
+#include "bison/browser/bison_browser_main_parts.h"
+#include "bison/browser/bison_content_browser_overlay_manifest.h"
+#include "bison/browser/bison_content_renderer_overlay_manifest.h"
+#include "bison/browser/bison_contents.h"
+#include "bison/browser/bison_contents_client_bridge.h"
+#include "bison/browser/bison_contents_io_thread_client.h"
+#include "bison/browser/bison_devtools_manager_delegate.h"
+#include "bison/browser/bison_settings.h"
+#include "bison/browser/cookie_manager.h"
+#include "bison/browser/network_service/bison_proxying_url_loader_factory.h"
+#include "bison/common/bison_descriptors.h"
+#include "bison/common/render_view_messages.h"
 
 #include "base/android/apk_assets.h"
 #include "base/android/locale_utils.h"
@@ -25,23 +39,14 @@
 #include "base/stl_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/task/post_task.h"
-#include "bison/browser/bison_content_browser_overlay_manifest.h"
-#include "bison/browser/bison_content_renderer_overlay_manifest.h"
-#include "bison/browser/network_service/bison_proxying_url_loader_factory.h"
-#include "bison/browser/bison_settings.h"
-#include "bison/common/bison_descriptors.h"
-#include "bison_browser_context.h"
-#include "bison_browser_main_parts.h"
-#include "bison_contents_client_bridge.h"
-#include "bison_devtools_manager_delegate.h"
 #include "build/build_config.h"
-#include "components/crash/content/app/crashpad.h"
 #include "components/crash/content/browser/crash_handler_host_linux.h"
 #include "components/navigation_interception/intercept_navigation_delegate.h"
 #include "components/page_load_metrics/browser/metrics_navigation_throttle.h"
 #include "components/page_load_metrics/browser/metrics_web_contents_observer.h"
 #include "components/policy/content/policy_blacklist_navigation_throttle.h"
 #include "components/version_info/version_info.h"
+#include "content/public/browser/browser_message_filter.h"
 #include "content/public/browser/browser_task_traits.h"  //
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/client_certificate_delegate.h"
@@ -89,7 +94,17 @@ namespace bison {
 
 namespace {
 
+#if DCHECK_IS_ON()
+// A boolean value to determine if the NetworkContext has been created yet. This
+// exists only to check correctness: g_check_cleartext_permitted may only be set
+// before the NetworkContext has been created (otherwise,
+// g_check_cleartext_permitted won't have any effect).
+bool g_created_network_context_params = false;
+#endif
+
 BisonContentBrowserClient* g_browser_client;
+// On apps targeting API level O or later, check cleartext is enforced.
+bool g_check_cleartext_permitted = false;
 
 // #if defined(OS_ANDROID)
 // int GetCrashSignalFD(const base::CommandLine& command_line) {
@@ -157,6 +172,18 @@ std::string GetUserAgent() {
   return content::BuildUserAgentFromProduct(product);
 }
 
+// static
+void BisonContentBrowserClient::set_check_cleartext_permitted(bool permitted) {
+#if DCHECK_IS_ON()
+  DCHECK(!g_created_network_context_params);
+#endif
+  g_check_cleartext_permitted = permitted;
+}
+
+bool BisonContentBrowserClient::get_check_cleartext_permitted() {
+  return g_check_cleartext_permitted;
+}
+
 BisonContentBrowserClient* BisonContentBrowserClient::Get() {
   return g_browser_client;
 }
@@ -169,6 +196,42 @@ BisonContentBrowserClient::BisonContentBrowserClient()
 
 BisonContentBrowserClient::~BisonContentBrowserClient() {
   g_browser_client = nullptr;
+}
+
+void BisonContentBrowserClient::OnNetworkServiceCreated(
+    network::mojom::NetworkService* network_service) {
+  network::mojom::HttpAuthStaticParamsPtr auth_static_params =
+      network::mojom::HttpAuthStaticParams::New();
+  auth_static_params->supported_schemes = BisonBrowserContext::GetAuthSchemes();
+  content::GetNetworkService()->SetUpHttpAuth(std::move(auth_static_params));
+}
+
+mojo::Remote<network::mojom::NetworkContext>
+BisonContentBrowserClient::CreateNetworkContext(
+    BrowserContext* context,
+    bool in_memory,
+    const base::FilePath& relative_partition_path) {
+  DCHECK(context);
+
+  auto* bison_context = static_cast<BisonBrowserContext*>(context);
+  mojo::Remote<network::mojom::NetworkContext> network_context;
+  network::mojom::NetworkContextParamsPtr context_params =
+      bison_context->GetNetworkContextParams(in_memory,
+                                             relative_partition_path);
+
+  // network::mojom::NetworkContextParamsPtr context_params =
+  //     network::mojom::NetworkContextParams::New();
+  // content::UpdateCorsExemptHeader(context_params.get());
+  // context_params->user_agent = GetUserAgent();
+  // context_params->accept_language = "en-us,en";
+
+
+#if DCHECK_IS_ON()
+  g_created_network_context_params = true;
+#endif
+  content::GetNetworkService()->CreateNetworkContext(
+      network_context.BindNewPipeAndPassReceiver(), std::move(context_params));
+  return network_context;
 }
 
 BisonBrowserContext* BisonContentBrowserClient::InitBrowserContext() {
@@ -264,9 +327,6 @@ BisonContentBrowserClient::GetServiceManifestOverlay(base::StringPiece name) {
     return GetContentRendererOverlayManifest();
   return base::nullopt;
 }
-
-
-
 
 void BisonContentBrowserClient::AppendExtraCommandLineSwitches(
     base::CommandLine* command_line,
@@ -411,43 +471,12 @@ void BisonContentBrowserClient::GetAdditionalMappedFilesForChildProcess(
       kBisonPakDescriptor,
       base::GlobalDescriptors::GetInstance()->Get(kBisonPakDescriptor),
       base::GlobalDescriptors::GetInstance()->GetRegion(kBisonPakDescriptor));
-  //jiang 这里可以定义v8 的文件位置？
+  // jiang 这里可以定义v8 的文件位置？
 
   // int crash_signal_fd = GetCrashSignalFD(command_line);
   // if (crash_signal_fd >= 0) {
   //   mappings->Share(service_manager::kCrashDumpSignal, crash_signal_fd);
   // }
-}
-
-mojo::Remote<network::mojom::NetworkContext>
-BisonContentBrowserClient::CreateNetworkContext(
-    BrowserContext* context,
-    bool in_memory,
-    const base::FilePath& relative_partition_path) {
-  mojo::Remote<network::mojom::NetworkContext> network_context;
-  network::mojom::NetworkContextParamsPtr context_params =
-      network::mojom::NetworkContextParams::New();
-  content::UpdateCorsExemptHeader(context_params.get());
-  context_params->user_agent = GetUserAgent();
-  context_params->accept_language = "en-us,en";
-
-#if BUILDFLAG(ENABLE_REPORTING)
-  // if (base::CommandLine::ForCurrentProcess()->HasSwitch(
-  //         switches::kRunWebTests)) {
-  //   // Configure the Reporting service in a manner expected by certain Web
-  //   // Platform Tests (network-error-logging and reporting-api).
-  //   //
-  //   //   (1) Always send reports (irrespective of BACKGROUND_SYNC permission)
-  //   //   (2) Lower the timeout for sending reports.
-  //   context_params->reporting_delivery_interval =
-  //       kReportingDeliveryIntervalTimeForWebTests;
-  //   context_params->skip_reporting_send_permission_check = true;
-  // }
-#endif
-
-  content::GetNetworkService()->CreateNetworkContext(
-      network_context.BindNewPipeAndPassReceiver(), std::move(context_params));
-  return network_context;
 }
 
 bool BisonContentBrowserClient::ShouldOverrideUrlLoading(
@@ -519,7 +548,6 @@ bool BisonContentBrowserClient::WillCreateURLLoaderFactory(
 // BisonBrowserContext* BisonContentBrowserClient::browser_context() {
 //   return shell_browser_main_parts_->browser_context();
 // }
-
 
 void BisonContentBrowserClient::ExposeInterfacesToFrame(
     service_manager::BinderRegistryWithArgs<content::RenderFrameHost*>*
