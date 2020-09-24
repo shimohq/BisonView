@@ -59,6 +59,8 @@ class BisonContents : public WebContentsDelegate, public WebContentsObserver {
  public:
   ~BisonContents() override;
 
+  static std::string GetLocaleList();
+
   void LoadURL(const GURL& url);
   void LoadURLForFrame(const GURL& url,
                        const std::string& frame_name,
@@ -84,14 +86,9 @@ class BisonContents : public WebContentsDelegate, public WebContentsObserver {
   // Returns the BisonContents object corresponding to the given WebContents.
   static BisonContents* FromWebContents(WebContents* web_contents);
 
-  // Stores the supplied |quit_closure|, to be run when the last BisonContents
-  // instance is destroyed.
-  static void SetMainMessageLoopQuitClosure(base::OnceClosure quit_closure);
+  
 
-  // Used by the BlinkTestController to stop the message loop before closing all
-  // windows, for specific tests. Fails if called after the message loop has
-  // already been signalled to quit.
-  static void QuitMainMessageLoopForTesting();
+  
 
   BisonRenderViewHostExt* render_view_host_ext() {
     return render_view_host_ext_.get();

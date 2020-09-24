@@ -35,6 +35,7 @@ generate_jni("bison_jni_headers") {
     "java/src/im/shimo/bison/BisonContentsBackgroundThreadClient.java",
     "java/src/im/shimo/bison/BisonContentsIoThreadClient.java",
     "java/src/im/shimo/bison/BisonSettings.java",
+    "java/src/im/shimo/bison/BisonCookieManager.java",
     "java/src/im/shimo/bison/BisonBrowserContext.java",
     # "java/src/im/shimo/bison/BisonWebContentsDelegate.java",
   ]
@@ -71,6 +72,7 @@ android_library("bison_java") {
     "java/src/im/shimo/bison/BisonSafeBrowsingResponse.java",
     "java/src/im/shimo/bison/BisonContentsLifecycleNotifier.java",
     "java/src/im/shimo/bison/SslUtil.java",
+    "java/src/im/shimo/bison/BisonCookieManager.java",
     "java/src/im/shimo/bison/BisonBrowserContext.java",
     "java/src/im/shimo/bison/PrivilegedProcessService.java",
     "java/src/im/shimo/bison/PrivilegedProcessService0.java",

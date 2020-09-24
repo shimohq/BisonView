@@ -10,6 +10,7 @@
 #include "bison/browser/bison_download_manager_delegate.h"
 #include "bison/browser/bison_permission_manager.h"
 #include "bison/browser/bison_resource_context.h"
+#include "bison/browser/cookie_manager.h"
 
 #include "base/bind.h"
 #include "base/command_line.h"
@@ -31,6 +32,7 @@
 #include "content/public/browser/storage_partition.h"
 #include "content/public/common/content_switches.h"
 
+using base::FilePath;
 using content::BackgroundFetchDelegate;
 using content::BackgroundSyncController;
 using content::BrowserPluginGuestManager;
@@ -61,6 +63,42 @@ BisonBrowserContext* BisonBrowserContext::GetDefault() {
 BisonBrowserContext* BisonBrowserContext::FromWebContents(
     content::WebContents* web_contents) {
   return static_cast<BisonBrowserContext*>(web_contents->GetBrowserContext());
+}
+
+base::FilePath BisonBrowserContext::GetCacheDir() {
+  FilePath cache_path;
+  if (!base::PathService::Get(base::DIR_CACHE, &cache_path)) {
+    NOTREACHED() << "Failed to get app cache directory for Android WebView";
+  }
+  cache_path = cache_path.Append(FILE_PATH_LITERAL("Default"))
+                   .Append(FILE_PATH_LITERAL("HTTP Cache"));
+  return cache_path;
+}
+
+base::FilePath BisonBrowserContext::GetPrefStorePath() {
+  FilePath pref_store_path;
+  base::PathService::Get(base::DIR_ANDROID_APP_DATA, &pref_store_path);
+  // TODO(amalova): Assign a proper file path for non-default profiles
+  // when we support multiple profiles
+  pref_store_path =
+      pref_store_path.Append(FILE_PATH_LITERAL("Default/Preferences"));
+
+  return pref_store_path;
+}
+
+base::FilePath BisonBrowserContext::GetCookieStorePath() {
+  return GetCookieManager()->GetCookieStorePath();
+}
+
+// static
+base::FilePath BisonBrowserContext::GetContextStoragePath() {
+  base::FilePath user_data_dir;
+  if (!base::PathService::Get(base::DIR_ANDROID_APP_DATA, &user_data_dir)) {
+    NOTREACHED() << "Failed to get app data directory for Android WebView";
+  }
+
+  user_data_dir = user_data_dir.Append(FILE_PATH_LITERAL("Default"));
+  return user_data_dir;
 }
 
 BisonBrowserContext::BisonBrowserContext() {
@@ -119,6 +157,10 @@ void BisonBrowserContext::FinishInitWhileIOAllowed() {
 //   return std::unique_ptr<ZoomLevelDelegate>();
 // }
 // #endif  // !defined(OS_ANDROID)
+CookieManager* BisonBrowserContext::GetCookieManager() {
+  // TODO(amalova): create cookie manager for non-default profile
+  return CookieManager::GetInstance();
+}
 
 base::FilePath BisonBrowserContext::GetPath() {
   return path_;

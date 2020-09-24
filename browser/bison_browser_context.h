@@ -41,10 +41,15 @@ class BisonBrowserContext : public content::BrowserContext{
   static BisonBrowserContext* FromWebContents(
       content::WebContents* web_contents);
 
+  base::FilePath GetCacheDir();
+  base::FilePath GetPrefStorePath();
+  base::FilePath GetCookieStorePath();
+  static base::FilePath GetContextStoragePath();
 
 
 
   
+  CookieManager* GetCookieManager();
   bool IsDefaultBrowserContext() { return true; }
 
   // BrowserContext implementation.

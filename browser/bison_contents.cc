@@ -66,15 +66,6 @@ using navigation_interception::InterceptNavigationDelegate;
 
 namespace bison {
 
-// Null until/unless the default main message loop is running.
-base::NoDestructor<base::OnceClosure> g_quit_main_message_loop;
-
-std::vector<BisonContents*> BisonContents::windows_;
-// base::OnceCallback<void(BisonContents*)>
-//     BisonContents::bison_view_created_callback_;
-
-const void* const kBisonContentsUserDataKey = &kBisonContentsUserDataKey;
-
 class BisonContents::DevToolsWebContentsObserver : public WebContentsObserver {
  public:
   DevToolsWebContentsObserver(BisonContents* bison_view,
@@ -92,6 +83,19 @@ class BisonContents::DevToolsWebContentsObserver : public WebContentsObserver {
   DISALLOW_COPY_AND_ASSIGN(DevToolsWebContentsObserver);
 };
 
+namespace {
+
+std::string* g_locale_list() {
+  static base::NoDestructor<std::string> locale_list;
+  return locale_list.get();
+}
+
+
+
+const void* const kBisonContentsUserDataKey = &kBisonContentsUserDataKey;
+
+
+
 class BisonContentsUserData : public base::SupportsUserData::Data {
  public:
   explicit BisonContentsUserData(BisonContents* ptr) : contents_(ptr) {}
@@ -108,6 +112,14 @@ class BisonContentsUserData : public base::SupportsUserData::Data {
   BisonContents* contents_;
 };
 
+
+}  // namespace
+
+// static
+std::string BisonContents::GetLocaleList() {
+  return *g_locale_list();
+}
+
 BisonContents::BisonContents(std::unique_ptr<WebContents> web_contents)
     : WebContentsObserver(web_contents.get()),
       web_contents_(std::move(web_contents)),
@@ -119,28 +131,10 @@ BisonContents::BisonContents(std::unique_ptr<WebContents> web_contents)
 
 BisonContents::~BisonContents() {
   PlatformCleanUp();
-
-  for (size_t i = 0; i < windows_.size(); ++i) {
-    if (windows_[i] == this) {
-      windows_.erase(windows_.begin() + i);
-      break;
-    }
-  }
-
-  // Always destroy WebContents before calling PlatformExit(). WebContents
-  // destruction sequence may depend on the resources destroyed in
-  // PlatformExit() (e.g. the display::Screen singleton).
-  web_contents_->SetDelegate(nullptr);
-  web_contents_.reset();
-
-  if (windows_.empty()) {
     // if (headless_)
-    for (auto it = RenderProcessHost::AllHostsIterator(); !it.IsAtEnd();
-         it.Advance()) {
-      it.GetCurrentValue()->DisableKeepAliveRefCount();
-    }
-    if (*g_quit_main_message_loop)
-      std::move(*g_quit_main_message_loop).Run();
+  for (auto it = RenderProcessHost::AllHostsIterator(); !it.IsAtEnd();
+        it.Advance()) {
+    it.GetCurrentValue()->DisableKeepAliveRefCount();
   }
 }
 
@@ -153,16 +147,6 @@ BisonContents* BisonContents::CreateBisonContents(
   // bison_view->PlatformSetContents();
 
   return bison_view;
-}
-
-void BisonContents::SetMainMessageLoopQuitClosure(
-    base::OnceClosure quit_closure) {
-  *g_quit_main_message_loop = std::move(quit_closure);
-}
-
-void BisonContents::QuitMainMessageLoopForTesting() {
-  DCHECK(*g_quit_main_message_loop);
-  std::move(*g_quit_main_message_loop).Run();
 }
 
 // void BisonContents::SetBisonContentsCreatedCallback(

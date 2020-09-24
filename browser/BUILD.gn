@@ -40,6 +40,8 @@ source_set("browser") {
     "scoped_add_feature_flags.h",
     "bison_resource_context.cc",
     "bison_resource_context.h",
+    "cookie_manager.cc",
+    "cookie_manager.h",
 
     # network_service
     "network_service/android_stream_reader_url_loader.cc",
