@@ -80,8 +80,6 @@ void BisonBrowserMainParts::PreMainMessageLoopRun() {
   browser_client_->InitBrowserContext();
   VLOG(0) << "PreMainMessageLoopRun";
   //net::NetModule::SetResourceProvider(PlatformResourceProvider);
-  //BisonDevToolsManagerDelegate::StartHttpHandler(browser_context_.get());
-
 }
 
 bool BisonBrowserMainParts::MainMessageLoopRun(int* result_code) {

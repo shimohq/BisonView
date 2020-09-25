@@ -9,6 +9,7 @@ import android.os.Message;
 import android.provider.Browser;
 import android.view.WindowManager;
 import android.text.TextUtils;
+import android.webkit.DownloadListener;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -32,6 +33,8 @@ public class BisonContentsClient {
     private Context mContext;
     private final BisonContentsClientCallbackHelper mCallbackHelper;
 
+    private DownloadListener mDownloadListener;
+
     private String mTitle = "";
 
     public BisonContentsClient(BisonView bisonView, Context context) {
@@ -54,6 +57,10 @@ public class BisonContentsClient {
 
     public BisonViewClient getBisonViewClient() {
         return mBisonViewClient;
+    }
+
+    void setDownloadListener(DownloadListener listener) {
+        mDownloadListener = listener;
     }
 
     public void onProgressChanged(int progress) {
@@ -218,6 +225,10 @@ public class BisonContentsClient {
     }
 
     public void onDownloadStart(String url, String userAgent, String contentDisposition, String mimeType, long contentLength) {
+        if (mDownloadListener != null) {
+            mDownloadListener.onDownloadStart(
+                    url, userAgent, contentDisposition, mimeType, contentLength);
+        }
     }
 
     public void onReceivedLoginRequest(String realm, String account, String args) {

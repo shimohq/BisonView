@@ -4,6 +4,7 @@ import android.content.Context;
 import android.util.AttributeSet;
 import android.webkit.ValueCallback;
 import android.widget.FrameLayout;
+import android.webkit.DownloadListener;
 
 import org.chromium.base.library_loader.LibraryLoader;
 import org.chromium.base.library_loader.LibraryProcessType;
@@ -15,6 +16,8 @@ public class BisonView extends FrameLayout {
     private BisonContentsClient mBisonContentsClient;
     private BisonContents mBisonContents;
     private BisonContentsClientBridge mBisonContentsClientBridge;
+
+    private BisonDevToolsServer mBisonDevToolsServer;
 
     public BisonView(Context context) {
         super(context);
@@ -81,6 +84,21 @@ public class BisonView extends FrameLayout {
 
     public void setBisonWebChromeClient(BisonWebChromeClient client) {
         mBisonContentsClient.setBisonWebChromeClient(client);
+    }
+
+    public void setDownloadListener(DownloadListener listener) {
+        mBisonContentsClient.setDownloadListener(listener);
+    }
+
+    public void setRemoteDebuggingEnabled(boolean enable) {
+        if (mBisonDevToolsServer ==null) {
+                mBisonDevToolsServer = new BisonDevToolsServer();
+        }
+        mBisonDevToolsServer.setRemoteDebuggingEnabled(enable);
+        if (!enable){
+            mBisonDevToolsServer.destroy();
+            mBisonDevToolsServer = null;
+        }
     }
 
 

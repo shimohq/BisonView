@@ -12,10 +12,14 @@ source_set("browser") {
     "bison_contents.h",
     "bison_contents_client_bridge.cc",
     "bison_contents_client_bridge.h",
-    "bison_devtools_bindings.cc",
-    "bison_devtools_bindings.h",
     "bison_devtools_manager_delegate.cc",
     "bison_devtools_manager_delegate.h",
+    "bison_devtools_server.cc",
+    "bison_devtools_server.h",
+
+
+
+
     "bison_download_manager_delegate.cc",
     "bison_download_manager_delegate.h",
     "bison_javascript_dialog_manager.cc",
