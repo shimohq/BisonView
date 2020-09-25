@@ -17,7 +17,7 @@ public class BisonView extends FrameLayout {
     private BisonContents mBisonContents;
     private BisonContentsClientBridge mBisonContentsClientBridge;
 
-    private BisonDevToolsServer mBisonDevToolsServer;
+    private static BisonDevToolsServer gBisonDevToolsServer;
 
     public BisonView(Context context) {
         super(context);
@@ -74,6 +74,39 @@ public class BisonView extends FrameLayout {
         mBisonContents.reload();
     }
 
+    public boolean canGoBack() {
+        return mBisonContents.canGoBack();
+    }
+
+    public void goBack() {
+        mBisonContents.goBack();
+    }
+
+    public boolean canGoForward() {
+        return mBisonContents.canGoForward();
+    }
+
+    public void goForward() {
+        mBisonContents.goForward();
+    }
+
+    public boolean canGoBackOrForward(int steps) {
+        return mBisonContents.canGoBackOrForward(steps);
+    }
+
+    public void goBackOrForward(int steps) {
+        mBisonContents.goBackOrForward(steps);
+    }
+
+    public String getTitle() {
+        return mBisonContents.getTitle();
+    }
+
+    public String getUrl() {
+        return mBisonContents.getUrl();
+    }
+
+
     public void evaluateJavascript(String script, ValueCallback<String> resultCallback) {
         mBisonContents.evaluateJavaScript(script, CallbackConverter.fromValueCallback(resultCallback));
     }
@@ -90,14 +123,14 @@ public class BisonView extends FrameLayout {
         mBisonContentsClient.setDownloadListener(listener);
     }
 
-    public void setRemoteDebuggingEnabled(boolean enable) {
-        if (mBisonDevToolsServer ==null) {
-                mBisonDevToolsServer = new BisonDevToolsServer();
+    public static void setRemoteDebuggingEnabled(boolean enable) {
+        if (gBisonDevToolsServer ==null) {
+                gBisonDevToolsServer = new BisonDevToolsServer();
         }
-        mBisonDevToolsServer.setRemoteDebuggingEnabled(enable);
+        gBisonDevToolsServer.setRemoteDebuggingEnabled(enable);
         if (!enable){
-            mBisonDevToolsServer.destroy();
-            mBisonDevToolsServer = null;
+            gBisonDevToolsServer.destroy();
+            gBisonDevToolsServer = null;
         }
     }
 

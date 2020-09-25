@@ -283,6 +283,40 @@ class BisonContents extends FrameLayout {
         mNavigationController.reload(true);
     }
 
+    public boolean canGoBack() {
+        return mNavigationController.canGoBack();
+    }
+
+    public void goBack() {
+        mNavigationController.goBack();
+    }
+
+    public boolean canGoForward() {
+        return mNavigationController.canGoForward();
+    }
+
+    public void goForward() {
+        mNavigationController.goForward();
+    }
+
+    public boolean canGoBackOrForward(int steps) {
+        return mNavigationController.canGoToOffset(steps);
+    }
+
+    public void goBackOrForward(int steps) {
+        mNavigationController.goToOffset(steps);
+    }
+
+    public String getTitle() {
+        return mWebContents.getTitle();
+    }
+
+    public String getUrl() {
+        String url = mWebContents.getVisibleUrl();
+        if (url == null || url.trim().isEmpty()) return null;
+        return url;
+    }
+
 
     private static String fixupMimeType(String mimeType) {
         return TextUtils.isEmpty(mimeType) ? "text/html" : mimeType;
