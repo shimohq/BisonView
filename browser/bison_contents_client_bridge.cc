@@ -83,6 +83,26 @@ BisonContentsClientBridge* BisonContentsClientBridge::FromWebContents(
 }
 // end static
 
+// static
+BisonContentsClientBridge* BisonContentsClientBridge::FromWebContentsGetter(
+    const content::WebContents::Getter& web_contents_getter) {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  WebContents* web_contents = web_contents_getter.Run();
+  return UserData::GetContents(web_contents);
+}
+
+// static
+BisonContentsClientBridge* BisonContentsClientBridge::FromID(
+    int render_process_id,
+    int render_frame_id) {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  content::RenderFrameHost* rfh =
+      content::RenderFrameHost::FromID(render_process_id, render_frame_id);
+  content::WebContents* web_contents =
+      content::WebContents::FromRenderFrameHost(rfh);
+  return UserData::GetContents(web_contents);
+}
+
 BisonContentsClientBridge::BisonContentsClientBridge(
     JNIEnv* env,
     const JavaRef<jobject>& obj)
@@ -242,6 +262,32 @@ bool BisonContentsClientBridge::ShouldOverrideUrlLoading(
     return false;
   }
   return true;
+}
+
+void BisonContentsClientBridge::NewDownload(
+    const GURL& url,
+    const std::string& user_agent,
+    const std::string& content_disposition,
+    const std::string& mime_type,
+    int64_t content_length) {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  JNIEnv* env = AttachCurrentThread();
+  ScopedJavaLocalRef<jobject> obj = java_ref_.get(env);
+  if (obj.is_null())
+    return;
+
+  ScopedJavaLocalRef<jstring> jstring_url =
+      ConvertUTF8ToJavaString(env, url.spec());
+  ScopedJavaLocalRef<jstring> jstring_user_agent =
+      ConvertUTF8ToJavaString(env, user_agent);
+  ScopedJavaLocalRef<jstring> jstring_content_disposition =
+      ConvertUTF8ToJavaString(env, content_disposition);
+  ScopedJavaLocalRef<jstring> jstring_mime_type =
+      ConvertUTF8ToJavaString(env, mime_type);
+
+  Java_BisonContentsClientBridge_newDownload(
+      env, obj, jstring_url, jstring_user_agent, jstring_content_disposition,
+      jstring_mime_type, content_length);
 }
 
 void BisonContentsClientBridge::ProceedSslError(JNIEnv* env,

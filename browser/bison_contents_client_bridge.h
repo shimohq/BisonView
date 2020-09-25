@@ -51,6 +51,10 @@ class BisonContentsClientBridge {
                         BisonContentsClientBridge* handler);
   static BisonContentsClientBridge* FromWebContents(
       content::WebContents* web_contents);
+  static BisonContentsClientBridge* FromWebContentsGetter(
+      const content::WebContents::Getter& web_contents_getter);
+  static BisonContentsClientBridge* FromID(int render_process_id,
+                                           int render_frame_id);
 
   BisonContentsClientBridge(JNIEnv* env,
                             const base::android::JavaRef<jobject>& obj);
@@ -87,6 +91,11 @@ class BisonContentsClientBridge {
                                 bool is_redirect,
                                 bool is_main_frame,
                                 bool* ignore_navigation);
+  void NewDownload(const GURL& url,
+                   const std::string& user_agent,
+                   const std::string& content_disposition,
+                   const std::string& mime_type,
+                   int64_t content_length);
   void ProvideClientCertificateResponse(
       JNIEnv* env,
       const base::android::JavaRef<jobject>& object,

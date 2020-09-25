@@ -169,7 +169,22 @@ std::string GetUserAgent() {
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
   if (command_line->HasSwitch(switches::kUseMobileUserAgent))
     product += " Mobile";
-  return content::BuildUserAgentFromProduct(product);
+  return content::BuildUserAgentFromProductAndExtraOSInfo(product, "; wv",
+                                                          true);
+}
+
+// TODO(yirui): can use similar logic as in PrependToAcceptLanguagesIfNecessary
+// in chrome/browser/android/preferences/pref_service_bridge.cc
+// static
+std::string BisonContentBrowserClient::GetAcceptLangsImpl() {
+  // Start with the current locale(s) in BCP47 format.
+  std::string locales_string = BisonContents::GetLocaleList();
+
+  // If accept languages do not contain en-US, add in en-US which will be
+  // used with a lower q-value.
+  if (locales_string.find("en-US") == std::string::npos)
+    locales_string += ",en-US";
+  return locales_string;
 }
 
 // static
@@ -184,12 +199,7 @@ bool BisonContentBrowserClient::get_check_cleartext_permitted() {
   return g_check_cleartext_permitted;
 }
 
-BisonContentBrowserClient* BisonContentBrowserClient::Get() {
-  return g_browser_client;
-}
-
-BisonContentBrowserClient::BisonContentBrowserClient()
-    : shell_browser_main_parts_(nullptr) {
+BisonContentBrowserClient::BisonContentBrowserClient(){
   DCHECK(!g_browser_client);
   g_browser_client = this;
 }
@@ -242,10 +252,7 @@ BisonBrowserContext* BisonContentBrowserClient::InitBrowserContext() {
 std::unique_ptr<BrowserMainParts>
 BisonContentBrowserClient::CreateBrowserMainParts(
     const MainFunctionParams& parameters) {
-  VLOG(0) << "CreateBrowserMainParts";
-  auto browser_main_parts = std::make_unique<BisonBrowserMainParts>(this);
-  shell_browser_main_parts_ = browser_main_parts.get();
-  return browser_main_parts;
+  return std::make_unique<BisonBrowserMainParts>(this);;
 }
 
 bool BisonContentBrowserClient::IsHandledURL(const GURL& url) {
@@ -544,10 +551,6 @@ bool BisonContentBrowserClient::WillCreateURLLoaderFactory(
                                 std::move(target_factory_info)));
   return true;
 }
-
-// BisonBrowserContext* BisonContentBrowserClient::browser_context() {
-//   return shell_browser_main_parts_->browser_context();
-// }
 
 void BisonContentBrowserClient::ExposeInterfacesToFrame(
     service_manager::BinderRegistryWithArgs<content::RenderFrameHost*>*

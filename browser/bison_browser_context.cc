@@ -51,6 +51,9 @@ using content::StorageNotificationService;
 namespace bison {
 
 namespace {
+
+const void* const kDownloadManagerDelegateKey = &kDownloadManagerDelegateKey;
+
 BisonBrowserContext* g_browser_context = NULL;
 }  // namespace
 
@@ -61,6 +64,7 @@ BisonBrowserContext* BisonBrowserContext::GetDefault() {
   return g_browser_context;
 }
 
+// static
 BisonBrowserContext* BisonBrowserContext::FromWebContents(
     content::WebContents* web_contents) {
   return static_cast<BisonBrowserContext*>(web_contents->GetBrowserContext());
@@ -112,7 +116,7 @@ BisonBrowserContext::~BisonBrowserContext() {
   DCHECK_EQ(this, g_browser_context);
   NotifyWillBeDestroyed(this);
   g_browser_context = NULL;
-  
+
   // The SimpleDependencyManager should always be passed after the
   // BrowserContextDependencyManager. This is because the KeyedService instances
   // in the BrowserContextDependencyManager's dependency graph can depend on the
@@ -172,7 +176,6 @@ BisonQuotaManagerBridge* BisonBrowserContext::GetQuotaManagerBridge() {
   return quota_manager_bridge_.get();
 }
 
-
 CookieManager* BisonBrowserContext::GetCookieManager() {
   // TODO(amalova): create cookie manager for non-default profile
   return CookieManager::GetInstance();
@@ -186,21 +189,19 @@ bool BisonBrowserContext::IsOffTheRecord() {
   return false;
 }
 
-DownloadManagerDelegate* BisonBrowserContext::GetDownloadManagerDelegate() {
-  if (!download_manager_delegate_.get()) {
-    download_manager_delegate_.reset(new BisonDownloadManagerDelegate());
-    download_manager_delegate_->SetDownloadManager(
-        BrowserContext::GetDownloadManager(this));
-  }
-
-  return download_manager_delegate_.get();
-}
-
 ResourceContext* BisonBrowserContext::GetResourceContext() {
   if (!resource_context_) {
     resource_context_.reset(new BisonResourceContext);
   }
   return resource_context_.get();
+}
+
+DownloadManagerDelegate* BisonBrowserContext::GetDownloadManagerDelegate() {
+  if (!download_manager_delegate_.get()) {
+    download_manager_delegate_.reset(new BisonDownloadManagerDelegate());
+  }
+
+  return download_manager_delegate_.get();
 }
 
 BrowserPluginGuestManager* BisonBrowserContext::GetGuestManager() {
@@ -247,15 +248,6 @@ BisonBrowserContext::GetBackgroundSyncController() {
 
 BrowsingDataRemoverDelegate*
 BisonBrowserContext::GetBrowsingDataRemoverDelegate() {
-  return nullptr;
-}
-
-ContentIndexProvider* BisonBrowserContext::GetContentIndexProvider() {
-  // if (!content_index_provider_)
-  //   content_index_provider_ =
-  //   std::make_unique<WebTestContentIndexProvider>();
-  // return content_index_provider_.get();
-  VLOG(0) << "jiang GetContentIndexProvider null";
   return nullptr;
 }
 

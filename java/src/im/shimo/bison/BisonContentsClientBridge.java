@@ -92,6 +92,17 @@ class BisonContentsClientBridge {
     }
 
 
+    @CalledByNative
+    private void newDownload(String url, String userAgent, String contentDisposition,
+            String mimeType, long contentLength) {
+        mClient.getCallbackHelper().postOnDownloadStart(
+                url, userAgent, contentDisposition, mimeType, contentLength);
+
+        // Record UMA for onDownloadStart.
+        // AwHistogramRecorder.recordCallbackInvocation(
+        //         AwHistogramRecorder.WebViewCallbackType.ON_DOWNLOAD_START);
+    }
+
     void confirmJsResult(int id, String prompt) {
         if (mNativeContentsClientBridge == 0) return;
         BisonContentsClientBridgeJni.get().confirmJsResult(

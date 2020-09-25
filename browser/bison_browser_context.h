@@ -5,13 +5,12 @@
 
 #include <memory>
 
-#include "bison/browser/bison_resource_context.h"
-#include "bison/browser/network_service/bison_proxy_config_monitor.h"
 #include "base/compiler_specific.h"
 #include "base/files/file_path.h"
 #include "base/macros.h"
 #include "base/memory/ref_counted.h"
 #include "bison/browser/bison_resource_context.h"
+#include "bison/browser/network_service/bison_proxy_config_monitor.h"
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/content_browser_client.h"
 #include "content/public/browser/resource_context.h"
@@ -32,7 +31,7 @@ namespace bison {
 class BisonDownloadManagerDelegate;
 class BisonQuotaManagerBridge;
 
-class BisonBrowserContext : public content::BrowserContext{
+class BisonBrowserContext : public content::BrowserContext {
  public:
   BisonBrowserContext();
   ~BisonBrowserContext() override;
@@ -46,7 +45,6 @@ class BisonBrowserContext : public content::BrowserContext{
   base::FilePath GetPrefStorePath();
   base::FilePath GetCookieStorePath();
   static base::FilePath GetContextStoragePath();
-
 
   // Get the list of authentication schemes to support.
   static std::vector<std::string> GetAuthSchemes();
@@ -78,12 +76,10 @@ class BisonBrowserContext : public content::BrowserContext{
   content::BackgroundSyncController* GetBackgroundSyncController() override;
   content::BrowsingDataRemoverDelegate* GetBrowsingDataRemoverDelegate()
       override;
-  content::ContentIndexProvider* GetContentIndexProvider() override;
 
   network::mojom::NetworkContextParamsPtr GetNetworkContextParams(
       bool in_memory,
       const base::FilePath& relative_partition_path);
-
 
   base::android::ScopedJavaLocalRef<jobject> GetJavaBrowserContext();
 

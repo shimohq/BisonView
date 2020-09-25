@@ -38,13 +38,13 @@ std::string GetProduct();
 
 class BisonContentBrowserClient : public content::ContentBrowserClient {
  public:
+  static std::string GetAcceptLangsImpl();
+
   // Sets whether the net stack should check the cleartext policy from the
   // platform. For details, see
   // https://developer.android.com/reference/android/security/NetworkSecurityPolicy.html#isCleartextTrafficPermitted().
   static void set_check_cleartext_permitted(bool permitted);
   static bool get_check_cleartext_permitted();
-  // Gets the current instance.
-  static BisonContentBrowserClient* Get();
 
   BisonContentBrowserClient();
   ~BisonContentBrowserClient() override;
@@ -145,9 +145,6 @@ class BisonContentBrowserClient : public content::ContentBrowserClient {
 
   // BisonBrowserContext* browser_context();
   
-  BisonBrowserMainParts* shell_browser_main_parts() {
-    return shell_browser_main_parts_;
-  }
 
   // Used for content_browsertests.
   void set_select_client_certificate_callback(
@@ -171,10 +168,6 @@ class BisonContentBrowserClient : public content::ContentBrowserClient {
       service_manager::BinderRegistryWithArgs<content::RenderFrameHost*>*
           registry);
 
-  void set_browser_main_parts(BisonBrowserMainParts* parts) {
-    shell_browser_main_parts_ = parts;
-  }
-
  private:
   base::OnceClosure select_client_certificate_callback_;
   base::OnceCallback<bool(const service_manager::Identity&)>
@@ -186,9 +179,6 @@ class BisonContentBrowserClient : public content::ContentBrowserClient {
   std::unique_ptr<
       service_manager::BinderRegistryWithArgs<content::RenderFrameHost*>>
       frame_interfaces_;
-
-  // Owned by content::BrowserMainLoop.
-  BisonBrowserMainParts* shell_browser_main_parts_;
 };
 
 // The delay for sending reports when running with --run-web-tests
