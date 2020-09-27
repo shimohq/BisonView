@@ -17,6 +17,8 @@
 #include "cc/base/switches.h"
 #include "components/crash/content/browser/child_exit_observer_android.h"
 #include "components/crash/content/browser/child_process_crash_observer_android.h"
+#include "components/heap_profiling/supervisor.h"
+#include "components/services/heap_profiling/public/cpp/settings.h"
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/devtools_agent_host.h"
 #include "content/public/browser/render_frame_host.h"
@@ -59,8 +61,6 @@ int BisonBrowserMainParts::PreEarlyInitialization() {
   return service_manager::RESULT_CODE_NORMAL_EXIT;
 }
 
-void BisonBrowserMainParts::InitializeBrowserContexts() {}
-
 int BisonBrowserMainParts::PreCreateThreads() {
   const base::CommandLine* command_line =
       base::CommandLine::ForCurrentProcess();
@@ -74,24 +74,20 @@ int BisonBrowserMainParts::PreCreateThreads() {
 }
 
 void BisonBrowserMainParts::PreMainMessageLoopRun() {
-  content::RenderFrameHost::AllowInjectingJavaScript();
-  InitializeBrowserContexts();
-  //jiang 
+  BisonBrowserProcess::GetInstance()->PreMainMessageLoopRun();
   browser_client_->InitBrowserContext();
-  VLOG(0) << "PreMainMessageLoopRun";
-  //net::NetModule::SetResourceProvider(PlatformResourceProvider);
+
+  content::RenderFrameHost::AllowInjectingJavaScript();
 }
 
 bool BisonBrowserMainParts::MainMessageLoopRun(int* result_code) {
   return true;
 }
 
-// jiang 运行没有问题后就可以删掉了
-// void BisonBrowserMainParts::PreDefaultMainMessageLoopRun(
-//     base::OnceClosure quit_closure) {
-//   BisonContents::SetMainMessageLoopQuitClosure(std::move(quit_closure));
-// }
-
-void BisonBrowserMainParts::PostDestroyThreads() {}
+void BisonBrowserMainParts::PostCreateThreads() {
+  heap_profiling::Mode mode = heap_profiling::GetModeForStartup();
+  if (mode != heap_profiling::Mode::kNone)
+    heap_profiling::Supervisor::GetInstance()->Start(base::NullCallback());
+}
 
 }  // namespace bison

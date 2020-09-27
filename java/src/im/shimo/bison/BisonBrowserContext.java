@@ -20,8 +20,8 @@ public class BisonBrowserContext {
     private static final String TAG = "BisonBrowserContext";
     private final SharedPreferences mSharedPreferences;
 
+    private BisonGeolocationPermissions mGeolocationPermissions;
     // jiang 
-    // private BisonGeolocationPermissions mGeolocationPermissions;
     // private BisonFormDatabase mFormDatabase;
     // private BisonServiceWorkerController mServiceWorkerController;
     // private BisonQuotaManagerBridge mQuotaManagerBridge;
@@ -57,12 +57,12 @@ public class BisonBrowserContext {
         mNativeBisonBrowserContext = nativeBisonBrowserContext;
     }
 
-    // public BisonGeolocationPermissions getGeolocationPermissions() {
-    //     if (mGeolocationPermissions == null) {
-    //         mGeolocationPermissions = new BisonGeolocationPermissions(mSharedPreferences);
-    //     }
-    //     return mGeolocationPermissions;
-    // }
+    public BisonGeolocationPermissions getGeolocationPermissions() {
+        if (mGeolocationPermissions == null) {
+            mGeolocationPermissions = new BisonGeolocationPermissions(mSharedPreferences);
+        }
+        return mGeolocationPermissions;
+    }
 
     // public BisonFormDatabase getFormDatabase() {
     //     if (mFormDatabase == null) {

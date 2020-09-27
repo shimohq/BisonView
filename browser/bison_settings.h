@@ -20,14 +20,14 @@ class BisonRenderViewHostExt;
 class BisonSettings : public content::WebContentsObserver {
  public:
   // TODO jiang package name use by BisonSettings
-  // GENERATED_JAVA_ENUM_PACKAGE: im.shimo.bison.settings
+  // GENERATED_JAVA_ENUM_PACKAGE: im.shimo.bison
   enum ForceDarkMode {
     FORCE_DARK_OFF = 0,
     FORCE_DARK_AUTO = 1,
     FORCE_DARK_ON = 2,
   };
 
-  // GENERATED_JAVA_ENUM_PACKAGE: im.shimo.bison.settings
+  // GENERATED_JAVA_ENUM_PACKAGE: im.shimo.bison
   enum ForceDarkBehavior {
     FORCE_DARK_ONLY = 0,
     MEDIA_QUERY_ONLY = 1,

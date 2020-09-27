@@ -9,6 +9,7 @@ import android.os.Message;
 import android.provider.Browser;
 import android.view.WindowManager;
 import android.text.TextUtils;
+import android.net.Uri;
 import android.webkit.DownloadListener;
 
 import androidx.annotation.NonNull;
@@ -17,9 +18,13 @@ import androidx.annotation.Nullable;
 import org.chromium.base.Callback;
 import org.chromium.base.ContextUtils;
 import org.chromium.base.Log;
+import org.chromium.base.TraceEvent;
 import org.chromium.content_public.common.ContentUrlConstants;
 
+import java.lang.ref.WeakReference;
 import java.util.HashMap;
+import java.util.WeakHashMap;
+import java.util.ArrayList;
 
 public class BisonContentsClient {
 
@@ -33,6 +38,8 @@ public class BisonContentsClient {
     private Context mContext;
     private final BisonContentsClientCallbackHelper mCallbackHelper;
 
+    private WeakHashMap<BisonPermissionRequest, WeakReference<PermissionRequestAdapter>>
+            mOngoingPermissionRequests;
     private DownloadListener mDownloadListener;
 
     private String mTitle = "";
@@ -123,6 +130,71 @@ public class BisonContentsClient {
         }
     }
 
+    public void onGeolocationPermissionsShowPrompt(
+            String origin, BisonGeolocationPermissions.Callback callback) {
+        
+        TraceEvent.begin("WebViewContentsClientAdapter.onGeolocationPermissionsShowPrompt");
+        if (mBisonWebChromeClient == null) {
+            callback.invoke(origin, false, false);
+            return;
+        }
+        
+        mBisonWebChromeClient.onGeolocationPermissionsShowPrompt(origin,
+                callback == null ? null : (callbackOrigin, allow, retain)
+                        -> callback.invoke(callbackOrigin, allow, retain));
+    }
+
+    public void onGeolocationPermissionsHidePrompt() {
+        if (mBisonWebChromeClient != null) {
+                // if (TRACE) Log.i(TAG, "onGeolocationPermissionsHidePrompt");
+                mBisonWebChromeClient.onGeolocationPermissionsHidePrompt();
+        }
+    }
+
+    public void onPermissionRequest(BisonPermissionRequest permissionRequest) {
+        try {
+            TraceEvent.begin("BisonContentsClient.onPermissionRequest");
+            if (mBisonWebChromeClient != null) {
+                // if (TRACE) Log.i(TAG, "onPermissionRequest");
+                if (mOngoingPermissionRequests == null) {
+                    mOngoingPermissionRequests = new WeakHashMap<BisonPermissionRequest,
+                            WeakReference<PermissionRequestAdapter>>();
+                }
+                PermissionRequestAdapter adapter = new PermissionRequestAdapter(permissionRequest);
+                mOngoingPermissionRequests.put(
+                        permissionRequest, new WeakReference<PermissionRequestAdapter>(adapter));
+                mBisonWebChromeClient.onPermissionRequest(adapter);
+            } else {
+                // By default, we deny the permission.
+                permissionRequest.deny();
+            }
+        } finally {
+            TraceEvent.end("BisonContentsClient.onPermissionRequest");
+        }
+    }
+
+    public void onPermissionRequestCanceled(BisonPermissionRequest permissionRequest) {
+        try {
+            TraceEvent.begin("BisonContentsClient.onPermissionRequestCanceled");
+            if (mBisonWebChromeClient != null && mOngoingPermissionRequests != null) {
+                // if (TRACE) Log.i(TAG, "onPermissionRequestCanceled");
+                WeakReference<PermissionRequestAdapter> weakRef =
+                        mOngoingPermissionRequests.get(permissionRequest);
+                // We don't hold strong reference to PermissionRequestAdpater and don't expect the
+                // user only holds weak reference to it either, if so, user has no way to call
+                // grant()/deny(), and no need to be notified the cancellation of request.
+                if (weakRef != null) {
+                    PermissionRequestAdapter adapter = weakRef.get();
+                    if (adapter != null) mBisonWebChromeClient.onPermissionRequestCanceled(adapter);
+                }
+            }
+        } finally {
+            TraceEvent.end("BisonContentsClient.onPermissionRequestCanceled");
+        }
+    }
+
+
+
     public void onPageStarted(String url) {
         // jiang 未完成
         mBisonViewClient.onPageStarted(mBisonView, url, null);
@@ -136,7 +208,7 @@ public class BisonContentsClient {
 
     public final boolean shouldIgnoreNavigation(Context context, String url, boolean isMainFrame,
                                                 boolean hasUserGesture, boolean isRedirect) {
-//        AwContentsClientCallbackHelper.CancelCallbackPoller poller =
+//        BisonContentsClientCallbackHelper.CancelCallbackPoller poller =
 //                mCallbackHelper.getCancelCallbackPoller();
 //        if (poller != null && poller.shouldCancelAllCallbacks()) return false;
 
@@ -342,6 +414,77 @@ public class BisonContentsClient {
         public String method;
         // Headers that would have been sent to server.
         public HashMap<String, String> requestHeaders;
+    }
+
+    public static class PermissionRequestAdapter extends PermissionRequest {
+
+        private static long toBisonPermissionResources(String[] resources) {
+            long result = 0;
+            for (String resource : resources) {
+                if (resource.equals(PermissionRequest.RESOURCE_VIDEO_CAPTURE)) {
+                    result |= PermissionResource.VIDEO_CAPTURE;
+                } else if (resource.equals(PermissionRequest.RESOURCE_AUDIO_CAPTURE)) {
+                    result |= PermissionResource.AUDIO_CAPTURE;
+                } else if (resource.equals(PermissionRequest.RESOURCE_PROTECTED_MEDIA_ID)) {
+                    result |= PermissionResource.PROTECTED_MEDIA_ID;
+                } else if (resource.equals(BisonPermissionRequest.RESOURCE_MIDI_SYSEX)) {
+                    result |= PermissionResource.MIDI_SYSEX;
+                }
+            }
+            return result;
+        }
+
+        private static String[] toPermissionResources(long resources) {
+            ArrayList<String> result = new ArrayList<String>();
+            if ((resources & PermissionResource.VIDEO_CAPTURE) != 0) {
+                result.add(PermissionRequest.RESOURCE_VIDEO_CAPTURE);
+            }
+            if ((resources & PermissionResource.AUDIO_CAPTURE) != 0) {
+                result.add(PermissionRequest.RESOURCE_AUDIO_CAPTURE);
+            }
+            if ((resources & PermissionResource.PROTECTED_MEDIA_ID) != 0) {
+                result.add(PermissionRequest.RESOURCE_PROTECTED_MEDIA_ID);
+            }
+            if ((resources & PermissionResource.MIDI_SYSEX) != 0) {
+                result.add(BisonPermissionRequest.RESOURCE_MIDI_SYSEX);
+            }
+            String[] resource_array = new String[result.size()];
+            return result.toArray(resource_array);
+        }
+
+        private BisonPermissionRequest mBisonPermissionRequest;
+        private final String[] mResources;
+
+        public PermissionRequestAdapter(BisonPermissionRequest permissionRequest) {
+            assert permissionRequest != null;
+            mBisonPermissionRequest = permissionRequest;
+            mResources = toPermissionResources(mBisonPermissionRequest.getResources());
+        }
+
+        @Override
+        public Uri getOrigin() {
+            return mBisonPermissionRequest.getOrigin();
+        }
+
+        @Override
+        public String[] getResources() {
+            return mResources.clone();
+        }
+
+        @Override
+        public void grant(String[] resources) {
+            long requestedResource = mBisonPermissionRequest.getResources();
+            if ((requestedResource & toBisonPermissionResources(resources)) == requestedResource) {
+                mBisonPermissionRequest.grant();
+            } else {
+                mBisonPermissionRequest.deny();
+            }
+        }
+
+        @Override
+        public void deny() {
+            mBisonPermissionRequest.deny();
+        }
     }
 
     public static class BisonWebResourceError {

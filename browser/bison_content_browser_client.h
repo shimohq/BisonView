@@ -52,8 +52,16 @@ class BisonContentBrowserClient : public content::ContentBrowserClient {
   BisonBrowserContext* InitBrowserContext();
 
   // ContentBrowserClient overrides.
+  void OnNetworkServiceCreated(
+      network::mojom::NetworkService* network_service) override;
+  mojo::Remote<network::mojom::NetworkContext> CreateNetworkContext(
+      BrowserContext* context,
+      bool in_memory,
+      const base::FilePath& relative_partition_path) override;
+
   std::unique_ptr<BrowserMainParts> CreateBrowserMainParts(
       const MainFunctionParams& parameters) override;
+  bool ShouldUseMobileFlingCurve() override;
   bool IsHandledURL(const GURL& url) override;
   void BindInterfaceRequestFromFrame(
       content::RenderFrameHost* render_frame_host,
@@ -114,13 +122,8 @@ class BisonContentBrowserClient : public content::ContentBrowserClient {
       int child_process_id,
       content::PosixFileDescriptorInfo* mappings) override;
 
-  // content::ContentBrowserClient:
-  void OnNetworkServiceCreated(
-      network::mojom::NetworkService* network_service) override;
-  mojo::Remote<network::mojom::NetworkContext> CreateNetworkContext(
-      BrowserContext* context,
-      bool in_memory,
-      const base::FilePath& relative_partition_path) override;
+  
+
 
   bool ShouldOverrideUrlLoading(int frame_tree_node_id,
                                 bool browser_initiated,

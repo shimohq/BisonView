@@ -5,14 +5,12 @@
 
 #include <memory>
 
-#include "base/macros.h"
-#include "base/metrics/field_trial.h"
-#include "base/task/single_thread_task_executor.h"
 #include "bison/browser/bison_browser_context.h"
+#include "bison/browser/bison_browser_process.h"
+
+#include "base/macros.h"
+#include "base/task/single_thread_task_executor.h"
 #include "content/public/browser/browser_main_parts.h"
-
-
-
 
 namespace bison {
 
@@ -28,19 +26,16 @@ class BisonBrowserMainParts : public content::BrowserMainParts {
   int PreCreateThreads() override;
   void PreMainMessageLoopRun() override;
   bool MainMessageLoopRun(int* result_code) override;
-  void PostDestroyThreads() override;
-
-  //BisonBrowserContext* browser_context() { return browser_context_.get(); }
-
- protected:
-  virtual void InitializeBrowserContexts();
+  void PostCreateThreads() override;
 
  private:
   std::unique_ptr<base::SingleThreadTaskExecutor> main_task_executor_;
 
   BisonContentBrowserClient* browser_client_;
+
   // std::unique_ptr<BisonBrowserContext> browser_context_;
-  
+
+  std::unique_ptr<BisonBrowserProcess> browser_process_;
 
   DISALLOW_COPY_AND_ASSIGN(BisonBrowserMainParts);
 };

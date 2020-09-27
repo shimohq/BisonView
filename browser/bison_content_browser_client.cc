@@ -229,13 +229,6 @@ BisonContentBrowserClient::CreateNetworkContext(
       bison_context->GetNetworkContextParams(in_memory,
                                              relative_partition_path);
 
-  // network::mojom::NetworkContextParamsPtr context_params =
-  //     network::mojom::NetworkContextParams::New();
-  // content::UpdateCorsExemptHeader(context_params.get());
-  // context_params->user_agent = GetUserAgent();
-  // context_params->accept_language = "en-us,en";
-
-
 #if DCHECK_IS_ON()
   g_created_network_context_params = true;
 #endif
@@ -255,9 +248,12 @@ BisonContentBrowserClient::CreateBrowserMainParts(
   return std::make_unique<BisonBrowserMainParts>(this);;
 }
 
+bool BisonContentBrowserClient::ShouldUseMobileFlingCurve() {
+  return true;
+}
+
 bool BisonContentBrowserClient::IsHandledURL(const GURL& url) {
   const std::string path = url.path();
-  VLOG(0) << "isHandledURL" << path;
   if (!url.is_valid())
     return false;
   // Keep in sync with ProtocolHandlers added by

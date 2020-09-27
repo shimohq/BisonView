@@ -2,7 +2,6 @@ package im.shimo.bison;
 
 import android.content.Context;
 import android.util.AttributeSet;
-import android.webkit.ValueCallback;
 import android.widget.FrameLayout;
 import android.webkit.DownloadListener;
 

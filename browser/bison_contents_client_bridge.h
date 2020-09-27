@@ -96,6 +96,10 @@ class BisonContentsClientBridge {
                    const std::string& content_disposition,
                    const std::string& mime_type,
                    int64_t content_length);
+
+  void OnReceivedError(const BisonWebResourceRequest& request,
+                       int error_code);
+
   void ProvideClientCertificateResponse(
       JNIEnv* env,
       const base::android::JavaRef<jobject>& object,

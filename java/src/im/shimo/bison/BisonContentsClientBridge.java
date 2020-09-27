@@ -13,6 +13,7 @@ import org.chromium.base.annotations.JNINamespace;
 import org.chromium.base.annotations.NativeMethods;
 import org.chromium.content_public.browser.UiThreadTaskTraits;
 import org.chromium.base.task.PostTask;
+import org.chromium.net.NetError;
 
 
 import java.security.PrivateKey;
@@ -102,6 +103,48 @@ class BisonContentsClientBridge {
         // AwHistogramRecorder.recordCallbackInvocation(
         //         AwHistogramRecorder.WebViewCallbackType.ON_DOWNLOAD_START);
     }
+
+    @CalledByNative
+    private void onReceivedError(
+            // WebResourceRequest
+            String url, boolean isMainFrame, boolean hasUserGesture, boolean isRendererInitiated,
+            String method, String[] requestHeaderNames, String[] requestHeaderValues,
+            @NetError int errorCode, String description) {
+        // jiang 
+        // BisonContentsClient.BisonWebResourceRequest request = new BisonContentsClient.BisonWebResourceRequest(
+        //         url, isMainFrame, hasUserGesture, method, requestHeaderNames, requestHeaderValues);
+        // BisonContentsClient.BisonWebResourceError error = new BisonContentsClient.BisonWebResourceError();
+        // error.errorCode = errorCode;
+        // error.description = description;
+
+        // String unreachableWebDataUrl = AwContentsStatics.getUnreachableWebDataUrl();
+        // boolean isErrorUrl =
+        //         unreachableWebDataUrl != null && unreachableWebDataUrl.equals(request.url);
+
+        // if (!isErrorUrl && error.errorCode != NetError.ERR_ABORTED) {
+        //     // NetError.ERR_ABORTED error code is generated for the following reasons:
+        //     // - WebView.stopLoading is called;
+        //     // - the navigation is intercepted by the embedder via shouldOverrideUrlLoading;
+        //     // - server returned 204 status (no content).
+        //     //
+        //     // Android WebView does not notify the embedder of these situations using
+        //     // this error code with the WebViewClient.onReceivedError callback.
+        //     error.errorCode = ErrorCodeConversionHelper.convertErrorCode(error.errorCode);
+        //     if (request.isMainFrame
+        //             && AwFeatureList.pageStartedOnCommitEnabled(isRendererInitiated)) {
+        //         mClient.getCallbackHelper().postOnPageStarted(request.url);
+        //     }
+        //     mClient.getCallbackHelper().postOnReceivedError(request, error);
+        //     if (request.isMainFrame) {
+        //         // Need to call onPageFinished after onReceivedError for backwards compatibility
+        //         // with the classic webview. See also AwWebContentsObserver.didFailLoad which is
+        //         // used when we want to send onPageFinished alone.
+        //         mClient.getCallbackHelper().postOnPageFinished(request.url);
+        //     }
+        // }
+    }
+
+
 
     void confirmJsResult(int id, String prompt) {
         if (mNativeContentsClientBridge == 0) return;

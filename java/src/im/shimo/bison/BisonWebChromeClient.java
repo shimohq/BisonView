@@ -24,4 +24,15 @@ public class BisonWebChromeClient {
         return false;
     }
 
+
+
+    public void onGeolocationPermissionsShowPrompt(String origin,GeolocationPermissions.Callback callback) {}
+
+    public void onGeolocationPermissionsHidePrompt() {}
+
+    public void onPermissionRequest(PermissionRequest request) {
+        request.deny();
+    }
+
+    public void onPermissionRequestCanceled(PermissionRequest request) {}
 }

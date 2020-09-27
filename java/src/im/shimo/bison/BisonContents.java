@@ -489,6 +489,60 @@ class BisonContents extends FrameLayout {
     }
 
 
+
+    public BisonGeolocationPermissions getGeolocationPermissions() {
+        return mBrowserContext.getGeolocationPermissions();
+    }
+
+    public void invokeGeolocationCallback(boolean value, String requestingFrame) {
+        BisonContentsJni.get().invokeGeolocationCallback(
+                mNativeBisonContents, value, requestingFrame);
+    }
+
+    @CalledByNative
+    private void onGeolocationPermissionsShowPrompt(String origin) {
+        // if (isDestroyed(NO_WARN)) return;
+        BisonGeolocationPermissions permissions = mBrowserContext.getGeolocationPermissions();
+        // Reject if geoloaction is disabled, or the origin has a retained deny
+        if (!mSettings.getGeolocationEnabled()) {
+            BisonContentsJni.get().invokeGeolocationCallback(
+                    mNativeBisonContents, false, origin);
+            return;
+        }
+        // Allow if the origin has a retained allow
+        if (permissions.hasOrigin(origin)) {
+            BisonContentsJni.get().invokeGeolocationCallback(mNativeBisonContents,
+                    permissions.isOriginAllowed(origin), origin);
+            return;
+        }
+        mContentsClient.onGeolocationPermissionsShowPrompt(
+                origin, new BisonGeolocationCallback(origin, this));
+    }
+
+    @CalledByNative
+    private void onGeolocationPermissionsHidePrompt() {
+        mContentsClient.onGeolocationPermissionsHidePrompt();
+    }
+
+    @CalledByNative
+    private void onPermissionRequest(BisonPermissionRequest permissionRequest) {
+        mContentsClient.onPermissionRequest(permissionRequest);
+    }
+
+    @CalledByNative
+    private void onPermissionRequestCanceled(BisonPermissionRequest permissionRequest) {
+        mContentsClient.onPermissionRequestCanceled(permissionRequest);
+    }
+
+    // Return true if the GeolocationPermissionAPI should be used.
+    @CalledByNative
+    private boolean useLegacyGeolocationPermissionAPI() {
+        // Always return true since we are not ready to swap the geolocation yet.
+        // TODO: If we decide not to migrate the geolocation, there are some unreachable
+        // code need to remove. http://crbug.com/396184.
+        return true;
+    }
+
     @NativeMethods
     interface Natives {
         long init(BisonContents caller,long nativeBisonBrowserContext);
@@ -500,9 +554,13 @@ class BisonContents extends FrameLayout {
                           BisonContentsIoThreadClient ioThreadClient,
                           InterceptNavigationDelegate interceptNavigationDelegate);
 
+        
+        void grantFileSchemeAccesstoChildProcess(long nativeBisonContents);
+
         void setExtraHeadersForUrl(
                 long nativeBisonContents, String url, String extraHeaders);
-        void grantFileSchemeAccesstoChildProcess(long nativeBisonContents);
+        void invokeGeolocationCallback(
+                long nativeBisonContents, boolean value, String requestingFrame);
 
         void destroy(long nativeBisonContents);
     }

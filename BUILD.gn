@@ -39,11 +39,15 @@ generate_jni("bison_jni_headers") {
     "java/src/im/shimo/bison/BisonBrowserContext.java",
     "java/src/im/shimo/bison/BisonQuotaManagerBridge.java",
     "java/src/im/shimo/bison/BisonDevToolsServer.java",
+    "java/src/im/shimo/bison/BisonPermissionRequest.java",
     # "java/src/im/shimo/bison/BisonWebContentsDelegate.java",
   ]
 }
 
 android_library("bison_java") {
+  
+  min_sdk_version = 21
+
   java_files = [
     "java/src/im/shimo/bison/BisonContents.java",
     "java/src/im/shimo/bison/BisonWebChromeClient.java",
@@ -70,9 +74,11 @@ android_library("bison_java") {
     "java/src/im/shimo/bison/BisonContentsIoThreadClient.java",
     "java/src/im/shimo/bison/BisonSettings.java",
     "java/src/im/shimo/bison/InputStreamUtil.java",
+    "java/src/im/shimo/bison/CleanupReference.java",
     "java/src/im/shimo/bison/BisonContentsClientCallbackHelper.java",
     "java/src/im/shimo/bison/BisonSafeBrowsingResponse.java",
     "java/src/im/shimo/bison/BisonContentsLifecycleNotifier.java",
+    "java/src/im/shimo/bison/BisonGeolocationPermissions.java",
     "java/src/im/shimo/bison/SslUtil.java",
     "java/src/im/shimo/bison/BisonQuotaManagerBridge.java",
     "java/src/im/shimo/bison/BisonDevToolsServer.java",
@@ -83,10 +89,16 @@ android_library("bison_java") {
     "java/src/im/shimo/bison/PrivilegedProcessService1.java",
     "java/src/im/shimo/bison/PrivilegedProcessService2.java",
     "java/src/im/shimo/bison/SandboxedProcessService.java",
+    "java/src/im/shimo/bison/BisonPermissionRequest.java",
+    "java/src/im/shimo/bison/PermissionRequest.java",
+    "java/src/im/shimo/bison/BisonGeolocationCallback.java",
+    "java/src/im/shimo/bison/GeolocationPermissions.java",
+    "java/src/im/shimo/bison/ValueCallback.java",
   ]
 
   srcjar_deps = [
     ":generate_sandboxed_service_srcjar",
+    "browser:browser_enums",
   ]
 
   deps = bison_java_deps

@@ -1,3 +1,12 @@
+import("//build/config/android/rules.gni")
+
+java_cpp_enum("browser_enums") {
+  sources = [
+    "bison_settings.h",
+    "permission/bison_permission_request.h",
+  ]
+}
+
 source_set("browser") {
   sources = [
     "android_protocol_handler.cc",
@@ -16,10 +25,6 @@ source_set("browser") {
     "bison_devtools_manager_delegate.h",
     "bison_devtools_server.cc",
     "bison_devtools_server.h",
-
-
-
-
     "bison_download_manager_delegate.cc",
     "bison_download_manager_delegate.h",
     "bison_javascript_dialog_manager.cc",
@@ -48,6 +53,9 @@ source_set("browser") {
     "cookie_manager.h",
     "bison_quota_manager_bridge.cc",
     "bison_quota_manager_bridge.h",
+    "bison_browser_process.cc",
+    "bison_browser_process.h",
+    "bison_browser_permission_request_delegate.h",
 
     # network_service
     "network_service/android_stream_reader_url_loader.cc",
@@ -64,7 +72,6 @@ source_set("browser") {
     "network_service/net_helpers.h",
     "network_service/bison_proxying_url_loader_factory.cc",
     "network_service/bison_proxying_url_loader_factory.h",
-
     "network_service/bison_network_change_notifier_factory.cc",
     "network_service/bison_network_change_notifier_factory.h",
     "network_service/bison_network_change_notifier.cc",
@@ -74,6 +81,19 @@ source_set("browser") {
 
     "renderer_host/bison_render_view_host_ext.cc",
     "renderer_host/bison_render_view_host_ext.h",
+
+    "permission/bison_permission_request_delegate.cc",
+    "permission/bison_permission_request_delegate.h",
+    "permission/bison_permission_request.cc",
+    "permission/bison_permission_request.h",
+    "permission/media_access_permission_request.cc",
+    "permission/media_access_permission_request.h",
+    "permission/permission_request_handler_client.cc",
+    "permission/permission_request_handler_client.h",
+    "permission/permission_request_handler.cc",
+    "permission/permission_request_handler.h",
+    "permission/simple_permission_request.cc",
+    "permission/simple_permission_request.h",
   ]
 
   deps = [
@@ -94,5 +114,7 @@ source_set("browser") {
     "//components/variations/service",
     "//services/viz/privileged/mojom",
     "//ui/gfx",
+
+    "//components/heap_profiling",
   ]
 }

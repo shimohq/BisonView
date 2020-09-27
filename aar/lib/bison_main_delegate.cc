@@ -13,6 +13,7 @@
 #include "base/path_service.h"
 #include "base/trace_event/trace_log.h"
 #include "bison/browser/bison_content_browser_client.h"
+#include "bison/browser/scoped_add_feature_flags.h"
 #include "bison/common/bison_content_client.h"
 #include "bison/common/bison_descriptors.h"
 #include "bison/gpu/bison_content_gpu_client.h"
@@ -20,15 +21,17 @@
 #include "build/build_config.h"
 #include "cc/base/switches.h"
 #include "components/crash/core/common/crash_key.h"
-#include "components/viz/common/switches.h"
 #include "components/viz/common/features.h"
+#include "components/viz/common/switches.h"
 #include "content/common/content_constants_internal.h"
 #include "content/public/browser/browser_main_runner.h"
+#include "content/public/common/content_descriptor_keys.h"
+#include "content/public/common/content_features.h"
 #include "content/public/common/content_switches.h"
 #include "content/public/common/url_constants.h"
-#include "content/public/common/content_features.h"
-#include "gpu/config/gpu_switches.h"
+#include "gin/v8_initializer.h"
 #include "gpu/config/gpu_finch_features.h"
+#include "gpu/config/gpu_switches.h"
 #include "ipc/ipc_buildflags.h"
 #include "media/base/media_switches.h"
 #include "net/cookies/cookie_monster.h"
@@ -40,12 +43,9 @@
 #include "ui/base/ui_base_paths.h"
 #include "ui/base/ui_base_switches.h"
 #include "ui/display/display_switches.h"
-#include "ui/gl/gl_implementation.h"
 #include "ui/events/gesture_detection/gesture_configuration.h"
+#include "ui/gl/gl_implementation.h"
 #include "ui/gl/gl_switches.h"
-#include "bison/browser/scoped_add_feature_flags.h"
-#include "gin/v8_initializer.h"
-#include "content/public/common/content_descriptor_keys.h"
 
 #if BUILDFLAG(IPC_MESSAGE_LOG_ENABLED)
 #define IPC_MESSAGE_MACROS_LOG_ENABLED
@@ -104,7 +104,7 @@ bool BisonMainDelegate::BasicStartupComplete(int* exit_code) {
   cl->AppendSwitch(switches::kDisableFileSystem);
 
   cl->AppendSwitch(switches::kDisableNotifications);
-  
+
   cl->AppendSwitch(switches::kDisableSpeechSynthesisAPI);
 
   cl->AppendSwitch(switches::kDisablePermissionsAPI);
@@ -116,7 +116,6 @@ bool BisonMainDelegate::BasicStartupComplete(int* exit_code) {
   cl->AppendSwitch(switches::kDisableRemotePlaybackAPI);
 
   cl->AppendSwitch(switches::kDisableMediaSessionAPI);
-
 
 #if defined(V8_USE_EXTERNAL_STARTUP_DATA)
   if (cl->GetSwitchValueASCII(switches::kProcessType).empty()) {
@@ -138,7 +137,8 @@ bool BisonMainDelegate::BasicStartupComplete(int* exit_code) {
     //     gin::V8Initializer::GetNativesFilePath());
     base::android::RegisterApkAssetWithFileDescriptorStore(
         content::kV8NativesDataDescriptor,
-        base::FilePath(FILE_PATH_LITERAL("assets")).AppendASCII("bison_natives_blob.bin"));
+        base::FilePath(FILE_PATH_LITERAL("assets"))
+            .AppendASCII("bison_natives_blob.bin"));
 #if defined(USE_V8_CONTEXT_SNAPSHOT)
     VLOG(0) << "defined USE_V8_CONTEXT_SNAPSHOT";
     gin::V8Initializer::V8SnapshotFileType file_type =
@@ -150,7 +150,8 @@ bool BisonMainDelegate::BasicStartupComplete(int* exit_code) {
     VLOG(0) << gin::V8Initializer::GetSnapshotFilePath(true, file_type);
     base::android::RegisterApkAssetWithFileDescriptorStore(
         content::kV8Snapshot32DataDescriptor,
-        base::FilePath(FILE_PATH_LITERAL("assets")).AppendASCII("bison_snapshot_blob_32"));
+        base::FilePath(FILE_PATH_LITERAL("assets"))
+            .AppendASCII("bison_snapshot_blob_32"));
     base::android::RegisterApkAssetWithFileDescriptorStore(
         content::kV8Snapshot64DataDescriptor,
         gin::V8Initializer::GetSnapshotFilePath(false, file_type));
@@ -176,7 +177,7 @@ bool BisonMainDelegate::BasicStartupComplete(int* exit_code) {
     // features.EnableIfNotSet(media::kDisableSurfaceLayerForVideo);
 
     features.DisableIfNotSet(media::kMediaDrmPersistentLicense);
-    
+
     features.DisableIfNotSet(media::kPictureInPictureAPI);
 
     // features.DisableIfNotSet(
@@ -190,16 +191,10 @@ bool BisonMainDelegate::BasicStartupComplete(int* exit_code) {
 
     features.DisableIfNotSet(::features::kWebXr);
 
-    //features.EnableIfNotSet(::features::kDisableDeJelly);
+    // features.EnableIfNotSet(::features::kDisableDeJelly);
   }
 
-
-
   content::Compositor::Initialize();
-
-
-  
-  
 
   return false;
 }

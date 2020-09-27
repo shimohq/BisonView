@@ -9,6 +9,9 @@
 #include <string>
 #include <vector>
 
+#include "bison/browser/bison_browser_permission_request_delegate.h"
+#include "bison/browser/permission/permission_request_handler_client.h"
+
 #include "base/android/scoped_java_ref.h"
 #include "base/callback_forward.h"
 #include "base/memory/ref_counted.h"
@@ -54,8 +57,12 @@ namespace bison {
 class BisonJavaScriptDialogManager;
 class BisonContentsClientBridge;
 class BisonWebContentsDelegate;
+class PermissionRequestHandler;
 
-class BisonContents : public WebContentsDelegate, public WebContentsObserver {
+class BisonContents : public PermissionRequestHandlerClient,
+                      public BisonBrowserPermissionRequestDelegate,
+                      public WebContentsDelegate,
+                      public WebContentsObserver {
  public:
   ~BisonContents() override;
 
@@ -86,10 +93,6 @@ class BisonContents : public WebContentsDelegate, public WebContentsObserver {
   // Returns the BisonContents object corresponding to the given WebContents.
   static BisonContents* FromWebContents(WebContents* web_contents);
 
-  
-
-  
-
   BisonRenderViewHostExt* render_view_host_ext() {
     return render_view_host_ext_.get();
   }
@@ -97,7 +100,7 @@ class BisonContents : public WebContentsDelegate, public WebContentsObserver {
   WebContents* web_contents() const { return web_contents_.get(); }
 
   // jiang
-  base::android::ScopedJavaGlobalRef<jobject> java_object_;
+  JavaObjectWeakGlobalRef java_ref_;
   base::android::ScopedJavaLocalRef<jobject> GetWebContents(JNIEnv* env);
   void SetJavaPeers(JNIEnv* env,
                     const JavaParamRef<jobject>& web_contents_delegate,
@@ -105,17 +108,24 @@ class BisonContents : public WebContentsDelegate, public WebContentsObserver {
                     const JavaParamRef<jobject>& io_thread_client,
                     const JavaParamRef<jobject>& intercept_navigation_delegate);
 
+  void GrantFileSchemeAccesstoChildProcess(JNIEnv* env);
   void SetExtraHeadersForUrl(
       JNIEnv* env,
       const base::android::JavaParamRef<jstring>& url,
       const base::android::JavaParamRef<jstring>& extra_headers);
-  void GrantFileSchemeAccesstoChildProcess(JNIEnv* env);
+  void InvokeGeolocationCallback(
+      JNIEnv* env,
+      jboolean value,
+      const base::android::JavaParamRef<jstring>& origin);
 
   void Destroy(JNIEnv* env);
-  // const JavaParamRef<jobject>& intercept_navigation_delegate
 
  private:
   class DevToolsWebContentsObserver;
+
+  void ShowGeolocationPrompt(const GURL& origin,
+                             base::OnceCallback<void(bool)>);
+  void HideGeolocationPrompt(const GURL& origin);
 
   BisonContents(std::unique_ptr<WebContents> web_contents);
 
@@ -152,6 +162,30 @@ class BisonContents : public WebContentsDelegate, public WebContentsObserver {
 
   void OnDevToolsWebContentsDestroyed();
 
+  // PermissionRequestHandlerClient implementation.
+  void OnPermissionRequest(base::android::ScopedJavaLocalRef<jobject> j_request,
+                           BisonPermissionRequest* request) override;
+  void OnPermissionRequestCanceled(BisonPermissionRequest* request) override;
+
+  PermissionRequestHandler* GetPermissionRequestHandler() {
+    return permission_request_handler_.get();
+  }
+
+  // BisonBrowserPermissionRequestDelegate implementation.
+  void RequestProtectedMediaIdentifierPermission(
+      const GURL& origin,
+      base::OnceCallback<void(bool)> callback) override;
+  void CancelProtectedMediaIdentifierPermissionRequests(
+      const GURL& origin) override;
+  void RequestGeolocationPermission(
+      const GURL& origin,
+      base::OnceCallback<void(bool)> callback) override;
+  void CancelGeolocationPermissionRequests(const GURL& origin) override;
+  void RequestMIDISysexPermission(
+      const GURL& origin,
+      base::OnceCallback<void(bool)> callback) override;
+  void CancelMIDISysexPermissionRequests(const GURL& origin) override;
+
   std::unique_ptr<BisonJavaScriptDialogManager> dialog_manager_;
 
   std::unique_ptr<WebContents> web_contents_;
@@ -160,19 +194,20 @@ class BisonContents : public WebContentsDelegate, public WebContentsObserver {
   std::unique_ptr<BisonRenderViewHostExt> render_view_host_ext_;
   std::unique_ptr<DevToolsWebContentsObserver> devtools_observer_;
 
+  std::unique_ptr<PermissionRequestHandler> permission_request_handler_;
+
   bool is_fullscreen_;
 
   gfx::Size content_size_;
 
-  bool headless_;
-  bool delay_popup_contents_delegate_for_testing_ = false;
+  // GURL is supplied by the content layer as requesting frame.
+  // Callback is supplied by the content layer, and is invoked with the result
+  // from the permission prompt.
+  typedef std::pair<const GURL, base::OnceCallback<void(bool)>> OriginCallback;
+  // The first element in the list is always the currently pending request.
+  std::list<OriginCallback> pending_geolocation_prompts_;
 
-  // A container of all the open windows. We use a vector so we can keep track
-  // of ordering.
-  static std::vector<BisonContents*> windows_;
-
-  // static base::OnceCallback<void(BisonContents*)>
-  // bison_view_created_callback_;
+  DISALLOW_COPY_AND_ASSIGN(BisonContents);
 };
 
 }  // namespace bison

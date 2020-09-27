@@ -1,7 +1,5 @@
 package im.shimo.bison;
 
-import android.webkit.ValueCallback;
-
 import org.chromium.base.Callback;
 
 final class CallbackConverter {

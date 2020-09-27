@@ -290,6 +290,29 @@ void BisonContentsClientBridge::NewDownload(
       jstring_mime_type, content_length);
 }
 
+void BisonContentsClientBridge::OnReceivedError(
+    const BisonWebResourceRequest& request,
+    int error_code) {
+  DCHECK(request.is_renderer_initiated.has_value());
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  JNIEnv* env = AttachCurrentThread();
+  ScopedJavaLocalRef<jobject> obj = java_ref_.get(env);
+  if (obj.is_null())
+    return;
+
+  ScopedJavaLocalRef<jstring> jstring_description =
+      ConvertUTF8ToJavaString(env, net::ErrorToString(error_code));
+
+  BisonWebResourceRequest::BisonJavaWebResourceRequest java_web_resource_request;
+  BisonWebResourceRequest::ConvertToJava(env, request, &java_web_resource_request);
+  Java_BisonContentsClientBridge_onReceivedError(
+      env, obj, java_web_resource_request.jurl, request.is_main_frame,
+      request.has_user_gesture, *request.is_renderer_initiated,
+      java_web_resource_request.jmethod,
+      java_web_resource_request.jheader_names,
+      java_web_resource_request.jheader_values, error_code, jstring_description);
+}
+
 void BisonContentsClientBridge::ProceedSslError(JNIEnv* env,
                                                 const JavaRef<jobject>& obj,
                                                 jboolean proceed,
