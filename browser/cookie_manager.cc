@@ -73,7 +73,7 @@ void MaybeRunCookieCallback(base::OnceCallback<void(bool)> callback,
     std::move(callback).Run(result);
 }
 
-const char kSecureCookieHistogramName[] = "Android.WebView.SecureCookieAction";
+const char kSecureCookieHistogramName[] = "BisonView.SecureCookieAction";
 
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused.
@@ -427,7 +427,7 @@ void CookieManager::SetCookieHelper(const GURL& host,
       MaybeFixUpSchemeForSecureCookieAndGetSameSite(host, value, &samesite);
 
   UMA_HISTOGRAM_ENUMERATION(
-      "Android.WebView.CookieManager.SameSiteAttributeValue", samesite);
+      "BisonView.CookieManager.SameSiteAttributeValue", samesite);
 
   net::CanonicalCookie::CookieInclusionStatus status;
   std::unique_ptr<net::CanonicalCookie> cc(
@@ -440,7 +440,7 @@ void CookieManager::SetCookieHelper(const GURL& host,
   }
 
   if (cc->SameSite() == net::CookieSameSite::NO_RESTRICTION) {
-    UMA_HISTOGRAM_BOOLEAN("Android.WebView.CookieManager.SameSiteNoneIsSecure",
+    UMA_HISTOGRAM_BOOLEAN("BisonView.CookieManager.SameSiteNoneIsSecure",
                           cc->IsSecure());
   }
 

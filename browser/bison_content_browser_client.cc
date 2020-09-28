@@ -40,6 +40,8 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/task/post_task.h"
 #include "build/build_config.h"
+#include "components/cdm/browser/cdm_message_filter_android.h"
+#include "components/cdm/browser/media_drm_storage_impl.h"
 #include "components/crash/content/browser/crash_handler_host_linux.h"
 #include "components/navigation_interception/intercept_navigation_delegate.h"
 #include "components/page_load_metrics/browser/metrics_navigation_throttle.h"
@@ -206,11 +208,44 @@ void BisonContentsMessageFilter::OnSubFrameCreated(int parent_render_frame_id,
 // }
 
 #if BUILDFLAG(ENABLE_MOJO_CDM)
-// void CreateOriginId(cdm::MediaDrmStorageImpl::OriginIdObtainedCB callback) {
-//   std::move(callback).Run(true, base::UnguessableToken::Create());
-// }
+void CreateOriginId(cdm::MediaDrmStorageImpl::OriginIdObtainedCB callback) {
+  std::move(callback).Run(true, base::UnguessableToken::Create());
+}
 
+void AllowEmptyOriginIdCB(base::OnceCallback<void(bool)> callback) {
+  // Since CreateOriginId() always returns a non-empty origin ID, we don't need
+  // to allow empty origin ID.
+  std::move(callback).Run(false);
+}
+
+void CreateMediaDrmStorage(content::RenderFrameHost* render_frame_host,
+                           ::media::mojom::MediaDrmStorageRequest request) {
+  DCHECK(render_frame_host);
+
+  if (render_frame_host->GetLastCommittedOrigin().opaque()) {
+    DVLOG(1) << __func__ << ": Unique origin.";
+    return;
+  }
+
+  content::WebContents* web_contents =
+      content::WebContents::FromRenderFrameHost(render_frame_host);
+  DCHECK(web_contents) << "WebContents not available.";
+
+  auto* bison_browser_context =
+      static_cast<BisonBrowserContext*>(web_contents->GetBrowserContext());
+  DCHECK(bison_browser_context) << "BisonBrowserContext not available.";
+
+  PrefService* pref_service = bison_browser_context->GetPrefService();
+  DCHECK(pref_service);
+
+  // The object will be deleted on connection error, or when the frame navigates
+  // away.
+  new cdm::MediaDrmStorageImpl(
+      render_frame_host, pref_service, base::BindRepeating(&CreateOriginId),
+      base::BindRepeating(&AllowEmptyOriginIdCB), std::move(request));
+}
 #endif  // BUILDFLAG(ENABLE_MOJO_CDM)
+
 }  // namespace
 
 std::string GetProduct() {
@@ -304,19 +339,19 @@ BisonContentBrowserClient::CreateBrowserMainParts(
   return std::make_unique<BisonBrowserMainParts>(this);
 }
 
-// void BisonContentBrowserClient::RenderProcessWillLaunch(
-//     content::RenderProcessHost* host) {
-//   // Grant content: scheme access to the whole renderer process, since we
-//   impose
-//   // per-view access checks, and access is granted by default (see
-//   // AwSettings.mAllowContentUrlAccess).
-//   content::ChildProcessSecurityPolicy::GetInstance()->GrantRequestScheme(
-//       host->GetID(), url::kContentScheme);
+void BisonContentBrowserClient::RenderProcessWillLaunch(
+    content::RenderProcessHost* host) {
+  // Grant content: scheme access to the whole renderer process, since weimpose
+  // per-view access checks, and access is granted by default (see
+  // AwSettings.mAllowContentUrlAccess).
+  content::ChildProcessSecurityPolicy::GetInstance()->GrantRequestScheme(
+      host->GetID(), url::kContentScheme);
 
-//   host->AddFilter(new BisonContentsMessageFilter(host->GetID()));
-//   // WebView always allows persisting data.
-//   // host->AddFilter(new cdm::CdmMessageFilterAndroid(true, false));
-// }
+  host->AddFilter(new BisonContentsMessageFilter(host->GetID()));
+  // WebView always allows persisting data.
+  host->AddFilter(new cdm::CdmMessageFilterAndroid(true, false));
+}
+
 bool BisonContentBrowserClient::IsExplicitNavigation(
     ui::PageTransition transition) {
   return ui::PageTransitionCoreTypeIs(transition, ui::PAGE_TRANSITION_TYPED);
@@ -599,6 +634,15 @@ void BisonContentBrowserClient::GetAdditionalMappedFilesForChildProcess(
   // if (crash_signal_fd >= 0) {
   //   mappings->Share(service_manager::kCrashDumpSignal, crash_signal_fd);
   // }
+}
+
+void BisonContentBrowserClient::ExposeInterfacesToMediaService(
+    service_manager::BinderRegistry* registry,
+    content::RenderFrameHost* render_frame_host) {
+#if BUILDFLAG(ENABLE_MOJO_CDM)
+  registry->AddInterface(
+      base::BindRepeating(&CreateMediaDrmStorage, render_frame_host));
+#endif
 }
 
 bool BisonContentBrowserClient::ShouldOverrideUrlLoading(

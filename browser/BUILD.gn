@@ -51,10 +51,21 @@ source_set("browser") {
     "bison_resource_context.h",
     "cookie_manager.cc",
     "cookie_manager.h",
-    "bison_quota_manager_bridge.cc",
-    "bison_quota_manager_bridge.h",
+    "bison_browser_policy_connector.cc",
+    "bison_browser_policy_connector.h",
     "bison_browser_process.cc",
     "bison_browser_process.h",
+    "bison_feature_list_creator.cc",
+    "bison_feature_list_creator.h",
+    "bison_variations_service_client.cc",
+    "bison_variations_service_client.h",
+    "bison_pref_names.cc",
+    "bison_pref_names.h",
+    "bison_variations_seed_bridge.cc",
+    "bison_variations_seed_bridge.h",
+    "bison_quota_manager_bridge.cc",
+    "bison_quota_manager_bridge.h",
+    "bison_field_trials.h",
     "bison_browser_permission_request_delegate.h",
 
     # network_service
@@ -118,5 +129,8 @@ source_set("browser") {
     "//ui/gfx",
 
     "//components/heap_profiling",
+    "//components/cdm/browser",
+    "//services/preferences/tracked",
+    "//components/version_info/android:channel_getter",
   ]
 }

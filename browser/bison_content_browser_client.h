@@ -67,7 +67,7 @@ class BisonContentBrowserClient : public content::ContentBrowserClient {
   std::unique_ptr<BrowserMainParts> CreateBrowserMainParts(
       const MainFunctionParams& parameters) override;
 
-  // void RenderProcessWillLaunch(content::RenderProcessHost* host) override;
+  void RenderProcessWillLaunch(content::RenderProcessHost* host) override;
   bool IsExplicitNavigation(ui::PageTransition transition) override;
   bool ShouldUseMobileFlingCurve() override;
   bool IsHandledURL(const GURL& url) override;
@@ -145,6 +145,9 @@ class BisonContentBrowserClient : public content::ContentBrowserClient {
   //     const base::RepeatingCallback<content::WebContents*()>& wc_getter,
   //     content::NavigationUIData* navigation_ui_data,
   //     int frame_tree_node_id) override;
+  void ExposeInterfacesToMediaService(
+      service_manager::BinderRegistry* registry,
+      content::RenderFrameHost* render_frame_host) override;
   bool ShouldOverrideUrlLoading(int frame_tree_node_id,
                                 bool browser_initiated,
                                 const GURL& gurl,

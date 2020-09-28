@@ -83,14 +83,14 @@ void BisonBrowserProcess::CreateBrowserPolicyConnector() {
   DCHECK(browser_policy_connector_);
 }
 
-// // static
-// void BisonBrowserProcess::RegisterNetworkContextLocalStatePrefs(
-//     PrefRegistrySimple* pref_registry) {
-//   pref_registry->RegisterStringPref(prefs::kAuthServerWhitelist,
-//   std::string());
-//   pref_registry->RegisterStringPref(prefs::kAuthAndroidNegotiateAccountType,
-//                                     std::string());
-// }
+// static
+void BisonBrowserProcess::RegisterNetworkContextLocalStatePrefs(
+    PrefRegistrySimple* pref_registry) {
+  pref_registry->RegisterStringPref(prefs::kAuthServerWhitelist,
+  std::string());
+  pref_registry->RegisterStringPref(prefs::kAuthAndroidNegotiateAccountType,
+                                    std::string());
+}
 
 network::mojom::HttpAuthDynamicParamsPtr
 BisonBrowserProcess::CreateHttpAuthDynamicParams() {

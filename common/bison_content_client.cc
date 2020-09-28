@@ -58,9 +58,9 @@ void BisonContentClient::SetGpuInfo(const gpu::GPUInfo& gpu_info) {
   gpu::SetKeysForCrashLogging(gpu_info);
 }
 
-// bool BisonContentClient::UsingSynchronousCompositing() {
-//   return true;
-// }
+bool BisonContentClient::UsingSynchronousCompositing() {
+  return false;
+}
 
 void BisonContentClient::BindChildProcessInterface(
     const std::string& interface_name,

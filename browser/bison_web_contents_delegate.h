@@ -48,7 +48,7 @@ class BisonWebContentsDelegate
                           bool user_gesture,
                           bool last_unlocked_by_target) override;
   void CloseContents(WebContents* source) override;
-
+  bool CanOverscrollContent() override;
   void DidNavigateMainFramePostCommit(WebContents* web_contents) override;
   JavaScriptDialogManager* GetJavaScriptDialogManager(
       WebContents* source) override;

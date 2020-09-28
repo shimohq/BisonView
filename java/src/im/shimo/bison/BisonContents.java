@@ -481,7 +481,7 @@ class BisonContents extends FrameLayout {
         @Override
         public boolean shouldIgnoreNavigation(NavigationParams navigationParams) {
             if (!navigationParams.isRendererInitiated){
-                mContentsClient.onPageStarted(navigationParams.url);
+                mContentsClient.getCallbackHelper().postOnPageStarted(navigationParams.url);
             }
             
             return false;

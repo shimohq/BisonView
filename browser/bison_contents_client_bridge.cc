@@ -327,39 +327,7 @@ void BisonContentsClientBridge::RunJavaScriptDialog(
   }
 }
 
-void BisonContentsClientBridge::ConfirmJsResult(
-    JNIEnv* env,
-    const JavaRef<jobject>&,
-    int id,
-    const JavaRef<jstring>& prompt) {
-  DCHECK_CURRENTLY_ON(BrowserThread::UI);
-  content::JavaScriptDialogManager::DialogClosedCallback* callback =
-      pending_js_dialog_callbacks_.Lookup(id);
-  if (!callback) {
-    LOG(WARNING) << "Unexpected JS dialog confirm. " << id;
-    return;
-  }
-  base::string16 prompt_text;
-  if (!prompt.is_null()) {
-    prompt_text = ConvertJavaStringToUTF16(env, prompt);
-  }
-  std::move(*callback).Run(true, prompt_text);
-  pending_js_dialog_callbacks_.Remove(id);
-}
-
-void BisonContentsClientBridge::CancelJsResult(JNIEnv*,
-                                               const JavaRef<jobject>&,
-                                               int id) {
-  DCHECK_CURRENTLY_ON(BrowserThread::UI);
-  content::JavaScriptDialogManager::DialogClosedCallback* callback =
-      pending_js_dialog_callbacks_.Lookup(id);
-  if (!callback) {
-    LOG(WARNING) << "Unexpected JS dialog cancel. " << id;
-    return;
-  }
-  std::move(*callback).Run(false, base::string16());
-  pending_js_dialog_callbacks_.Remove(id);
-}
+// jiang RunBeforeUnloadDialog
 
 bool BisonContentsClientBridge::ShouldOverrideUrlLoading(
     const base::string16& url,
@@ -415,6 +383,8 @@ void BisonContentsClientBridge::NewDownload(
       jstring_mime_type, content_length);
 }
 
+// jiang NewLoginRequest
+
 void BisonContentsClientBridge::OnReceivedError(
     const BisonWebResourceRequest& request,
     int error_code) {
@@ -440,6 +410,8 @@ void BisonContentsClientBridge::OnReceivedError(
       java_web_resource_request.jheader_values, error_code,
       jstring_description);
 }
+
+// OnSafeBrowsingHit unsupported
 
 void BisonContentsClientBridge::OnReceivedHttpError(
     const BisonWebResourceRequest& request,
@@ -495,6 +467,41 @@ BisonContentsClientBridge::ExtractHttpErrorInfo(
   http_error_info->status_code = response_headers->response_code();
   http_error_info->status_text = response_headers->GetStatusText();
   return http_error_info;
+}
+void BisonContentsClientBridge::ConfirmJsResult(
+    JNIEnv* env,
+    const JavaRef<jobject>&,
+    int id,
+    const JavaRef<jstring>& prompt) {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  content::JavaScriptDialogManager::DialogClosedCallback* callback =
+      pending_js_dialog_callbacks_.Lookup(id);
+  if (!callback) {
+    LOG(WARNING) << "Unexpected JS dialog confirm. " << id;
+    return;
+  }
+  base::string16 prompt_text;
+  if (!prompt.is_null()) {
+    prompt_text = ConvertJavaStringToUTF16(env, prompt);
+  }
+  std::move(*callback).Run(true, prompt_text);
+  pending_js_dialog_callbacks_.Remove(id);
+}
+
+// TakeSafeBrowsingAction unsupported
+
+void BisonContentsClientBridge::CancelJsResult(JNIEnv*,
+                                               const JavaRef<jobject>&,
+                                               int id) {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  content::JavaScriptDialogManager::DialogClosedCallback* callback =
+      pending_js_dialog_callbacks_.Lookup(id);
+  if (!callback) {
+    LOG(WARNING) << "Unexpected JS dialog cancel. " << id;
+    return;
+  }
+  std::move(*callback).Run(false, base::string16());
+  pending_js_dialog_callbacks_.Remove(id);
 }
 
 }  // namespace bison

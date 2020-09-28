@@ -5,16 +5,19 @@
 
 #include <memory>
 
+#include "bison/browser/bison_resource_context.h"
+#include "bison/browser/network_service/bison_proxy_config_monitor.h"
+
 #include "base/compiler_specific.h"
 #include "base/files/file_path.h"
 #include "base/macros.h"
 #include "base/memory/ref_counted.h"
-#include "bison/browser/bison_resource_context.h"
-#include "bison/browser/network_service/bison_proxy_config_monitor.h"
+#include "components/prefs/pref_registry_simple.h"
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/content_browser_client.h"
 #include "content/public/browser/resource_context.h"
 
+class PrefService;
 class SimpleFactoryKey;
 
 namespace content {
@@ -45,6 +48,8 @@ class BisonBrowserContext : public content::BrowserContext {
   base::FilePath GetPrefStorePath();
   base::FilePath GetCookieStorePath();
   static base::FilePath GetContextStoragePath();
+
+  static void RegisterPrefs(PrefRegistrySimple* registry);
 
   // Get the list of authentication schemes to support.
   static std::vector<std::string> GetAuthSchemes();
@@ -81,6 +86,8 @@ class BisonBrowserContext : public content::BrowserContext {
       bool in_memory,
       const base::FilePath& relative_partition_path);
 
+  PrefService* GetPrefService() const { return user_pref_service_.get(); }
+
   base::android::ScopedJavaLocalRef<jobject> GetJavaBrowserContext();
 
  protected:
@@ -97,10 +104,14 @@ class BisonBrowserContext : public content::BrowserContext {
   void InitWhileIOAllowed();
   void FinishInitWhileIOAllowed();
 
+  void CreateUserPrefService();
+
   base::FilePath path_;
 
   scoped_refptr<BisonQuotaManagerBridge> quota_manager_bridge_;
 
+  std::unique_ptr<PrefService> user_pref_service_;
+  
   std::unique_ptr<SimpleFactoryKey> key_;
 
   base::android::ScopedJavaGlobalRef<jobject> obj_;

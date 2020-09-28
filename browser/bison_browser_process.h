@@ -57,8 +57,8 @@ class BisonBrowserProcess {
   // jiang bison not impl safe Browsing
   // BisonSafeBrowsingUIManager* GetSafeBrowsingUIManager() const;
 
-  // static void RegisterNetworkContextLocalStatePrefs(
-  //     PrefRegistrySimple* pref_registry);
+  static void RegisterNetworkContextLocalStatePrefs(
+      PrefRegistrySimple* pref_registry);
   // Constructs HttpAuthDynamicParams based on |local_state_|.
   network::mojom::HttpAuthDynamicParamsPtr CreateHttpAuthDynamicParams();
 

@@ -26,8 +26,8 @@ class BisonContentClient : public content::ContentClient {
   bool CanSendWhileSwappedOut(const IPC::Message* message) override;
   void SetGpuInfo(const gpu::GPUInfo& gpu_info) override;
   // 这里加上会渲染不出来。。
-  // bool UsingSynchronousCompositing() override;
-  // // media::MediaDrmBridgeClient* GetMediaDrmBridgeClient() override;
+  bool UsingSynchronousCompositing() override;
+  // media::MediaDrmBridgeClient* GetMediaDrmBridgeClient() override;
   void BindChildProcessInterface(
       const std::string& interface_name,
       mojo::ScopedMessagePipeHandle* receiving_handle) override;

@@ -373,7 +373,7 @@ void RecordInterceptedScheme(bool response_is_null, const std::string& url) {
     }
   }
   UMA_HISTOGRAM_ENUMERATION(
-      "Android.WebView.ShouldInterceptRequest.InterceptionType", type);
+      "BisonView.ShouldInterceptRequest.InterceptionType", type);
 }
 
 // Record UMA for the custom response status code for the intercepted requests
@@ -404,7 +404,7 @@ void RecordResponseStatusCode(
   }
 
   base::UmaHistogramSparse(
-      "Android.WebView.ShouldInterceptRequest.NullInputStream."
+      "BisonView.ShouldInterceptRequest.NullInputStream."
       "ResponseStatusCode",
       status_code);
 }

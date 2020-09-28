@@ -7,6 +7,8 @@
 #include "content/public/browser/render_view_host.h"
 #include "content/public/browser/render_widget_host.h"
 
+using content::NavigationController;
+
 namespace bison {
 
 namespace {
@@ -105,6 +107,10 @@ void BisonWebContentsDelegate::RequestToLockMouse(
 
 void BisonWebContentsDelegate::CloseContents(WebContents* source) {
   // Close();
+}
+
+bool BisonWebContentsDelegate::CanOverscrollContent() {
+  return false;
 }
 
 void BisonWebContentsDelegate::DidNavigateMainFramePostCommit(

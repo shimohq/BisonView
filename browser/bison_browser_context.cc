@@ -3,6 +3,7 @@
 #include <utility>
 
 #include "bison/bison_jni_headers/BisonBrowserContext_jni.h"
+#include "bison/browser/bison_browser_process.h"
 #include "bison/browser/bison_content_browser_client.h"
 #include "bison/browser/bison_download_manager_delegate.h"
 #include "bison/browser/bison_permission_manager.h"
@@ -21,17 +22,30 @@
 #include "base/task/post_task.h"
 #include "base/threading/thread.h"
 #include "build/build_config.h"
+#include "components/cdm/browser/media_drm_storage_impl.h"
 #include "components/keyed_service/content/browser_context_dependency_manager.h"
 #include "components/keyed_service/core/simple_dependency_manager.h"
 #include "components/keyed_service/core/simple_factory_key.h"
 #include "components/keyed_service/core/simple_key_map.h"
 #include "components/network_session_configurator/common/network_switches.h"
+#include "components/policy/core/browser/browser_policy_connector_base.h"
+#include "components/policy/core/browser/configuration_policy_pref_store.h"
+#include "components/policy/core/browser/url_blacklist_manager.h"
+#include "components/pref_registry/pref_registry_syncable.h"
+#include "components/prefs/in_memory_pref_store.h"
+#include "components/prefs/json_pref_store.h"
+#include "components/prefs/pref_registry_simple.h"
+#include "components/prefs/pref_service.h"
+#include "components/prefs/pref_service_factory.h"
+#include "components/user_prefs/user_prefs.h"
 #include "components/variations/net/variations_http_headers.h"
 #include "content/public/browser/browser_task_traits.h"
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/cors_exempt_headers.h"
 #include "content/public/browser/storage_partition.h"
 #include "content/public/common/content_switches.h"
+#include "media/mojo/buildflags.h"
+#include "services/preferences/tracked/segregated_pref_store.h"
 
 using base::FilePath;
 using content::BackgroundFetchDelegate;
@@ -106,10 +120,39 @@ base::FilePath BisonBrowserContext::GetContextStoragePath() {
   return user_data_dir;
 }
 
+// static
+void BisonBrowserContext::RegisterPrefs(PrefRegistrySimple* registry) {
+  // safe_browsing::RegisterProfilePrefs(registry);
+
+  // Register the Autocomplete Data Retention Policy pref.
+  // The default value '0' represents the latest Chrome major version on which
+  // the retention policy ran. By setting it to a low default value, we're
+  // making sure it runs now (as it only runs once per major version).
+
+  // registry->RegisterIntegerPref(
+  //     autofill::prefs::kAutocompleteLastVersionRetentionPolicy, 0);
+
+  // We only use the autocomplete feature of Autofill, which is controlled via
+  // the manager_delegate. We don't use the rest of Autofill, which is why it is
+  // hardcoded as disabled here.
+  // TODO(crbug.com/873740): The following also disables autocomplete.
+  // Investigate what the intended behavior is.
+
+  // registry->RegisterBooleanPref(autofill::prefs::kAutofillProfileEnabled,
+  //                               false);
+  // registry->RegisterBooleanPref(autofill::prefs::kAutofillCreditCardEnabled,
+  //                               false);
+
+#if BUILDFLAG(ENABLE_MOJO_CDM)
+  cdm::MediaDrmStorageImpl::RegisterProfilePrefs(registry);
+#endif
+}
+
 BisonBrowserContext::BisonBrowserContext() {
   DCHECK(!g_browser_context);
   g_browser_context = this;
   InitWhileIOAllowed();
+  //CreateUserPrefService();
 }
 
 BisonBrowserContext::~BisonBrowserContext() {
@@ -155,13 +198,42 @@ void BisonBrowserContext::FinishInitWhileIOAllowed() {
   SimpleKeyMap::GetInstance()->Associate(this, key_.get());
 }
 
-// #if !defined(OS_ANDROID)
-// std::unique_ptr<ZoomLevelDelegate>
-// BisonBrowserContext::CreateZoomLevelDelegate(
-//     const base::FilePath&) {
-//   return std::unique_ptr<ZoomLevelDelegate>();
-// }
-// #endif  // !defined(OS_ANDROID)
+void BisonBrowserContext::CreateUserPrefService() {
+  auto pref_registry = base::MakeRefCounted<user_prefs::PrefRegistrySyncable>();
+
+  RegisterPrefs(pref_registry.get());
+
+  PrefServiceFactory pref_service_factory;
+
+  std::set<std::string> persistent_prefs;
+  // Persisted to avoid having to provision MediaDrm every time the
+  // application tries to play protected content after restart.
+  persistent_prefs.insert(cdm::prefs::kMediaDrmStorage);
+
+  pref_service_factory.set_user_prefs(base::MakeRefCounted<SegregatedPrefStore>(
+      base::MakeRefCounted<InMemoryPrefStore>(),
+      base::MakeRefCounted<JsonPrefStore>(GetPrefStorePath()), persistent_prefs,
+      mojo::Remote<::prefs::mojom::TrackedPreferenceValidationDelegate>()));
+
+  policy::URLBlacklistManager::RegisterProfilePrefs(pref_registry.get());
+  BisonBrowserPolicyConnector* browser_policy_connector =
+      BisonBrowserProcess::GetInstance()->browser_policy_connector();
+  pref_service_factory.set_managed_prefs(
+      base::MakeRefCounted<policy::ConfigurationPolicyPrefStore>(
+          browser_policy_connector,
+          browser_policy_connector->GetPolicyService(),
+          browser_policy_connector->GetHandlerList(),
+          policy::POLICY_LEVEL_MANDATORY));
+
+  user_pref_service_ = pref_service_factory.Create(pref_registry);
+
+  // if (IsDefaultBrowserContext()) {
+  //   MigrateLocalStatePrefs();
+  // }
+  
+  user_prefs::UserPrefs::Set(this, user_pref_service_.get());
+}
+
 // static
 std::vector<std::string> BisonBrowserContext::GetAuthSchemes() {
   std::vector<std::string> supported_schemes = {"basic", "digest", "ntlm",
@@ -271,6 +343,9 @@ BisonBrowserContext::GetNetworkContextParams(
   context_params->http_cache_enabled = true;
   context_params->http_cache_max_size = GetHttpCacheSize();
   context_params->http_cache_path = GetCacheDir();
+
+  VLOG(0) << "http cacah path:" << GetCacheDir();
+  // VLOG(0) << "cookie path:" << BisonBrowserContext::GetCookieStorePath();
 
   // jiang ?? 这里会...
   // // BisonView should persist and restore cookies between app sessions
