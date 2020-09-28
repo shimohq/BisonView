@@ -13,7 +13,7 @@ extern const char kAndroidResourcePath[];
 // Returns whether the given URL is for loading a file from a special path.
 bool IsAndroidSpecialFileUrl(const GURL& url);
 
-// extern const char kAndroidWebViewVideoPosterScheme[];
+extern const char kAndroidWebViewVideoPosterScheme[];
 
 }  // namespace bison
 

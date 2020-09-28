@@ -18,12 +18,12 @@
 #include "bison/browser/bison_settings.h"
 #include "bison/browser/cookie_manager.h"
 #include "bison/browser/network_service/bison_proxying_url_loader_factory.h"
+#include "bison/browser/network_service/bison_url_loader_throttle.h"
 #include "bison/common/bison_descriptors.h"
 #include "bison/common/render_view_messages.h"
 
 #include "base/android/apk_assets.h"
 #include "base/android/locale_utils.h"
-#include "base/android/path_utils.h"
 #include "base/base_paths_android.h"
 #include "base/base_switches.h"
 #include "base/bind.h"
@@ -49,6 +49,7 @@
 #include "content/public/browser/browser_message_filter.h"
 #include "content/public/browser/browser_task_traits.h"  //
 #include "content/public/browser/browser_thread.h"
+#include "content/public/browser/child_process_security_policy.h"
 #include "content/public/browser/client_certificate_delegate.h"
 #include "content/public/browser/cors_exempt_headers.h"
 #include "content/public/browser/login_delegate.h"
@@ -74,7 +75,7 @@
 #include "services/service_manager/public/cpp/manifest_builder.h"
 #include "storage/browser/quota/quota_settings.h"
 #include "third_party/blink/public/common/features.h"
-#include "third_party/blink/public/common/user_agent/user_agent_metadata.h"
+#include "third_party/blink/public/common/loader/url_loader_throttle.h"
 #include "ui/base/ui_base_features.h"
 #include "ui/base/ui_base_switches.h"
 #include "url/gurl.h"
@@ -93,7 +94,7 @@ using content::WebContents;
 namespace bison {
 
 namespace {
-
+static bool g_should_create_thread_pool = true;
 #if DCHECK_IS_ON()
 // A boolean value to determine if the NetworkContext has been created yet. This
 // exists only to check correctness: g_check_cleartext_permitted may only be set
@@ -102,62 +103,114 @@ namespace {
 bool g_created_network_context_params = false;
 #endif
 
-BisonContentBrowserClient* g_browser_client;
 // On apps targeting API level O or later, check cleartext is enforced.
 bool g_check_cleartext_permitted = false;
 
-// #if defined(OS_ANDROID)
-// int GetCrashSignalFD(const base::CommandLine& command_line) {
-//   return crashpad::CrashHandlerHost::Get()->GetDeathSignalSocket();
+class BisonContentsMessageFilter : public content::BrowserMessageFilter {
+ public:
+  explicit BisonContentsMessageFilter(int process_id);
+
+  // BrowserMessageFilter methods.
+  void OverrideThreadForMessage(const IPC::Message& message,
+                                BrowserThread::ID* thread) override;
+  bool OnMessageReceived(const IPC::Message& message) override;
+  void OnShouldOverrideUrlLoading(int routing_id,
+                                  const base::string16& url,
+                                  bool has_user_gesture,
+                                  bool is_redirect,
+                                  bool is_main_frame,
+                                  bool* ignore_navigation);
+  void OnSubFrameCreated(int parent_render_frame_id, int child_render_frame_id);
+
+ private:
+  ~BisonContentsMessageFilter() override;
+
+  int process_id_;
+
+  DISALLOW_COPY_AND_ASSIGN(BisonContentsMessageFilter);
+};
+
+BisonContentsMessageFilter::BisonContentsMessageFilter(int process_id)
+    : BrowserMessageFilter(BisonViewMsgStart), process_id_(process_id) {}
+
+BisonContentsMessageFilter::~BisonContentsMessageFilter() = default;
+
+void BisonContentsMessageFilter::OverrideThreadForMessage(
+    const IPC::Message& message,
+    BrowserThread::ID* thread) {
+  if (message.type() == BisonViewHostMsg_ShouldOverrideUrlLoading::ID) {
+    *thread = BrowserThread::UI;
+  }
+}
+
+bool BisonContentsMessageFilter::OnMessageReceived(
+    const IPC::Message& message) {
+  bool handled = true;
+  IPC_BEGIN_MESSAGE_MAP(BisonContentsMessageFilter, message)
+    IPC_MESSAGE_HANDLER(BisonViewHostMsg_ShouldOverrideUrlLoading,
+                        OnShouldOverrideUrlLoading)
+    IPC_MESSAGE_HANDLER(BisonViewHostMsg_SubFrameCreated, OnSubFrameCreated)
+    IPC_MESSAGE_UNHANDLED(handled = false)
+  IPC_END_MESSAGE_MAP()
+  return handled;
+}
+
+void BisonContentsMessageFilter::OnShouldOverrideUrlLoading(
+    int render_frame_id,
+    const base::string16& url,
+    bool has_user_gesture,
+    bool is_redirect,
+    bool is_main_frame,
+    bool* ignore_navigation) {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  VLOG(0) << "OnShouldOverrideUrlLoading";
+  *ignore_navigation = false;
+  BisonContentsClientBridge* client =
+      BisonContentsClientBridge::FromID(process_id_, render_frame_id);
+  if (client) {
+    if (!client->ShouldOverrideUrlLoading(url, has_user_gesture, is_redirect,
+                                          is_main_frame, ignore_navigation)) {
+      // If the shouldOverrideUrlLoading call caused a java exception we should
+      // always return immediately here!
+      return;
+    }
+  } else {
+    LOG(WARNING) << "Failed to find the associated render view host for url: "
+                 << url;
+  }
+}
+
+void BisonContentsMessageFilter::OnSubFrameCreated(int parent_render_frame_id,
+                                                   int child_render_frame_id) {
+  BisonContentsIoThreadClient::SubFrameCreated(
+      process_id_, parent_render_frame_id, child_render_frame_id);
+}
+
+// A dummy binder for mojo interface autofill::mojom::PasswordManagerDriver.
+// void DummyBindPasswordManagerDriver(
+//     mojo::PendingReceiver<autofill::mojom::PasswordManagerDriver> receiver,
+//     content::RenderFrameHost* render_frame_host) {}
+
+// void PassMojoCookieManagerToCookieManager(
+//     CookieManager* cookie_manager,
+//     const mojo::Remote<network::mojom::NetworkContext>& network_context) {
+//   // Get the CookieManager from the NetworkContext.
+//   mojo::PendingRemote<network::mojom::CookieManager> cookie_manager_remote;
+//   network_context->GetCookieManager(
+//       cookie_manager_remote.InitWithNewPipeAndPassReceiver());
+
+//   // Pass the mojo::PendingRemote<network::mojom::CookieManager> to
+//   // bison::CookieManager, so it can implement its APIs with this mojo
+//   // CookieManager.
+//   cookie_manager->SetMojoCookieManager(std::move(cookie_manager_remote));
 // }
-// #elif defined(OS_LINUX)
-// breakpad::CrashHandlerHostLinux* CreateCrashHandlerHost(
-//     const std::string& process_type) {
-//   base::FilePath dumps_path =
-//       base::CommandLine::ForCurrentProcess()->GetSwitchValuePath(
-//           switches::kCrashDumpsDir);
-//   {
-//     ANNOTATE_SCOPED_MEMORY_LEAK;
-//     breakpad::CrashHandlerHostLinux* crash_handler =
-//         new breakpad::CrashHandlerHostLinux(
-//             process_type, dumps_path, false);
-//     crash_handler->StartUploaderThread();
-//     return crash_handler;
-//   }
+
+#if BUILDFLAG(ENABLE_MOJO_CDM)
+// void CreateOriginId(cdm::MediaDrmStorageImpl::OriginIdObtainedCB callback) {
+//   std::move(callback).Run(true, base::UnguessableToken::Create());
 // }
 
-// int GetCrashSignalFD(const base::CommandLine& command_line) {
-//   if (!breakpad::IsCrashReporterEnabled())
-//     return -1;
-
-//   std::string process_type =
-//       command_line.GetSwitchValueASCII(switches::kProcessType);
-
-//   if (process_type == switches::kRendererProcess) {
-//     static breakpad::CrashHandlerHostLinux* crash_handler = nullptr;
-//     if (!crash_handler)
-//       crash_handler = CreateCrashHandlerHost(process_type);
-//     return crash_handler->GetDeathSignalSocket();
-//   }
-
-//   if (process_type == switches::kPpapiPluginProcess) {
-//     static breakpad::CrashHandlerHostLinux* crash_handler = nullptr;
-//     if (!crash_handler)
-//       crash_handler = CreateCrashHandlerHost(process_type);
-//     return crash_handler->GetDeathSignalSocket();
-//   }
-
-//   if (process_type == switches::kGpuProcess) {
-//     static breakpad::CrashHandlerHostLinux* crash_handler = nullptr;
-//     if (!crash_handler)
-//       crash_handler = CreateCrashHandlerHost(process_type);
-//     return crash_handler->GetDeathSignalSocket();
-//   }
-
-//   return -1;
-// }
-// #endif  // defined(OS_ANDROID)
-
+#endif  // BUILDFLAG(ENABLE_MOJO_CDM)
 }  // namespace
 
 std::string GetProduct() {
@@ -199,14 +252,12 @@ bool BisonContentBrowserClient::get_check_cleartext_permitted() {
   return g_check_cleartext_permitted;
 }
 
-BisonContentBrowserClient::BisonContentBrowserClient(){
-  DCHECK(!g_browser_client);
-  g_browser_client = this;
+BisonContentBrowserClient::BisonContentBrowserClient() {
+  // frame_interfaces_.AddInterface(
+  //     base::BindRepeating(&DummyBindPasswordManagerDriver));
 }
 
-BisonContentBrowserClient::~BisonContentBrowserClient() {
-  g_browser_client = nullptr;
-}
+BisonContentBrowserClient::~BisonContentBrowserClient() {}
 
 void BisonContentBrowserClient::OnNetworkServiceCreated(
     network::mojom::NetworkService* network_service) {
@@ -234,6 +285,11 @@ BisonContentBrowserClient::CreateNetworkContext(
 #endif
   content::GetNetworkService()->CreateNetworkContext(
       network_context.BindNewPipeAndPassReceiver(), std::move(context_params));
+
+  // Pass a CookieManager to the code supporting BisonCookieManager.java (i.e.,
+  // the Cookies APIs).
+  // PassMojoCookieManagerToCookieManager(bison_context->GetCookieManager(),
+  //                                      network_context);
   return network_context;
 }
 
@@ -245,7 +301,25 @@ BisonBrowserContext* BisonContentBrowserClient::InitBrowserContext() {
 std::unique_ptr<BrowserMainParts>
 BisonContentBrowserClient::CreateBrowserMainParts(
     const MainFunctionParams& parameters) {
-  return std::make_unique<BisonBrowserMainParts>(this);;
+  return std::make_unique<BisonBrowserMainParts>(this);
+}
+
+// void BisonContentBrowserClient::RenderProcessWillLaunch(
+//     content::RenderProcessHost* host) {
+//   // Grant content: scheme access to the whole renderer process, since we
+//   impose
+//   // per-view access checks, and access is granted by default (see
+//   // AwSettings.mAllowContentUrlAccess).
+//   content::ChildProcessSecurityPolicy::GetInstance()->GrantRequestScheme(
+//       host->GetID(), url::kContentScheme);
+
+//   host->AddFilter(new BisonContentsMessageFilter(host->GetID()));
+//   // WebView always allows persisting data.
+//   // host->AddFilter(new cdm::CdmMessageFilterAndroid(true, false));
+// }
+bool BisonContentBrowserClient::IsExplicitNavigation(
+    ui::PageTransition transition) {
+  return ui::PageTransitionCoreTypeIs(transition, ui::PAGE_TRANSITION_TYPED);
 }
 
 bool BisonContentBrowserClient::ShouldUseMobileFlingCurve() {
@@ -367,6 +441,13 @@ std::string BisonContentBrowserClient::GetDefaultDownloadName() {
   return std::string();
 }
 
+bool BisonContentBrowserClient::AllowAppCache(
+    const GURL& manifest_url,
+    const GURL& first_party,
+    content::BrowserContext* context) {
+  return true;
+}
+
 WebContentsViewDelegate* BisonContentBrowserClient::GetWebContentsViewDelegate(
     WebContents* web_contents) {
   // return CreateShellWebContentsViewDelegate(web_contents);
@@ -391,7 +472,28 @@ BisonContentBrowserClient::GetGeneratedCodeCacheSettings(
   // If we pass 0 for size, disk_cache will pick a default size using the
   // heuristics based on available disk size. These are implemented in
   // disk_cache::PreferredCacheSize in net/disk_cache/cache_util.cc.
-  return GeneratedCodeCacheSettings(true, 0, context->GetPath());
+  BisonBrowserContext* browser_context =
+      static_cast<BisonBrowserContext*>(context);
+  return GeneratedCodeCacheSettings(true, 0, browser_context->GetCacheDir());
+}
+
+void BisonContentBrowserClient::AllowCertificateError(
+    content::WebContents* web_contents,
+    int cert_error,
+    const net::SSLInfo& ssl_info,
+    const GURL& request_url,
+    bool is_main_frame_request,
+    bool strict_enforcement,
+    const base::Callback<void(content::CertificateRequestResultType)>&
+        callback) {
+  BisonContentsClientBridge* client =
+      BisonContentsClientBridge::FromWebContents(web_contents);
+  bool cancel_request = true;
+  if (client)
+    client->AllowCertificateError(cert_error, ssl_info.cert.get(), request_url,
+                                  callback, &cancel_request);
+  if (cancel_request)
+    callback.Run(content::CERTIFICATE_REQUEST_RESULT_TYPE_DENY);
 }
 
 base::OnceClosure BisonContentBrowserClient::SelectClientCertificate(
@@ -399,8 +501,10 @@ base::OnceClosure BisonContentBrowserClient::SelectClientCertificate(
     net::SSLCertRequestInfo* cert_request_info,
     net::ClientCertIdentityList client_certs,
     std::unique_ptr<ClientCertificateDelegate> delegate) {
-  if (select_client_certificate_callback_)
-    std::move(select_client_certificate_callback_).Run();
+  BisonContentsClientBridge* client =
+      BisonContentsClientBridge::FromWebContents(web_contents);
+  if (client)
+    client->SelectClientCertificate(cert_request_info, std::move(delegate));
   return base::OnceClosure();
 }
 
@@ -443,20 +547,35 @@ BisonContentBrowserClient::GetDevToolsManagerDelegate() {
   return new BisonDevToolsManagerDelegate();
 }
 
-std::unique_ptr<LoginDelegate> BisonContentBrowserClient::CreateLoginDelegate(
-    const net::AuthChallengeInfo& auth_info,
-    content::WebContents* web_contents,
-    const content::GlobalRequestID& request_id,
-    bool is_main_frame,
-    const GURL& url,
-    scoped_refptr<net::HttpResponseHeaders> response_headers,
-    bool first_auth_attempt,
-    LoginAuthRequiredCallback auth_required_callback) {
-  if (!login_request_callback_.is_null()) {
-    std::move(login_request_callback_).Run(is_main_frame);
-  }
-  return nullptr;
-}
+// std::vector<std::unique_ptr<blink::URLLoaderThrottle>>
+// BisonContentBrowserClient::CreateURLLoaderThrottles(
+//     const network::ResourceRequest& request,
+//     content::BrowserContext* browser_context,
+//     const base::RepeatingCallback<content::WebContents*()>& wc_getter,
+//     content::NavigationUIData* navigation_ui_data,
+//     int frame_tree_node_id) {
+//   DCHECK_CURRENTLY_ON(BrowserThread::UI);
+
+//   std::vector<std::unique_ptr<blink::URLLoaderThrottle>> result;
+
+//   if (request.resource_type ==
+//       static_cast<int>(content::ResourceType::kMainFrame)) {
+//     const bool is_load_url =
+//         request.transition_type & ui::PAGE_TRANSITION_FROM_API;
+//     const bool is_go_back_forward =
+//         request.transition_type & ui::PAGE_TRANSITION_FORWARD_BACK;
+//     const bool is_reload = ui::PageTransitionCoreTypeIs(
+//         static_cast<ui::PageTransition>(request.transition_type),
+//         ui::PAGE_TRANSITION_RELOAD);
+//     if (is_load_url || is_go_back_forward || is_reload) {
+//       result.push_back(std::make_unique<BisonURLLoaderThrottle>(
+//           static_cast<BisonResourceContext*>(
+//               browser_context->GetResourceContext())));
+//     }
+//   }
+
+//   return result;
+// }
 
 std::string BisonContentBrowserClient::GetProduct() {
   return bison::GetProduct();
@@ -522,6 +641,48 @@ bool BisonContentBrowserClient::ShouldOverrideUrlLoading(
       url, has_user_gesture, is_redirect, is_main_frame, ignore_navigation);
 }
 
+bool BisonContentBrowserClient::ShouldCreateThreadPool() {
+  return g_should_create_thread_pool;
+}
+
+std::unique_ptr<LoginDelegate> BisonContentBrowserClient::CreateLoginDelegate(
+    const net::AuthChallengeInfo& auth_info,
+    content::WebContents* web_contents,
+    const content::GlobalRequestID& request_id,
+    bool is_main_frame,
+    const GURL& url,
+    scoped_refptr<net::HttpResponseHeaders> response_headers,
+    bool first_auth_attempt,
+    LoginAuthRequiredCallback auth_required_callback) {
+  if (!login_request_callback_.is_null()) {
+    std::move(login_request_callback_).Run(is_main_frame);
+  }
+  return nullptr;
+}
+
+bool BisonContentBrowserClient::ShouldIsolateErrorPage(bool in_main_frame) {
+  return false;
+}
+
+bool BisonContentBrowserClient::ShouldEnableStrictSiteIsolation() {
+  // TODO(lukasza): When/if we eventually add OOPIF support for AW we should
+  // consider running AW tests with and without site-per-process (and this might
+  // require returning true below).  Adding OOPIF support for AW is tracked by
+  // https://crbug.com/869494.
+  return false;
+}
+
+bool BisonContentBrowserClient::ShouldLockToOrigin(
+    content::BrowserContext* browser_context,
+    const GURL& effective_url) {
+  // TODO(lukasza): https://crbug.cmo/869494: Once Android WebView supports
+  // OOPIFs, we should remove this ShouldLockToOrigin overload.  Till then,
+  // returning false helps avoid accidentally applying citadel-style Site
+  // Isolation enforcement to Android WebView (and causing incorrect renderer
+  // kills).
+  return false;
+}
+
 bool BisonContentBrowserClient::WillCreateURLLoaderFactory(
     content::BrowserContext* browser_context,
     content::RenderFrameHost* frame,
@@ -551,5 +712,24 @@ bool BisonContentBrowserClient::WillCreateURLLoaderFactory(
 void BisonContentBrowserClient::ExposeInterfacesToFrame(
     service_manager::BinderRegistryWithArgs<content::RenderFrameHost*>*
         registry) {}
+
+void BisonContentBrowserClient::LogWebFeatureForCurrentPage(
+    content::RenderFrameHost* render_frame_host,
+    blink::mojom::WebFeature feature) {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  page_load_metrics::mojom::PageLoadFeatures new_features({feature}, {}, {});
+  page_load_metrics::MetricsWebContentsObserver::RecordFeatureUsage(
+      render_frame_host, new_features);
+}
+
+// content::SpeechRecognitionManagerDelegate*
+// BisonContentBrowserClient::CreateSpeechRecognitionManagerDelegate() {
+//   return new BisonSpeechRecognitionManagerDelegate();
+// }
+
+// static
+void BisonContentBrowserClient::DisableCreatingThreadPool() {
+  g_should_create_thread_pool = false;
+}
 
 }  // namespace bison

@@ -84,11 +84,8 @@ class BisonContents : public PermissionRequestHandlerClient,
   void Reload();
   void ReloadBypassingCache();
   void Stop();
-  void UpdateNavigationControls(bool to_different_document);
 
-  static BisonContents* CreateNewWindow(
-      BrowserContext* browser_context,
-      const scoped_refptr<SiteInstance>& site_instance);
+  static BisonContents* CreateBisonContents(BrowserContext* browser_context);
 
   // Returns the BisonContents object corresponding to the given WebContents.
   static BisonContents* FromWebContents(WebContents* web_contents);
@@ -128,22 +125,6 @@ class BisonContents : public PermissionRequestHandlerClient,
   void HideGeolocationPrompt(const GURL& origin);
 
   BisonContents(std::unique_ptr<WebContents> web_contents);
-
-  // Helper to create a new Shell given a newly created WebContents.
-  static BisonContents* CreateBisonContents(
-      std::unique_ptr<WebContents> web_contents);
-
-  // All the methods that begin with Platform need to be implemented by the
-  // platform specific Shell implementation.
-  // Called from the destructor to let each platform do any necessary cleanup.
-  void PlatformCleanUp();
-  // Creates the main window GUI.
-  void PlatformCreateWindow();
-
-  // void PlatformToggleFullscreenModeForTab(WebContents* web_contents,
-  //                                         bool enter_fullscreen);
-  bool PlatformIsFullscreenForTabOrPending(
-      const WebContents* web_contents) const;
 
   // Helper method for the two public LoadData methods.
   void LoadDataWithBaseURLInternal(const GURL& url,

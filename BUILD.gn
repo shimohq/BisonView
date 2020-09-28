@@ -94,6 +94,8 @@ android_library("bison_java") {
     "java/src/im/shimo/bison/BisonGeolocationCallback.java",
     "java/src/im/shimo/bison/GeolocationPermissions.java",
     "java/src/im/shimo/bison/ValueCallback.java",
+    "java/src/im/shimo/bison/ClientCertLookupTable.java",
+    "java/src/im/shimo/bison/ClientCertRequest.java",
   ]
 
   srcjar_deps = [

@@ -11,25 +11,117 @@ import org.chromium.base.annotations.CalledByNative;
 import org.chromium.base.annotations.CalledByNativeUnchecked;
 import org.chromium.base.annotations.JNINamespace;
 import org.chromium.base.annotations.NativeMethods;
-import org.chromium.content_public.browser.UiThreadTaskTraits;
 import org.chromium.base.task.PostTask;
+import org.chromium.content_public.browser.UiThreadTaskTraits;
 import org.chromium.net.NetError;
 
-
+import java.security.Principal;
 import java.security.PrivateKey;
+import java.security.cert.CertificateEncodingException;
+import java.security.cert.X509Certificate;
+import java.util.HashMap;
+import java.util.Map;
+
+import javax.security.auth.x500.X500Principal;
 
 @JNINamespace("bison")
 class BisonContentsClientBridge {
     private static final String TAG = "BisonContentsClientBrid";
 
-    private long mNativeContentsClientBridge;
-
-    private Context mContext;
     private BisonContentsClient mClient;
+    private Context mContext;
+    private long mNativeContentsClientBridge;
+    private final ClientCertLookupTable mLookupTable;
+    
+    
 
-    public BisonContentsClientBridge(Context context, BisonContentsClient client) {
-        this.mContext = context;
+    public BisonContentsClientBridge(Context context, BisonContentsClient client, 
+            ClientCertLookupTable table) {
+        assert client != null;
+        mContext = context;
         mClient = client;
+        mLookupTable = table;
+    }
+
+    /**
+     * Callback to communicate clientcertificaterequest back to the BisonContentsClientBridge.
+     * The public methods should be called on UI thread.
+     * A request can not be proceeded, ignored  or canceled more than once. Doing this
+     * is a programming error and causes an exception.
+     */
+    class ClientCertificateRequestCallback {
+
+        private final int mId;
+        private final String mHost;
+        private final int mPort;
+        private boolean mIsCalled;
+
+        public ClientCertificateRequestCallback(int id, String host, int port) {
+            mId = id;
+            mHost = host;
+            mPort = port;
+        }
+
+        public void proceed(final PrivateKey privateKey, final X509Certificate[] chain) {
+            PostTask.runOrPostTask(
+                    UiThreadTaskTraits.DEFAULT, () -> proceedOnUiThread(privateKey, chain));
+        }
+
+        public void ignore() {
+            PostTask.runOrPostTask(UiThreadTaskTraits.DEFAULT, () -> ignoreOnUiThread());
+        }
+
+        public void cancel() {
+            PostTask.runOrPostTask(UiThreadTaskTraits.DEFAULT, () -> cancelOnUiThread());
+        }
+
+        private void proceedOnUiThread(PrivateKey privateKey, X509Certificate[] chain) {
+            checkIfCalled();
+
+            if (privateKey == null || chain == null || chain.length == 0) {
+                Log.w(TAG, "Empty client certificate chain?");
+                provideResponse(null, null);
+                return;
+            }
+            // Encode the certificate chain.
+            byte[][] encodedChain = new byte[chain.length][];
+            try {
+                for (int i = 0; i < chain.length; ++i) {
+                    encodedChain[i] = chain[i].getEncoded();
+                }
+            } catch (CertificateEncodingException e) {
+                Log.w(TAG, "Could not retrieve encoded certificate chain: " + e);
+                provideResponse(null, null);
+                return;
+            }
+            mLookupTable.allow(mHost, mPort, privateKey, encodedChain);
+            provideResponse(privateKey, encodedChain);
+        }
+
+        private void ignoreOnUiThread() {
+            checkIfCalled();
+            provideResponse(null, null);
+        }
+
+        private void cancelOnUiThread() {
+            checkIfCalled();
+            mLookupTable.deny(mHost, mPort);
+            provideResponse(null, null);
+        }
+
+        private void checkIfCalled() {
+            if (mIsCalled) {
+                throw new IllegalStateException("The callback was already called.");
+            }
+            mIsCalled = true;
+        }
+
+        private void provideResponse(PrivateKey privateKey, byte[][] certChain) {
+            if (mNativeContentsClientBridge == 0) return;
+            BisonContentsClientBridgeJni.get().provideClientCertificateResponse(
+                    mNativeContentsClientBridge, BisonContentsClientBridge.this, mId, certChain,
+                    privateKey);
+        }
     }
 
     
@@ -43,7 +135,8 @@ class BisonContentsClientBridge {
     private boolean allowCertificateError(int certError, byte[] derBytes, final String url,
             final int id) {
         final SslCertificate cert = SslUtil.getCertificateFromDerBytes(derBytes);
-        if (cert == null) {    
+        if (cert == null) {
+            // if the certificate or the client is null, cancel the request    
             return false;
         }
         final SslError sslError = SslUtil.sslErrorFromNetErrorCode(certError, cert, url);
@@ -66,6 +159,49 @@ class BisonContentsClientBridge {
                 mNativeContentsClientBridge, this, proceed, id);
     }
 
+    // Intentionally not private for testing the native peer of this class.
+    @CalledByNative
+    protected void selectClientCertificate(final int id, final String[] keyTypes,
+            byte[][] encodedPrincipals, final String host, final int port) {
+        assert mNativeContentsClientBridge != 0;
+        ClientCertLookupTable.Cert cert = mLookupTable.getCertData(host, port);
+        if (mLookupTable.isDenied(host, port)) {
+            BisonContentsClientBridgeJni.get().provideClientCertificateResponse(
+                    mNativeContentsClientBridge, this, id, null, null);
+            return;
+        }
+        if (cert != null) {
+            BisonContentsClientBridgeJni.get().provideClientCertificateResponse(
+                    mNativeContentsClientBridge, this, id, cert.mCertChain,
+                    cert.mPrivateKey);
+            return;
+        }
+        // Build the list of principals from encoded versions.
+        Principal[] principals = null;
+        if (encodedPrincipals.length > 0) {
+            principals = new X500Principal[encodedPrincipals.length];
+            for (int n = 0; n < encodedPrincipals.length; n++) {
+                try {
+                    principals[n] = new X500Principal(encodedPrincipals[n]);
+                } catch (IllegalArgumentException e) {
+                    Log.w(TAG, "Exception while decoding issuers list: " + e);
+                    BisonContentsClientBridgeJni.get().provideClientCertificateResponse(
+                            mNativeContentsClientBridge, this, id, null,
+                            null);
+                    return;
+                }
+            }
+
+        }
+
+        final ClientCertificateRequestCallback callback =
+                new ClientCertificateRequestCallback(id, host, port);
+        //mClient.onReceivedClientCertRequest(callback, keyTypes, principals, host, port);
+
+        // Record UMA for onReceivedClientCertRequest.
+        // AwHistogramRecorder.recordCallbackInvocation(
+        //         AwHistogramRecorder.WebViewCallbackType.ON_RECEIVED_CLIENT_CERT_REQUEST);
+    }
     @CalledByNative
     private void handleJsAlert(final String url, final String message, final int id) {
         new Handler().post(() -> {

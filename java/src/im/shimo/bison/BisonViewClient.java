@@ -2,7 +2,6 @@ package im.shimo.bison;
 
 import android.graphics.Bitmap;
 import android.net.http.SslError;
-import android.webkit.ClientCertRequest;
 import android.webkit.SslErrorHandler;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceResponse;

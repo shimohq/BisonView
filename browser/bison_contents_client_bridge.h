@@ -65,7 +65,9 @@ class BisonContentsClientBridge {
                              const GURL& request_url,
                              CertErrorCallback callback,
                              bool* cancel_request);
-
+  void SelectClientCertificate(
+      net::SSLCertRequestInfo* cert_request_info,
+      std::unique_ptr<content::ClientCertificateDelegate> delegate);
   void RunJavaScriptDialog(
       content::JavaScriptDialogType dialog_type,
       const GURL& origin_url,
@@ -97,8 +99,7 @@ class BisonContentsClientBridge {
                    const std::string& mime_type,
                    int64_t content_length);
 
-  void OnReceivedError(const BisonWebResourceRequest& request,
-                       int error_code);
+  void OnReceivedError(const BisonWebResourceRequest& request, int error_code);
 
   void ProvideClientCertificateResponse(
       JNIEnv* env,

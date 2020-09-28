@@ -89,8 +89,7 @@ BisonMainDelegate::BisonMainDelegate() {}
 BisonMainDelegate::~BisonMainDelegate() {}
 
 bool BisonMainDelegate::BasicStartupComplete(int* exit_code) {
-  content_client_.reset(new BisonContentClient);
-  SetContentClient(content_client_.get());
+  SetContentClient(&content_client_);
 
   base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
   InitLogging(cl);
@@ -265,6 +264,10 @@ int BisonMainDelegate::RunProcess(
   // the system message loop for ContentShell, and we're already done thanks
   // to the |ui_task| for browser tests.
   return 0;
+}
+
+void BisonMainDelegate::ProcessExiting(const std::string& process_type) {
+  logging::CloseLogFile();
 }
 
 void BisonMainDelegate::InitializeResourceBundle() {

@@ -7,20 +7,17 @@
 #include "content/public/browser/render_view_host.h"
 #include "content/public/browser/render_widget_host.h"
 
-using content::NavigationController;
-
 namespace bison {
 
 namespace {
 base::LazyInstance<BisonJavaScriptDialogManager>::Leaky
     g_javascript_dialog_manager = LAZY_INSTANCE_INITIALIZER;
-}  // namespace bison
+}  // namespace
 
 BisonWebContentsDelegate::BisonWebContentsDelegate(JNIEnv* env, jobject obj)
     : WebContentsDelegateAndroid(env, obj), is_fullscreen_(false) {}
 
 BisonWebContentsDelegate::~BisonWebContentsDelegate() {}
-
 
 // jiang 当js无响应回调
 // void BisonWebContentsDelegate::RendererUnresponsive(
@@ -110,10 +107,6 @@ void BisonWebContentsDelegate::CloseContents(WebContents* source) {
   // Close();
 }
 
-bool BisonWebContentsDelegate::CanOverscrollContent() {
-  return false;
-}
-
 void BisonWebContentsDelegate::DidNavigateMainFramePostCommit(
     WebContents* web_contents) {}
 
@@ -169,16 +162,7 @@ bool BisonWebContentsDelegate::ShouldAllowRunningInsecureContent(
     bool allowed_per_prefs,
     const url::Origin& origin,
     const GURL& resource_url) {
-  // bool allowed_by_test = false;
-  // BlinkTestController* blink_test_controller = BlinkTestController::Get();
-  // if (blink_test_controller && switches::IsRunWebTestsSwitchPresent()) {
-  //   const base::DictionaryValue& test_flags =
-  //       blink_test_controller->accumulated_web_test_runtime_flags_changes();
-  //   test_flags.GetBoolean("running_insecure_content_allowed",
-  //   &allowed_by_test);
-  // }
-
-  return allowed_per_prefs;
+  return false;
 }
 
 PictureInPictureResult BisonWebContentsDelegate::EnterPictureInPicture(

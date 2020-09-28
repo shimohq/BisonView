@@ -78,6 +78,8 @@ source_set("browser") {
     "network_service/bison_network_change_notifier.h",
     "network_service/bison_proxy_config_monitor.cc",
     "network_service/bison_proxy_config_monitor.h",
+    "network_service/bison_url_loader_throttle.cc",
+    "network_service/bison_url_loader_throttle.h",
 
     "renderer_host/bison_render_view_host_ext.cc",
     "renderer_host/bison_render_view_host_ext.h",

@@ -16,6 +16,7 @@
 #include "bison/browser/permission/bison_permission_request.h"
 #include "bison/browser/permission/permission_request_handler.h"
 #include "bison/browser/permission/simple_permission_request.h"
+#include "bison/common/devtools_instrumentation.h"
 
 #include "base/android/jni_string.h"
 #include "base/android/scoped_java_ref.h"
@@ -133,30 +134,32 @@ BisonContents::BisonContents(std::unique_ptr<WebContents> web_contents)
 }
 
 BisonContents::~BisonContents() {
-  PlatformCleanUp();
-  // if (headless_)
-  for (auto it = RenderProcessHost::AllHostsIterator(); !it.IsAtEnd();
-       it.Advance()) {
-    it.GetCurrentValue()->DisableKeepAliveRefCount();
-  }
+  JNIEnv* env = AttachCurrentThread();
+  ScopedJavaLocalRef<jobject> obj = java_ref_.get(env);
+  if (obj.is_null())
+    return;
+  VLOG(0) << "destroy native";
+  Java_BisonContents_onNativeDestroyed(env, obj);
+  // for (auto it = RenderProcessHost::AllHostsIterator(); !it.IsAtEnd();
+  //      it.Advance()) {
+  //   it.GetCurrentValue()->DisableKeepAliveRefCount();
+  // }
 }
 
 BisonContents* BisonContents::CreateBisonContents(
-    std::unique_ptr<WebContents> web_contents) {
+    BrowserContext* browser_context) {
+  WebContents::CreateParams create_params(browser_context, NULL);
+  std::unique_ptr<WebContents> web_contents =
+      WebContents::Create(create_params);
   // WebContents* raw_web_contents = web_contents.get();
   BisonContents* bison_view = new BisonContents(std::move(web_contents));
+
   // bison_view->PlatformCreateWindow();
 
   // bison_view->PlatformSetContents();
 
   return bison_view;
 }
-
-// void BisonContents::SetBisonContentsCreatedCallback(
-//     base::OnceCallback<void(BisonContents*)> bison_view_created_callback) {
-//   DCHECK(!bison_view_created_callback_);
-//   bison_view_created_callback_ = std::move(bison_view_created_callback);
-// }
 
 BisonContents* BisonContents::FromWebContents(WebContents* web_contents) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
@@ -172,17 +175,6 @@ BisonBrowserPermissionRequestDelegate::FromID(int render_process_id,
           content::RenderFrameHost::FromID(render_process_id,
                                            render_frame_id)));
   return contents;
-}
-
-BisonContents* BisonContents::CreateNewWindow(
-    BrowserContext* browser_context,
-    const scoped_refptr<SiteInstance>& site_instance) {
-  WebContents::CreateParams create_params(browser_context, site_instance);
-  std::unique_ptr<WebContents> web_contents =
-      WebContents::Create(create_params);
-  BisonContents* bison_view = CreateBisonContents(std::move(web_contents));
-
-  return bison_view;
 }
 
 void BisonContents::LoadURL(const GURL& url) {
@@ -259,8 +251,6 @@ void BisonContents::Stop() {
   web_contents_->Focus();
 }
 
-void BisonContents::UpdateNavigationControls(bool to_different_document) {}
-
 gfx::NativeView BisonContents::GetContentView() {
   if (!web_contents_)
     return nullptr;
@@ -309,8 +299,8 @@ void ShowGeolocationPromptHelperTask(const JavaObjectWeakGlobalRef& java_ref,
   if (j_ref.obj()) {
     ScopedJavaLocalRef<jstring> j_origin(
         ConvertUTF8ToJavaString(env, origin.spec()));
-    // devtools_instrumentation::ScopedEmbedderCallbackTask embedder_callback(
-    //     "onGeolocationPermissionsShowPrompt");
+    devtools_instrumentation::ScopedEmbedderCallbackTask embedder_callback(
+        "onGeolocationPermissionsShowPrompt");
     Java_BisonContents_onGeolocationPermissionsShowPrompt(env, j_ref, j_origin);
   }
 }
@@ -384,8 +374,8 @@ void BisonContents::HideGeolocationPrompt(const GURL& origin) {
     JNIEnv* env = AttachCurrentThread();
     ScopedJavaLocalRef<jobject> j_ref = java_ref_.get(env);
     if (j_ref.obj()) {
-      // devtools_instrumentation::ScopedEmbedderCallbackTask embedder_callback(
-      //     "onGeolocationPermissionsHidePrompt");
+      devtools_instrumentation::ScopedEmbedderCallbackTask embedder_callback(
+          "onGeolocationPermissionsHidePrompt");
       Java_BisonContents_onGeolocationPermissionsHidePrompt(env, j_ref);
     }
     if (!pending_geolocation_prompts_.empty()) {
@@ -482,19 +472,6 @@ void BisonContents::CancelMIDISysexPermissionRequests(const GURL& origin) {
       origin, BisonPermissionRequest::BisonPermissionRequest::MIDISysex);
 }
 
-void BisonContents::PlatformCleanUp() {
-  JNIEnv* env = AttachCurrentThread();
-  ScopedJavaLocalRef<jobject> obj = java_ref_.get(env);
-  if (obj.is_null())
-    return;
-  VLOG(0) << "destroy native";
-  Java_BisonContents_onNativeDestroyed(env, obj);
-}
-
-void BisonContents::PlatformCreateWindow() {
-  // java_object_.Reset(CreateShellView(this));
-}
-
 void BisonContents::SetJavaPeers(
     JNIEnv* env,
     const JavaParamRef<jobject>& web_contents_delegate,
@@ -550,7 +527,7 @@ jlong JNI_BisonContents_Init(JNIEnv* env,
   BisonBrowserContext* browserContext =
       reinterpret_cast<BisonBrowserContext*>(bison_browser_context);
   BisonContents* bison_contents =
-      BisonContents::CreateNewWindow(browserContext, NULL);
+      BisonContents::CreateBisonContents(browserContext);
   VLOG(0) << "after create new window";
   bison_contents->java_ref_ = JavaObjectWeakGlobalRef(env, obj);
   return reinterpret_cast<intptr_t>(bison_contents);

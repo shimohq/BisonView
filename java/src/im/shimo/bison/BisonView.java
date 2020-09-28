@@ -12,6 +12,8 @@ import org.chromium.content_public.browser.ChildProcessCreationParams;
 
 public class BisonView extends FrameLayout {
 
+    private static ClientCertLookupTable sClientCertLookupTable; 
+
     private BisonContentsClient mBisonContentsClient;
     private BisonContents mBisonContents;
     private BisonContentsClientBridge mBisonContentsClientBridge;
@@ -38,7 +40,7 @@ public class BisonView extends FrameLayout {
         BrowserStartupController.get(LibraryProcessType.PROCESS_BROWSER)
                 .startBrowserProcessesSync(false);
         mBisonContentsClient = new BisonContentsClient(this, context);
-        mBisonContentsClientBridge = new BisonContentsClientBridge(context, mBisonContentsClient);
+        mBisonContentsClientBridge = new BisonContentsClientBridge(context, mBisonContentsClient,getClientCertLookupTable());
         BisonWebContentsDelegate webContentsDelegate = new BisonWebContentsDelegate(mBisonContentsClient);
         mBisonContents = new BisonContents(context,BisonBrowserContext.getDefault(), webContentsDelegate, mBisonContentsClientBridge,mBisonContentsClient);
         addView(mBisonContents);
@@ -146,5 +148,14 @@ public class BisonView extends FrameLayout {
         mBisonContents.destroy();
         removeAllViews();
     }
+
+
+
+    private static ClientCertLookupTable getClientCertLookupTable() {
+        if (sClientCertLookupTable == null){
+            sClientCertLookupTable = new ClientCertLookupTable(); 
+        }
+        return sClientCertLookupTable;
+    } 
 
 }

@@ -22,9 +22,13 @@ import org.chromium.base.TraceEvent;
 import org.chromium.content_public.common.ContentUrlConstants;
 
 import java.lang.ref.WeakReference;
-import java.util.HashMap;
-import java.util.WeakHashMap;
+import java.security.Principal;
+import java.security.PrivateKey;
+import java.security.cert.X509Certificate;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.WeakHashMap;
 
 public class BisonContentsClient {
 
@@ -300,6 +304,75 @@ public class BisonContentsClient {
         if (mDownloadListener != null) {
             mDownloadListener.onDownloadStart(
                     url, userAgent, contentDisposition, mimeType, contentLength);
+        }
+    }
+
+    private static class ClientCertRequestImpl extends ClientCertRequest {
+        private final BisonContentsClientBridge.ClientCertificateRequestCallback mCallback;
+        private final String[] mKeyTypes;
+        private final Principal[] mPrincipals;
+        private final String mHost;
+        private final int mPort;
+
+        public ClientCertRequestImpl(
+                BisonContentsClientBridge.ClientCertificateRequestCallback callback, String[] keyTypes,
+                Principal[] principals, String host, int port) {
+            mCallback = callback;
+            mKeyTypes = keyTypes;
+            mPrincipals = principals;
+            mHost = host;
+            mPort = port;
+        }
+
+        @Override
+        public String[] getKeyTypes() {
+            // This is already a copy of native argument, so return directly.
+            return mKeyTypes;
+        }
+
+        @Override
+        public Principal[] getPrincipals() {
+            // This is already a copy of native argument, so return directly.
+            return mPrincipals;
+        }
+
+        @Override
+        public String getHost() {
+            return mHost;
+        }
+
+        @Override
+        public int getPort() {
+            return mPort;
+        }
+
+        @Override
+        public void proceed(final PrivateKey privateKey, final X509Certificate[] chain) {
+            mCallback.proceed(privateKey, chain);
+        }
+
+        @Override
+        public void ignore() {
+            mCallback.ignore();
+        }
+
+        @Override
+        public void cancel() {
+            mCallback.cancel();
+        }
+    }
+    
+    public void onReceivedClientCertRequest(
+            BisonContentsClientBridge.ClientCertificateRequestCallback callback, String[] keyTypes,
+            Principal[] principals, String host, int port) {
+        Log.i(TAG, "onReceivedClientCertRequest");
+        try {
+            TraceEvent.begin("WebViewContentsClientAdapter.onReceivedClientCertRequest");
+            final ClientCertRequestImpl request =
+                    new ClientCertRequestImpl(callback, keyTypes, principals, host, port);
+            mBisonViewClient.onReceivedClientCertRequest(mBisonView, request);
+        } finally {
+            TraceEvent.end("WebViewContentsClientAdapter.onReceivedClientCertRequest");
         }
     }
 

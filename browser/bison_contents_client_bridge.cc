@@ -5,6 +5,7 @@
 #include <utility>
 
 #include "bison/bison_jni_headers/BisonContentsClientBridge_jni.h"
+#include "bison/common/devtools_instrumentation.h"
 
 #include "base/android/jni_android.h"
 #include "base/android/jni_array.h"
@@ -152,6 +153,131 @@ void BisonContentsClientBridge::AllowCertificateError(
   }
 }
 
+void BisonContentsClientBridge::ProceedSslError(JNIEnv* env,
+                                                const JavaRef<jobject>& obj,
+                                                jboolean proceed,
+                                                jint id) {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  CertErrorCallback* callback = pending_cert_error_callbacks_.Lookup(id);
+  if (!callback || callback->is_null()) {
+    LOG(WARNING) << "Ignoring unexpected ssl error proceed callback";
+    return;
+  }
+  std::move(*callback).Run(
+      proceed ? content::CERTIFICATE_REQUEST_RESULT_TYPE_CONTINUE
+              : content::CERTIFICATE_REQUEST_RESULT_TYPE_CANCEL);
+  pending_cert_error_callbacks_.Remove(id);
+}
+
+// This method is inspired by SelectClientCertificate() in
+// chrome/browser/ui/android/ssl_client_certificate_request.cc
+void BisonContentsClientBridge::SelectClientCertificate(
+    net::SSLCertRequestInfo* cert_request_info,
+    std::unique_ptr<content::ClientCertificateDelegate> delegate) {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+
+  JNIEnv* env = base::android::AttachCurrentThread();
+  ScopedJavaLocalRef<jobject> obj = java_ref_.get(env);
+  if (obj.is_null())
+    return;
+
+  // Build the |key_types| JNI parameter, as a String[]
+  std::vector<std::string> key_types;
+  for (size_t i = 0; i < cert_request_info->cert_key_types.size(); ++i) {
+    switch (cert_request_info->cert_key_types[i]) {
+      case net::CLIENT_CERT_RSA_SIGN:
+        key_types.push_back("RSA");
+        break;
+      case net::CLIENT_CERT_ECDSA_SIGN:
+        key_types.push_back("ECDSA");
+        break;
+      default:
+        // Ignore unknown types.
+        break;
+    }
+  }
+
+  ScopedJavaLocalRef<jobjectArray> key_types_ref =
+      base::android::ToJavaArrayOfStrings(env, key_types);
+  if (key_types_ref.is_null()) {
+    LOG(ERROR) << "Could not create key types array (String[])";
+    return;
+  }
+
+  // Build the |encoded_principals| JNI parameter, as a byte[][]
+  ScopedJavaLocalRef<jobjectArray> principals_ref =
+      base::android::ToJavaArrayOfByteArray(
+          env, cert_request_info->cert_authorities);
+  if (principals_ref.is_null()) {
+    LOG(ERROR) << "Could not create principals array (byte[][])";
+    return;
+  }
+
+  // Build the |host_name| and |port| JNI parameters, as a String and
+  // a jint.
+  ScopedJavaLocalRef<jstring> host_name_ref =
+      base::android::ConvertUTF8ToJavaString(
+          env, cert_request_info->host_and_port.host());
+
+  int request_id =
+      pending_client_cert_request_delegates_.Add(std::move(delegate));
+  Java_BisonContentsClientBridge_selectClientCertificate(
+      env, obj, request_id, key_types_ref, principals_ref, host_name_ref,
+      cert_request_info->host_and_port.port());
+}
+
+// This method is inspired by OnSystemRequestCompletion() in
+// chrome/browser/ui/android/ssl_client_certificate_request.cc
+void BisonContentsClientBridge::ProvideClientCertificateResponse(
+    JNIEnv* env,
+    const JavaRef<jobject>& obj,
+    int request_id,
+    const JavaRef<jobjectArray>& encoded_chain_ref,
+    const JavaRef<jobject>& private_key_ref) {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+
+  std::unique_ptr<content::ClientCertificateDelegate> delegate =
+      pending_client_cert_request_delegates_.Replace(request_id, nullptr);
+  pending_client_cert_request_delegates_.Remove(request_id);
+  DCHECK(delegate);
+
+  if (encoded_chain_ref.is_null() || private_key_ref.is_null()) {
+    LOG(ERROR) << "No client certificate selected";
+    delegate->ContinueWithCertificate(nullptr, nullptr);
+    return;
+  }
+
+  // Convert the encoded chain to a vector of strings.
+  std::vector<std::string> encoded_chain_strings;
+  if (!encoded_chain_ref.is_null()) {
+    base::android::JavaArrayOfByteArrayToStringVector(env, encoded_chain_ref,
+                                                      &encoded_chain_strings);
+  }
+
+  std::vector<base::StringPiece> encoded_chain;
+  for (size_t i = 0; i < encoded_chain_strings.size(); ++i)
+    encoded_chain.push_back(encoded_chain_strings[i]);
+
+  // Create the X509Certificate object from the encoded chain.
+  scoped_refptr<net::X509Certificate> client_cert(
+      net::X509Certificate::CreateFromDERCertChain(encoded_chain));
+  if (!client_cert.get()) {
+    LOG(ERROR) << "Could not decode client certificate chain";
+    return;
+  }
+
+  // Create an SSLPrivateKey wrapper for the private key JNI reference.
+  scoped_refptr<net::SSLPrivateKey> private_key =
+      net::WrapJavaPrivateKey(client_cert.get(), private_key_ref);
+  if (!private_key) {
+    LOG(ERROR) << "Could not create OpenSSL wrapper for private key";
+    return;
+  }
+
+  delegate->ContinueWithCertificate(std::move(client_cert),
+                                    std::move(private_key));
+}
+
 void BisonContentsClientBridge::RunJavaScriptDialog(
     content::JavaScriptDialogType dialog_type,
     const GURL& origin_url,
@@ -177,14 +303,13 @@ void BisonContentsClientBridge::RunJavaScriptDialog(
 
   switch (dialog_type) {
     case content::JAVASCRIPT_DIALOG_TYPE_ALERT: {
-      // devtools_instrumentation::ScopedEmbedderCallbackTask("onJsAlert");
+      devtools_instrumentation::ScopedEmbedderCallbackTask("onJsAlert");
       Java_BisonContentsClientBridge_handleJsAlert(env, obj, jurl, jmessage,
                                                    callback_id);
       break;
     }
     case content::JAVASCRIPT_DIALOG_TYPE_CONFIRM: {
-      // devtools_instrumentation::ScopedEmbedderCallbackTask("onJsConfirm");
-      VLOG(0) << "onJsConfirm";
+      devtools_instrumentation::ScopedEmbedderCallbackTask("onJsConfirm");
       Java_BisonContentsClientBridge_handleJsConfirm(env, obj, jurl, jmessage,
                                                      callback_id);
       break;
@@ -192,7 +317,7 @@ void BisonContentsClientBridge::RunJavaScriptDialog(
     case content::JAVASCRIPT_DIALOG_TYPE_PROMPT: {
       ScopedJavaLocalRef<jstring> jdefault_value(
           ConvertUTF16ToJavaString(env, default_prompt_text));
-      // devtools_instrumentation::ScopedEmbedderCallbackTask("onJsPrompt");
+      devtools_instrumentation::ScopedEmbedderCallbackTask("onJsPrompt");
       Java_BisonContentsClientBridge_handleJsPrompt(
           env, obj, jurl, jmessage, jdefault_value, callback_id);
       break;
@@ -248,8 +373,8 @@ bool BisonContentsClientBridge::ShouldOverrideUrlLoading(
   if (obj.is_null())
     return true;
   ScopedJavaLocalRef<jstring> jurl = ConvertUTF16ToJavaString(env, url);
-  // devtools_instrumentation::ScopedEmbedderCallbackTask(
-  //     "shouldOverrideUrlLoading");
+  devtools_instrumentation::ScopedEmbedderCallbackTask(
+      "shouldOverrideUrlLoading");
   *ignore_navigation = Java_BisonContentsClientBridge_shouldOverrideUrlLoading(
       env, obj, jurl, has_user_gesture, is_redirect, is_main_frame);
   if (HasException(env)) {
@@ -303,52 +428,17 @@ void BisonContentsClientBridge::OnReceivedError(
   ScopedJavaLocalRef<jstring> jstring_description =
       ConvertUTF8ToJavaString(env, net::ErrorToString(error_code));
 
-  BisonWebResourceRequest::BisonJavaWebResourceRequest java_web_resource_request;
-  BisonWebResourceRequest::ConvertToJava(env, request, &java_web_resource_request);
+  BisonWebResourceRequest::BisonJavaWebResourceRequest
+      java_web_resource_request;
+  BisonWebResourceRequest::ConvertToJava(env, request,
+                                         &java_web_resource_request);
   Java_BisonContentsClientBridge_onReceivedError(
       env, obj, java_web_resource_request.jurl, request.is_main_frame,
       request.has_user_gesture, *request.is_renderer_initiated,
       java_web_resource_request.jmethod,
       java_web_resource_request.jheader_names,
-      java_web_resource_request.jheader_values, error_code, jstring_description);
-}
-
-void BisonContentsClientBridge::ProceedSslError(JNIEnv* env,
-                                                const JavaRef<jobject>& obj,
-                                                jboolean proceed,
-                                                jint id) {
-  DCHECK_CURRENTLY_ON(BrowserThread::UI);
-  CertErrorCallback* callback = pending_cert_error_callbacks_.Lookup(id);
-  if (!callback || callback->is_null()) {
-    LOG(WARNING) << "Ignoring unexpected ssl error proceed callback";
-    return;
-  }
-  std::move(*callback).Run(
-      proceed ? content::CERTIFICATE_REQUEST_RESULT_TYPE_CONTINUE
-              : content::CERTIFICATE_REQUEST_RESULT_TYPE_CANCEL);
-  pending_cert_error_callbacks_.Remove(id);
-}
-
-// This method is inspired by OnSystemRequestCompletion() in
-// chrome/browser/ui/android/ssl_client_certificate_request.cc
-void BisonContentsClientBridge::ProvideClientCertificateResponse(
-    JNIEnv* env,
-    const JavaRef<jobject>& obj,
-    int request_id,
-    const JavaRef<jobjectArray>& encoded_chain_ref,
-    const JavaRef<jobject>& private_key_ref) {
-  DCHECK_CURRENTLY_ON(BrowserThread::UI);
-
-  std::unique_ptr<content::ClientCertificateDelegate> delegate =
-      pending_client_cert_request_delegates_.Replace(request_id, nullptr);
-  pending_client_cert_request_delegates_.Remove(request_id);
-  DCHECK(delegate);
-
-  if (encoded_chain_ref.is_null() || private_key_ref.is_null()) {
-    LOG(ERROR) << "No client certificate selected";
-    delegate->ContinueWithCertificate(nullptr, nullptr);
-    return;
-  }
+      java_web_resource_request.jheader_values, error_code,
+      jstring_description);
 }
 
 void BisonContentsClientBridge::OnReceivedHttpError(

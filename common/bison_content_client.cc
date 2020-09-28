@@ -1,27 +1,27 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file.
-
 #include "bison_content_client.h"
 
-#include "base/command_line.h"
-#include "base/strings/string_piece.h"
-#include "base/strings/utf_string_conversions.h"
-#include "base/values.h"
-#include "build/build_config.h"
-#include "content/app/resources/grit/content_resources.h"
-#include "content/public/common/content_switches.h"
-// #include "content/shell/common/shell_switches.h"
+#include "bison/common/url_constants.h"
 #include "bison/grit/bison_resources.h"
-#include "third_party/blink/public/strings/grit/blink_strings.h"
+
+#include "base/bind.h"
+#include "base/command_line.h"
+#include "base/no_destructor.h"
+#include "components/services/heap_profiling/public/cpp/profiling_client.h"
+#include "content/public/common/content_switches.h"
+#include "gpu/config/gpu_info.h"
+#include "gpu/config/gpu_util.h"
+#include "ipc/ipc_message.h"
+#include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/resource/resource_bundle.h"
 
 namespace bison {
 
-BisonContentClient::BisonContentClient() {}
-
-BisonContentClient::~BisonContentClient() {}
+void BisonContentClient::AddAdditionalSchemes(Schemes* schemes) {
+  schemes->local_schemes.push_back(url::kContentScheme);
+  schemes->secure_schemes.push_back(bison::kAndroidWebViewVideoPosterScheme);
+  schemes->allow_non_standard_schemes_in_origins = true;
+}
 
 base::string16 BisonContentClient::GetLocalizedString(int message_id) {
   return l10n_util::GetStringUTF16(message_id);
@@ -40,21 +40,46 @@ base::RefCountedMemory* BisonContentClient::GetDataResourceBytes(
       resource_id);
 }
 
-gfx::Image& BisonContentClient::GetNativeImageNamed(int resource_id) {
-  return ui::ResourceBundle::GetSharedInstance().GetNativeImageNamed(
-      resource_id);
+bool BisonContentClient::CanSendWhileSwappedOut(const IPC::Message* message) {
+  // For legacy API support we perform a few browser -> renderer synchronous IPC
+  // messages that block the browser. However, the synchronous IPC replies might
+  // be dropped by the renderer during a swap out, deadlocking the browser.
+  // Because of this we should never drop any synchronous IPC replies.
+  return message->type() == IPC_REPLY_ID;
 }
 
-base::DictionaryValue BisonContentClient::GetNetLogConstants() {
-  base::DictionaryValue client_constants;
-  client_constants.SetString("name", "bison");
-  client_constants.SetString(
-      "command_line",
-      base::CommandLine::ForCurrentProcess()->GetCommandLineString());
-  base::DictionaryValue constants;
-  constants.SetKey("clientInfo", std::move(client_constants));
-  return constants;
+void BisonContentClient::SetGpuInfo(const gpu::GPUInfo& gpu_info) {
+  gpu_fingerprint_ = gpu_info.gl_version + '|' + gpu_info.gl_vendor + '|' +
+                     gpu_info.gl_renderer;
+  std::replace_if(
+      gpu_fingerprint_.begin(), gpu_fingerprint_.end(),
+      [](char c) { return !::isprint(c); }, '_');
+
+  gpu::SetKeysForCrashLogging(gpu_info);
 }
+
+// bool BisonContentClient::UsingSynchronousCompositing() {
+//   return true;
+// }
+
+void BisonContentClient::BindChildProcessInterface(
+    const std::string& interface_name,
+    mojo::ScopedMessagePipeHandle* receiving_handle) {
+  // This creates a process-wide heap_profiling::ProfilingClient that listens
+  // for requests from the HeapProfilingService to start profiling the current
+  // process.
+  static base::NoDestructor<heap_profiling::ProfilingClient> profiling_client;
+  if (interface_name == heap_profiling::ProfilingClient::Name_) {
+    profiling_client->BindToInterface(
+        mojo::PendingReceiver<heap_profiling::mojom::ProfilingClient>(
+            std::move(*receiving_handle)));
+  }
+}
+
+// gfx::Image& BisonContentClient::GetNativeImageNamed(int resource_id) {
+//   return ui::ResourceBundle::GetSharedInstance().GetNativeImageNamed(
+//       resource_id);
+// }
 
 // blink::OriginTrialPolicy* BisonContentClient::GetOriginTrialPolicy() {
 //   return &origin_trial_policy_;

@@ -8,8 +8,7 @@ namespace bison {
 const char kAndroidAssetPath[] = "/android_asset/";
 const char kAndroidResourcePath[] = "/android_res/";
 
-// const char kAndroidWebViewVideoPosterScheme[] =
-// "android-webview-video-poster";
+const char kAndroidWebViewVideoPosterScheme[] = "android-webview-video-poster";
 
 bool IsAndroidSpecialFileUrl(const GURL& url) {
   if (!url.is_valid() || !url.SchemeIsFile() || !url.has_path())

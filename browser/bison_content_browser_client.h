@@ -3,13 +3,19 @@
 #ifndef BISON_BROWSER_BISON_CONTENT_BROWSER_CLIENT_H_
 #define BISON_BROWSER_BISON_CONTENT_BROWSER_CLIENT_H_
 
+#include <stddef.h>
+
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "base/callback.h"
 #include "base/compiler_specific.h"
 #include "base/files/file_path.h"
+#include "base/macros.h"
+#include "base/memory/ref_counted.h"
 #include "content/public/browser/content_browser_client.h"
+#include "content/public/browser/web_contents.h"
 #include "mojo/public/cpp/bindings/remote.h"
 #include "services/service_manager/public/cpp/binder_registry.h"
 #include "storage/browser/quota/quota_settings.h"
@@ -31,7 +37,6 @@ using content::WebPreferences;
 
 namespace bison {
 class BisonBrowserContext;
-class BisonBrowserMainParts;
 
 std::string GetUserAgent();
 std::string GetProduct();
@@ -61,6 +66,9 @@ class BisonContentBrowserClient : public content::ContentBrowserClient {
 
   std::unique_ptr<BrowserMainParts> CreateBrowserMainParts(
       const MainFunctionParams& parameters) override;
+
+  // void RenderProcessWillLaunch(content::RenderProcessHost* host) override;
+  bool IsExplicitNavigation(ui::PageTransition transition) override;
   bool ShouldUseMobileFlingCurve() override;
   bool IsHandledURL(const GURL& url) override;
   void BindInterfaceRequestFromFrame(
@@ -81,6 +89,9 @@ class BisonContentBrowserClient : public content::ContentBrowserClient {
   std::string GetDefaultDownloadName() override;
   WebContentsViewDelegate* GetWebContentsViewDelegate(
       WebContents* web_contents) override;
+  bool AllowAppCache(const GURL& manifest_url,
+                     const GURL& first_party,
+                     content::BrowserContext* context) override;
   // scoped_refptr<content::QuotaPermissionContext>
   // CreateQuotaPermissionContext()
   //     override;
@@ -90,6 +101,15 @@ class BisonContentBrowserClient : public content::ContentBrowserClient {
       storage::OptionalQuotaSettingsCallback callback) override;
   GeneratedCodeCacheSettings GetGeneratedCodeCacheSettings(
       content::BrowserContext* context) override;
+  void AllowCertificateError(
+      content::WebContents* web_contents,
+      int cert_error,
+      const net::SSLInfo& ssl_info,
+      const GURL& request_url,
+      bool is_main_frame_request,
+      bool strict_enforcement,
+      const base::Callback<void(content::CertificateRequestResultType)>&
+          callback) override;
   base::OnceClosure SelectClientCertificate(
       WebContents* web_contents,
       net::SSLCertRequestInfo* cert_request_info,
@@ -114,17 +134,17 @@ class BisonContentBrowserClient : public content::ContentBrowserClient {
       bool first_auth_attempt,
       LoginAuthRequiredCallback auth_required_callback) override;
 
-  std::string GetUserAgent() override;
-  std::string GetProduct() override;
-
   void GetAdditionalMappedFilesForChildProcess(
       const base::CommandLine& command_line,
       int child_process_id,
       content::PosixFileDescriptorInfo* mappings) override;
 
-  
-
-
+  // CreateURLLoaderThrottles(
+  //     const network::ResourceRequest& request,
+  //     content::BrowserContext* browser_context,
+  //     const base::RepeatingCallback<content::WebContents*()>& wc_getter,
+  //     content::NavigationUIData* navigation_ui_data,
+  //     int frame_tree_node_id) override;
   bool ShouldOverrideUrlLoading(int frame_tree_node_id,
                                 bool browser_initiated,
                                 const GURL& gurl,
@@ -134,20 +154,27 @@ class BisonContentBrowserClient : public content::ContentBrowserClient {
                                 bool is_main_frame,
                                 ui::PageTransition transition,
                                 bool* ignore_navigation) override;
+  bool ShouldCreateThreadPool() override;
+
+  bool ShouldIsolateErrorPage(bool in_main_frame) override;
+  bool ShouldEnableStrictSiteIsolation() override;
+  bool ShouldLockToOrigin(content::BrowserContext* browser_context,
+                          const GURL& effective_url) override;
   bool WillCreateURLLoaderFactory(
       content::BrowserContext* browser_context,
       content::RenderFrameHost* frame,
       int render_process_id,
       URLLoaderFactoryType type,
       const url::Origin& request_initiator,
-      mojo::PendingReceiver<network::mojom::URLLoaderFactory>*
-      factory_receiver,
+      mojo::PendingReceiver<network::mojom::URLLoaderFactory>* factory_receiver,
       mojo::PendingRemote<network::mojom::TrustedURLLoaderHeaderClient>*
           header_client,
       bool* bypass_redirect_checks) override;
 
-  // BisonBrowserContext* browser_context();
-  
+  std::string GetUserAgent() override;
+  std::string GetProduct() override;
+  void LogWebFeatureForCurrentPage(content::RenderFrameHost* render_frame_host,
+                                   blink::mojom::WebFeature feature) override;
 
   // Used for content_browsertests.
   void set_select_client_certificate_callback(
