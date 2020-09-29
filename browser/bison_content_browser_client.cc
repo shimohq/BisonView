@@ -14,6 +14,7 @@
 #include "bison/browser/bison_contents.h"
 #include "bison/browser/bison_contents_client_bridge.h"
 #include "bison/browser/bison_contents_io_thread_client.h"
+#include "bison/browser/bison_cookie_access_policy.h"
 #include "bison/browser/bison_devtools_manager_delegate.h"
 #include "bison/browser/bison_feature_list_creator.h"
 #include "bison/browser/bison_settings.h"
@@ -23,6 +24,7 @@
 #include "bison/browser/network_service/bison_url_loader_throttle.h"
 #include "bison/common/bison_descriptors.h"
 #include "bison/common/render_view_messages.h"
+#include "bison/common/url_constants.h"
 
 #include "base/android/apk_assets.h"
 #include "base/android/locale_utils.h"
@@ -349,7 +351,7 @@ void BisonContentBrowserClient::RenderProcessWillLaunch(
     content::RenderProcessHost* host) {
   // Grant content: scheme access to the whole renderer process, since weimpose
   // per-view access checks, and access is granted by default (see
-  // AwSettings.mAllowContentUrlAccess).
+  // BisonSettings.mAllowContentUrlAccess).
   content::ChildProcessSecurityPolicy::GetInstance()->GrantRequestScheme(
       host->GetID(), url::kContentScheme);
 
@@ -368,21 +370,24 @@ bool BisonContentBrowserClient::ShouldUseMobileFlingCurve() {
 }
 
 bool BisonContentBrowserClient::IsHandledURL(const GURL& url) {
-  const std::string path = url.path();
   if (!url.is_valid())
-    return false;
-  // Keep in sync with ProtocolHandlers added by
-  // ShellURLRequestContextGetter::GetURLRequestContext().
+    return true;
+  const std::string scheme = url.scheme();
+  DCHECK_EQ(scheme, base::ToLowerASCII(scheme));
   static const char* const kProtocolList[] = {
-      url::kBlobScheme,         url::kFileSystemScheme,
-      content::kChromeUIScheme, content::kChromeDevToolsScheme,
-      url::kDataScheme,         url::kFileScheme,
+      url::kDataScheme,         url::kBlobScheme,    url::kFileSystemScheme,
+      content::kChromeUIScheme, url::kContentScheme,
   };
+  if (scheme == url::kFileScheme) {
+    // Return false for the "special" file URLs, so they can be loaded
+    // even if access to file: scheme is not granted to the child process.
+    return !IsAndroidSpecialFileUrl(url);
+  }
   for (size_t i = 0; i < base::size(kProtocolList); ++i) {
-    if (url.scheme() == kProtocolList[i])
+    if (scheme == kProtocolList[i])
       return true;
   }
-  return net::URLRequest::IsHandledProtocol(url.scheme());
+  return net::URLRequest::IsHandledProtocol(scheme);
 }
 
 void BisonContentBrowserClient::BindInterfaceRequestFromFrame(
@@ -473,7 +478,7 @@ void BisonContentBrowserClient::AppendExtraCommandLineSwitches(
 }
 
 std::string BisonContentBrowserClient::GetAcceptLangs(BrowserContext* context) {
-  return "en-us,en";
+  return GetAcceptLangsImpl();
 }
 
 std::string BisonContentBrowserClient::GetDefaultDownloadName() {
@@ -548,10 +553,21 @@ base::OnceClosure BisonContentBrowserClient::SelectClientCertificate(
   return base::OnceClosure();
 }
 
-// SpeechRecognitionManagerDelegate*
-// BisonContentBrowserClient::CreateSpeechRecognitionManagerDelegate() {
-//   return new ShellSpeechRecognitionManagerDelegate();
-// }
+void BisonContentBrowserClient::GetAdditionalMappedFilesForChildProcess(
+    const base::CommandLine& command_line,
+    int child_process_id,
+    content::PosixFileDescriptorInfo* mappings) {
+  mappings->ShareWithRegion(
+      kBisonPakDescriptor,
+      base::GlobalDescriptors::GetInstance()->Get(kBisonPakDescriptor),
+      base::GlobalDescriptors::GetInstance()->GetRegion(kBisonPakDescriptor));
+
+  int crash_signal_fd =
+      crashpad::CrashHandlerHost::Get()->GetDeathSignalSocket();
+  if (crash_signal_fd >= 0) {
+    mappings->Share(service_manager::kCrashDumpSignal, crash_signal_fd);
+  }
+}
 
 void BisonContentBrowserClient::OverrideWebkitPrefs(
     RenderViewHost* render_view_host,
@@ -587,58 +603,34 @@ BisonContentBrowserClient::GetDevToolsManagerDelegate() {
   return new BisonDevToolsManagerDelegate();
 }
 
-// std::vector<std::unique_ptr<blink::URLLoaderThrottle>>
-// BisonContentBrowserClient::CreateURLLoaderThrottles(
-//     const network::ResourceRequest& request,
-//     content::BrowserContext* browser_context,
-//     const base::RepeatingCallback<content::WebContents*()>& wc_getter,
-//     content::NavigationUIData* navigation_ui_data,
-//     int frame_tree_node_id) {
-//   DCHECK_CURRENTLY_ON(BrowserThread::UI);
+std::vector<std::unique_ptr<blink::URLLoaderThrottle>>
+BisonContentBrowserClient::CreateURLLoaderThrottles(
+    const network::ResourceRequest& request,
+    content::BrowserContext* browser_context,
+    const base::RepeatingCallback<content::WebContents*()>& wc_getter,
+    content::NavigationUIData* navigation_ui_data,
+    int frame_tree_node_id) {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
 
-//   std::vector<std::unique_ptr<blink::URLLoaderThrottle>> result;
+  std::vector<std::unique_ptr<blink::URLLoaderThrottle>> result;
 
-//   if (request.resource_type ==
-//       static_cast<int>(content::ResourceType::kMainFrame)) {
-//     const bool is_load_url =
-//         request.transition_type & ui::PAGE_TRANSITION_FROM_API;
-//     const bool is_go_back_forward =
-//         request.transition_type & ui::PAGE_TRANSITION_FORWARD_BACK;
-//     const bool is_reload = ui::PageTransitionCoreTypeIs(
-//         static_cast<ui::PageTransition>(request.transition_type),
-//         ui::PAGE_TRANSITION_RELOAD);
-//     if (is_load_url || is_go_back_forward || is_reload) {
-//       result.push_back(std::make_unique<BisonURLLoaderThrottle>(
-//           static_cast<BisonResourceContext*>(
-//               browser_context->GetResourceContext())));
-//     }
-//   }
+  if (request.resource_type ==
+      static_cast<int>(content::ResourceType::kMainFrame)) {
+    const bool is_load_url =
+        request.transition_type & ui::PAGE_TRANSITION_FROM_API;
+    const bool is_go_back_forward =
+        request.transition_type & ui::PAGE_TRANSITION_FORWARD_BACK;
+    const bool is_reload = ui::PageTransitionCoreTypeIs(
+        static_cast<ui::PageTransition>(request.transition_type),
+        ui::PAGE_TRANSITION_RELOAD);
+    if (is_load_url || is_go_back_forward || is_reload) {
+      result.push_back(std::make_unique<BisonURLLoaderThrottle>(
+          static_cast<BisonResourceContext*>(
+              browser_context->GetResourceContext())));
+    }
+  }
 
-//   return result;
-// }
-
-std::string BisonContentBrowserClient::GetProduct() {
-  return bison::GetProduct();
-}
-
-std::string BisonContentBrowserClient::GetUserAgent() {
-  return bison::GetUserAgent();
-}
-
-void BisonContentBrowserClient::GetAdditionalMappedFilesForChildProcess(
-    const base::CommandLine& command_line,
-    int child_process_id,
-    content::PosixFileDescriptorInfo* mappings) {
-  mappings->ShareWithRegion(
-      kBisonPakDescriptor,
-      base::GlobalDescriptors::GetInstance()->Get(kBisonPakDescriptor),
-      base::GlobalDescriptors::GetInstance()->GetRegion(kBisonPakDescriptor));
-  // jiang 这里可以定义v8 的文件位置？
-
-  // int crash_signal_fd = GetCrashSignalFD(command_line);
-  // if (crash_signal_fd >= 0) {
-  //   mappings->Share(service_manager::kCrashDumpSignal, crash_signal_fd);
-  // }
+  return result;
 }
 
 void BisonContentBrowserClient::ExposeInterfacesToMediaService(
@@ -703,9 +695,6 @@ std::unique_ptr<LoginDelegate> BisonContentBrowserClient::CreateLoginDelegate(
     scoped_refptr<net::HttpResponseHeaders> response_headers,
     bool first_auth_attempt,
     LoginAuthRequiredCallback auth_required_callback) {
-  if (!login_request_callback_.is_null()) {
-    std::move(login_request_callback_).Run(is_main_frame);
-  }
   return nullptr;
 }
 
@@ -758,6 +747,44 @@ bool BisonContentBrowserClient::WillCreateURLLoaderFactory(
   return true;
 }
 
+void BisonContentBrowserClient::
+    WillCreateURLLoaderFactoryForAppCacheSubresource(
+        int render_process_id,
+        mojo::PendingRemote<network::mojom::URLLoaderFactory>*
+            pending_factory) {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+
+  auto pending_proxy = std::move(*pending_factory);
+  mojo::PendingReceiver<network::mojom::URLLoaderFactory> factory_receiver =
+      pending_factory->InitWithNewPipeAndPassReceiver();
+
+  base::PostTask(FROM_HERE, {content::BrowserThread::IO},
+                 base::BindOnce(&BisonProxyingURLLoaderFactory::CreateProxy,
+                                render_process_id, std::move(factory_receiver),
+                                std::move(pending_proxy)));
+}
+
+uint32_t BisonContentBrowserClient::GetWebSocketOptions(
+    content::RenderFrameHost* frame) {
+  uint32_t options = network::mojom::kWebSocketOptionNone;
+  if (!frame) {
+    return options;
+  }
+  content::WebContents* web_contents =
+      content::WebContents::FromRenderFrameHost(frame);
+  BisonContents* bison_contents = BisonContents::FromWebContents(web_contents);
+
+  bool global_cookie_policy =
+      BisonCookieAccessPolicy::GetInstance()->GetShouldAcceptCookies();
+  bool third_party_cookie_policy = bison_contents->AllowThirdPartyCookies();
+  if (!global_cookie_policy) {
+    options |= network::mojom::kWebSocketOptionBlockAllCookies;
+  } else if (!third_party_cookie_policy) {
+    options |= network::mojom::kWebSocketOptionBlockThirdPartyCookies;
+  }
+  return options;
+}
+
 bool BisonContentBrowserClient::WillCreateRestrictedCookieManager(
     network::mojom::RestrictedCookieManagerRole role,
     content::BrowserContext* browser_context,
@@ -780,6 +807,14 @@ bool BisonContentBrowserClient::WillCreateRestrictedCookieManager(
       std::move(orig_receiver));
 
   return false;  // only made a proxy, still need the actual impl to be made.
+}
+
+std::string BisonContentBrowserClient::GetProduct() {
+  return bison::GetProduct();
+}
+
+std::string BisonContentBrowserClient::GetUserAgent() {
+  return bison::GetUserAgent();
 }
 
 void BisonContentBrowserClient::LogWebFeatureForCurrentPage(

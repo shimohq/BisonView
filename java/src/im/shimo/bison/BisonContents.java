@@ -11,6 +11,7 @@ import android.widget.FrameLayout;
 
 import org.chromium.base.Callback;
 import org.chromium.base.Log;
+import org.chromium.base.LocaleUtils;
 import org.chromium.base.annotations.CalledByNative;
 import org.chromium.base.annotations.JNINamespace;
 import org.chromium.base.annotations.NativeMethods;
@@ -36,6 +37,7 @@ import org.chromium.ui.base.PageTransition;
 import org.chromium.ui.base.WindowAndroid;
 import org.chromium.network.mojom.ReferrerPolicy;
 
+
 import java.lang.annotation.Annotation;
 import java.util.HashMap;
 import java.util.Locale;
@@ -44,6 +46,9 @@ import java.util.Map;
 @JNINamespace("bison")
 class BisonContents extends FrameLayout {
     private static final String TAG = "BisonContents";
+
+    private static String sCurrentLocales = "";
+
     private final BisonWebContentsObserver mBisonWebContentsObserver;
 
     private long mNativeBisonContents;
@@ -63,6 +68,8 @@ class BisonContents extends FrameLayout {
     private final BisonContentsBackgroundThreadClient mBackgroundThreadClient;
     private final BisonContentsIoThreadClient mIoThreadClient;
     private final InterceptNavigationDelegateImpl mInterceptNavigationDelegate;
+
+    private BisonAutofillClient mAutofillClient;
 
     private BisonSettings mSettings;
 
@@ -114,7 +121,7 @@ class BisonContents extends FrameLayout {
                 mBisonContentsClientBridge, mIoThreadClient, mInterceptNavigationDelegate);
         mSettings.setWebContents(mWebContents);
 
-
+        updateDefaultLocale();
 
     }
 
@@ -189,7 +196,7 @@ class BisonContents extends FrameLayout {
                 && params.getTransitionType() == PageTransition.TYPED) {
             params.setTransitionType(PageTransition.RELOAD);
         }
-        //params.setOverrideUserAgent(UserAgentOverrideOption.TRUE);
+        // params.setOverrideUserAgent(UserAgentOverrideOption.TRUE);
 
 
         final String referer = "referer";
@@ -348,6 +355,12 @@ class BisonContents extends FrameLayout {
     //             LOAD_URL_SCHEME_HISTOGRAM_NAME, value, UrlScheme.COUNT);
     // }
 
+
+    @CalledByNative
+    private void setAutofillClient(BisonAutofillClient client) {
+        mAutofillClient = client;
+        client.init(getContext());
+    }
 
     @CalledByNative
     private void onNativeDestroyed() {
@@ -543,12 +556,31 @@ class BisonContents extends FrameLayout {
         return true;
     }
 
+    public void updateDefaultLocale() {
+        String locales = LocaleUtils.getDefaultLocaleListString();
+        if (!sCurrentLocales.equals(locales)) {
+            sCurrentLocales = locales;
+
+            // We cannot use the first language in sCurrentLocales for the UI language even on
+            // Android N. LocaleUtils.getDefaultLocaleString() is capable for UI language but
+            // it is not guaranteed to be listed at the first of sCurrentLocales. Therefore,
+            // both values are passed to native.
+            BisonContentsJni.get().updateDefaultLocale(
+                    LocaleUtils.getDefaultLocaleString(), sCurrentLocales);
+            mSettings.updateAcceptLanguages();
+        }
+    }
+
+
+
+
+
     @NativeMethods
     interface Natives {
         long init(BisonContents caller,long nativeBisonBrowserContext);
 
         WebContents getWebContents(long nativeBisonContents);
-
+        void updateDefaultLocale(String locale, String localeList);
         void setJavaPeers(long nativeBisonContents, BisonWebContentsDelegate webContentsDelegate,
                           BisonContentsClientBridge bisonContentsClientBridge,
                           BisonContentsIoThreadClient ioThreadClient,

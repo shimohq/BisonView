@@ -316,7 +316,8 @@ void BisonMainDelegate::PreCreateMainMessageLoop() {}
 
 ContentBrowserClient* BisonMainDelegate::CreateContentBrowserClient() {
   bison_feature_list_creator_ = std::make_unique<BisonFeatureListCreator>();
-  browser_client_.reset(new BisonContentBrowserClient(bison_feature_list_creator_.get()));
+  browser_client_.reset(
+      new BisonContentBrowserClient(bison_feature_list_creator_.get()));
   return browser_client_.get();
 }
 

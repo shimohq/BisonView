@@ -18,7 +18,12 @@
 #include "content/public/browser/content_browser_client.h"
 #include "content/public/browser/resource_context.h"
 
+class GURL;
 class PrefService;
+
+namespace autofill {
+class AutocompleteHistoryManager;
+}
 
 namespace content {
 class ContentIndexProvider;
@@ -32,6 +37,7 @@ class WebContents;
 namespace bison {
 
 class BisonDownloadManagerDelegate;
+class BisonFormDatabaseService;
 class BisonQuotaManagerBridge;
 
 class BisonBrowserContext : public content::BrowserContext {
@@ -57,6 +63,7 @@ class BisonBrowserContext : public content::BrowserContext {
   BisonQuotaManagerBridge* GetQuotaManagerBridge();
   jlong GetQuotaManagerBridge(JNIEnv* env);
 
+  autofill::AutocompleteHistoryManager* GetAutocompleteHistoryManager();
   CookieManager* GetCookieManager();
 
   // TODO(amalova): implement for non-default browser context
@@ -104,6 +111,9 @@ class BisonBrowserContext : public content::BrowserContext {
   base::FilePath context_storage_path_;
 
   scoped_refptr<BisonQuotaManagerBridge> quota_manager_bridge_;
+  std::unique_ptr<BisonFormDatabaseService> form_database_service_;
+  std::unique_ptr<autofill::AutocompleteHistoryManager>
+      autocomplete_history_manager_;
 
   std::unique_ptr<PrefService> user_pref_service_;
 

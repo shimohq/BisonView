@@ -6,6 +6,7 @@
 #include "bison/browser/bison_browser_process.h"
 #include "bison/browser/bison_content_browser_client.h"
 #include "bison/browser/bison_download_manager_delegate.h"
+#include "bison/browser/bison_form_database_service.h"
 #include "bison/browser/bison_permission_manager.h"
 #include "bison/browser/bison_quota_manager_bridge.h"
 #include "bison/browser/bison_resource_context.h"
@@ -19,6 +20,8 @@
 #include "base/path_service.h"
 #include "base/single_thread_task_runner.h"
 #include "base/task/post_task.h"
+#include "components/autofill/core/browser/autocomplete_history_manager.h"
+#include "components/autofill/core/common/autofill_prefs.h"
 #include "components/cdm/browser/media_drm_storage_impl.h"
 #include "components/keyed_service/core/simple_key_map.h"
 #include "components/policy/core/browser/browser_policy_connector_base.h"
@@ -74,6 +77,9 @@ BisonBrowserContext::BisonBrowserContext()
   BrowserContext::Initialize(this, context_storage_path_);
 
   CreateUserPrefService();
+
+  form_database_service_.reset(
+      new BisonFormDatabaseService(context_storage_path_));
 }
 
 BisonBrowserContext::~BisonBrowserContext() {
@@ -213,6 +219,19 @@ BisonQuotaManagerBridge* BisonBrowserContext::GetQuotaManagerBridge() {
     quota_manager_bridge_ = BisonQuotaManagerBridge::Create(this);
   }
   return quota_manager_bridge_.get();
+}
+
+autofill::AutocompleteHistoryManager*
+BisonBrowserContext::GetAutocompleteHistoryManager() {
+  if (!autocomplete_history_manager_) {
+    autocomplete_history_manager_ =
+        std::make_unique<autofill::AutocompleteHistoryManager>();
+    autocomplete_history_manager_->Init(
+        form_database_service_->get_autofill_webdata_service(),
+        user_pref_service_.get(), IsOffTheRecord());
+  }
+
+  return autocomplete_history_manager_.get();
 }
 
 CookieManager* BisonBrowserContext::GetCookieManager() {

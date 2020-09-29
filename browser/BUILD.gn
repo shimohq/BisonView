@@ -65,6 +65,10 @@ source_set("browser") {
     "bison_variations_seed_bridge.h",
     "bison_quota_manager_bridge.cc",
     "bison_quota_manager_bridge.h",
+    "bison_autofill_client.cc",
+    "bison_autofill_client.h",
+    "bison_form_database_service.cc",
+    "bison_form_database_service.h",
     "bison_field_trials.h",
     "bison_browser_permission_request_delegate.h",
 
@@ -135,5 +139,8 @@ source_set("browser") {
     "//components/cdm/browser",
     "//services/preferences/tracked",
     "//components/version_info/android:channel_getter",
+
+    "//components/autofill/android:provider",
+    "//components/autofill/content/browser",
   ]
 }

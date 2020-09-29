@@ -16,6 +16,7 @@
 #include "base/callback_forward.h"
 #include "base/memory/ref_counted.h"
 #include "base/strings/string_piece.h"
+#include "base/threading/thread_restrictions.h"
 #include "bison/browser/renderer_host/bison_render_view_host_ext.h"
 #include "build/build_config.h"
 #include "components/navigation_interception/intercept_navigation_delegate.h"
@@ -54,41 +55,24 @@ using navigation_interception::InterceptNavigationDelegate;
 
 namespace bison {
 
-class BisonJavaScriptDialogManager;
 class BisonContentsClientBridge;
 class BisonWebContentsDelegate;
 class PermissionRequestHandler;
 
 class BisonContents : public PermissionRequestHandlerClient,
                       public BisonBrowserPermissionRequestDelegate,
-                      public WebContentsDelegate,
                       public WebContentsObserver {
  public:
-  ~BisonContents() override;
+  // Returns the BisonContents object corresponding to the given WebContents.
+  static BisonContents* FromWebContents(WebContents* web_contents);
+  static BisonContents* CreateBisonContents(BrowserContext* browser_context);
+
+  static std::string GetLocale();
 
   static std::string GetLocaleList();
 
-  void LoadURL(const GURL& url);
-  void LoadURLForFrame(const GURL& url,
-                       const std::string& frame_name,
-                       ui::PageTransition);
-  void LoadDataWithBaseURL(const GURL& url,
-                           const std::string& data,
-                           const GURL& base_url);
-
-  void LoadDataAsStringWithBaseURL(const GURL& url,
-                                   const std::string& data,
-                                   const GURL& base_url);
-
-  void GoBackOrForward(int offset);
-  void Reload();
-  void ReloadBypassingCache();
-  void Stop();
-
-  static BisonContents* CreateBisonContents(BrowserContext* browser_context);
-
-  // Returns the BisonContents object corresponding to the given WebContents.
-  static BisonContents* FromWebContents(WebContents* web_contents);
+  BisonContents(std::unique_ptr<WebContents> web_contents);
+  ~BisonContents() override;
 
   BisonRenderViewHostExt* render_view_host_ext() {
     return render_view_host_ext_.get();
@@ -114,34 +98,21 @@ class BisonContents : public PermissionRequestHandlerClient,
       JNIEnv* env,
       jboolean value,
       const base::android::JavaParamRef<jstring>& origin);
+  // Per WebView Cookie Policy
+  bool AllowThirdPartyCookies();
+
+  void SetAutofillClient(const base::android::JavaRef<jobject>& client);
 
   void Destroy(JNIEnv* env);
 
  private:
-  class DevToolsWebContentsObserver;
-
   void ShowGeolocationPrompt(const GURL& origin,
                              base::OnceCallback<void(bool)>);
   void HideGeolocationPrompt(const GURL& origin);
 
-  BisonContents(std::unique_ptr<WebContents> web_contents);
-
-  // Helper method for the two public LoadData methods.
-  void LoadDataWithBaseURLInternal(const GURL& url,
-                                   const std::string& data,
-                                   const GURL& base_url,
-                                   bool load_as_string);
-
-  gfx::NativeView GetContentView();
-
-  void ToggleFullscreenModeForTab(WebContents* web_contents,
-                                  bool enter_fullscreen);
-
   // WebContentsObserver overrides
   void DidFinishNavigation(
       content::NavigationHandle* navigation_handle) override;
-
-  void OnDevToolsWebContentsDestroyed();
 
   // PermissionRequestHandlerClient implementation.
   void OnPermissionRequest(base::android::ScopedJavaLocalRef<jobject> j_request,
@@ -167,17 +138,14 @@ class BisonContents : public PermissionRequestHandlerClient,
       base::OnceCallback<void(bool)> callback) override;
   void CancelMIDISysexPermissionRequests(const GURL& origin) override;
 
-  std::unique_ptr<BisonJavaScriptDialogManager> dialog_manager_;
-
   std::unique_ptr<WebContents> web_contents_;
   std::unique_ptr<BisonWebContentsDelegate> web_contents_delegate_;
   std::unique_ptr<BisonContentsClientBridge> contents_client_bridge_;
   std::unique_ptr<BisonRenderViewHostExt> render_view_host_ext_;
-  std::unique_ptr<DevToolsWebContentsObserver> devtools_observer_;
 
   std::unique_ptr<PermissionRequestHandler> permission_request_handler_;
 
-  bool is_fullscreen_;
+  // base::ScopedAllowBlocking allow_blocking_;
 
   gfx::Size content_size_;
 

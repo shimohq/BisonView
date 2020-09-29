@@ -140,13 +140,13 @@ class BisonContentBrowserClient : public content::ContentBrowserClient {
       const base::CommandLine& command_line,
       int child_process_id,
       content::PosixFileDescriptorInfo* mappings) override;
-
-  // CreateURLLoaderThrottles(
-  //     const network::ResourceRequest& request,
-  //     content::BrowserContext* browser_context,
-  //     const base::RepeatingCallback<content::WebContents*()>& wc_getter,
-  //     content::NavigationUIData* navigation_ui_data,
-  //     int frame_tree_node_id) override;
+  std::vector<std::unique_ptr<blink::URLLoaderThrottle>>
+  CreateURLLoaderThrottles(
+      const network::ResourceRequest& request,
+      content::BrowserContext* browser_context,
+      const base::RepeatingCallback<content::WebContents*()>& wc_getter,
+      content::NavigationUIData* navigation_ui_data,
+      int frame_tree_node_id) override;
   void ExposeInterfacesToMediaService(
       service_manager::BinderRegistry* registry,
       content::RenderFrameHost* render_frame_host) override;
@@ -175,6 +175,11 @@ class BisonContentBrowserClient : public content::ContentBrowserClient {
       mojo::PendingRemote<network::mojom::TrustedURLLoaderHeaderClient>*
           header_client,
       bool* bypass_redirect_checks) override;
+  void WillCreateURLLoaderFactoryForAppCacheSubresource(
+      int render_process_id,
+      mojo::PendingRemote<network::mojom::URLLoaderFactory>* pending_factory)
+      override;
+  uint32_t GetWebSocketOptions(content::RenderFrameHost* frame) override;
   bool WillCreateRestrictedCookieManager(
       network::mojom::RestrictedCookieManagerRole role,
       content::BrowserContext* browser_context,

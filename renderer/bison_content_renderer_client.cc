@@ -1,29 +1,36 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file.
-
-#include "bison_content_renderer_client.h"
+#include "bison/renderer/bison_content_renderer_client.h"
 
 #include <string>
+
+#include "bison/common/render_view_messages.h"
+#include "bison/renderer/bison_render_view_observer.h"
 
 #include "base/bind.h"
 #include "base/command_line.h"
 #include "base/logging.h"
 #include "base/macros.h"
 #include "base/strings/string_number_conversions.h"
-#include "bison_render_view_observer.h"
 #include "components/cdm/renderer/external_clear_key_key_system_properties.h"
 #include "components/web_cache/renderer/web_cache_impl.h"
 #include "content/public/child/child_thread.h"
 #include "content/public/common/service_manager_connection.h"
 #include "content/public/common/simple_connection_filter.h"
+#include "content/public/renderer/render_frame.h"
+#include "content/public/renderer/render_thread.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "mojo/public/cpp/bindings/receiver.h"
 #include "mojo/public/cpp/system/message_pipe.h"
 #include "net/base/net_errors.h"
 #include "ppapi/buildflags/buildflags.h"
 #include "services/service_manager/public/cpp/binder_registry.h"
+#include "third_party/blink/public/platform/platform.h"
+#include "third_party/blink/public/platform/web_string.h"
+#include "third_party/blink/public/platform/web_url.h"
 #include "third_party/blink/public/platform/web_url_error.h"
+#include "third_party/blink/public/platform/web_url_request.h"
+#include "third_party/blink/public/web/web_frame.h"
+#include "third_party/blink/public/web/web_navigation_type.h"
+#include "third_party/blink/public/web/web_security_policy.h"
 #include "third_party/blink/public/web/web_view.h"
 #include "v8/include/v8.h"
 
@@ -34,6 +41,7 @@
 
 using content::ContentRendererClient;
 using content::RenderFrame;
+using content::RenderThread;
 using content::RenderView;
 
 namespace bison {
@@ -68,7 +76,36 @@ bool BisonContentRendererClient::HandleNavigation(
   if (!request.HttpMethod().Equals("GET"))
     return false;
 
-  return false;
+  bool application_initiated =
+      !is_content_initiated || type == blink::kWebNavigationTypeBackForward;
+
+  // Don't offer application-initiated navigations unless it's a redirect.
+  if (application_initiated && !is_redirect)
+    return false;
+
+  bool is_main_frame = !frame->Parent();
+  const GURL& gurl = request.Url();
+  // For HTTP schemes, only top-level navigations can be overridden. Similarly,
+  // WebView Classic lets app override only top level about:blank navigations.
+  // So we filter out non-top about:blank navigations here.
+  if (!is_main_frame &&
+      (gurl.SchemeIs(url::kHttpScheme) || gurl.SchemeIs(url::kHttpsScheme) ||
+       gurl.SchemeIs(url::kAboutScheme)))
+    return false;
+
+  if (render_view_was_created_by_renderer) {
+    return false;
+  }
+
+  bool ignore_navigation = false;
+  base::string16 url = request.Url().GetString().Utf16();
+  bool has_user_gesture = request.HasUserGesture();
+
+  int render_frame_id = render_frame->GetRoutingID();
+  RenderThread::Get()->Send(new BisonViewHostMsg_ShouldOverrideUrlLoading(
+      render_frame_id, url, has_user_gesture, is_redirect, is_main_frame,
+      &ignore_navigation));
+  return ignore_navigation;
 }
 
 void BisonContentRendererClient::PrepareErrorPage(

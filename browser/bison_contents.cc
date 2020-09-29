@@ -12,6 +12,7 @@
 #include "bison/browser/bison_contents_client_bridge.h"
 #include "bison/browser/bison_contents_io_thread_client.h"
 #include "bison/browser/bison_javascript_dialog_manager.h"
+#include "bison/browser/bison_settings.h"
 #include "bison/browser/bison_web_contents_delegate.h"
 #include "bison/browser/permission/bison_permission_request.h"
 #include "bison/browser/permission/permission_request_handler.h"
@@ -32,6 +33,7 @@
 #include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/task/post_task.h"
+#include "base/threading/thread_restrictions.h"
 #include "base/threading/thread_task_runner_handle.h"
 #include "build/build_config.h"
 #include "components/navigation_interception/intercept_navigation_delegate.h"
@@ -57,6 +59,7 @@
 using base::android::AttachCurrentThread;
 using base::android::ConvertUTF8ToJavaString;
 using base::android::JavaParamRef;
+using base::android::JavaRef;
 using base::android::ScopedJavaLocalRef;
 using content::BluetoothChooser;
 using content::BluetoothScanningPrompt;
@@ -73,24 +76,12 @@ using navigation_interception::InterceptNavigationDelegate;
 
 namespace bison {
 
-class BisonContents::DevToolsWebContentsObserver : public WebContentsObserver {
- public:
-  DevToolsWebContentsObserver(BisonContents* bison_view,
-                              WebContents* web_contents)
-      : WebContentsObserver(web_contents), bison_view_(bison_view) {}
-
-  // WebContentsObserver
-  void WebContentsDestroyed() override {
-    bison_view_->OnDevToolsWebContentsDestroyed();
-  }
-
- private:
-  BisonContents* bison_view_;
-
-  DISALLOW_COPY_AND_ASSIGN(DevToolsWebContentsObserver);
-};
-
 namespace {
+
+std::string* g_locale() {
+  static base::NoDestructor<std::string> locale;
+  return locale.get();
+}
 
 std::string* g_locale_list() {
   static base::NoDestructor<std::string> locale_list;
@@ -117,6 +108,19 @@ class BisonContentsUserData : public base::SupportsUserData::Data {
 
 }  // namespace
 
+void JNI_BisonContents_UpdateDefaultLocale(
+    JNIEnv* env,
+    const JavaParamRef<jstring>& locale,
+    const JavaParamRef<jstring>& locale_list) {
+  *g_locale() = ConvertJavaStringToUTF8(env, locale);
+  *g_locale_list() = ConvertJavaStringToUTF8(env, locale_list);
+}
+
+// static
+std::string BisonContents::GetLocale() {
+  return *g_locale();
+}
+
 // static
 std::string BisonContents::GetLocaleList() {
   return *g_locale_list();
@@ -124,8 +128,7 @@ std::string BisonContents::GetLocaleList() {
 
 BisonContents::BisonContents(std::unique_ptr<WebContents> web_contents)
     : WebContentsObserver(web_contents.get()),
-      web_contents_(std::move(web_contents)),
-      is_fullscreen_(false) {
+      web_contents_(std::move(web_contents)) {
   web_contents_->SetUserData(bison::kBisonContentsUserDataKey,
                              std::make_unique<BisonContentsUserData>(this));
 
@@ -140,10 +143,6 @@ BisonContents::~BisonContents() {
     return;
   VLOG(0) << "destroy native";
   Java_BisonContents_onNativeDestroyed(env, obj);
-  // for (auto it = RenderProcessHost::AllHostsIterator(); !it.IsAtEnd();
-  //      it.Advance()) {
-  //   it.GetCurrentValue()->DisableKeepAliveRefCount();
-  // }
 }
 
 BisonContents* BisonContents::CreateBisonContents(
@@ -175,97 +174,6 @@ BisonBrowserPermissionRequestDelegate::FromID(int render_process_id,
           content::RenderFrameHost::FromID(render_process_id,
                                            render_frame_id)));
   return contents;
-}
-
-void BisonContents::LoadURL(const GURL& url) {
-  LoadURLForFrame(
-      url, std::string(),
-      ui::PageTransitionFromInt(ui::PAGE_TRANSITION_TYPED |
-                                ui::PAGE_TRANSITION_FROM_ADDRESS_BAR));
-}
-
-void BisonContents::LoadURLForFrame(const GURL& url,
-                                    const std::string& frame_name,
-                                    ui::PageTransition transition_type) {
-  NavigationController::LoadURLParams params(url);
-  params.frame_name = frame_name;
-  params.transition_type = transition_type;
-  web_contents_->GetController().LoadURLWithParams(params);
-  web_contents_->Focus();
-}
-
-void BisonContents::LoadDataWithBaseURL(const GURL& url,
-                                        const std::string& data,
-                                        const GURL& base_url) {
-  bool load_as_string = false;
-  LoadDataWithBaseURLInternal(url, data, base_url, load_as_string);
-}
-
-void BisonContents::LoadDataAsStringWithBaseURL(const GURL& url,
-                                                const std::string& data,
-                                                const GURL& base_url) {
-  bool load_as_string = true;
-  LoadDataWithBaseURLInternal(url, data, base_url, load_as_string);
-}
-
-void BisonContents::LoadDataWithBaseURLInternal(const GURL& url,
-                                                const std::string& data,
-                                                const GURL& base_url,
-                                                bool load_as_string) {
-  NavigationController::LoadURLParams params(GURL::EmptyGURL());
-  const std::string data_url_header = "data:text/html;charset=utf-8,";
-  if (load_as_string) {
-    params.url = GURL(data_url_header);
-    std::string data_url_as_string = data_url_header + data;
-    params.data_url_as_string =
-        base::RefCountedString::TakeString(&data_url_as_string);
-  } else {
-    params.url = GURL(data_url_header + data);
-  }
-
-  params.load_type = NavigationController::LOAD_TYPE_DATA;
-  params.base_url_for_data_url = base_url;
-  params.virtual_url_for_data_url = url;
-  params.override_user_agent = NavigationController::UA_OVERRIDE_FALSE;
-  web_contents_->GetController().LoadURLWithParams(params);
-  web_contents_->Focus();
-}
-
-void BisonContents::GoBackOrForward(int offset) {
-  web_contents_->GetController().GoToOffset(offset);
-  web_contents_->Focus();
-}
-
-void BisonContents::Reload() {
-  web_contents_->GetController().Reload(ReloadType::NORMAL, false);
-  web_contents_->Focus();
-}
-
-void BisonContents::ReloadBypassingCache() {
-  web_contents_->GetController().Reload(ReloadType::BYPASSING_CACHE, false);
-  web_contents_->Focus();
-}
-
-void BisonContents::Stop() {
-  web_contents_->Stop();
-  web_contents_->Focus();
-}
-
-gfx::NativeView BisonContents::GetContentView() {
-  if (!web_contents_)
-    return nullptr;
-  return web_contents_->GetNativeView();
-}
-
-void BisonContents::ToggleFullscreenModeForTab(WebContents* web_contents,
-                                               bool enter_fullscreen) {
-  // PlatformToggleFullscreenModeForTab(web_contents, enter_fullscreen);
-  if (is_fullscreen_ != enter_fullscreen) {
-    is_fullscreen_ = enter_fullscreen;
-    web_contents->GetRenderViewHost()
-        ->GetWidget()
-        ->SynchronizeVisualProperties();
-  }
 }
 
 void BisonContents::DidFinishNavigation(
@@ -316,10 +224,6 @@ void ShowGeolocationPromptHelper(const JavaObjectWeakGlobalRef& java_ref,
 }
 
 }  // namespace
-
-void BisonContents::OnDevToolsWebContentsDestroyed() {
-  devtools_observer_.reset();
-}
 
 void BisonContents::ShowGeolocationPrompt(
     const GURL& requesting_frame,
@@ -411,6 +315,12 @@ void BisonContents::OnPermissionRequestCanceled(
     return;
 
   Java_BisonContents_onPermissionRequestCanceled(env, j_ref, j_request);
+}
+
+bool BisonContents::AllowThirdPartyCookies() {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  BisonSettings* settings = BisonSettings::FromWebContents(web_contents_.get());
+  return settings->GetAllowThirdPartyCookies();
 }
 
 void BisonContents::RequestProtectedMediaIdentifierPermission(
@@ -514,6 +424,15 @@ void BisonContents::SetExtraHeadersForUrl(
 void BisonContents::GrantFileSchemeAccesstoChildProcess(JNIEnv* env) {
   content::ChildProcessSecurityPolicy::GetInstance()->GrantRequestScheme(
       web_contents_->GetMainFrame()->GetProcess()->GetID(), url::kFileScheme);
+}
+
+void BisonContents::SetAutofillClient(const JavaRef<jobject>& client) {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  JNIEnv* env = AttachCurrentThread();
+  ScopedJavaLocalRef<jobject> obj = java_ref_.get(env);
+  if (obj.is_null())
+    return;
+  Java_BisonContents_setAutofillClient(env, obj, client);
 }
 
 void BisonContents::Destroy(JNIEnv* env) {
