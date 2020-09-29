@@ -1,0 +1,74 @@
+
+
+#include "bison/renderer/bison_url_loader_throttle_provider.h"
+
+#include <memory>
+
+#include "base/feature_list.h"
+#include "components/safe_browsing/features.h"
+#include "components/safe_browsing/renderer/renderer_url_loader_throttle.h"
+#include "content/public/common/content_features.h"
+#include "content/public/renderer/render_thread.h"
+
+namespace bison {
+
+BisonURLLoaderThrottleProvider::BisonURLLoaderThrottleProvider(
+    blink::ThreadSafeBrowserInterfaceBrokerProxy* broker,
+    content::URLLoaderThrottleProviderType type)
+    : type_(type) {
+  DETACH_FROM_THREAD(thread_checker_);
+  broker->GetInterface(safe_browsing_remote_.InitWithNewPipeAndPassReceiver());
+}
+
+BisonURLLoaderThrottleProvider::BisonURLLoaderThrottleProvider(
+    const BisonURLLoaderThrottleProvider& other)
+    : type_(other.type_) {
+  DETACH_FROM_THREAD(thread_checker_);
+  if (other.safe_browsing_) {
+    other.safe_browsing_->Clone(
+        safe_browsing_remote_.InitWithNewPipeAndPassReceiver());
+  }
+}
+
+std::unique_ptr<content::URLLoaderThrottleProvider>
+BisonURLLoaderThrottleProvider::Clone() {
+  DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
+  if (safe_browsing_remote_)
+    safe_browsing_.Bind(std::move(safe_browsing_remote_));
+  return base::WrapUnique(new BisonURLLoaderThrottleProvider(*this));
+}
+
+BisonURLLoaderThrottleProvider::~BisonURLLoaderThrottleProvider() {
+  DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
+}
+
+std::vector<std::unique_ptr<blink::URLLoaderThrottle>>
+BisonURLLoaderThrottleProvider::CreateThrottles(
+    int render_frame_id,
+    const blink::WebURLRequest& request,
+    content::ResourceType resource_type) {
+  DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
+
+  std::vector<std::unique_ptr<blink::URLLoaderThrottle>> throttles;
+
+  // Some throttles have already been added in the browser for frame resources.
+  // Don't add them for frame requests.
+  bool is_frame_resource = content::IsResourceTypeFrame(resource_type);
+
+  DCHECK(!is_frame_resource ||
+         type_ == content::URLLoaderThrottleProviderType::kFrame);
+
+  if (!is_frame_resource) {
+    if (safe_browsing_remote_)
+      safe_browsing_.Bind(std::move(safe_browsing_remote_));
+    throttles.push_back(
+        std::make_unique<safe_browsing::RendererURLLoaderThrottle>(
+            safe_browsing_.get(), render_frame_id));
+  }
+
+  return throttles;
+}
+
+void BisonURLLoaderThrottleProvider::SetOnline(bool is_online) {}
+
+}  // namespace bison
