@@ -1,5 +1,12 @@
 #include "bison/browser/bison_browser_main_parts.h"
 
+#include "bison/browser/bison_browser_context.h"
+#include "bison/browser/bison_content_browser_client.h"
+#include "bison/browser/bison_contents.h"
+#include "bison/browser/bison_devtools_manager_delegate.h"
+#include "bison/browser/metrics/memory_metrics_logger.h"
+#include "bison/browser/network_service/bison_network_change_notifier_factory.h"
+
 #include "base/base_switches.h"
 #include "base/bind.h"
 #include "base/command_line.h"
@@ -8,11 +15,6 @@
 #include "base/message_loop/message_loop_current.h"
 #include "base/threading/thread.h"
 #include "base/threading/thread_restrictions.h"
-#include "bison/browser/bison_browser_context.h"
-#include "bison/browser/bison_content_browser_client.h"
-#include "bison/browser/bison_contents.h"
-#include "bison/browser/bison_devtools_manager_delegate.h"
-#include "bison/browser/network_service/bison_network_change_notifier_factory.h"
 #include "build/build_config.h"
 #include "cc/base/switches.h"
 #include "components/crash/content/browser/child_exit_observer_android.h"
@@ -58,6 +60,8 @@ int BisonBrowserMainParts::PreEarlyInitialization() {
         base::MessagePumpType::UI);
   }
 
+  browser_process_ = std::make_unique<BisonBrowserProcess>(
+      browser_client_->bison_feature_list_creator());
   return service_manager::RESULT_CODE_NORMAL_EXIT;
 }
 
@@ -76,8 +80,8 @@ int BisonBrowserMainParts::PreCreateThreads() {
 void BisonBrowserMainParts::PreMainMessageLoopRun() {
   BisonBrowserProcess::GetInstance()->PreMainMessageLoopRun();
   browser_client_->InitBrowserContext();
-
   content::RenderFrameHost::AllowInjectingJavaScript();
+  metrics_logger_ = std::make_unique<MemoryMetricsLogger>();
 }
 
 bool BisonBrowserMainParts::MainMessageLoopRun(int* result_code) {

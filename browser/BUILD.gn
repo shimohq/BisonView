@@ -91,6 +91,8 @@ source_set("browser") {
     "network_service/bison_proxy_config_monitor.h",
     "network_service/bison_url_loader_throttle.cc",
     "network_service/bison_url_loader_throttle.h",
+    "network_service/bison_proxying_restricted_cookie_manager.cc",
+    "network_service/bison_proxying_restricted_cookie_manager.h",
 
     "renderer_host/bison_render_view_host_ext.cc",
     "renderer_host/bison_render_view_host_ext.h",
@@ -110,6 +112,7 @@ source_set("browser") {
   ]
 
   deps = [
+    "metrics",
     "//base",
     "//bison:bison_jni_headers",
     "//bison/common",

@@ -37,6 +37,7 @@ using content::WebPreferences;
 
 namespace bison {
 class BisonBrowserContext;
+class BisonFeatureListCreator;
 
 std::string GetUserAgent();
 std::string GetProduct();
@@ -51,7 +52,8 @@ class BisonContentBrowserClient : public content::ContentBrowserClient {
   static void set_check_cleartext_permitted(bool permitted);
   static bool get_check_cleartext_permitted();
 
-  BisonContentBrowserClient();
+  explicit BisonContentBrowserClient(
+      BisonFeatureListCreator* feature_list_creator);
   ~BisonContentBrowserClient() override;
 
   BisonBrowserContext* InitBrowserContext();
@@ -173,7 +175,17 @@ class BisonContentBrowserClient : public content::ContentBrowserClient {
       mojo::PendingRemote<network::mojom::TrustedURLLoaderHeaderClient>*
           header_client,
       bool* bypass_redirect_checks) override;
-
+  bool WillCreateRestrictedCookieManager(
+      network::mojom::RestrictedCookieManagerRole role,
+      content::BrowserContext* browser_context,
+      const url::Origin& origin,
+      const GURL& site_for_cookies,
+      const url::Origin& top_frame_origin,
+      bool is_service_worker,
+      int process_id,
+      int routing_id,
+      mojo::PendingReceiver<network::mojom::RestrictedCookieManager>* receiver)
+      override;
   std::string GetUserAgent() override;
   std::string GetProduct() override;
   void LogWebFeatureForCurrentPage(content::RenderFrameHost* render_frame_host,
@@ -194,12 +206,11 @@ class BisonContentBrowserClient : public content::ContentBrowserClient {
     login_request_callback_ = std::move(login_request_callback);
   }
 
-  static void DisableCreatingThreadPool();
+  BisonFeatureListCreator* bison_feature_list_creator() {
+    return bison_feature_list_creator_;
+  }
 
- protected:
-  virtual void ExposeInterfacesToFrame(
-      service_manager::BinderRegistryWithArgs<content::RenderFrameHost*>*
-          registry);
+  static void DisableCreatingThreadPool();
 
  private:
   base::OnceClosure select_client_certificate_callback_;
@@ -212,6 +223,9 @@ class BisonContentBrowserClient : public content::ContentBrowserClient {
   std::unique_ptr<
       service_manager::BinderRegistryWithArgs<content::RenderFrameHost*>>
       frame_interfaces_;
+
+  // The AwFeatureListCreator is owned by AwMainDelegate.
+  BisonFeatureListCreator* const bison_feature_list_creator_;
 };
 
 // The delay for sending reports when running with --run-web-tests

@@ -14,7 +14,9 @@
 
 namespace bison {
 
+class BisonBrowserProcess;
 class BisonContentBrowserClient;
+class MemoryMetricsLogger;
 
 class BisonBrowserMainParts : public content::BrowserMainParts {
  public:
@@ -33,7 +35,7 @@ class BisonBrowserMainParts : public content::BrowserMainParts {
 
   BisonContentBrowserClient* browser_client_;
 
-  // std::unique_ptr<BisonBrowserContext> browser_context_;
+  std::unique_ptr<MemoryMetricsLogger> metrics_logger_;
 
   std::unique_ptr<BisonBrowserProcess> browser_process_;
 

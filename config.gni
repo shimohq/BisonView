@@ -15,4 +15,5 @@ bison_java_deps = [
 
   # or not require
   "//components/variations/android:variations_java",
+  "//components/policy/android:policy_java",
 ]

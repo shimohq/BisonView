@@ -15,8 +15,10 @@
 #include "bison/browser/bison_contents_client_bridge.h"
 #include "bison/browser/bison_contents_io_thread_client.h"
 #include "bison/browser/bison_devtools_manager_delegate.h"
+#include "bison/browser/bison_feature_list_creator.h"
 #include "bison/browser/bison_settings.h"
 #include "bison/browser/cookie_manager.h"
+#include "bison/browser/network_service/bison_proxying_restricted_cookie_manager.h"
 #include "bison/browser/network_service/bison_proxying_url_loader_factory.h"
 #include "bison/browser/network_service/bison_url_loader_throttle.h"
 #include "bison/common/bison_descriptors.h"
@@ -287,7 +289,11 @@ bool BisonContentBrowserClient::get_check_cleartext_permitted() {
   return g_check_cleartext_permitted;
 }
 
-BisonContentBrowserClient::BisonContentBrowserClient() {
+BisonContentBrowserClient::BisonContentBrowserClient(
+    BisonFeatureListCreator* feature_list_creator)
+    : bison_feature_list_creator_(feature_list_creator) {
+  DCHECK(bison_feature_list_creator_);
+
   // frame_interfaces_.AddInterface(
   //     base::BindRepeating(&DummyBindPasswordManagerDriver));
 }
@@ -386,7 +392,6 @@ void BisonContentBrowserClient::BindInterfaceRequestFromFrame(
   if (!frame_interfaces_) {
     frame_interfaces_ = std::make_unique<
         service_manager::BinderRegistryWithArgs<content::RenderFrameHost*>>();
-    ExposeInterfacesToFrame(frame_interfaces_.get());
   }
 
   frame_interfaces_->TryBindInterface(interface_name, &interface_pipe,
@@ -753,9 +758,29 @@ bool BisonContentBrowserClient::WillCreateURLLoaderFactory(
   return true;
 }
 
-void BisonContentBrowserClient::ExposeInterfacesToFrame(
-    service_manager::BinderRegistryWithArgs<content::RenderFrameHost*>*
-        registry) {}
+bool BisonContentBrowserClient::WillCreateRestrictedCookieManager(
+    network::mojom::RestrictedCookieManagerRole role,
+    content::BrowserContext* browser_context,
+    const url::Origin& origin,
+    const GURL& site_for_cookies,
+    const url::Origin& top_frame_origin,
+    bool is_service_worker,
+    int process_id,
+    int routing_id,
+    mojo::PendingReceiver<network::mojom::RestrictedCookieManager>* receiver) {
+  mojo::PendingReceiver<network::mojom::RestrictedCookieManager> orig_receiver =
+      std::move(*receiver);
+
+  mojo::PendingRemote<network::mojom::RestrictedCookieManager>
+      target_rcm_remote;
+  *receiver = target_rcm_remote.InitWithNewPipeAndPassReceiver();
+
+  BisonProxyingRestrictedCookieManager::CreateAndBind(
+      std::move(target_rcm_remote), is_service_worker, process_id, routing_id,
+      std::move(orig_receiver));
+
+  return false;  // only made a proxy, still need the actual impl to be made.
+}
 
 void BisonContentBrowserClient::LogWebFeatureForCurrentPage(
     content::RenderFrameHost* render_frame_host,

@@ -44,13 +44,13 @@ BisonBrowserProcess::~BisonBrowserProcess() {
 }
 
 void BisonBrowserProcess::PreMainMessageLoopRun() {
-  // pref_change_registrar_.Init(local_state());
-  // auto auth_pref_callback = base::BindRepeating(
-  //     &BisonBrowserProcess::OnAuthPrefsChanged, base::Unretained(this));
-  // pref_change_registrar_.Add(prefs::kAuthServerWhitelist,
-  // auth_pref_callback);
-  // pref_change_registrar_.Add(prefs::kAuthAndroidNegotiateAccountType,
-  //                            auth_pref_callback);
+  pref_change_registrar_.Init(local_state());
+  auto auth_pref_callback = base::BindRepeating(
+      &BisonBrowserProcess::OnAuthPrefsChanged, base::Unretained(this));
+  pref_change_registrar_.Add(prefs::kAuthServerWhitelist,
+  auth_pref_callback);
+  pref_change_registrar_.Add(prefs::kAuthAndroidNegotiateAccountType,
+                             auth_pref_callback);
 
   // jiang
   // InitSafeBrowsing();

@@ -173,7 +173,7 @@ bool BisonMainDelegate::BasicStartupComplete(int* exit_code) {
 
     features.DisableIfNotSet(media::kUseAndroidOverlay);
 
-    // features.EnableIfNotSet(media::kDisableSurfaceLayerForVideo);
+    features.EnableIfNotSet(media::kDisableSurfaceLayerForVideo);
 
     features.DisableIfNotSet(media::kMediaDrmPersistentLicense);
 
@@ -184,7 +184,7 @@ bool BisonMainDelegate::BasicStartupComplete(int* exit_code) {
 
     features.DisableIfNotSet(::features::kBackgroundFetch);
 
-    // features.DisableIfNotSet(::features::kAndroidSurfaceControl);
+    features.DisableIfNotSet(::features::kAndroidSurfaceControl);
 
     features.DisableIfNotSet(::features::kSmsReceiver);
 
@@ -270,6 +270,17 @@ void BisonMainDelegate::ProcessExiting(const std::string& process_type) {
   logging::CloseLogFile();
 }
 
+bool BisonMainDelegate::ShouldCreateFeatureList() {
+  return false;
+}
+
+// This function is called only on the browser process.
+void BisonMainDelegate::PostEarlyInitialization(bool is_running_tests) {
+  // InitIcuAndResourceBundleBrowserSide();
+  bison_feature_list_creator_->CreateFeatureListAndFieldTrials();
+  PostFieldTrialInitialization();
+}
+
 void BisonMainDelegate::InitializeResourceBundle() {
   // On Android, the renderer runs with a different UID and can never access
   // the file system. Use the file descriptor passed in at launch time.
@@ -304,7 +315,8 @@ void BisonMainDelegate::InitializeResourceBundle() {
 void BisonMainDelegate::PreCreateMainMessageLoop() {}
 
 ContentBrowserClient* BisonMainDelegate::CreateContentBrowserClient() {
-  browser_client_.reset(new BisonContentBrowserClient);
+  bison_feature_list_creator_ = std::make_unique<BisonFeatureListCreator>();
+  browser_client_.reset(new BisonContentBrowserClient(bison_feature_list_creator_.get()));
   return browser_client_.get();
 }
 

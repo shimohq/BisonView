@@ -14,20 +14,13 @@
 #include "bison/common/bison_features.h"
 
 #include "base/bind.h"
-#include "base/command_line.h"
-#include "base/environment.h"
+#include "base/feature_list.h"
 #include "base/files/file_util.h"
-#include "base/logging.h"
 #include "base/path_service.h"
+#include "base/single_thread_task_runner.h"
 #include "base/task/post_task.h"
-#include "base/threading/thread.h"
-#include "build/build_config.h"
 #include "components/cdm/browser/media_drm_storage_impl.h"
-#include "components/keyed_service/content/browser_context_dependency_manager.h"
-#include "components/keyed_service/core/simple_dependency_manager.h"
-#include "components/keyed_service/core/simple_factory_key.h"
 #include "components/keyed_service/core/simple_key_map.h"
-#include "components/network_session_configurator/common/network_switches.h"
 #include "components/policy/core/browser/browser_policy_connector_base.h"
 #include "components/policy/core/browser/configuration_policy_pref_store.h"
 #include "components/policy/core/browser/url_blacklist_manager.h"
@@ -71,6 +64,30 @@ const void* const kDownloadManagerDelegateKey = &kDownloadManagerDelegateKey;
 BisonBrowserContext* g_browser_context = NULL;
 }  // namespace
 
+BisonBrowserContext::BisonBrowserContext()
+    : context_storage_path_(GetContextStoragePath()),
+      simple_factory_key_(GetPath(), IsOffTheRecord()) {
+  DCHECK(!g_browser_context);
+  g_browser_context = this;
+  SimpleKeyMap::GetInstance()->Associate(this, &simple_factory_key_);
+
+  BrowserContext::Initialize(this, context_storage_path_);
+
+  CreateUserPrefService();
+}
+
+BisonBrowserContext::~BisonBrowserContext() {
+  DCHECK_EQ(this, g_browser_context);
+  NotifyWillBeDestroyed(this);
+  SimpleKeyMap::GetInstance()->Dissociate(this);
+  if (resource_context_) {
+    BrowserThread::DeleteSoon(BrowserThread::IO, FROM_HERE,
+                              resource_context_.release());
+  }
+  ShutdownStoragePartitions();
+
+  g_browser_context = NULL;
+}
 // static
 BisonBrowserContext* BisonBrowserContext::GetDefault() {
   // TODO(joth): rather than store in a global here, lookup this instance
@@ -148,56 +165,6 @@ void BisonBrowserContext::RegisterPrefs(PrefRegistrySimple* registry) {
 #endif
 }
 
-BisonBrowserContext::BisonBrowserContext() {
-  DCHECK(!g_browser_context);
-  g_browser_context = this;
-  InitWhileIOAllowed();
-  //CreateUserPrefService();
-}
-
-BisonBrowserContext::~BisonBrowserContext() {
-  DCHECK_EQ(this, g_browser_context);
-  NotifyWillBeDestroyed(this);
-  g_browser_context = NULL;
-
-  // The SimpleDependencyManager should always be passed after the
-  // BrowserContextDependencyManager. This is because the KeyedService instances
-  // in the BrowserContextDependencyManager's dependency graph can depend on the
-  // ones in the SimpleDependencyManager's graph.
-  // deps //components/keyed_service/content
-  DependencyManager::PerformInterlockedTwoPhaseShutdown(
-      BrowserContextDependencyManager::GetInstance(), this,
-      SimpleDependencyManager::GetInstance(), key_.get());
-
-  SimpleKeyMap::GetInstance()->Dissociate(this);
-
-  // Need to destruct the ResourceContext before posting tasks which may delete
-  // the URLRequestContext because ResourceContext's destructor will remove any
-  // outstanding request while URLRequestContext's destructor ensures that there
-  // are no more outstanding requests.
-  if (resource_context_) {
-    BrowserThread::DeleteSoon(BrowserThread::IO, FROM_HERE,
-                              resource_context_.release());
-  }
-  ShutdownStoragePartitions();
-}
-
-void BisonBrowserContext::InitWhileIOAllowed() {
-  CHECK(base::PathService::Get(base::DIR_ANDROID_APP_DATA, &path_));
-  path_ = path_.Append(FILE_PATH_LITERAL("bison"));
-
-  if (!base::PathExists(path_))
-    base::CreateDirectory(path_);
-  VLOG(0) << "path_:" << path_.value();
-  FinishInitWhileIOAllowed();
-}
-
-void BisonBrowserContext::FinishInitWhileIOAllowed() {
-  BrowserContext::Initialize(this, path_);
-  key_ = std::make_unique<SimpleFactoryKey>(path_, IsOffTheRecord());
-  SimpleKeyMap::GetInstance()->Associate(this, key_.get());
-}
-
 void BisonBrowserContext::CreateUserPrefService() {
   auto pref_registry = base::MakeRefCounted<user_prefs::PrefRegistrySyncable>();
 
@@ -230,7 +197,7 @@ void BisonBrowserContext::CreateUserPrefService() {
   // if (IsDefaultBrowserContext()) {
   //   MigrateLocalStatePrefs();
   // }
-  
+
   user_prefs::UserPrefs::Set(this, user_pref_service_.get());
 }
 
@@ -254,7 +221,7 @@ CookieManager* BisonBrowserContext::GetCookieManager() {
 }
 
 base::FilePath BisonBrowserContext::GetPath() {
-  return path_;
+  return context_storage_path_;
 }
 
 bool BisonBrowserContext::IsOffTheRecord() {

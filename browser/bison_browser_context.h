@@ -12,21 +12,21 @@
 #include "base/files/file_path.h"
 #include "base/macros.h"
 #include "base/memory/ref_counted.h"
+#include "components/keyed_service/core/simple_factory_key.h"
 #include "components/prefs/pref_registry_simple.h"
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/content_browser_client.h"
 #include "content/public/browser/resource_context.h"
 
 class PrefService;
-class SimpleFactoryKey;
 
 namespace content {
-class BackgroundSyncController;
 class ContentIndexProvider;
 class DownloadManagerDelegate;
 class PermissionControllerDelegate;
 
 class ZoomLevelDelegate;
+class WebContents;
 }  // namespace content
 
 namespace bison {
@@ -66,8 +66,8 @@ class BisonBrowserContext : public content::BrowserContext {
   // BrowserContext implementation.
   base::FilePath GetPath() override;
   bool IsOffTheRecord() override;
-  content::DownloadManagerDelegate* GetDownloadManagerDelegate() override;
   content::ResourceContext* GetResourceContext() override;
+  content::DownloadManagerDelegate* GetDownloadManagerDelegate() override;
   content::BrowserPluginGuestManager* GetGuestManager() override;
   storage::SpecialStoragePolicy* GetSpecialStoragePolicy() override;
   content::PushMessagingService* GetPushMessagingService() override;
@@ -99,20 +99,15 @@ class BisonBrowserContext : public content::BrowserContext {
   // std::unique_ptr<ContentIndexProvider> content_index_provider_;
 
  private:
-  // Performs initialization of the BisonBrowserContext while IO is still
-  // allowed on the current thread.
-  void InitWhileIOAllowed();
-  void FinishInitWhileIOAllowed();
-
   void CreateUserPrefService();
 
-  base::FilePath path_;
+  base::FilePath context_storage_path_;
 
   scoped_refptr<BisonQuotaManagerBridge> quota_manager_bridge_;
 
   std::unique_ptr<PrefService> user_pref_service_;
-  
-  std::unique_ptr<SimpleFactoryKey> key_;
+
+  SimpleFactoryKey simple_factory_key_;
 
   base::android::ScopedJavaGlobalRef<jobject> obj_;
 

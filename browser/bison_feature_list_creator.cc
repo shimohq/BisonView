@@ -10,7 +10,8 @@
 #include "bison/browser/bison_browser_process.h"
 #include "bison/browser/bison_pref_names.h"
 #include "bison/browser/bison_variations_seed_bridge.h"
-//#include "bison/browser/metrics/bison_metrics_service_client.h"
+#include "bison/browser/metrics/bison_metrics_service_client.h"
+
 #include "base/base_switches.h"
 #include "base/bind.h"
 #include "base/bind_helpers.h"
@@ -81,7 +82,8 @@ std::unique_ptr<PrefService> CreatePrefService() {
   variations::VariationsService::RegisterPrefs(pref_registry.get());
   pref_registry->RegisterIntegerPref(prefs::kRestartsWithStaleSeed, 0);
 
-  BisonBrowserProcess::RegisterNetworkContextLocalStatePrefs(pref_registry.get());
+  BisonBrowserProcess::RegisterNetworkContextLocalStatePrefs(
+      pref_registry.get());
 
   PrefServiceFactory pref_service_factory;
 
@@ -125,8 +127,7 @@ BisonFeatureListCreator::BisonFeatureListCreator()
 BisonFeatureListCreator::~BisonFeatureListCreator() {}
 
 void BisonFeatureListCreator::SetUpFieldTrials() {
-  // jiang 
-  //auto* metrics_client = BisonMetricsServiceClient::GetInstance();
+  auto* metrics_client = BisonMetricsServiceClient::GetInstance();
 
   // Chrome uses the default entropy provider here (rather than low entropy
   // provider). The default provider needs to know whether UMA is enabled, but
@@ -136,11 +137,9 @@ void BisonFeatureListCreator::SetUpFieldTrials() {
   // entropy provider has fewer unique experiment combinations. This is better
   // for privacy (since experiment state doesn't identify users), but also means
   // fewer combinations tested in the wild.
-
-  // jiang 
-  // DCHECK(!field_trial_list_);
-  // field_trial_list_ = std::make_unique<base::FieldTrialList>(
-  //     metrics_client->CreateLowEntropyProvider());
+  DCHECK(!field_trial_list_);
+  field_trial_list_ = std::make_unique<base::FieldTrialList>(
+      metrics_client->CreateLowEntropyProvider());
 
   std::unique_ptr<variations::SeedResponse> seed = GetAndClearJavaSeed();
   base::Time null_time;
@@ -199,8 +198,7 @@ void BisonFeatureListCreator::CreateLocalState() {
 
 void BisonFeatureListCreator::CreateFeatureListAndFieldTrials() {
   CreateLocalState();
-  // jiang 
-  //BisonMetricsServiceClient::GetInstance()->Initialize(local_state_.get());
+  BisonMetricsServiceClient::GetInstance()->Initialize(local_state_.get());
   SetUpFieldTrials();
 }
 
