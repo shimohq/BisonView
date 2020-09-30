@@ -1,7 +1,11 @@
-#include "bison_web_contents_delegate.h"
+#include "bison/browser/bison_web_contents_delegate.h"
+#include <utility>
 
+#include "bison/browser/bison_contents.h"
+#include "bison/browser/bison_contents_io_thread_client.h"
+#include "bison/browser/bison_javascript_dialog_manager.h"
 #include "base/lazy_instance.h"
-#include "bison_javascript_dialog_manager.h"
+
 #include "components/navigation_interception/intercept_navigation_delegate.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/render_view_host.h"
@@ -22,21 +26,22 @@ BisonWebContentsDelegate::BisonWebContentsDelegate(JNIEnv* env, jobject obj)
 BisonWebContentsDelegate::~BisonWebContentsDelegate() {}
 
 // jiang 当js无响应回调
-// void BisonWebContentsDelegate::RendererUnresponsive(
-//     content::WebContents* source,
-//     content::RenderWidgetHost* render_widget_host,
-//     base::RepeatingClosure hang_monitor_restarter) {
-//   BisonContents* bison_contents = BisonContents::FromWebContents(source);
-//   if (!bison_contents)
-//     return;
+void BisonWebContentsDelegate::RendererUnresponsive(
+    content::WebContents* source,
+    content::RenderWidgetHost* render_widget_host,
+    base::RepeatingClosure hang_monitor_restarter) {
+  // BisonContents* bison_contents = BisonContents::FromWebContents(source);
+  // if (!bison_contents)
+  //   return;
 
-//   content::RenderProcessHost* render_process_host =
-//       render_widget_host->GetProcess();
-//   if (render_process_host->IsInitializedAndNotDead()) {
-//     bison_contents->RendererUnresponsive(render_widget_host->GetProcess());
-//     hang_monitor_restarter.Run();
-//   }
-// }
+  // content::RenderProcessHost* render_process_host =
+  //     render_widget_host->GetProcess();
+  // if (render_process_host->IsInitializedAndNotDead()) {
+  //   bison_contents->RendererUnresponsive(render_widget_host->GetProcess());
+  //   hang_monitor_restarter.Run();
+  // }
+
+}
 
 void BisonWebContentsDelegate::AddNewContents(
     WebContents* source,
@@ -71,6 +76,14 @@ void BisonWebContentsDelegate::EnterFullscreenModeForTab(
     const GURL& origin,
     const blink::mojom::FullscreenOptions& options) {
   // ToggleFullscreenModeForTab(web_contents, true);
+}
+
+void BisonWebContentsDelegate::CanDownload(
+    const GURL& url,
+    const std::string& request_method,
+    base::OnceCallback<void(bool)> callback) {
+  NOTREACHED();
+  std::move(callback).Run(false);
 }
 
 void BisonWebContentsDelegate::ExitFullscreenModeForTab(
@@ -109,9 +122,7 @@ void BisonWebContentsDelegate::CloseContents(WebContents* source) {
   // Close();
 }
 
-bool BisonWebContentsDelegate::CanOverscrollContent() {
-  return false;
-}
+
 
 void BisonWebContentsDelegate::DidNavigateMainFramePostCommit(
     WebContents* web_contents) {}
@@ -119,6 +130,18 @@ void BisonWebContentsDelegate::DidNavigateMainFramePostCommit(
 JavaScriptDialogManager* BisonWebContentsDelegate::GetJavaScriptDialogManager(
     WebContents* source) {
   return g_javascript_dialog_manager.Pointer();
+}
+
+// Notifies the delegate about the creation of a new WebContents. This
+// typically happens when popups are created.
+void BisonWebContentsDelegate::WebContentsCreated(
+    WebContents* source_contents,
+    int opener_render_process_id,
+    int opener_render_frame_id,
+    const std::string& frame_name,
+    const GURL& target_url,
+    content::WebContents* new_contents) {
+  BisonContentsIoThreadClient::RegisterPendingContents(new_contents);
 }
 
 std::unique_ptr<BluetoothChooser> BisonWebContentsDelegate::RunBluetoothChooser(
@@ -138,26 +161,9 @@ BisonWebContentsDelegate::ShowBluetoothScanningPrompt(
   return nullptr;
 }
 
-bool BisonWebContentsDelegate::DidAddMessageToConsole(
-    WebContents* source,
-    blink::mojom::ConsoleMessageLevel log_level,
-    const base::string16& message,
-    int32_t line_no,
-    const base::string16& source_id) {
-  return false;
-}
-
 void BisonWebContentsDelegate::PortalWebContentsCreated(
     WebContents* portal_web_contents) {}
 
-void BisonWebContentsDelegate::RendererUnresponsive(
-    WebContents* source,
-    RenderWidgetHost* render_widget_host,
-    base::RepeatingClosure hang_monitor_restarter) {
-  // BlinkTestController* blink_test_controller = BlinkTestController::Get();
-  // if (blink_test_controller && switches::IsRunWebTestsSwitchPresent())
-  //   blink_test_controller->RendererUnresponsive();
-}
 
 void BisonWebContentsDelegate::ActivateContents(WebContents* contents) {
   contents->GetRenderViewHost()->GetWidget()->Focus();

@@ -124,8 +124,7 @@ public class BisonSettings {
     private boolean mAcceptThirdPartyCookies;
 
     // if null, default to AwSafeBrowsingConfigHelper.getSafeBrowsingEnabledByManifest()
-    // jiang set true;
-    private Boolean mSafeBrowsingEnabled = true;
+    private Boolean mSafeBrowsingEnabled;
 
     private final boolean mSupportLegacyQuirks;
     private final boolean mAllowEmptyDocumentPersistence;
@@ -399,7 +398,6 @@ public class BisonSettings {
 
     /**
      * Return whether Safe Browsing has been enabled for the current WebView
-     *
      * @return true if SafeBrowsing is enabled
      */
     public boolean getSafeBrowsingEnabled() {
@@ -413,7 +411,6 @@ public class BisonSettings {
 //            if (mSafeBrowsingEnabled == null) {
 //                return AwSafeBrowsingConfigHelper.getSafeBrowsingEnabledByManifest();
 //            }
-            // jiang set true;
             return mSafeBrowsingEnabled;
         }
     }
@@ -587,36 +584,35 @@ public class BisonSettings {
     /**
      * See {@link android.webkit.WebSettings#setSaveFormData}.
      */
-    // public void setSaveFormData(final boolean enable) {
-    //     if (TRACE) Log.i(LOGTAG, "setSaveFormData=" + enable);
-    //     synchronized (mSettingsLock) {
-    //         if (mAutoCompleteEnabled != enable) {
-    //             mAutoCompleteEnabled = enable;
-    //             mEventHandler.runOnUiThreadBlockingAndLocked(() -> {
-    //                 if (mNativeBisonSettings != 0) {
-    //                     BisonSettingsJni.get().updateFormDataPreferencesLocked(
-    //                             mNativeBisonSettings, this);
-    //                 }
-    //             });
-    //         }
-    //     }
-    // }
+    public void setSaveFormData(final boolean enable) {
+        if (TRACE) Log.i(LOGTAG, "setSaveFormData=" + enable);
+        synchronized (mSettingsLock) {
+            if (mAutoCompleteEnabled != enable) {
+                mAutoCompleteEnabled = enable;
+                mEventHandler.runOnUiThreadBlockingAndLocked(() -> {
+                    if (mNativeBisonSettings != 0) {
+                        BisonSettingsJni.get().updateFormDataPreferencesLocked(
+                                mNativeBisonSettings, this);
+                    }
+                });
+            }
+        }
+    }
 
     /**
      * See {@link android.webkit.WebSettings#getSaveFormData}.
-     * jiang bison not support autofill
      */
-    // public boolean getSaveFormData() {
-    //     synchronized (mSettingsLock) {
-    //         return getSaveFormDataLocked();
-    //     }
-    // }
+    public boolean getSaveFormData() {
+        synchronized (mSettingsLock) {
+            return getSaveFormDataLocked();
+        }
+    }
 
-    // @CalledByNative
-    // private boolean getSaveFormDataLocked() {
-    //     assert Thread.holdsLock(mSettingsLock);
-    //     return mAutoCompleteEnabled;
-    // }
+    @CalledByNative
+    private boolean getSaveFormDataLocked() {
+        assert Thread.holdsLock(mSettingsLock);
+        return mAutoCompleteEnabled;
+    }
 
     public void setUserAgent(int ua) {
         // Minimal implementation for backwards compatibility: just supports resetting to default.
@@ -1764,17 +1760,17 @@ public class BisonSettings {
         return mMixedContentMode == WebSettings.MIXED_CONTENT_NEVER_ALLOW;
     }
 
-    // public boolean getOffscreenPreRaster() {
-    //     synchronized (mSettingsLock) {
-    //         return getOffscreenPreRasterLocked();
-    //     }
-    // }
+    public boolean getOffscreenPreRaster() {
+        synchronized (mSettingsLock) {
+            return getOffscreenPreRasterLocked();
+        }
+    }
 
-    // @CalledByNative
-    // private boolean getOffscreenPreRasterLocked() {
-    //     assert Thread.holdsLock(mSettingsLock);
-    //     return mOffscreenPreRaster;
-    // }
+    @CalledByNative
+    private boolean getOffscreenPreRasterLocked() {
+        assert Thread.holdsLock(mSettingsLock);
+        return mOffscreenPreRaster;
+    }
 
     /**
      * Sets whether this WebView should raster tiles when it is
@@ -1925,7 +1921,7 @@ public class BisonSettings {
 
         String getDefaultUserAgent();
 
-        //void updateFormDataPreferencesLocked(long nativeBisonSettings, BisonSettings caller);
+        void updateFormDataPreferencesLocked(long nativeBisonSettings, BisonSettings caller);
 
         void updateRendererPreferencesLocked(long nativeBisonSettings, BisonSettings caller);
 

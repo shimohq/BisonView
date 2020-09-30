@@ -14,6 +14,7 @@ bison_java_deps = [
   "//services/network/public/mojom:mojom_java",
 
   # or not require
+  "//third_party/blink/public:blink_headers_java",
   "//components/variations/android:variations_java",
   "//components/policy/android:policy_java",
   "//components/autofill/android:autofill_java",

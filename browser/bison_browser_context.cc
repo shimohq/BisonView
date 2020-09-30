@@ -35,6 +35,7 @@
 #include "components/prefs/pref_service_factory.h"
 #include "components/user_prefs/user_prefs.h"
 #include "components/variations/net/variations_http_headers.h"
+#include "components/visitedlink/browser/visitedlink_master.h"
 #include "content/public/browser/browser_task_traits.h"
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/cors_exempt_headers.h"
@@ -78,8 +79,14 @@ BisonBrowserContext::BisonBrowserContext()
 
   CreateUserPrefService();
 
+  visitedlink_master_.reset(
+      new visitedlink::VisitedLinkMaster(this, this, false));
+  visitedlink_master_->Init();
+
   form_database_service_.reset(
       new BisonFormDatabaseService(context_storage_path_));
+
+  EnsureResourceContextInitialized(this);
 }
 
 BisonBrowserContext::~BisonBrowserContext() {
@@ -214,11 +221,20 @@ std::vector<std::string> BisonBrowserContext::GetAuthSchemes() {
   return supported_schemes;
 }
 
+void BisonBrowserContext::AddVisitedURLs(const std::vector<GURL>& urls) {
+  DCHECK(visitedlink_master_);
+  visitedlink_master_->AddURLs(urls);
+}
+
 BisonQuotaManagerBridge* BisonBrowserContext::GetQuotaManagerBridge() {
   if (!quota_manager_bridge_.get()) {
     quota_manager_bridge_ = BisonQuotaManagerBridge::Create(this);
   }
   return quota_manager_bridge_.get();
+}
+
+BisonFormDatabaseService* BisonBrowserContext::GetFormDatabaseService() {
+  return form_database_service_.get();
 }
 
 autofill::AutocompleteHistoryManager*
@@ -309,6 +325,15 @@ BisonBrowserContext::GetBrowsingDataRemoverDelegate() {
   return nullptr;
 }
 
+
+
+void BisonBrowserContext::RebuildTable(
+    const scoped_refptr<URLEnumerator>& enumerator) {
+  // Android WebView rebuilds from WebChromeClient.getVisitedHistory. The client
+  // can change in the lifetime of this WebView and may not yet be set here.
+  // Therefore this initialization path is not used.
+  enumerator->OnComplete(true);
+}
 network::mojom::NetworkContextParamsPtr
 BisonBrowserContext::GetNetworkContextParams(
     bool in_memory,
@@ -369,7 +394,7 @@ BisonBrowserContext::GetNetworkContextParams(
   // Update the cors_exempt_header_list to include internally-added headers, to
   // avoid triggering CORS checks.
   content::UpdateCorsExemptHeader(context_params.get());
-  // variations::UpdateCorsExemptHeaderForVariations(context_params.get());
+  variations::UpdateCorsExemptHeaderForVariations(context_params.get());
 
   // Add proxy settings
   BisonProxyConfigMonitor::GetInstance()->AddProxyToNetworkContextParams(

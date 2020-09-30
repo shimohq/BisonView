@@ -21,10 +21,11 @@ public class BisonBrowserContext {
     private final SharedPreferences mSharedPreferences;
 
     private BisonGeolocationPermissions mGeolocationPermissions;
+    
+    private BisonFormDatabase mFormDatabase;
     // jiang 
-    // private BisonFormDatabase mFormDatabase;
     // private BisonServiceWorkerController mServiceWorkerController;
-    // private BisonQuotaManagerBridge mQuotaManagerBridge;
+    private BisonQuotaManagerBridge mQuotaManagerBridge;
 
     /** Pointer to the Native-side BisonBrowserContext. */
     private long mNativeBisonBrowserContext;
@@ -64,12 +65,12 @@ public class BisonBrowserContext {
         return mGeolocationPermissions;
     }
 
-    // public BisonFormDatabase getFormDatabase() {
-    //     if (mFormDatabase == null) {
-    //         mFormDatabase = new BisonFormDatabase();
-    //     }
-    //     return mFormDatabase;
-    // }
+    public BisonFormDatabase getFormDatabase() {
+        if (mFormDatabase == null) {
+            mFormDatabase = new BisonFormDatabase();
+        }
+        return mFormDatabase;
+    }
 
     // public BisonServiceWorkerController getServiceWorkerController() {
     //     if (mServiceWorkerController == null) {
@@ -79,13 +80,13 @@ public class BisonBrowserContext {
     //     return mServiceWorkerController;
     // }
 
-    // public BisonQuotaManagerBridge getQuotaManagerBridge() {
-    //     if (mQuotaManagerBridge == null) {
-    //         mQuotaManagerBridge = new BisonQuotaManagerBridge(
-    //                 BisonBrowserContextJni.get().getQuotaManagerBridge(mNativeBisonBrowserContext));
-    //     }
-    //     return mQuotaManagerBridge;
-    // }
+    public BisonQuotaManagerBridge getQuotaManagerBridge() {
+        if (mQuotaManagerBridge == null) {
+            mQuotaManagerBridge = new BisonQuotaManagerBridge(
+                    BisonBrowserContextJni.get().getQuotaManagerBridge(mNativeBisonBrowserContext));
+        }
+        return mQuotaManagerBridge;
+    }
 
 
 

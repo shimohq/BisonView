@@ -35,6 +35,7 @@ import org.chromium.content_public.common.Referrer;
 import org.chromium.ui.base.ActivityWindowAndroid;
 import org.chromium.ui.base.PageTransition;
 import org.chromium.ui.base.WindowAndroid;
+import org.chromium.ui.display.DisplayAndroid.DisplayAndroidObserver;
 import org.chromium.network.mojom.ReferrerPolicy;
 
 
@@ -46,6 +47,7 @@ import java.util.Map;
 @JNINamespace("bison")
 class BisonContents extends FrameLayout {
     private static final String TAG = "BisonContents";
+    private static final boolean TRACE = false;
 
     private static String sCurrentLocales = "";
 
@@ -71,12 +73,27 @@ class BisonContents extends FrameLayout {
 
     private BisonAutofillClient mAutofillClient;
 
+    private final DisplayAndroidObserver mDisplayObserver;
     private BisonSettings mSettings;
 
 
     private JavascriptInjector mJavascriptInjector;
     private BisonContentsClient mContentsClient;
     private BisonBrowserContext mBrowserContext;
+
+    private class BisonDisplayAndroidObserver implements DisplayAndroidObserver {
+        @Override
+        public void onRotationChanged(int rotation) {}
+
+        @Override
+        public void onDIPScaleChanged(float dipScale) {
+            if (TRACE) Log.i(TAG, "%s onDIPScaleChanged dipScale=%f", this, dipScale);
+
+            BisonContentsJni.get().setDipScale(mNativeBisonContents, BisonContents.this, dipScale);
+            // mLayoutSizer.setDIPScale(dipScale);
+            mSettings.setDIPScale(dipScale);
+        }
+    };
 
     public BisonContents(Context context, BisonBrowserContext bisonBrowserContext,  BisonWebContentsDelegate webContentsDelegate,
                          BisonContentsClientBridge bisonContentsClientBridge,
@@ -115,11 +132,13 @@ class BisonContents extends FrameLayout {
         mBackgroundThreadClient = new BackgroundThreadClientImpl();
         mIoThreadClient = new IoThreadClientImpl();
         mInterceptNavigationDelegate = new InterceptNavigationDelegateImpl();
-
+        mDisplayObserver = new BisonDisplayAndroidObserver();
 
         BisonContentsJni.get().setJavaPeers(mNativeBisonContents, webContentsDelegate,
                 mBisonContentsClientBridge, mIoThreadClient, mInterceptNavigationDelegate);
         mSettings.setWebContents(mWebContents);
+
+        mDisplayObserver.onDIPScaleChanged(getDeviceScaleFactor());
 
         updateDefaultLocale();
 
@@ -411,6 +430,9 @@ class BisonContents extends FrameLayout {
     }
 
 
+    private float getDeviceScaleFactor() {
+        return mWindow.getDisplay().getDipScale();
+    }
 
 
     private class IoThreadClientImpl extends BisonContentsIoThreadClient {
@@ -586,6 +608,7 @@ class BisonContents extends FrameLayout {
                           BisonContentsIoThreadClient ioThreadClient,
                           InterceptNavigationDelegate interceptNavigationDelegate);
 
+        void setDipScale(long nativeBisonContents, BisonContents caller, float dipScale);
         
         void grantFileSchemeAccesstoChildProcess(long nativeBisonContents);
 

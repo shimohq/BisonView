@@ -106,7 +106,25 @@ class BisonContentsUserData : public base::SupportsUserData::Data {
   BisonContents* contents_;
 };
 
+
+
 }  // namespace
+
+class ScopedAllowInitGLBindings {
+ public:
+  ScopedAllowInitGLBindings() {}
+
+  ~ScopedAllowInitGLBindings() {}
+
+ private:
+  base::ScopedAllowBlocking allow_blocking_;
+};
+
+// static
+BisonContents* BisonContents::FromWebContents(WebContents* web_contents) {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  return BisonContentsUserData::GetContents(web_contents);
+}
 
 void JNI_BisonContents_UpdateDefaultLocale(
     JNIEnv* env,
@@ -126,6 +144,30 @@ std::string BisonContents::GetLocaleList() {
   return *g_locale_list();
 }
 
+// static
+BisonBrowserPermissionRequestDelegate*
+BisonBrowserPermissionRequestDelegate::FromID(int render_process_id,
+                                              int render_frame_id) {
+  BisonContents* contents =
+      BisonContents::FromWebContents(content::WebContents::FromRenderFrameHost(
+          content::RenderFrameHost::FromID(render_process_id,
+                                           render_frame_id)));
+  return contents;
+}
+
+// // static
+// AwSafeBrowsingUIManager::UIManagerClient*
+// AwSafeBrowsingUIManager::UIManagerClient::FromWebContents(
+//     WebContents* web_contents) {
+//   return AwContents::FromWebContents(web_contents);
+// }
+
+// // static
+// AwRenderProcessGoneDelegate* AwRenderProcessGoneDelegate::FromWebContents(
+//     content::WebContents* web_contents) {
+//   return AwContents::FromWebContents(web_contents);
+// }
+
 BisonContents::BisonContents(std::unique_ptr<WebContents> web_contents)
     : WebContentsObserver(web_contents.get()),
       web_contents_(std::move(web_contents)) {
@@ -134,6 +176,40 @@ BisonContents::BisonContents(std::unique_ptr<WebContents> web_contents)
 
   permission_request_handler_.reset(
       new PermissionRequestHandler(this, web_contents_.get()));
+}
+
+void BisonContents::SetJavaPeers(
+    JNIEnv* env,
+    const JavaParamRef<jobject>& web_contents_delegate,
+    const JavaParamRef<jobject>& contents_client_bridge,
+    const JavaParamRef<jobject>& io_thread_client,
+    const JavaParamRef<jobject>& intercept_navigation_delegate) {
+  web_contents_delegate_.reset(
+      new BisonWebContentsDelegate(env, web_contents_delegate));
+  web_contents_->SetDelegate(web_contents_delegate_.get());
+
+  contents_client_bridge_.reset(
+      new BisonContentsClientBridge(env, contents_client_bridge));
+  BisonContentsClientBridge::Associate(web_contents_.get(),
+                                       contents_client_bridge_.get());
+
+  BisonContentsIoThreadClient::Associate(web_contents_.get(), io_thread_client);
+
+  InterceptNavigationDelegate::Associate(
+      web_contents_.get(), std::make_unique<InterceptNavigationDelegate>(
+                               env, intercept_navigation_delegate));
+
+}
+
+void BisonContents::SetSaveFormData(bool enabled) {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  // InitAutofillIfNecessary(enabled);
+  // // We need to check for the existence, since autofill_manager_delegate
+  // // may not be created when the setting is false.
+  // if (AwAutofillClient::FromWebContents(web_contents_.get())) {
+  //   AwAutofillClient::FromWebContents(web_contents_.get())
+  //       ->SetSaveFormData(enabled);
+  // }
 }
 
 BisonContents::~BisonContents() {
@@ -155,26 +231,33 @@ BisonContents* BisonContents::CreateBisonContents(
 
   // bison_view->PlatformCreateWindow();
 
-  // bison_view->PlatformSetContents();
+
 
   return bison_view;
 }
 
-BisonContents* BisonContents::FromWebContents(WebContents* web_contents) {
-  DCHECK_CURRENTLY_ON(BrowserThread::UI);
-  return BisonContentsUserData::GetContents(web_contents);
-}
 
-// static
-BisonBrowserPermissionRequestDelegate*
-BisonBrowserPermissionRequestDelegate::FromID(int render_process_id,
-                                              int render_frame_id) {
-  BisonContents* contents =
-      BisonContents::FromWebContents(content::WebContents::FromRenderFrameHost(
-          content::RenderFrameHost::FromID(render_process_id,
-                                           render_frame_id)));
-  return contents;
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 void BisonContents::DidFinishNavigation(
     content::NavigationHandle* navigation_handle) {
@@ -198,7 +281,29 @@ void BisonContents::DidFinishNavigation(
   client->OnReceivedError(request, error_code);
 }
 
+
+
+
+
+void BisonContents::SetOffscreenPreRaster(bool enabled) {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  // browser_view_renderer_.SetOffscreenPreRaster(enabled);
+}
+
+
+
 namespace {
+
+
+
+
+
+
+
+
+
+
+
 
 void ShowGeolocationPromptHelperTask(const JavaObjectWeakGlobalRef& java_ref,
                                      const GURL& origin) {
@@ -317,11 +422,7 @@ void BisonContents::OnPermissionRequestCanceled(
   Java_BisonContents_onPermissionRequestCanceled(env, j_ref, j_request);
 }
 
-bool BisonContents::AllowThirdPartyCookies() {
-  DCHECK_CURRENTLY_ON(BrowserThread::UI);
-  BisonSettings* settings = BisonSettings::FromWebContents(web_contents_.get());
-  return settings->GetAllowThirdPartyCookies();
-}
+
 
 void BisonContents::RequestProtectedMediaIdentifierPermission(
     const GURL& origin,
@@ -382,30 +483,82 @@ void BisonContents::CancelMIDISysexPermissionRequests(const GURL& origin) {
       origin, BisonPermissionRequest::BisonPermissionRequest::MIDISysex);
 }
 
-void BisonContents::SetJavaPeers(
-    JNIEnv* env,
-    const JavaParamRef<jobject>& web_contents_delegate,
-    const JavaParamRef<jobject>& contents_client_bridge,
-    const JavaParamRef<jobject>& io_thread_client,
-    const JavaParamRef<jobject>& intercept_navigation_delegate) {
-  web_contents_delegate_.reset(
-      new BisonWebContentsDelegate(env, web_contents_delegate));
-  web_contents_->SetDelegate(web_contents_delegate_.get());
-  contents_client_bridge_.reset(
-      new BisonContentsClientBridge(env, contents_client_bridge));
-  BisonContentsClientBridge::Associate(web_contents_.get(),
-                                       contents_client_bridge_.get());
 
-  BisonContentsIoThreadClient::Associate(web_contents_.get(), io_thread_client);
-
-  InterceptNavigationDelegate::Associate(
-      web_contents_.get(), std::make_unique<InterceptNavigationDelegate>(
-                               env, intercept_navigation_delegate));
-}
 
 ScopedJavaLocalRef<jobject> BisonContents::GetWebContents(JNIEnv* env) {
-  return web_contents()->GetJavaWebContents();
+  return web_contents_.get()->GetJavaWebContents();
 }
+
+
+
+
+
+bool BisonContents::AllowThirdPartyCookies() {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  BisonSettings* settings = BisonSettings::FromWebContents(web_contents_.get());
+  return settings->GetAllowThirdPartyCookies();
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+void BisonContents::SetDipScale(JNIEnv* env,
+                             const JavaParamRef<jobject>& obj,
+                             jfloat dip_scale) {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  //SetDipScaleInternal(dip_scale);
+}
+
+
+
+
+
+
 
 void BisonContents::SetExtraHeadersForUrl(
     JNIEnv* env,
@@ -425,6 +578,8 @@ void BisonContents::GrantFileSchemeAccesstoChildProcess(JNIEnv* env) {
   content::ChildProcessSecurityPolicy::GetInstance()->GrantRequestScheme(
       web_contents_->GetMainFrame()->GetProcess()->GetID(), url::kFileScheme);
 }
+
+
 
 void BisonContents::SetAutofillClient(const JavaRef<jobject>& client) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);

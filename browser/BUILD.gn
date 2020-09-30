@@ -71,6 +71,7 @@ source_set("browser") {
     "bison_form_database_service.h",
     "bison_field_trials.h",
     "bison_browser_permission_request_delegate.h",
+    "bison_form_database.cc",
 
     # network_service
     "network_service/android_stream_reader_url_loader.cc",
@@ -142,5 +143,6 @@ source_set("browser") {
 
     "//components/autofill/android:provider",
     "//components/autofill/content/browser",
+    "//components/visitedlink/browser",
   ]
 }

@@ -143,7 +143,7 @@ void BisonSettings::UpdateEverythingLocked(JNIEnv* env,
   UpdateWebkitPreferencesLocked(env, obj);
   UpdateUserAgentLocked(env, obj);
   ResetScrollAndScaleState(env, obj);
-  // UpdateFormDataPreferencesLocked(env, obj);
+  UpdateFormDataPreferencesLocked(env, obj);
   UpdateRendererPreferencesLocked(env, obj);
   UpdateOffscreenPreRasterLocked(env, obj);
   UpdateWillSuppressErrorStateLocked(env, obj);
@@ -216,19 +216,17 @@ void BisonSettings::UpdateWillSuppressErrorStateLocked(
   rvhe->SetWillSuppressErrorPage(suppress);
 }
 
-// jiang : bison not support auto fill
-// void BisonSettings::UpdateFormDataPreferencesLocked(
-//     JNIEnv* env,
-//     const JavaParamRef<jobject>& obj) {
-//   if (!web_contents())
-//     return;
-//   BisonContents* contents = BisonContents::FromWebContents(web_contents());
-//   if (!contents)
-//     return;
+void BisonSettings::UpdateFormDataPreferencesLocked(
+    JNIEnv* env,
+    const JavaParamRef<jobject>& obj) {
+  if (!web_contents())
+    return;
+  BisonContents* contents = BisonContents::FromWebContents(web_contents());
+  if (!contents)
+    return;
 
-//   contents->SetSaveFormData(Java_BisonSettings_getSaveFormDataLocked(env,
-//   obj));
-// }
+  contents->SetSaveFormData(Java_BisonSettings_getSaveFormDataLocked(env, obj));
+}
 
 void BisonSettings::UpdateRendererPreferencesLocked(
     JNIEnv* env,
@@ -246,32 +244,28 @@ void BisonSettings::UpdateRendererPreferencesLocked(
     update_prefs = true;
   }
 
-  // 这里貌似是 切换的语言位置，暂时不实现
-  // BisonContentBrowserClient::GetAcceptLangsImpl() 未完成
-  // if (prefs->accept_languages.compare(
-  //         BisonContentBrowserClient::GetAcceptLangsImpl())) {
-  //   prefs->accept_languages =
-  //   BisonContentBrowserClient::GetAcceptLangsImpl(); update_prefs = true;
-  // }
+  if (prefs->accept_languages.compare(
+          BisonContentBrowserClient::GetAcceptLangsImpl())) {
+    prefs->accept_languages = BisonContentBrowserClient::GetAcceptLangsImpl();
+    update_prefs = true;
+  }
 
   if (update_prefs)
     web_contents()->SyncRendererPrefs();
-  // GetNetworkContext member access into incomplete type
-  // 'network::mojom::NetworkContext'
 
-  // if (update_prefs) {
-  //   // make sure to update accept languages when the network service is
-  //   enabled BisonBrowserContext* bison_browser_context =
-  //       BisonBrowserContext::FromWebContents(web_contents());
-  //   // AndroidWebview does not use per-site storage partitions.
-  //   content::StoragePartition* storage_partition =
-  //       content::BrowserContext::GetDefaultStoragePartition(
-  //           bison_browser_context);
-  //   std::string expanded_language_list =
-  //       net::HttpUtil::ExpandLanguageList(prefs->accept_languages);
-  //   storage_partition->GetNetworkContext()->SetAcceptLanguage(
-  //       net::HttpUtil::GenerateAcceptLanguageHeader(expanded_language_list));
-  // }
+  if (update_prefs) {
+    // make sure to update accept languages when the network service is enabled
+    BisonBrowserContext* bison_browser_context =
+        BisonBrowserContext::FromWebContents(web_contents());
+    // AndroidWebview does not use per-site storage partitions.
+    content::StoragePartition* storage_partition =
+        content::BrowserContext::GetDefaultStoragePartition(
+            bison_browser_context);
+    std::string expanded_language_list =
+        net::HttpUtil::ExpandLanguageList(prefs->accept_languages);
+    storage_partition->GetNetworkContext()->SetAcceptLanguage(
+        net::HttpUtil::GenerateAcceptLanguageHeader(expanded_language_list));
+  }
 }
 
 void BisonSettings::UpdateCookiePolicyLocked(JNIEnv* env,
@@ -287,11 +281,11 @@ void BisonSettings::UpdateOffscreenPreRasterLocked(
     JNIEnv* env,
     const JavaParamRef<jobject>& obj) {
   // jiang
-  // BisonContents* contents = BisonContents::FromWebContents(web_contents());
-  // if (contents) {
-  //   contents->SetOffscreenPreRaster(
-  //       Java_BisonSettings_getOffscreenPreRasterLocked(env, obj));
-  // }
+  BisonContents* contents = BisonContents::FromWebContents(web_contents());
+  if (contents) {
+    contents->SetOffscreenPreRaster(
+        Java_BisonSettings_getOffscreenPreRasterLocked(env, obj));
+  }
 }
 
 void BisonSettings::UpdateAllowFileAccessLocked(

@@ -14,6 +14,7 @@
 #include "base/memory/ref_counted.h"
 #include "components/keyed_service/core/simple_factory_key.h"
 #include "components/prefs/pref_registry_simple.h"
+#include "components/visitedlink/browser/visitedlink_delegate.h"
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/content_browser_client.h"
 #include "content/public/browser/resource_context.h"
@@ -34,13 +35,18 @@ class ZoomLevelDelegate;
 class WebContents;
 }  // namespace content
 
+namespace visitedlink {
+class VisitedLinkMaster;
+}
+
 namespace bison {
 
 class BisonDownloadManagerDelegate;
 class BisonFormDatabaseService;
 class BisonQuotaManagerBridge;
 
-class BisonBrowserContext : public content::BrowserContext {
+class BisonBrowserContext : public content::BrowserContext,
+                            public visitedlink::VisitedLinkDelegate {
  public:
   BisonBrowserContext();
   ~BisonBrowserContext() override;
@@ -60,9 +66,13 @@ class BisonBrowserContext : public content::BrowserContext {
   // Get the list of authentication schemes to support.
   static std::vector<std::string> GetAuthSchemes();
 
+  // These methods map to Add methods in visitedlink::VisitedLinkMaster.
+  void AddVisitedURLs(const std::vector<GURL>& urls);
+
   BisonQuotaManagerBridge* GetQuotaManagerBridge();
   jlong GetQuotaManagerBridge(JNIEnv* env);
 
+  BisonFormDatabaseService* GetFormDatabaseService();
   autofill::AutocompleteHistoryManager* GetAutocompleteHistoryManager();
   CookieManager* GetCookieManager();
 
@@ -88,6 +98,8 @@ class BisonBrowserContext : public content::BrowserContext {
   content::BackgroundSyncController* GetBackgroundSyncController() override;
   content::BrowsingDataRemoverDelegate* GetBrowsingDataRemoverDelegate()
       override;
+  // visitedlink::VisitedLinkDelegate implementation.
+  void RebuildTable(const scoped_refptr<URLEnumerator>& enumerator) override;
 
   network::mojom::NetworkContextParamsPtr GetNetworkContextParams(
       bool in_memory,
@@ -98,16 +110,13 @@ class BisonBrowserContext : public content::BrowserContext {
   base::android::ScopedJavaLocalRef<jobject> GetJavaBrowserContext();
 
  protected:
-  std::unique_ptr<BisonResourceContext> resource_context_;
-  std::unique_ptr<BisonDownloadManagerDelegate> download_manager_delegate_;
   std::unique_ptr<content::PermissionControllerDelegate> permission_manager_;
   // std::unique_ptr<content::BackgroundSyncController>
   //     background_sync_controller_;
-  // std::unique_ptr<ContentIndexProvider> content_index_provider_;
 
  private:
   void CreateUserPrefService();
-
+  std::unique_ptr<BisonDownloadManagerDelegate> download_manager_delegate_;
   base::FilePath context_storage_path_;
 
   scoped_refptr<BisonQuotaManagerBridge> quota_manager_bridge_;
@@ -115,6 +124,8 @@ class BisonBrowserContext : public content::BrowserContext {
   std::unique_ptr<autofill::AutocompleteHistoryManager>
       autocomplete_history_manager_;
 
+  std::unique_ptr<visitedlink::VisitedLinkMaster> visitedlink_master_;
+  std::unique_ptr<BisonResourceContext> resource_context_;
   std::unique_ptr<PrefService> user_pref_service_;
 
   SimpleFactoryKey simple_factory_key_;

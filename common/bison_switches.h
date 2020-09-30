@@ -1,33 +1,22 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Defines all the "content_shell" command-line switches.
-
-#ifndef CONTENT_SHELL_COMMON_SHELL_SWITCHES_H_
-#define CONTENT_SHELL_COMMON_SHELL_SWITCHES_H_
-
-#include <string>
-#include <vector>
+#ifndef BISON_CORE_COMMON_BISON_SWITCHES_H_
+#define BISON_CORE_COMMON_BISON_SWITCHES_H_
 
 namespace switches {
 
-extern const char kContentShellDataPath[];
-extern const char kCrashDumpsDir[];
-extern const char kExposeInternalsForTesting[];
-extern const char kRegisterFontFiles[];
-extern const char kContentShellHostWindowSize[];
-extern const char kContentShellHideToolbar[];
+extern const char kWebViewLogJsConsoleMessages[];
+extern const char kWebViewSandboxedRenderer[];
+extern const char kWebViewDisableSafeBrowsingSupport[];
+extern const char kWebViewEnableSharedImage[];
+extern const char kWebViewEnableVulkan[];
 
-// Returns list of extra font files to be made accessible to the renderer.
-std::vector<std::string> GetSideloadFontFiles();
-
-// Tells if content shell is running web_tests.
-// TODO(lukasza): The function below somewhat violates the layering (by
-// enabling shell -> layout_tests dependency) but at least narrows the extent of
-// the dependency to a single switch...
-// bool IsRunWebTestsSwitchPresent();
+// Please note that if you are adding a flag that is intended for a renderer,
+// you also need to add it into
+// AwContentBrowserClient::AppendExtraCommandLineSwitches.
 
 }  // namespace switches
 
-#endif  // CONTENT_SHELL_COMMON_SHELL_SWITCHES_H_
+#endif  // BISON_CORE_COMMON_BISON_SWITCHES_H_

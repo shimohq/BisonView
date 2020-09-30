@@ -25,16 +25,35 @@ class BisonWebContentsDelegate
   BisonWebContentsDelegate(JNIEnv* env, jobject obj);
   ~BisonWebContentsDelegate() override;
 
+  void RendererUnresponsive(
+      WebContents* source,
+      RenderWidgetHost* render_widget_host,
+      base::RepeatingClosure hang_monitor_restarter) override;
+
   // WebContentsDelegate
+  JavaScriptDialogManager* GetJavaScriptDialogManager(
+      WebContents* source) override;
+  void CanDownload(const GURL& url,
+                   const std::string& request_method,
+                   base::OnceCallback<void(bool)> callback) override;
   void AddNewContents(WebContents* source,
                       std::unique_ptr<WebContents> new_contents,
                       WindowOpenDisposition disposition,
                       const gfx::Rect& initial_rect,
                       bool user_gesture,
                       bool* was_blocked) override;
+  
+  void WebContentsCreated(content::WebContents* source_contents,
+                          int opener_render_process_id,
+                          int opener_render_frame_id,
+                          const std::string& frame_name,
+                          const GURL& target_url,
+                          content::WebContents* new_contents) override;
+
   void LoadingStateChanged(WebContents* source,
                            bool to_different_document) override;
-  // void LoadProgressChanged(WebContents* source, double progress) override;
+  bool ShouldResumeRequestsForCreatedWindow() override;
+
   void SetOverlayMode(bool use_overlay_mode) override;
   void EnterFullscreenModeForTab(
       WebContents* web_contents,
@@ -48,26 +67,17 @@ class BisonWebContentsDelegate
                           bool user_gesture,
                           bool last_unlocked_by_target) override;
   void CloseContents(WebContents* source) override;
-  bool CanOverscrollContent() override;
+  
   void DidNavigateMainFramePostCommit(WebContents* web_contents) override;
-  JavaScriptDialogManager* GetJavaScriptDialogManager(
-      WebContents* source) override;
+  
   std::unique_ptr<BluetoothChooser> RunBluetoothChooser(
       RenderFrameHost* frame,
       const BluetoothChooser::EventHandler& event_handler) override;
   std::unique_ptr<BluetoothScanningPrompt> ShowBluetoothScanningPrompt(
       RenderFrameHost* frame,
       const BluetoothScanningPrompt::EventHandler& event_handler) override;
-  bool DidAddMessageToConsole(WebContents* source,
-                              blink::mojom::ConsoleMessageLevel log_level,
-                              const base::string16& message,
-                              int32_t line_no,
-                              const base::string16& source_id) override;
   void PortalWebContentsCreated(WebContents* portal_web_contents) override;
-  void RendererUnresponsive(
-      WebContents* source,
-      RenderWidgetHost* render_widget_host,
-      base::RepeatingClosure hang_monitor_restarter) override;
+  
   void ActivateContents(WebContents* contents) override;
   // std::unique_ptr<content::WebContents> SwapWebContents(
   //     content::WebContents* old_contents,
@@ -82,7 +92,7 @@ class BisonWebContentsDelegate
       content::WebContents* web_contents,
       const viz::SurfaceId&,
       const gfx::Size& natural_size) override;
-  bool ShouldResumeRequestsForCreatedWindow() override;
+  
 
   void UpdateUserGestureCarryoverInfo(
       content::WebContents* web_contents) override;

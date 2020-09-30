@@ -78,41 +78,139 @@ class BisonContents : public PermissionRequestHandlerClient,
     return render_view_host_ext_.get();
   }
 
-  WebContents* web_contents() const { return web_contents_.get(); }
+  // // |handler| is an instance of
+  // // org.chromium.android_webview.AwHttpAuthHandler.
+  // bool OnReceivedHttpAuthRequest(const base::android::JavaRef<jobject>&
+  // handler,
+  //                                const std::string& host,
+  //                                const std::string& realm);
 
-  // jiang
-  JavaObjectWeakGlobalRef java_ref_;
-  base::android::ScopedJavaLocalRef<jobject> GetWebContents(JNIEnv* env);
+  void SetOffscreenPreRaster(bool enabled);
+
   void SetJavaPeers(JNIEnv* env,
                     const JavaParamRef<jobject>& web_contents_delegate,
                     const JavaParamRef<jobject>& contents_client_bridge,
                     const JavaParamRef<jobject>& io_thread_client,
                     const JavaParamRef<jobject>& intercept_navigation_delegate);
-
+  base::android::ScopedJavaLocalRef<jobject> GetWebContents(JNIEnv* env);
+  // base::android::ScopedJavaLocalRef<jobject> GetBrowserContext(
+  //     JNIEnv* env,
+  //     const base::android::JavaParamRef<jobject>& obj);
+  // void SetCompositorFrameConsumer(
+  //     JNIEnv* env,
+  //     const base::android::JavaParamRef<jobject>& obj,
+  //     jlong compositor_frame_consumer);
+  // base::android::ScopedJavaLocalRef<jobject> GetRenderProcess(
+  //     JNIEnv* env,
+  //     const base::android::JavaParamRef<jobject>& obj);
+  void Destroy(JNIEnv* env);
+  // void DocumentHasImages(JNIEnv* env,
+  //                        const base::android::JavaParamRef<jobject>& obj,
+  //                        const base::android::JavaParamRef<jobject>&
+  //                        message);
+  // void GenerateMHTML(JNIEnv* env,
+  //                    const base::android::JavaParamRef<jobject>& obj,
+  //                    const base::android::JavaParamRef<jstring>& jpath,
+  //                    const base::android::JavaParamRef<jobject>& callback);
+  // void CreatePdfExporter(
+  //     JNIEnv* env,
+  //     const base::android::JavaParamRef<jobject>& obj,
+  //     const base::android::JavaParamRef<jobject>& pdfExporter);
+  // void AddVisitedLinks(
+  //     JNIEnv* env,
+  //     const base::android::JavaParamRef<jobject>& obj,
+  //     const base::android::JavaParamRef<jobjectArray>& jvisited_links);
+  // base::android::ScopedJavaLocalRef<jbyteArray> GetCertificate(
+  //     JNIEnv* env,
+  //     const base::android::JavaParamRef<jobject>& obj);
+  // void RequestNewHitTestDataAt(JNIEnv* env,
+  //                              const base::android::JavaParamRef<jobject>&
+  //                              obj, jfloat x, jfloat y, jfloat touch_major);
+  // void UpdateLastHitTestData(JNIEnv* env,
+  //                            const base::android::JavaParamRef<jobject>&
+  //                            obj);
+  // void OnSizeChanged(JNIEnv* env,
+  //                    const base::android::JavaParamRef<jobject>& obj,
+  //                    int w,
+  //                    int h,
+  //                    int ow,
+  //                    int oh);
+  // void SetViewVisibility(JNIEnv* env,
+  //                        const base::android::JavaParamRef<jobject>& obj,
+  //                        bool visible);
+  // void SetWindowVisibility(JNIEnv* env,
+  //                          const base::android::JavaParamRef<jobject>& obj,
+  //                          bool visible);
+  // void SetIsPaused(JNIEnv* env,
+  //                  const base::android::JavaParamRef<jobject>& obj,
+  //                  bool paused);
+  // void OnAttachedToWindow(JNIEnv* env,
+  //                         const base::android::JavaParamRef<jobject>& obj,
+  //                         int w,
+  //                         int h);
+  // void OnDetachedFromWindow(JNIEnv* env,
+  //                           const base::android::JavaParamRef<jobject>& obj);
+  // bool IsVisible(JNIEnv* env, const base::android::JavaParamRef<jobject>&
+  // obj); base::android::ScopedJavaLocalRef<jbyteArray> GetOpaqueState(
+  //     JNIEnv* env,
+  //     const base::android::JavaParamRef<jobject>& obj);
+  // jboolean RestoreFromOpaqueState(
+  //     JNIEnv* env,
+  //     const base::android::JavaParamRef<jobject>& obj,
+  //     const base::android::JavaParamRef<jbyteArray>& state);
+  // void FocusFirstNode(JNIEnv* env,
+  //                     const base::android::JavaParamRef<jobject>& obj);
+  // void SetBackgroundColor(JNIEnv* env,
+  //                         const base::android::JavaParamRef<jobject>& obj,
+  //                         jint color);
+  // void ZoomBy(JNIEnv* env,
+  //             const base::android::JavaParamRef<jobject>& obj,
+  //             jfloat delta);
+  // void OnComputeScroll(JNIEnv* env,
+  //                      const base::android::JavaParamRef<jobject>& obj,
+  //                      jlong animation_time_millis);
+  // bool OnDraw(JNIEnv* env,
+  //             const base::android::JavaParamRef<jobject>& obj,
+  //             const base::android::JavaParamRef<jobject>& canvas,
+  //             jboolean is_hardware_accelerated,
+  //             jint scroll_x,
+  //             jint scroll_y,
+  //             jint visible_left,
+  //             jint visible_top,
+  //             jint visible_right,
+  //             jint visible_bottom,
+  //             jboolean force_auxiliary_bitmap_rendering);
+  // bool NeedToDrawBackgroundColor(
+  //     JNIEnv* env,
+  //     const base::android::JavaParamRef<jobject>& obj);
+  // jlong CapturePicture(JNIEnv* env,
+  //                      const base::android::JavaParamRef<jobject>& obj,
+  //                      int width,
+  //                      int height);
+  // void EnableOnNewPicture(JNIEnv* env,
+  //                         const base::android::JavaParamRef<jobject>& obj,
+  //                         jboolean enabled);
+  // void InsertVisualStateCallback(
+  //     JNIEnv* env,
+  //     const base::android::JavaParamRef<jobject>& obj,
+  //     jlong request_id,
+  //     const base::android::JavaParamRef<jobject>& callback);
+  // void ClearView(JNIEnv* env, const base::android::JavaParamRef<jobject>&
+  // obj);
   void GrantFileSchemeAccesstoChildProcess(JNIEnv* env);
   void SetExtraHeadersForUrl(
       JNIEnv* env,
       const base::android::JavaParamRef<jstring>& url,
       const base::android::JavaParamRef<jstring>& extra_headers);
+
   void InvokeGeolocationCallback(
       JNIEnv* env,
       jboolean value,
       const base::android::JavaParamRef<jstring>& origin);
-  // Per WebView Cookie Policy
-  bool AllowThirdPartyCookies();
 
-  void SetAutofillClient(const base::android::JavaRef<jobject>& client);
-
-  void Destroy(JNIEnv* env);
-
- private:
-  void ShowGeolocationPrompt(const GURL& origin,
-                             base::OnceCallback<void(bool)>);
-  void HideGeolocationPrompt(const GURL& origin);
-
-  // WebContentsObserver overrides
-  void DidFinishNavigation(
-      content::NavigationHandle* navigation_handle) override;
+  // jint GetEffectivePriority(JNIEnv* env,
+  //                         const base::android::JavaParamRef<jobject>& obj);
+  // JsJavaConfiguratorHost* GetJsJavaConfiguratorHost();
 
   // PermissionRequestHandlerClient implementation.
   void OnPermissionRequest(base::android::ScopedJavaLocalRef<jobject> j_request,
@@ -137,6 +235,29 @@ class BisonContents : public PermissionRequestHandlerClient,
       const GURL& origin,
       base::OnceCallback<void(bool)> callback) override;
   void CancelMIDISysexPermissionRequests(const GURL& origin) override;
+
+  // Per WebView Cookie Policy
+  bool AllowThirdPartyCookies();
+
+  void SetDipScale(JNIEnv* env,
+                   const base::android::JavaParamRef<jobject>& obj,
+                   jfloat dip_scale);
+  void SetSaveFormData(bool enabled);
+
+  // Sets the java client
+  void SetAutofillClient(const base::android::JavaRef<jobject>& client);
+
+  // jiang
+  JavaObjectWeakGlobalRef java_ref_;
+
+ private:
+  void ShowGeolocationPrompt(const GURL& origin,
+                             base::OnceCallback<void(bool)>);
+  void HideGeolocationPrompt(const GURL& origin);
+
+  // WebContentsObserver overrides
+  void DidFinishNavigation(
+      content::NavigationHandle* navigation_handle) override;
 
   std::unique_ptr<WebContents> web_contents_;
   std::unique_ptr<BisonWebContentsDelegate> web_contents_delegate_;
