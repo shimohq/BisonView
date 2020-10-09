@@ -113,6 +113,7 @@ class BisonContents extends FrameLayout {
 
         ContentView cv = ContentView.createContentView(context, mWebContents);
         mViewAndroidDelegate = new BisonViewAndroidDelegate(cv);
+        //webContentsDelegate.setContainerView(cv);
         //if (mWebContents != null) mWebContents.clearNativeReference();
         mWebContents.initialize(
                 "", mViewAndroidDelegate, cv, mWindow, WebContents.createDefaultInternalsHolder());
@@ -215,7 +216,7 @@ class BisonContents extends FrameLayout {
                 && params.getTransitionType() == PageTransition.TYPED) {
             params.setTransitionType(PageTransition.RELOAD);
         }
-        // params.setOverrideUserAgent(UserAgentOverrideOption.TRUE);
+        params.setOverrideUserAgent(UserAgentOverrideOption.TRUE);
 
 
         final String referer = "referer";

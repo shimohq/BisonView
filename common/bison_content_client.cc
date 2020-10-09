@@ -59,6 +59,7 @@ void BisonContentClient::SetGpuInfo(const gpu::GPUInfo& gpu_info) {
 }
 
 bool BisonContentClient::UsingSynchronousCompositing() {
+  // 返回 true 会渲染不出来。。
   return false;
 }
 

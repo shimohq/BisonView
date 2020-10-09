@@ -25,7 +25,7 @@ class BisonContentClient : public content::ContentClient {
   base::RefCountedMemory* GetDataResourceBytes(int resource_id) override;
   bool CanSendWhileSwappedOut(const IPC::Message* message) override;
   void SetGpuInfo(const gpu::GPUInfo& gpu_info) override;
-  // 这里加上会渲染不出来。。
+  
   bool UsingSynchronousCompositing() override;
   // media::MediaDrmBridgeClient* GetMediaDrmBridgeClient() override;
   void BindChildProcessInterface(

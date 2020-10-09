@@ -36,8 +36,8 @@ public class BisonView extends FrameLayout {
                 true, "im.shimo.bison.PrivilegedProcessService", 
                 "im.shimo.bison.SandboxedProcessService");
         BisonResources.resetIds(context);
-        LibraryLoader.getInstance().ensureInitialized(LibraryProcessType.PROCESS_BROWSER);
-        BrowserStartupController.get(LibraryProcessType.PROCESS_BROWSER)
+        LibraryLoader.getInstance().ensureInitialized(LibraryProcessType.PROCESS_WEBVIEW);
+        BrowserStartupController.get(LibraryProcessType.PROCESS_WEBVIEW)
                 .startBrowserProcessesSync(false);
         mBisonContentsClient = new BisonContentsClient(this, context);
         mBisonContentsClientBridge = new BisonContentsClientBridge(context, mBisonContentsClient,getClientCertLookupTable());

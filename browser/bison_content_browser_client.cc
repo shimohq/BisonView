@@ -197,19 +197,19 @@ void BisonContentsMessageFilter::OnSubFrameCreated(int parent_render_frame_id,
 //     mojo::PendingReceiver<autofill::mojom::PasswordManagerDriver> receiver,
 //     content::RenderFrameHost* render_frame_host) {}
 
-// void PassMojoCookieManagerToCookieManager(
-//     CookieManager* cookie_manager,
-//     const mojo::Remote<network::mojom::NetworkContext>& network_context) {
-//   // Get the CookieManager from the NetworkContext.
-//   mojo::PendingRemote<network::mojom::CookieManager> cookie_manager_remote;
-//   network_context->GetCookieManager(
-//       cookie_manager_remote.InitWithNewPipeAndPassReceiver());
+void PassMojoCookieManagerToCookieManager(
+    CookieManager* cookie_manager,
+    const mojo::Remote<network::mojom::NetworkContext>& network_context) {
+  // Get the CookieManager from the NetworkContext.
+  mojo::PendingRemote<network::mojom::CookieManager> cookie_manager_remote;
+  network_context->GetCookieManager(
+      cookie_manager_remote.InitWithNewPipeAndPassReceiver());
 
-//   // Pass the mojo::PendingRemote<network::mojom::CookieManager> to
-//   // bison::CookieManager, so it can implement its APIs with this mojo
-//   // CookieManager.
-//   cookie_manager->SetMojoCookieManager(std::move(cookie_manager_remote));
-// }
+  // Pass the mojo::PendingRemote<network::mojom::CookieManager> to
+  // bison::CookieManager, so it can implement its APIs with this mojo
+  // CookieManager.
+  cookie_manager->SetMojoCookieManager(std::move(cookie_manager_remote));
+}
 
 #if BUILDFLAG(ENABLE_MOJO_CDM)
 void CreateOriginId(cdm::MediaDrmStorageImpl::OriginIdObtainedCB callback) {
@@ -331,8 +331,8 @@ BisonContentBrowserClient::CreateNetworkContext(
 
   // Pass a CookieManager to the code supporting BisonCookieManager.java (i.e.,
   // the Cookies APIs).
-  // PassMojoCookieManagerToCookieManager(bison_context->GetCookieManager(),
-  //                                      network_context);
+  PassMojoCookieManagerToCookieManager(bison_context->GetCookieManager(),
+                                       network_context);
   return network_context;
 }
 

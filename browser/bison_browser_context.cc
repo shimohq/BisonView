@@ -361,13 +361,14 @@ BisonBrowserContext::GetNetworkContextParams(
   // jiang ?? 这里会...
   // // BisonView should persist and restore cookies between app sessions
   // // (including session cookies).
-  // context_params->cookie_path = BisonBrowserContext::GetCookieStorePath();
-  // context_params->restore_old_session_cookies = true;
-  // context_params->persist_session_cookies = true;
-  // context_params->cookie_manager_params =
-  //     network::mojom::CookieManagerParams::New();
-  // context_params->cookie_manager_params->allow_file_scheme_cookies =
-  //     GetCookieManager()->AllowFileSchemeCookies();
+  context_params->cookie_path = BisonBrowserContext::GetCookieStorePath();
+  VLOG(0) << "cookie_path:" << context_params->cookie_path.value();
+  context_params->restore_old_session_cookies = true;
+  context_params->persist_session_cookies = true;
+  context_params->cookie_manager_params =
+      network::mojom::CookieManagerParams::New();
+  context_params->cookie_manager_params->allow_file_scheme_cookies =
+      GetCookieManager()->AllowFileSchemeCookies();
 
   context_params->initial_ssl_config = network::mojom::SSLConfig::New();
   // Allow SHA-1 to be used for locally-installed trust anchors, as WebView
