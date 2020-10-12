@@ -44,7 +44,7 @@ generate_jni("bison_jni_headers") {
     "java/src/im/shimo/bison/BisonMetricsServiceClient.java",
     "java/src/im/shimo/bison/BisonAutofillClient.java",
     "java/src/im/shimo/bison/BisonFormDatabase.java",
-    # "java/src/im/shimo/bison/BisonWebContentsDelegate.java",
+    "java/src/im/shimo/bison/ContentViewRenderView.java",
   ]
 }
 
@@ -104,6 +104,8 @@ android_library("bison_java") {
     "java/src/im/shimo/bison/BisonMetricsServiceClient.java",
     "java/src/im/shimo/bison/BisonAutofillClient.java",
     "java/src/im/shimo/bison/BisonFormDatabase.java",
+    "java/src/im/shimo/bison/ContentViewRenderView.java",
+    "java/src/im/shimo/bison/ContentView.java",
   ]
 
   srcjar_deps = [

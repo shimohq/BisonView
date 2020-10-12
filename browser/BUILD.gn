@@ -72,6 +72,8 @@ source_set("browser") {
     "bison_field_trials.h",
     "bison_browser_permission_request_delegate.h",
     "bison_form_database.cc",
+    "content_view_render_view.cc",
+    "content_view_render_view.h",
 
     # network_service
     "network_service/android_stream_reader_url_loader.cc",
@@ -135,6 +137,11 @@ source_set("browser") {
     "//components/variations/service",
     "//services/viz/privileged/mojom",
     "//ui/gfx",
+
+    # view
+    "//ui/android",
+    "//ui/base",
+    "//ui/gfx/geometry",
 
     "//components/heap_profiling",
     "//components/cdm/browser",

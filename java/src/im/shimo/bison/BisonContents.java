@@ -16,8 +16,6 @@ import org.chromium.base.annotations.CalledByNative;
 import org.chromium.base.annotations.JNINamespace;
 import org.chromium.base.annotations.NativeMethods;
 import org.chromium.base.task.PostTask;
-import org.chromium.components.embedder_support.view.ContentView;
-import org.chromium.components.embedder_support.view.ContentViewRenderView;
 import org.chromium.components.navigation_interception.InterceptNavigationDelegate;
 import org.chromium.components.navigation_interception.NavigationParams;
 import org.chromium.content_public.browser.ActionModeCallbackHelper;
@@ -47,7 +45,7 @@ import java.util.Map;
 @JNINamespace("bison")
 class BisonContents extends FrameLayout {
     private static final String TAG = "BisonContents";
-    private static final boolean TRACE = false;
+    private static final boolean TRACE = true;
 
     private static String sCurrentLocales = "";
 
@@ -60,6 +58,7 @@ class BisonContents extends FrameLayout {
 
     private WindowAndroid mWindow;
     private ContentViewRenderView mContentViewRenderView;
+    private ContentView mContentView;
     private BisonViewAndroidDelegate mViewAndroidDelegate;
 
 
@@ -80,6 +79,10 @@ class BisonContents extends FrameLayout {
     private JavascriptInjector mJavascriptInjector;
     private BisonContentsClient mContentsClient;
     private BisonBrowserContext mBrowserContext;
+
+    private boolean mIsContentVisible;
+    private boolean mIsUpdateVisibilityTaskPending ;
+    private Runnable mUpdateVisibilityRunnable;
 
     private class BisonDisplayAndroidObserver implements DisplayAndroidObserver {
         @Override
@@ -111,20 +114,20 @@ class BisonContents extends FrameLayout {
 
         addView(mContentViewRenderView);
 
-        ContentView cv = ContentView.createContentView(context, mWebContents);
-        mViewAndroidDelegate = new BisonViewAndroidDelegate(cv);
-        //webContentsDelegate.setContainerView(cv);
+        mContentView = ContentView.createContentView(context, mWebContents);
+        mViewAndroidDelegate = new BisonViewAndroidDelegate(mContentView);
+        //webContentsDelegate.setContainerView(mContentView);
         //if (mWebContents != null) mWebContents.clearNativeReference();
         mWebContents.initialize(
-                "", mViewAndroidDelegate, cv, mWindow, WebContents.createDefaultInternalsHolder());
+                "", mViewAndroidDelegate, mContentView, mWindow, WebContents.createDefaultInternalsHolder());
         SelectionPopupController.fromWebContents(mWebContents)
                 .setActionModeCallback(defaultActionCallback());
         mBisonWebContentsObserver = new BisonWebContentsObserver(mWebContents, this,
                 bisonContentsClient);
         mNavigationController = mWebContents.getNavigationController();
         if (getParent() != null) mWebContents.onShow();
-        addView(cv);
-        cv.requestFocus();
+        addView(mContentView);
+        mContentView.requestFocus();
         mContentViewRenderView.setCurrentWebContents(mWebContents);
 
         mSettings = new BisonSettings(context);
@@ -140,6 +143,8 @@ class BisonContents extends FrameLayout {
         mSettings.setWebContents(mWebContents);
 
         mDisplayObserver.onDIPScaleChanged(getDeviceScaleFactor());
+
+        mUpdateVisibilityRunnable = () -> updateWebContentsVisibility();
 
         updateDefaultLocale();
 
@@ -247,6 +252,7 @@ class BisonContents extends FrameLayout {
         //     mHasRequestedVisitedHistoryFromClient = true;
         //     requestVisitedHistoryFromClient();
         // }
+        // mContentView.requestFocus();
     }
 
     public void loadData(String data, String mimeType, String encoding) {
@@ -594,9 +600,33 @@ class BisonContents extends FrameLayout {
         }
     }
 
+    @Override
+    protected void onAttachedToWindow() {
+        super.onAttachedToWindow();
+
+    }
 
 
+    private void postUpdateWebContentsVisibility() {
+        if (mIsUpdateVisibilityTaskPending) return;
+        mIsUpdateVisibilityTaskPending = true;
+        PostTask.postTask(UiThreadTaskTraits.DEFAULT, mUpdateVisibilityRunnable);
+    }
 
+    private void updateWebContentsVisibility() {
+        mIsUpdateVisibilityTaskPending = false;
+        // if (isDestroyed(NO_WARN)) return;
+        //boolean contentVisible = BisonContentsJni.get().isVisible(mNativeBisonContents, this);
+
+        // if (!mIsContentVisible) {
+        //     mWebContents.onShow();
+        // } else if (!contentVisible && mIsContentVisible) {
+        //     mWebContents.onHide();
+        // }
+        mWebContents.onShow();
+        // mIsContentVisible = contentVisible;
+        //updateChildProcessImportance();
+    }
 
     @NativeMethods
     interface Natives {

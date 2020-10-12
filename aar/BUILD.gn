@@ -76,7 +76,7 @@ shared_library("libbison_view") {
     "//bison:bison_lib",
     "//components/crash/content/app",
     "//components/crash/content/browser",
-    "//components/embedder_support/android:view",
+    # "//components/embedder_support/android:view",
     "//components/keyed_service/content",
     "//content/public/app:both",
     "//content/public/browser",
