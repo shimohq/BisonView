@@ -42,7 +42,8 @@ public class BisonView extends FrameLayout {
         mBisonContentsClient = new BisonContentsClient(this, context);
         mBisonContentsClientBridge = new BisonContentsClientBridge(context, mBisonContentsClient,getClientCertLookupTable());
         BisonWebContentsDelegate webContentsDelegate = new BisonWebContentsDelegate(mBisonContentsClient);
-        mBisonContents = new BisonContents(context,BisonBrowserContext.getDefault(), webContentsDelegate, mBisonContentsClientBridge,mBisonContentsClient);
+        mBisonContents = new BisonContents(context,BisonBrowserContext.getDefault(), webContentsDelegate, 
+            mBisonContentsClientBridge,mBisonContentsClient);
         addView(mBisonContents);
     }
 
@@ -124,15 +125,13 @@ public class BisonView extends FrameLayout {
         mBisonContentsClient.setDownloadListener(listener);
     }
 
-    public static void setRemoteDebuggingEnabled(boolean enable) {
-        if (gBisonDevToolsServer ==null) {
-                gBisonDevToolsServer = new BisonDevToolsServer();
-        }
-        gBisonDevToolsServer.setRemoteDebuggingEnabled(enable);
-        if (!enable){
-            gBisonDevToolsServer.destroy();
-            gBisonDevToolsServer = null;
-        }
+    public void pauseTimers() {
+        BisonBrowserContext.getDefault().pauseTimers();
+    }
+
+
+    public void resumeTimers() {
+        BisonBrowserContext.getDefault().resumeTimers();
     }
 
 
@@ -149,6 +148,16 @@ public class BisonView extends FrameLayout {
         removeAllViews();
     }
 
+    public static void setRemoteDebuggingEnabled(boolean enable) {
+        if (gBisonDevToolsServer ==null) {
+                gBisonDevToolsServer = new BisonDevToolsServer();
+        }
+        gBisonDevToolsServer.setRemoteDebuggingEnabled(enable);
+        if (!enable){
+            gBisonDevToolsServer.destroy();
+            gBisonDevToolsServer = null;
+        }
+    }
 
 
     private static ClientCertLookupTable getClientCertLookupTable() {

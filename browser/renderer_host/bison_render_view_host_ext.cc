@@ -178,9 +178,8 @@ void BisonRenderViewHostExt::DidFinishNavigation(
        !navigation_handle->HasSubframeNavigationEntryCommitted()))
     return;
 
-  // jiang  只是记录用？
-  // BisonBrowserContext::FromWebContents(web_contents())
-  //     ->AddVisitedURLs(navigation_handle->GetRedirectChain());
+  BisonBrowserContext::FromWebContents(web_contents())
+      ->AddVisitedURLs(navigation_handle->GetRedirectChain());
 }
 
 void BisonRenderViewHostExt::OnPageScaleFactorChanged(float page_scale_factor) {

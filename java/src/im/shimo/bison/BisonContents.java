@@ -26,6 +26,7 @@ import org.chromium.content_public.browser.NavigationController;
 import org.chromium.content_public.browser.SelectionPopupController;
 import org.chromium.content_public.browser.UiThreadTaskTraits;
 import org.chromium.content_public.browser.WebContents;
+import org.chromium.content_public.browser.WebContentsInternals;
 import org.chromium.content_public.browser.navigation_controller.LoadURLType;
 import org.chromium.content_public.browser.navigation_controller.UserAgentOverrideOption;
 import org.chromium.content_public.common.ContentUrlConstants;
@@ -46,6 +47,7 @@ import java.util.Map;
 class BisonContents extends FrameLayout {
     private static final String TAG = "BisonContents";
     private static final boolean TRACE = true;
+    private static final String PRODUCT_VERSION = BisonContentsJni.get().getProductVersion();
 
     private static String sCurrentLocales = "";
 
@@ -75,6 +77,7 @@ class BisonContents extends FrameLayout {
     private final DisplayAndroidObserver mDisplayObserver;
     private BisonSettings mSettings;
 
+    private WebContentsInternals mWebContentsInternals;
 
     private JavascriptInjector mJavascriptInjector;
     private BisonContentsClient mContentsClient;
@@ -119,7 +122,7 @@ class BisonContents extends FrameLayout {
         //webContentsDelegate.setContainerView(mContentView);
         //if (mWebContents != null) mWebContents.clearNativeReference();
         mWebContents.initialize(
-                "", mViewAndroidDelegate, mContentView, mWindow, WebContents.createDefaultInternalsHolder());
+                PRODUCT_VERSION, mViewAndroidDelegate, mContentView, mWindow, WebContents.createDefaultInternalsHolder());
         SelectionPopupController.fromWebContents(mWebContents)
                 .setActionModeCallback(defaultActionCallback());
         mBisonWebContentsObserver = new BisonWebContentsObserver(mWebContents, this,
@@ -222,6 +225,7 @@ class BisonContents extends FrameLayout {
             params.setTransitionType(PageTransition.RELOAD);
         }
         params.setOverrideUserAgent(UserAgentOverrideOption.TRUE);
+        // params.setOverrideUserAgent(UserAgentOverrideOption.FALSE);
 
 
         final String referer = "referer";
@@ -649,6 +653,8 @@ class BisonContents extends FrameLayout {
                 long nativeBisonContents, boolean value, String requestingFrame);
 
         void destroy(long nativeBisonContents);
+
+        String getProductVersion();
     }
 
 }

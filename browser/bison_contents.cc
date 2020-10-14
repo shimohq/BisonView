@@ -607,4 +607,11 @@ jlong JNI_BisonContents_Init(JNIEnv* env,
   return reinterpret_cast<intptr_t>(bison_contents);
 }
 
+// static
+ScopedJavaLocalRef<jstring> JNI_BisonContents_GetProductVersion(
+    JNIEnv* env) {
+  return base::android::ConvertUTF8ToJavaString(
+      env, version_info::GetVersionNumber());
+}
+
 }  // namespace bison

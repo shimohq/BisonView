@@ -229,13 +229,11 @@ class BisonContentBrowserClient : public content::ContentBrowserClient {
       service_manager::BinderRegistryWithArgs<content::RenderFrameHost*>>
       frame_interfaces_;
 
-  // The AwFeatureListCreator is owned by AwMainDelegate.
+  
   BisonFeatureListCreator* const bison_feature_list_creator_;
-};
 
-// The delay for sending reports when running with --run-web-tests
-constexpr base::TimeDelta kReportingDeliveryIntervalTimeForWebTests =
-    base::TimeDelta::FromMilliseconds(100);
+  DISALLOW_COPY_AND_ASSIGN(BisonContentBrowserClient);
+};
 
 }  // namespace bison
 

@@ -217,8 +217,8 @@ void BisonContentRendererClient::PrepareErrorPage(
   // else
   //   err = net::ErrorToString(error.reason());
 
-  // if (!error_html)
-  //   return;
+  if (!error_html)
+    return;
 
   // // Create the error page based on the error reason.
   // GURL gurl(error.url());

@@ -10,7 +10,7 @@ import org.chromium.base.annotations.CalledByNative;
 import org.chromium.base.annotations.JNINamespace;
 import org.chromium.base.annotations.NativeMethods;
 import org.chromium.base.memory.MemoryPressureMonitor;
-
+import org.chromium.content_public.browser.ContentViewStatics;
 
 
 @JNINamespace("bison")
@@ -94,14 +94,14 @@ public class BisonBrowserContext {
      * @see android.webkit.WebView#pauseTimers()
      */
     public void pauseTimers() {
-        // ContentViewStatics.setWebKitSharedTimersSuspended(true);
+        ContentViewStatics.setWebKitSharedTimersSuspended(true);
     }
 
     /**
      * @see android.webkit.WebView#resumeTimers()
      */
     public void resumeTimers() {
-        // ContentViewStatics.setWebKitSharedTimersSuspended(false);
+        ContentViewStatics.setWebKitSharedTimersSuspended(false);
     }
 
     public long getNativePointer() {

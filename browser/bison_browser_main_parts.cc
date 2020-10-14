@@ -6,6 +6,7 @@
 #include "bison/browser/bison_devtools_manager_delegate.h"
 #include "bison/browser/metrics/memory_metrics_logger.h"
 #include "bison/browser/network_service/bison_network_change_notifier_factory.h"
+#include "bison/browser/bison_web_ui_controller_factory.h"
 
 #include "base/base_switches.h"
 #include "base/bind.h"
@@ -73,6 +74,7 @@ int BisonBrowserMainParts::PreCreateThreads() {
     crash_reporter::ChildExitObserver::GetInstance()->RegisterClient(
         std::make_unique<crash_reporter::ChildProcessCrashObserver>());
   }
+
   VLOG(0) << "PreCreateThreads";
   return 0;
 }
@@ -80,6 +82,8 @@ int BisonBrowserMainParts::PreCreateThreads() {
 void BisonBrowserMainParts::PreMainMessageLoopRun() {
   BisonBrowserProcess::GetInstance()->PreMainMessageLoopRun();
   browser_client_->InitBrowserContext();
+  content::WebUIControllerFactory::RegisterFactory(
+      BisonWebUIControllerFactory::GetInstance());
   content::RenderFrameHost::AllowInjectingJavaScript();
   metrics_logger_ = std::make_unique<MemoryMetricsLogger>();
 }

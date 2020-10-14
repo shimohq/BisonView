@@ -585,15 +585,16 @@ BisonContentBrowserClient::CreateThrottlesForNavigation(
   VLOG(0) << "CreateThrottlesForNavigation";
   std::vector<std::unique_ptr<content::NavigationThrottle>> throttles;
   if (navigation_handle->IsInMainFrame()) {
+    // 这个好像可以不加
     throttles.push_back(page_load_metrics::MetricsNavigationThrottle::Create(
         navigation_handle));
     throttles.push_back(
         navigation_interception::InterceptNavigationDelegate::CreateThrottleFor(
             navigation_handle, navigation_interception::SynchronyMode::kSync));
-
-    // throttles.push_back(std::make_unique<PolicyBlacklistNavigationThrottle>(
-    //     navigation_handle, BisonBrowserContext::FromWebContents(
-    //                            navigation_handle->GetWebContents())));
+    // 这个好像可以不加
+    throttles.push_back(std::make_unique<PolicyBlacklistNavigationThrottle>(
+        navigation_handle, BisonBrowserContext::FromWebContents(
+                               navigation_handle->GetWebContents())));
   }
   return throttles;
 }
