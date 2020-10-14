@@ -16,6 +16,10 @@ using content::NavigationController;
 namespace bison {
 
 namespace {
+
+// const int kFileChooserModeOpenMultiple = 1 << 0;
+// const int kFileChooserModeOpenFolder = 1 << 1;
+
 base::LazyInstance<BisonJavaScriptDialogManager>::Leaky
     g_javascript_dialog_manager = LAZY_INSTANCE_INITIALIZER;
 }  // namespace

@@ -3,6 +3,8 @@
 
 #include <iostream>
 
+#include "bison/browser/bison_media_url_interceptor.h"
+
 #include "base/base_switches.h"
 #include "base/command_line.h"
 #include "base/cpu.h"
@@ -20,10 +22,12 @@
 #include "bison/renderer/bison_content_renderer_client.h"
 #include "build/build_config.h"
 #include "cc/base/switches.h"
+#include "components/autofill/core/common/autofill_features.h"
 #include "components/crash/core/common/crash_key.h"
 #include "components/viz/common/features.h"
 #include "components/viz/common/switches.h"
 #include "content/common/content_constants_internal.h"
+#include "content/public/browser/android/media_url_interceptor_register.h"
 #include "content/public/browser/browser_main_runner.h"
 #include "content/public/common/content_descriptor_keys.h"
 #include "content/public/common/content_features.h"
@@ -120,7 +124,7 @@ bool BisonMainDelegate::BasicStartupComplete(int* exit_code) {
   if (cl->GetSwitchValueASCII(switches::kProcessType).empty()) {
     // Browser process (no type specified).
 
-    // content::RegisterMediaUrlInterceptor(new BisonMediaUrlInterceptor());
+    content::RegisterMediaUrlInterceptor(new BisonMediaUrlInterceptor());
     // BrowserViewRenderer::CalculateTileMemoryPolicy();
 
     // WebView apps can override WebView#computeScroll to achieve custom
@@ -165,10 +169,15 @@ bool BisonMainDelegate::BasicStartupComplete(int* exit_code) {
   {
     ScopedAddFeatureFlags features(cl);
 
+    features.EnableIfNotSet(
+        autofill::features::kAutofillSkipComparingInferredLabels);
+
+
     features.DisableIfNotSet(::features::kWebPayments);
 
     features.DisableIfNotSet(::features::kWebAuth);
 
+    //FATAL:compositor_impl_android.cc(299)] Check failed: features::IsVizDisplayCompositorEnabled(). 
     // features.DisableIfNotSet(::features::kVizDisplayCompositor);
 
     features.DisableIfNotSet(media::kUseAndroidOverlay);
@@ -322,7 +331,8 @@ ContentBrowserClient* BisonMainDelegate::CreateContentBrowserClient() {
 }
 
 ContentGpuClient* BisonMainDelegate::CreateContentGpuClient() {
-  gpu_client_.reset(new BisonContentGpuClient);
+  // gpu_client_.reset(new BisonContentGpuClient);
+  gpu_client_ = std::make_unique<BisonContentGpuClient>();
   return gpu_client_.get();
 }
 
