@@ -8,6 +8,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.webkit.JavascriptInterface;
 import android.widget.FrameLayout;
+import android.view.ViewGroup;
 
 import org.chromium.base.Callback;
 import org.chromium.base.Log;
@@ -58,6 +59,8 @@ class BisonContents extends FrameLayout {
     private WebContents mWebContents;
     private NavigationController mNavigationController;
 
+    private final BisonLayoutSizer mLayoutSizer;
+
     private WindowAndroid mWindow;
     private ContentViewRenderView mContentViewRenderView;
     private ContentView mContentView;
@@ -87,6 +90,168 @@ class BisonContents extends FrameLayout {
     private boolean mIsUpdateVisibilityTaskPending ;
     private Runnable mUpdateVisibilityRunnable;
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
+    //--------------------------------------------------------------------------------------------
+    private class IoThreadClientImpl extends BisonContentsIoThreadClient {
+        
+        // All methods are called on the IO thread.
+
+        @Override
+        public int getCacheMode() {
+            return mSettings.getCacheMode();
+        }
+
+        @Override
+        public BisonContentsBackgroundThreadClient getBackgroundThreadClient() {
+            return mBackgroundThreadClient;
+        }
+
+        @Override
+        public boolean shouldBlockContentUrls() {
+            return !mSettings.getAllowContentAccess();
+        }
+
+        @Override
+        public boolean shouldBlockFileUrls() {
+            return !mSettings.getAllowFileAccess();
+        }
+
+        @Override
+        public boolean shouldBlockNetworkLoads() {
+            return mSettings.getBlockNetworkLoads();
+        }
+
+        @Override
+        public boolean shouldAcceptThirdPartyCookies() {
+            return mSettings.getAcceptThirdPartyCookies();
+        }
+
+        @Override
+        public boolean getSafeBrowsingEnabled() {
+            return mSettings.getSafeBrowsingEnabled();
+        }
+    }
+
+    private class BackgroundThreadClientImpl extends BisonContentsBackgroundThreadClient {
+        // All methods are called on the background thread.
+
+        @Override
+        public BisonWebResourceResponse shouldInterceptRequest(BisonContentsClient.BisonWebResourceRequest request) {
+            String url = request.url;
+            BisonWebResourceResponse webResourceResponse;
+            // Return the response directly if the url is default video poster url.
+            //webResourceResponse = mDefaultVideoPosterRequestHandler.shouldInterceptRequest(url);
+            //if (webResourceResponse != null) return webResourceResponse;
+
+            webResourceResponse = mContentsClient.shouldInterceptRequest(request);
+
+            if (webResourceResponse == null) {
+                mContentsClient.postOnLoadResource(url);
+            }
+
+            //if (webResourceResponse != null) {
+            //    String mimeType = webResourceResponse.getMimeType();
+            //    if (mimeType == null) {
+            //        AwHistogramRecorder.recordMimeType(
+            //                AwHistogramRecorder.MimeType.NULL_FROM_SHOULD_INTERCEPT_REQUEST);
+            //    } else {
+            //        AwHistogramRecorder.recordMimeType(
+            //                AwHistogramRecorder.MimeType.NONNULL_FROM_SHOULD_INTERCEPT_REQUEST);
+            //    }
+            //}
+            if (webResourceResponse != null && webResourceResponse.getData() == null) {
+                // In this case the intercepted URLRequest job will simulate an empty response
+                // which doesn't trigger the onReceivedError callback. For WebViewClassic
+                // compatibility we synthesize that callback.  http://crbug.com/180950
+                mContentsClient.postOnReceivedError(
+                        request, new BisonContentsClient.BisonWebResourceError());
+            }
+            return webResourceResponse;
+        }
+    }
+
+
+
+
+    private class InterceptNavigationDelegateImpl implements InterceptNavigationDelegate {
+        @Override
+        public boolean shouldIgnoreNavigation(NavigationParams navigationParams) {
+            if (!navigationParams.isRendererInitiated){
+                mContentsClient.getCallbackHelper().postOnPageStarted(navigationParams.url);
+            }
+            
+            return false;
+        }
+    }
+
+    //--------------------------------------------------------------------------------------------
+    private class LayoutSizerDelegate implements BisonLayoutSizer.Delegate {
+        @Override
+        public void requestLayout() {
+            BisonContents.this.requestLayout();
+        }
+
+        @Override
+        public void setMeasuredDimension(int measuredWidth, int measuredHeight) {
+            //mInternalAccessAdapter.setMeasuredDimension(measuredWidth, measuredHeight);
+        }
+
+        @Override
+        public boolean isLayoutParamsHeightWrapContent() {
+            // return mContainerView.getLayoutParams() != null
+            //         && (mContainerView.getLayoutParams().height
+            //                 == ViewGroup.LayoutParams.WRAP_CONTENT);
+            // jiang mContainerView is webView ?
+            return getLayoutParams() != null
+                    && (getLayoutParams().height
+                            == ViewGroup.LayoutParams.WRAP_CONTENT);
+        }
+
+        @Override
+        public void setForceZeroLayoutHeight(boolean forceZeroHeight) {
+            getSettings().setForceZeroLayoutHeight(forceZeroHeight);
+        }
+    }
+
+    //--------------------------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    //--------------------------------------------------------------------------------------------
     private class BisonDisplayAndroidObserver implements DisplayAndroidObserver {
         @Override
         public void onRotationChanged(int rotation) {}
@@ -96,11 +261,12 @@ class BisonContents extends FrameLayout {
             if (TRACE) Log.i(TAG, "%s onDIPScaleChanged dipScale=%f", this, dipScale);
 
             BisonContentsJni.get().setDipScale(mNativeBisonContents, BisonContents.this, dipScale);
-            // mLayoutSizer.setDIPScale(dipScale);
+            mLayoutSizer.setDIPScale(dipScale);
             mSettings.setDIPScale(dipScale);
         }
     };
 
+    //--------------------------------------------------------------------------------------------
     public BisonContents(Context context, BisonBrowserContext bisonBrowserContext,  BisonWebContentsDelegate webContentsDelegate,
                          BisonContentsClientBridge bisonContentsClientBridge,
                          BisonContentsClient bisonContentsClient) {
@@ -120,7 +286,7 @@ class BisonContents extends FrameLayout {
         mContentView = ContentView.createContentView(context, mWebContents);
         mViewAndroidDelegate = new BisonViewAndroidDelegate(mContentView);
         //webContentsDelegate.setContainerView(mContentView);
-        //if (mWebContents != null) mWebContents.clearNativeReference();
+        
         mWebContents.initialize(
                 PRODUCT_VERSION, mViewAndroidDelegate, mContentView, mWindow, WebContents.createDefaultInternalsHolder());
         SelectionPopupController.fromWebContents(mWebContents)
@@ -139,6 +305,9 @@ class BisonContents extends FrameLayout {
         mBackgroundThreadClient = new BackgroundThreadClientImpl();
         mIoThreadClient = new IoThreadClientImpl();
         mInterceptNavigationDelegate = new InterceptNavigationDelegateImpl();
+
+        mLayoutSizer = new BisonLayoutSizer();
+        mLayoutSizer.setDelegate(new LayoutSizerDelegate());
         mDisplayObserver = new BisonDisplayAndroidObserver();
 
         BisonContentsJni.get().setJavaPeers(mNativeBisonContents, webContentsDelegate,
@@ -151,6 +320,7 @@ class BisonContents extends FrameLayout {
 
         updateDefaultLocale();
 
+        
     }
 
     /**
@@ -190,7 +360,6 @@ class BisonContents extends FrameLayout {
     public void loadUrl(String url) {
         if (url == null) return;
         loadUrl(url, null);
-        //mNavigationController.loadUrl(new LoadUrlParams(url));
     }
 
     public void loadUrl(String url, Map<String, String> additionalHttpHeaders) {
@@ -225,8 +394,6 @@ class BisonContents extends FrameLayout {
             params.setTransitionType(PageTransition.RELOAD);
         }
         params.setOverrideUserAgent(UserAgentOverrideOption.TRUE);
-        // params.setOverrideUserAgent(UserAgentOverrideOption.FALSE);
-
 
         final String referer = "referer";
         Map<String, String> extraHeaders = params.getExtraHeaders();
@@ -446,93 +613,11 @@ class BisonContents extends FrameLayout {
     }
 
 
-    private class IoThreadClientImpl extends BisonContentsIoThreadClient {
-        // All methods are called on the IO thread.
+    
 
-        @Override
-        public int getCacheMode() {
-            return mSettings.getCacheMode();
-        }
+    
 
-        @Override
-        public BisonContentsBackgroundThreadClient getBackgroundThreadClient() {
-            return mBackgroundThreadClient;
-        }
-
-        @Override
-        public boolean shouldBlockContentUrls() {
-            return !mSettings.getAllowContentAccess();
-        }
-
-        @Override
-        public boolean shouldBlockFileUrls() {
-            return !mSettings.getAllowFileAccess();
-        }
-
-        @Override
-        public boolean shouldBlockNetworkLoads() {
-            return mSettings.getBlockNetworkLoads();
-        }
-
-        @Override
-        public boolean shouldAcceptThirdPartyCookies() {
-            return mSettings.getAcceptThirdPartyCookies();
-        }
-
-        @Override
-        public boolean getSafeBrowsingEnabled() {
-            return mSettings.getSafeBrowsingEnabled();
-        }
-    }
-
-    private class BackgroundThreadClientImpl extends BisonContentsBackgroundThreadClient {
-        @Override
-        public BisonWebResourceResponse shouldInterceptRequest(BisonContentsClient.BisonWebResourceRequest request) {
-            String url = request.url;
-            BisonWebResourceResponse webResourceResponse;
-            // Return the response directly if the url is default video poster url.
-            //webResourceResponse = mDefaultVideoPosterRequestHandler.shouldInterceptRequest(url);
-            //if (webResourceResponse != null) return webResourceResponse;
-
-            webResourceResponse = mContentsClient.shouldInterceptRequest(request);
-
-            if (webResourceResponse == null) {
-                mContentsClient.postOnLoadResource(url);
-            }
-
-            //if (webResourceResponse != null) {
-            //    String mimeType = webResourceResponse.getMimeType();
-            //    if (mimeType == null) {
-            //        AwHistogramRecorder.recordMimeType(
-            //                AwHistogramRecorder.MimeType.NULL_FROM_SHOULD_INTERCEPT_REQUEST);
-            //    } else {
-            //        AwHistogramRecorder.recordMimeType(
-            //                AwHistogramRecorder.MimeType.NONNULL_FROM_SHOULD_INTERCEPT_REQUEST);
-            //    }
-            //}
-            if (webResourceResponse != null && webResourceResponse.getData() == null) {
-                // In this case the intercepted URLRequest job will simulate an empty response
-                // which doesn't trigger the onReceivedError callback. For WebViewClassic
-                // compatibility we synthesize that callback.  http://crbug.com/180950
-                mContentsClient.postOnReceivedError(
-                        request, new BisonContentsClient.BisonWebResourceError());
-            }
-            return webResourceResponse;
-        }
-        // All methods are called on the background thread.
-
-    }
-
-    private class InterceptNavigationDelegateImpl implements InterceptNavigationDelegate {
-        @Override
-        public boolean shouldIgnoreNavigation(NavigationParams navigationParams) {
-            if (!navigationParams.isRendererInitiated){
-                mContentsClient.getCallbackHelper().postOnPageStarted(navigationParams.url);
-            }
-            
-            return false;
-        }
-    }
+    
 
 
 
@@ -574,6 +659,48 @@ class BisonContents extends FrameLayout {
     private void onPermissionRequest(BisonPermissionRequest permissionRequest) {
         mContentsClient.onPermissionRequest(permissionRequest);
     }
+
+
+    @CalledByNative
+    private void onWebLayoutPageScaleFactorChanged(float webLayoutPageScaleFactor) {
+        // This change notification comes from the renderer thread, not from the cc/ impl thread.
+        mLayoutSizer.onPageScaleChanged(webLayoutPageScaleFactor);
+    }
+
+    // @CalledByNative
+    private void onWebLayoutContentsSizeChanged(int widthCss, int heightCss) {
+        // This change notification comes from the renderer thread, not from the cc/ impl thread.
+        mLayoutSizer.onContentSizeChanged(widthCss, heightCss);
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     @CalledByNative
     private void onPermissionRequestCanceled(BisonPermissionRequest permissionRequest) {

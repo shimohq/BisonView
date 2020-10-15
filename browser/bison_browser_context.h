@@ -5,6 +5,7 @@
 
 #include <memory>
 
+#include "bison/browser/bison_ssl_host_state_delegate.h"
 #include "bison/browser/bison_resource_context.h"
 #include "bison/browser/network_service/bison_proxy_config_monitor.h"
 
@@ -101,16 +102,14 @@ class BisonBrowserContext : public content::BrowserContext,
   // visitedlink::VisitedLinkDelegate implementation.
   void RebuildTable(const scoped_refptr<URLEnumerator>& enumerator) override;
 
+  PrefService* GetPrefService() const { return user_pref_service_.get(); }
+
   network::mojom::NetworkContextParamsPtr GetNetworkContextParams(
       bool in_memory,
       const base::FilePath& relative_partition_path);
 
-  PrefService* GetPrefService() const { return user_pref_service_.get(); }
-
   base::android::ScopedJavaLocalRef<jobject> GetJavaBrowserContext();
 
- protected:
-  std::unique_ptr<content::PermissionControllerDelegate> permission_manager_;
   // std::unique_ptr<content::BackgroundSyncController>
   //     background_sync_controller_;
 
@@ -127,6 +126,9 @@ class BisonBrowserContext : public content::BrowserContext,
   std::unique_ptr<visitedlink::VisitedLinkMaster> visitedlink_master_;
   std::unique_ptr<BisonResourceContext> resource_context_;
   std::unique_ptr<PrefService> user_pref_service_;
+
+  std::unique_ptr<BisonSSLHostStateDelegate> ssl_host_state_delegate_;
+  std::unique_ptr<content::PermissionControllerDelegate> permission_manager_;
 
   SimpleFactoryKey simple_factory_key_;
 

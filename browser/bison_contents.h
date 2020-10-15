@@ -59,7 +59,8 @@ class BisonContentsClientBridge;
 class BisonWebContentsDelegate;
 class PermissionRequestHandler;
 
-class BisonContents : public PermissionRequestHandlerClient,
+class BisonContents : public BisonRenderViewHostExtClient,
+                      public PermissionRequestHandlerClient,
                       public BisonBrowserPermissionRequestDelegate,
                       public WebContentsObserver {
  public:
@@ -246,6 +247,11 @@ class BisonContents : public PermissionRequestHandlerClient,
 
   // Sets the java client
   void SetAutofillClient(const base::android::JavaRef<jobject>& client);
+
+  // BisonRenderViewHostExtClient implementation.
+  void OnWebLayoutPageScaleFactorChanged(float page_scale_factor) override;
+  void OnWebLayoutContentsSizeChanged(const gfx::Size& contents_size) override;
+
 
   // jiang
   JavaObjectWeakGlobalRef java_ref_;

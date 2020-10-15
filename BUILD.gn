@@ -106,6 +106,7 @@ android_library("bison_java") {
     "java/src/im/shimo/bison/BisonFormDatabase.java",
     "java/src/im/shimo/bison/ContentViewRenderView.java",
     "java/src/im/shimo/bison/ContentView.java",
+    "java/src/im/shimo/bison/BisonLayoutSizer.java",
   ]
 
   srcjar_deps = [

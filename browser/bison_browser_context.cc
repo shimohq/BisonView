@@ -296,7 +296,10 @@ BisonBrowserContext::GetStorageNotificationService() {
 }
 
 SSLHostStateDelegate* BisonBrowserContext::GetSSLHostStateDelegate() {
-  return nullptr;
+  if (!ssl_host_state_delegate_.get()) {
+    ssl_host_state_delegate_.reset(new BisonSSLHostStateDelegate());
+  }
+  return ssl_host_state_delegate_.get();
 }
 
 PermissionControllerDelegate*
