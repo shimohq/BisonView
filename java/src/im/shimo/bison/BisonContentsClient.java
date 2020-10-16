@@ -562,4 +562,13 @@ public class BisonContentsClient {
 
     public static class BisonWebResourceError {
     }
+
+    public void onRendererUnresponsive(BisonRenderProcess renderProcess){
+
+    }
+
+    public void onRendererResponsive(BisonRenderProcess renderProcess) {
+
+    }
+
 }

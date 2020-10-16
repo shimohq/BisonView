@@ -12,6 +12,7 @@ import android.widget.FrameLayout;
 import org.chromium.base.annotations.CalledByNative;
 import org.chromium.base.annotations.JNINamespace;
 import org.chromium.base.annotations.NativeMethods;
+import org.chromium.base.Log;
 import org.chromium.content_public.browser.WebContents;
 import org.chromium.ui.base.WindowAndroid;
 
@@ -23,6 +24,9 @@ import org.chromium.ui.base.WindowAndroid;
  */
 @JNINamespace("bison")
 public class ContentViewRenderView extends FrameLayout {
+
+    private static final String TAG = "ContentViewRenderView";
+
     // The native side of this object.
     private long mNativeContentViewRenderView;
     private SurfaceHolder.Callback mSurfaceCallback;
@@ -99,6 +103,7 @@ public class ContentViewRenderView extends FrameLayout {
             @Override
             public void surfaceDestroyed(SurfaceHolder holder) {
                 assert mNativeContentViewRenderView != 0;
+                Log.d(TAG,"surfaceDestroyed");
                 ContentViewRenderViewJni.get().surfaceDestroyed(
                         mNativeContentViewRenderView, ContentViewRenderView.this);
             }

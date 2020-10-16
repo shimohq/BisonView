@@ -7,11 +7,14 @@
 #include <utility>
 
 #include "bison/bison_jni_headers/BisonContents_jni.h" // jiang jni.h
+#include "bison/browser/bison_autofill_client.h"
 #include "bison/browser/bison_browser_main_parts.h"
 #include "bison/browser/bison_content_browser_client.h"
 #include "bison/browser/bison_contents_client_bridge.h"
 #include "bison/browser/bison_contents_io_thread_client.h"
+#include "bison/browser/bison_contents_lifecycle_notifier.h"
 #include "bison/browser/bison_javascript_dialog_manager.h"
+#include "bison/browser/bison_render_process.h"
 #include "bison/browser/bison_settings.h"
 #include "bison/browser/bison_web_contents_delegate.h"
 #include "bison/browser/permission/bison_permission_request.h"
@@ -19,32 +22,43 @@
 #include "bison/browser/permission/simple_permission_request.h"
 #include "bison/common/devtools_instrumentation.h"
 
+#include "base/android/jni_android.h"
+#include "base/android/jni_array.h"
 #include "base/android/jni_string.h"
+#include "base/android/locale_utils.h"
 #include "base/android/scoped_java_ref.h"
+#include "base/atomicops.h"
+#include "base/bind.h"
+#include "base/bind_helpers.h"
+#include "base/callback.h"
 #include "base/command_line.h"
+#include "base/i18n/rtl.h"
+#include "base/json/json_writer.h"
 #include "base/location.h"
-#include "base/logging.h"
 #include "base/macros.h"
+#include "base/memory/memory_pressure_listener.h"
 #include "base/no_destructor.h"
-#include "base/run_loop.h"
+#include "base/pickle.h"
 #include "base/single_thread_task_runner.h"
-#include "base/strings/string_number_conversions.h"
-#include "base/strings/string_util.h"
-#include "base/strings/stringprintf.h"
-#include "base/strings/utf_string_conversions.h"
+#include "base/strings/string16.h"
+#include "base/supports_user_data.h"
 #include "base/task/post_task.h"
 #include "base/threading/thread_restrictions.h"
 #include "base/threading/thread_task_runner_handle.h"
-#include "build/build_config.h"
+#include "components/autofill/android/autofill_provider_android.h"
+#include "components/autofill/content/browser/content_autofill_driver_factory.h"
+#include "components/autofill/core/browser/autofill_manager.h"
+#include "components/autofill/core/browser/webdata/autofill_webdata_service.h"
 #include "components/navigation_interception/intercept_navigation_delegate.h"
+#include "content/public/browser/android/child_process_importance.h"
+#include "content/public/browser/android/synchronous_compositor.h"
 #include "content/public/browser/browser_task_traits.h"
 #include "content/public/browser/browser_thread.h"
+#include "content/public/browser/browsing_data_remover.h"
 #include "content/public/browser/child_process_security_policy.h"
-#include "content/public/browser/devtools_agent_host.h"
-#include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_entry.h"
 #include "content/public/browser/navigation_handle.h"
-#include "content/public/browser/picture_in_picture_window_controller.h"
+#include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/render_process_host.h"
 #include "content/public/browser/render_view_host.h"
 #include "content/public/browser/render_widget_host.h"
@@ -57,16 +71,19 @@
 #include "third_party/blink/public/common/presentation/presentation_receiver_flags.h"
 #include "third_party/blink/public/mojom/renderer_preferences.mojom.h"
 
+using autofill::AutofillManager;
+using autofill::ContentAutofillDriverFactory;
 using base::android::AttachCurrentThread;
+using base::android::ConvertJavaStringToUTF16;
+using base::android::ConvertJavaStringToUTF8;
+using base::android::ConvertUTF16ToJavaString;
 using base::android::ConvertUTF8ToJavaString;
+using base::android::HasException;
 using base::android::JavaParamRef;
 using base::android::JavaRef;
+using base::android::ScopedJavaGlobalRef;
 using base::android::ScopedJavaLocalRef;
-using content::BluetoothChooser;
-using content::BluetoothScanningPrompt;
 using content::BrowserThread;
-using content::DevToolsAgentHost;
-using content::NavigationController;
 using content::NavigationEntry;
 using content::PictureInPictureResult;
 using content::ReloadType;
@@ -107,6 +124,7 @@ private:
   BisonContents *contents_;
 };
 
+base::subtle::Atomic32 g_instance_count = 0;
 
 
 } // namespace
@@ -151,14 +169,10 @@ BisonBrowserPermissionRequestDelegate::FromID(int render_process_id,
   return contents;
 }
 
-// // static
-// AwSafeBrowsingUIManager::UIManagerClient*
-// AwSafeBrowsingUIManager::UIManagerClient::FromWebContents(
-//     WebContents* web_contents) {
-//   return AwContents::FromWebContents(web_contents);
-// }
+// jiang removed
 
-// // static
+
+// static
 // AwRenderProcessGoneDelegate* AwRenderProcessGoneDelegate::FromWebContents(
 //     content::WebContents* web_contents) {
 //   return AwContents::FromWebContents(web_contents);
@@ -167,6 +181,7 @@ BisonBrowserPermissionRequestDelegate::FromID(int render_process_id,
 BisonContents::BisonContents(std::unique_ptr<WebContents> web_contents)
     : WebContentsObserver(web_contents.get()),
       web_contents_(std::move(web_contents)) {
+  base::subtle::NoBarrier_AtomicIncrement(&g_instance_count, 1);
   web_contents_->SetUserData(bison::kBisonContentsUserDataKey,
                              std::make_unique<BisonContentsUserData>(this));
 
@@ -175,6 +190,12 @@ BisonContents::BisonContents(std::unique_ptr<WebContents> web_contents)
 
   permission_request_handler_.reset(
       new PermissionRequestHandler(this, web_contents_.get()));
+
+  BisonAutofillClient *autofill_manager_delegate =
+      BisonAutofillClient::FromWebContents(web_contents_.get());
+  if (autofill_manager_delegate)
+    InitAutofillIfNecessary(autofill_manager_delegate->GetSaveFormData());
+  BisonContentsLifecycleNotifier::OnWebViewCreated();
 }
 
 void BisonContents::SetJavaPeers(
@@ -200,22 +221,72 @@ void BisonContents::SetJavaPeers(
 
 void BisonContents::SetSaveFormData(bool enabled) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
-  // InitAutofillIfNecessary(enabled);
+  InitAutofillIfNecessary(enabled);
   // // We need to check for the existence, since autofill_manager_delegate
   // // may not be created when the setting is false.
-  // if (AwAutofillClient::FromWebContents(web_contents_.get())) {
-  //   AwAutofillClient::FromWebContents(web_contents_.get())
-  //       ->SetSaveFormData(enabled);
-  // }
+  if (BisonAutofillClient::FromWebContents(web_contents_.get())) {
+    BisonAutofillClient::FromWebContents(web_contents_.get())
+        ->SetSaveFormData(enabled);
+  }
 }
 
-BisonContents::~BisonContents() {
+void BisonContents::InitAutofillIfNecessary(bool autocomplete_enabled) {
+  // Check if the autofill driver factory already exists.
+  content::WebContents *web_contents = web_contents_.get();
+  if (ContentAutofillDriverFactory::FromWebContents(web_contents))
+    return;
+
+  // Check if AutofillProvider is available.
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
   JNIEnv *env = AttachCurrentThread();
   ScopedJavaLocalRef<jobject> obj = java_ref_.get(env);
   if (obj.is_null())
     return;
+
+  // Just return, if the app neither runs on O sdk nor enables autocomplete.
+  if (!autofill_provider_ && !autocomplete_enabled)
+    return;
+
+  BisonAutofillClient::CreateForWebContents(web_contents);
+  ContentAutofillDriverFactory::CreateForWebContentsAndDelegate(
+      web_contents, BisonAutofillClient::FromWebContents(web_contents),
+      base::android::GetDefaultLocaleString(),
+      AutofillManager::DISABLE_AUTOFILL_DOWNLOAD_MANAGER,
+      autofill_provider_.get());
+}
+
+void BisonContents::SetAutofillClient(const JavaRef<jobject> &client) {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  JNIEnv *env = AttachCurrentThread();
+  ScopedJavaLocalRef<jobject> obj = java_ref_.get(env);
+  if (obj.is_null())
+    return;
+  Java_BisonContents_setAutofillClient(env, obj, client);
+}
+
+BisonContents::~BisonContents() {
+  DCHECK_EQ(this, BisonContents::FromWebContents(web_contents_.get()));
+  web_contents_->RemoveUserData(kBisonContentsUserDataKey);
+  JNIEnv *env = AttachCurrentThread();
+  ScopedJavaLocalRef<jobject> obj = java_ref_.get(env);
+  if (obj.is_null())
+    return;
+  base::subtle::Atomic32 instance_count =
+      base::subtle::NoBarrier_AtomicIncrement(&g_instance_count, -1);
+
+  if (instance_count == 0) {
+    // TODO(timvolodine): consider moving NotifyMemoryPressure to
+    // (crbug.com/522988).
+    base::MemoryPressureListener::NotifyMemoryPressure(
+        base::MemoryPressureListener::MEMORY_PRESSURE_LEVEL_CRITICAL);
+  }
   VLOG(0) << "destroy native";
   Java_BisonContents_onNativeDestroyed(env, obj);
+  BisonContentsLifecycleNotifier::OnWebViewDestroyed();
+}
+
+ScopedJavaLocalRef<jobject> BisonContents::GetWebContents(JNIEnv *env) {
+  return web_contents_.get()->GetJavaWebContents();
 }
 
 BisonContents *
@@ -226,31 +297,26 @@ BisonContents::CreateBisonContents(BrowserContext *browser_context) {
   // WebContents* raw_web_contents = web_contents.get();
   BisonContents *bison_view = new BisonContents(std::move(web_contents));
 
-  // bison_view->PlatformCreateWindow();
-
-
-
   return bison_view;
 }
 
 
 
+void BisonContents::Destroy(JNIEnv *env) {
+  java_ref_.reset();
+  delete this;
+}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+jlong JNI_BisonContents_Init(JNIEnv *env, const JavaParamRef<jobject> &obj,
+                             jlong bison_browser_context) {
+  BisonBrowserContext *browserContext =
+      reinterpret_cast<BisonBrowserContext *>(bison_browser_context);
+  BisonContents *bison_contents =
+      BisonContents::CreateBisonContents(browserContext);
+  VLOG(0) << "after create new window";
+  bison_contents->java_ref_ = JavaObjectWeakGlobalRef(env, obj);
+  return reinterpret_cast<intptr_t>(bison_contents);
+}
 
 void BisonContents::DidFinishNavigation(
     content::NavigationHandle *navigation_handle) {
@@ -472,9 +538,7 @@ void BisonContents::CancelMIDISysexPermissionRequests(const GURL &origin) {
 
 
 
-ScopedJavaLocalRef<jobject> BisonContents::GetWebContents(JNIEnv *env) {
-  return web_contents_.get()->GetJavaWebContents();
-}
+
 
 
 
@@ -566,29 +630,45 @@ void BisonContents::GrantFileSchemeAccesstoChildProcess(JNIEnv *env) {
 }
 
 
+jlong BisonContents::GetAutofillProvider(
+    JNIEnv *env, const base::android::JavaParamRef<jobject> &obj) {
+  return reinterpret_cast<jlong>(autofill_provider_.get());
+}
 
-void BisonContents::SetAutofillClient(const JavaRef<jobject> &client) {
+
+void BisonContents::RendererUnresponsive(
+    content::RenderProcessHost *render_process_host) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
   JNIEnv *env = AttachCurrentThread();
   ScopedJavaLocalRef<jobject> obj = java_ref_.get(env);
   if (obj.is_null())
     return;
-  Java_BisonContents_setAutofillClient(env, obj, client);
+
+  BisonRenderProcess *render_process =
+      BisonRenderProcess::GetInstanceForRenderProcessHost(render_process_host);
+  Java_BisonContents_onRendererUnresponsive(env, obj,
+                                            render_process->GetJavaObject());
 }
 
-void BisonContents::Destroy(JNIEnv *env) { delete this; }
+void BisonContents::RendererResponsive(
+    content::RenderProcessHost *render_process_host) {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  JNIEnv *env = AttachCurrentThread();
+  ScopedJavaLocalRef<jobject> obj = java_ref_.get(env);
+  if (obj.is_null())
+    return;
 
-// static
-jlong JNI_BisonContents_Init(JNIEnv *env, const JavaParamRef<jobject> &obj,
-                             jlong bison_browser_context) {
-  BisonBrowserContext *browserContext =
-      reinterpret_cast<BisonBrowserContext *>(bison_browser_context);
-  BisonContents *bison_contents =
-      BisonContents::CreateBisonContents(browserContext);
-  VLOG(0) << "after create new window";
-  bison_contents->java_ref_ = JavaObjectWeakGlobalRef(env, obj);
-  return reinterpret_cast<intptr_t>(bison_contents);
+  BisonRenderProcess *render_process =
+      BisonRenderProcess::GetInstanceForRenderProcessHost(render_process_host);
+  Java_BisonContents_onRendererResponsive(env, obj,
+                                          render_process->GetJavaObject());
 }
+
+
+
+
+
+
 
 // static
 ScopedJavaLocalRef<jstring> JNI_BisonContents_GetProductVersion(JNIEnv *env) {

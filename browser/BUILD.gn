@@ -80,6 +80,10 @@ source_set("browser") {
     "bison_media_url_interceptor.h",
     "bison_ssl_host_state_delegate.cc",
     "bison_ssl_host_state_delegate.h",
+    "bison_contents_lifecycle_notifier.cc",
+    "bison_contents_lifecycle_notifier.h",
+    "bison_render_process.cc",
+    "bison_render_process.h",
 
     # network_service
     "network_service/android_stream_reader_url_loader.cc",
@@ -137,11 +141,13 @@ source_set("browser") {
     "//components/version_info",
     "//content/public/browser",
     "//components/page_load_metrics/browser",
-    "//services/viz/public/mojom",
+    "//components/autofill/android:provider",
+    "//components/autofill/content/browser",
     "//components/variations",
     "//components/variations/net",
     "//components/variations/service",
     "//services/viz/privileged/mojom",
+    "//services/viz/public/mojom",
 
     "//ui/gfx",
     "//ui/android",
@@ -155,8 +161,7 @@ source_set("browser") {
     "//services/preferences/tracked",
     "//components/version_info/android:channel_getter",
 
-    "//components/autofill/android:provider",
-    "//components/autofill/content/browser",
+    
     "//components/visitedlink/browser",
   ]
 }

@@ -8,8 +8,12 @@
 
 #include "components/navigation_interception/intercept_navigation_delegate.h"
 #include "content/public/browser/navigation_controller.h"
+#include "content/public/browser/file_select_listener.h"
+#include "content/public/browser/render_frame_host.h"
+#include "content/public/browser/render_process_host.h"
 #include "content/public/browser/render_view_host.h"
 #include "content/public/browser/render_widget_host.h"
+#include "content/public/browser/web_contents.h"
 
 using content::NavigationController;
 
@@ -34,16 +38,17 @@ void BisonWebContentsDelegate::RendererUnresponsive(
     content::WebContents* source,
     content::RenderWidgetHost* render_widget_host,
     base::RepeatingClosure hang_monitor_restarter) {
-  // BisonContents* bison_contents = BisonContents::FromWebContents(source);
-  // if (!bison_contents)
-  //   return;
 
-  // content::RenderProcessHost* render_process_host =
-  //     render_widget_host->GetProcess();
-  // if (render_process_host->IsInitializedAndNotDead()) {
-  //   bison_contents->RendererUnresponsive(render_widget_host->GetProcess());
-  //   hang_monitor_restarter.Run();
-  // }
+    BisonContents* bison_contents = BisonContents::FromWebContents(source);
+    if (!bison_contents)
+      return;
+
+  content::RenderProcessHost* render_process_host =
+      render_widget_host->GetProcess();
+  if (render_process_host->IsInitializedAndNotDead()) {
+    bison_contents->RendererUnresponsive(render_widget_host->GetProcess());
+    hang_monitor_restarter.Run();
+  }
 
 }
 

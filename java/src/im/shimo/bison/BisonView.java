@@ -30,7 +30,7 @@ public class BisonView extends FrameLayout {
         init(context);
     }
 
-    private void init(Context context){
+    private void init(Context context) {
         ChildProcessCreationParams.set(context.getPackageName(), false,
                 LibraryProcessType.PROCESS_WEBVIEW_CHILD, true,
                 true, "im.shimo.bison.PrivilegedProcessService", 
@@ -149,8 +149,9 @@ public class BisonView extends FrameLayout {
     }
 
     public static void setRemoteDebuggingEnabled(boolean enable) {
-        if (gBisonDevToolsServer ==null) {
-                gBisonDevToolsServer = new BisonDevToolsServer();
+        if (gBisonDevToolsServer == null ) {
+            if (!enable) return;
+            gBisonDevToolsServer = new BisonDevToolsServer();
         }
         gBisonDevToolsServer.setRemoteDebuggingEnabled(enable);
         if (!enable){

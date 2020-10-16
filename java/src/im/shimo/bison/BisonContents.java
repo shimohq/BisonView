@@ -323,6 +323,25 @@ class BisonContents extends FrameLayout {
         
     }
 
+    private JavascriptInjector getJavascriptInjector() {
+        if (mJavascriptInjector == null) {
+            mJavascriptInjector = JavascriptInjector.fromWebContents(mWebContents);
+        }
+        return mJavascriptInjector;
+    }
+
+     @CalledByNative
+    private void onRendererResponsive(BisonRenderProcess renderProcess) {
+        //if (isDestroyed(NO_WARN)) return;
+        mContentsClient.onRendererResponsive(renderProcess);
+    }
+
+    @CalledByNative
+    private void onRendererUnresponsive(BisonRenderProcess renderProcess) {
+        //if (isDestroyed(NO_WARN)) return;
+        mContentsClient.onRendererUnresponsive(renderProcess);
+    }
+
     /**
      * {link @ActionMode.Callback} that uses the default implementation in
      * {@link SelectionPopupController}.
@@ -587,12 +606,7 @@ class BisonContents extends FrameLayout {
         getJavascriptInjector().setAllowInspection(false);
     }
 
-    private JavascriptInjector getJavascriptInjector() {
-        if (mJavascriptInjector == null) {
-            mJavascriptInjector = JavascriptInjector.fromWebContents(mWebContents);
-        }
-        return mJavascriptInjector;
-    }
+    
 
 
     public BisonSettings getSettings() {

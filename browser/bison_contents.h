@@ -11,27 +11,21 @@
 
 #include "bison/browser/bison_browser_permission_request_delegate.h"
 #include "bison/browser/permission/permission_request_handler_client.h"
-
+#include "bison/browser/renderer_host/bison_render_view_host_ext.h"
 #include "base/android/scoped_java_ref.h"
 #include "base/callback_forward.h"
-#include "base/memory/ref_counted.h"
-#include "base/strings/string_piece.h"
-#include "base/threading/thread_restrictions.h"
-#include "bison/browser/renderer_host/bison_render_view_host_ext.h"
+
 #include "build/build_config.h"
 #include "components/navigation_interception/intercept_navigation_delegate.h"
 #include "content/public/browser/session_storage_namespace.h"
 #include "content/public/browser/web_contents_delegate.h"
 #include "content/public/browser/web_contents_observer.h"
-#include "ipc/ipc_channel.h"
-#include "ui/gfx/geometry/size.h"
-#include "ui/gfx/native_widget_types.h"
 
+namespace autofill {
+class AutofillProvider;
+}
 namespace content {
-class BrowserContext;
-class SiteInstance;
 class WebContents;
-class NavigationHandle;
 }  // namespace content
 
 class GURL;
@@ -81,10 +75,9 @@ class BisonContents : public BisonRenderViewHostExtClient,
 
   // // |handler| is an instance of
   // // org.chromium.android_webview.AwHttpAuthHandler.
-  // bool OnReceivedHttpAuthRequest(const base::android::JavaRef<jobject>&
-  // handler,
-  //                                const std::string& host,
-  //                                const std::string& realm);
+  bool OnReceivedHttpAuthRequest(const base::android::JavaRef<jobject>& handler,
+                                 const std::string& host,
+                                 const std::string& realm);
 
   void SetOffscreenPreRaster(bool enabled);
 
@@ -247,6 +240,15 @@ class BisonContents : public BisonRenderViewHostExtClient,
 
   // Sets the java client
   void SetAutofillClient(const base::android::JavaRef<jobject>& client);
+  jlong GetAutofillProvider(JNIEnv* env,
+                            const base::android::JavaParamRef<jobject>& obj);
+
+  void RendererUnresponsive(content::RenderProcessHost* render_process_host);
+  void RendererResponsive(content::RenderProcessHost* render_process_host);
+
+// WebContentsObserver overrides
+  void DidFinishNavigation(
+      content::NavigationHandle* navigation_handle) override;
 
   // BisonRenderViewHostExtClient implementation.
   void OnWebLayoutPageScaleFactorChanged(float page_scale_factor) override;
@@ -257,13 +259,12 @@ class BisonContents : public BisonRenderViewHostExtClient,
   JavaObjectWeakGlobalRef java_ref_;
 
  private:
+  void InitAutofillIfNecessary(bool autocomplete_enabled);
   void ShowGeolocationPrompt(const GURL& origin,
                              base::OnceCallback<void(bool)>);
   void HideGeolocationPrompt(const GURL& origin);
 
-  // WebContentsObserver overrides
-  void DidFinishNavigation(
-      content::NavigationHandle* navigation_handle) override;
+  
 
   std::unique_ptr<WebContents> web_contents_;
   std::unique_ptr<BisonWebContentsDelegate> web_contents_delegate_;
@@ -271,10 +272,8 @@ class BisonContents : public BisonRenderViewHostExtClient,
   std::unique_ptr<BisonRenderViewHostExt> render_view_host_ext_;
 
   std::unique_ptr<PermissionRequestHandler> permission_request_handler_;
+  std::unique_ptr<autofill::AutofillProvider> autofill_provider_;
 
-  // base::ScopedAllowBlocking allow_blocking_;
-
-  gfx::Size content_size_;
 
   // GURL is supplied by the content layer as requesting frame.
   // Callback is supplied by the content layer, and is invoked with the result

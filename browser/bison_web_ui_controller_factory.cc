@@ -27,18 +27,10 @@ WebUIController* NewWebUI(WebUI* web_ui, const GURL& url) {
 }
 
 WebUIFactoryFunctionPointer GetWebUIFactoryFunctionPointer(const GURL& url) {
-  // if (url.host() == safe_browsing::kChromeUISafeBrowsingHost) {
-  //   return &NewWebUI<safe_browsing::SafeBrowsingUI>;
-  // }
-
   return nullptr;
 }
 
 WebUI::TypeID GetWebUITypeID(const GURL& url) {
-  // if (url.host() == safe_browsing::kChromeUISafeBrowsingHost) {
-  //   return kSafeBrowsingID;
-  // }
-
   return WebUI::kNoWebUI;
 }
 
