@@ -1,6 +1,8 @@
 package im.shimo.bison;
 
 import android.content.Context;
+import android.content.res.Configuration;
+import android.os.Message;
 import android.text.TextUtils;
 import android.util.Base64;
 import android.view.ActionMode;
@@ -16,14 +18,19 @@ import org.chromium.base.LocaleUtils;
 import org.chromium.base.annotations.CalledByNative;
 import org.chromium.base.annotations.JNINamespace;
 import org.chromium.base.annotations.NativeMethods;
+import org.chromium.base.task.AsyncTask;
 import org.chromium.base.task.PostTask;
+import org.chromium.components.autofill.AutofillProvider;
 import org.chromium.components.navigation_interception.InterceptNavigationDelegate;
 import org.chromium.components.navigation_interception.NavigationParams;
 import org.chromium.content_public.browser.ActionModeCallbackHelper;
+import org.chromium.content_public.browser.ImeAdapter;
+import org.chromium.content_public.browser.ImeEventObserver;
 import org.chromium.content_public.browser.JavaScriptCallback;
 import org.chromium.content_public.browser.JavascriptInjector;
 import org.chromium.content_public.browser.LoadUrlParams;
 import org.chromium.content_public.browser.NavigationController;
+import org.chromium.content_public.browser.NavigationHistory;
 import org.chromium.content_public.browser.SelectionPopupController;
 import org.chromium.content_public.browser.UiThreadTaskTraits;
 import org.chromium.content_public.browser.WebContents;
@@ -38,17 +45,25 @@ import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.display.DisplayAndroid.DisplayAndroidObserver;
 import org.chromium.network.mojom.ReferrerPolicy;
 
-
+import java.io.File;
 import java.lang.annotation.Annotation;
+import java.lang.ref.WeakReference;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.WeakHashMap;
+import java.util.concurrent.Callable;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @JNINamespace("bison")
 class BisonContents extends FrameLayout {
     private static final String TAG = "BisonContents";
     private static final boolean TRACE = true;
     private static final String PRODUCT_VERSION = BisonContentsJni.get().getProductVersion();
+    private static final String WEB_ARCHIVE_EXTENSION = ".mht";
 
     private static String sCurrentLocales = "";
 
@@ -80,6 +95,7 @@ class BisonContents extends FrameLayout {
     private final DisplayAndroidObserver mDisplayObserver;
     private BisonSettings mSettings;
 
+    private AutofillProvider mAutofillProvider;
     private WebContentsInternals mWebContentsInternals;
 
     private JavascriptInjector mJavascriptInjector;
@@ -322,6 +338,33 @@ class BisonContents extends FrameLayout {
 
         
     }
+    private void initWebContents(ViewAndroidDelegate viewDelegate,
+            InternalAccessDelegate internalDispatcher, WebContents webContents,
+            WindowAndroid windowAndroid, WebContentsInternalsHolder internalsHolder) {
+        webContents.initialize(
+                PRODUCT_VERSION, viewDelegate, internalDispatcher, windowAndroid, internalsHolder);
+        mViewEventSink = ViewEventSink.from(mWebContents);
+        mViewEventSink.setHideKeyboardOnBlur(false);
+        SelectionPopupController controller = SelectionPopupController.fromWebContents(webContents);
+        controller.setActionModeCallback(new AwActionModeCallback(mContext, this, webContents));
+        if (mAutofillProvider != null) {
+            controller.setNonSelectionActionModeCallback(
+                    new AutofillActionModeCallback(mContext, mAutofillProvider));
+        }
+        controller.setSelectionClient(SelectionClient.createSmartSelectionClient(webContents));
+
+        // Listen for dpad events from IMEs (e.g. Samsung Cursor Control) so we know to enable
+        // spatial navigation mode to allow these events to move focus out of the WebView.
+        ImeAdapter.fromWebContents(webContents).addEventObserver(new ImeEventObserver() {
+            @Override
+            public void onBeforeSendKeyEvent(KeyEvent event) {
+                if (BisonContents.isDpadEvent(event)) {
+                    mSettings.setSpatialNavigationEnabled(true);
+                }
+            }
+        });
+    }
+
 
     private JavascriptInjector getJavascriptInjector() {
         if (mJavascriptInjector == null) {
@@ -530,6 +573,51 @@ class BisonContents extends FrameLayout {
         mNavigationController.goToOffset(steps);
     }
 
+    public void documentHasImages(Message message) {
+        // if (!isDestroyed(WARN)) {}
+        BisonContentsJni.get().documentHasImages(mNativeBisonContents, message);
+    }
+
+    public void saveWebArchive(
+            final String basename, boolean autoname, final Callback<String> callback) {
+        if (TRACE) Log.i(TAG, "%s saveWebArchive=%s", this, basename);
+        if (!autoname) {
+            saveWebArchiveInternal(basename, callback);
+            return;
+        }
+        // If auto-generating the file name, handle the name generation on a background thread
+        // as it will require I/O access for checking whether previous files existed.
+        new AsyncTask<String>() {
+            @Override
+            protected String doInBackground() {
+                return generateArchiveAutoNamePath(getOriginalUrl(), basename);
+            }
+
+            @Override
+            protected void onPostExecute(String result) {
+                saveWebArchiveInternal(result, callback);
+            }
+        }
+                .executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+    }
+
+    public String getOriginalUrl() {
+        //if (isDestroyed(WARN)) return null;
+        NavigationHistory history = mNavigationController.getNavigationHistory();
+        int currentIndex = history.getCurrentEntryIndex();
+        if (currentIndex >= 0 && currentIndex < history.getEntryCount()) {
+            return history.getEntryAtIndex(currentIndex).getOriginalUrl();
+        }
+        return null;
+    }
+
+    /**
+     * @see NavigationController#getNavigationHistory()
+     */
+    public NavigationHistory getNavigationHistory() {
+        //isDestroyed(WARN) ? null :
+        return mNavigationController.getNavigationHistory();
+    }
     public String getTitle() {
         return mWebContents.getTitle();
     }
@@ -631,8 +719,18 @@ class BisonContents extends FrameLayout {
 
     
 
-    
+    @CalledByNative
+    private static void onDocumentHasImagesResponse(boolean result, Message message) {
+        message.arg1 = result ? 1 : 0;
+        message.sendToTarget();
+    }
 
+    /** Callback for generateMHTML. */
+    @CalledByNative
+    private static void generateMHTMLCallback(String path, long size, Callback<String> callback) {
+        if (callback == null) return;
+        callback.onResult(size < 0 ? null : path);
+    }
 
 
     public BisonGeolocationPermissions getGeolocationPermissions() {
@@ -705,12 +803,85 @@ class BisonContents extends FrameLayout {
 
 
 
+    private void saveWebArchiveInternal(String path, final Callback<String> callback) {
+        //|| isDestroyed(WARN)
+        if (path == null ) {
+            if (callback == null) return;
 
+            PostTask.runOrPostTask(UiThreadTaskTraits.DEFAULT, () -> callback.onResult(null));
+        } else {
+            BisonContentsJni.get().generateMHTML(mNativeBisonContents, path, callback);
+        }
+    }
 
+    /**
+     * Try to generate a pathname for saving an MHTML archive. This roughly follows WebView's
+     * autoname logic.
+     */
+    private static String generateArchiveAutoNamePath(String originalUrl, String baseName) {
+        String name = null;
+        if (originalUrl != null && !originalUrl.isEmpty()) {
+            try {
+                String path = new URL(originalUrl).getPath();
+                int lastSlash = path.lastIndexOf('/');
+                if (lastSlash > 0) {
+                    name = path.substring(lastSlash + 1);
+                } else {
+                    name = path;
+                }
+            } catch (MalformedURLException e) {
+                // If it fails parsing the URL, we'll just rely on the default name below.
+            }
+        }
 
+        if (TextUtils.isEmpty(name)) name = "index";
 
+        String testName = baseName + name + WEB_ARCHIVE_EXTENSION;
+        if (!new File(testName).exists()) return testName;
 
+        for (int i = 1; i < 100; i++) {
+            testName = baseName + name + "-" + i + WEB_ARCHIVE_EXTENSION;
+            if (!new File(testName).exists()) return testName;
+        }
 
+        Log.e(TAG, "Unable to auto generate archive name for path: %s", baseName);
+        return null;
+    }
+
+    
+    public static boolean isDpadEvent(KeyEvent event) {
+        if (event.getAction() == KeyEvent.ACTION_DOWN) {
+            switch (event.getKeyCode()) {
+                case KeyEvent.KEYCODE_DPAD_CENTER:
+                case KeyEvent.KEYCODE_DPAD_DOWN:
+                case KeyEvent.KEYCODE_DPAD_UP:
+                case KeyEvent.KEYCODE_DPAD_LEFT:
+                case KeyEvent.KEYCODE_DPAD_RIGHT:
+                    return true;
+            }
+        }
+        return false;
+    }
+
+    
+    
+
+    @Override
+    public void onAttachedToWindow() {
+        super.onAttachedToWindow();
+    }    
+
+     @Override
+    public void onDetachedFromWindow() {
+        super.onDetachedFromWindow();
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasWindowFocus) {
+        super.onDetachedFromWindow();
+    }
+
+    
 
 
 
@@ -745,12 +916,7 @@ class BisonContents extends FrameLayout {
         }
     }
 
-    @Override
-    protected void onAttachedToWindow() {
-        super.onAttachedToWindow();
-
-    }
-
+    
 
     private void postUpdateWebContentsVisibility() {
         if (mIsUpdateVisibilityTaskPending) return;
@@ -777,12 +943,17 @@ class BisonContents extends FrameLayout {
     interface Natives {
         long init(BisonContents caller,long nativeBisonBrowserContext);
 
+        void destroy(long nativeBisonContents);
         WebContents getWebContents(long nativeBisonContents);
         void updateDefaultLocale(String locale, String localeList);
         void setJavaPeers(long nativeBisonContents, BisonWebContentsDelegate webContentsDelegate,
                           BisonContentsClientBridge bisonContentsClientBridge,
                           BisonContentsIoThreadClient ioThreadClient,
                           InterceptNavigationDelegate interceptNavigationDelegate);
+
+        void documentHasImages(long nativeBisonContents, Message message);
+        void generateMHTML(
+                long nativeBisonContents, String path, Callback<String> callback);
 
         void setDipScale(long nativeBisonContents, BisonContents caller, float dipScale);
         
@@ -792,8 +963,6 @@ class BisonContents extends FrameLayout {
                 long nativeBisonContents, String url, String extraHeaders);
         void invokeGeolocationCallback(
                 long nativeBisonContents, boolean value, String requestingFrame);
-
-        void destroy(long nativeBisonContents);
 
         String getProductVersion();
     }

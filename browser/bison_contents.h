@@ -98,14 +98,12 @@ class BisonContents : public BisonRenderViewHostExtClient,
   //     JNIEnv* env,
   //     const base::android::JavaParamRef<jobject>& obj);
   void Destroy(JNIEnv* env);
-  // void DocumentHasImages(JNIEnv* env,
-  //                        const base::android::JavaParamRef<jobject>& obj,
-  //                        const base::android::JavaParamRef<jobject>&
-  //                        message);
-  // void GenerateMHTML(JNIEnv* env,
-  //                    const base::android::JavaParamRef<jobject>& obj,
-  //                    const base::android::JavaParamRef<jstring>& jpath,
-  //                    const base::android::JavaParamRef<jobject>& callback);
+  void DocumentHasImages(JNIEnv* env,
+                         const base::android::JavaParamRef<jobject>&
+                         message);
+  void GenerateMHTML(JNIEnv* env,
+                     const base::android::JavaParamRef<jstring>& jpath,
+                     const base::android::JavaParamRef<jobject>& callback);
   // void CreatePdfExporter(
   //     JNIEnv* env,
   //     const base::android::JavaParamRef<jobject>& obj,

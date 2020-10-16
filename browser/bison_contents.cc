@@ -65,11 +65,8 @@
 #include "content/public/browser/resource_context.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/common/content_switches.h"
-
-#include "media/media_buildflags.h"
-#include "third_party/blink/public/common/peerconnection/webrtc_ip_handling_policy.h"
-#include "third_party/blink/public/common/presentation/presentation_receiver_flags.h"
-#include "third_party/blink/public/mojom/renderer_preferences.mojom.h"
+#include "content/public/browser/web_contents.h"
+#include "content/public/common/mhtml_generation_params.h"
 
 using autofill::AutofillManager;
 using autofill::ContentAutofillDriverFactory;
@@ -349,7 +346,44 @@ void BisonContents::SetOffscreenPreRaster(bool enabled) {
   // browser_view_renderer_.SetOffscreenPreRaster(enabled);
 }
 
+namespace {
+void DocumentHasImagesCallback(const ScopedJavaGlobalRef<jobject>& message,
+                               bool has_images) {
+  Java_BisonContents_onDocumentHasImagesResponse(AttachCurrentThread(), has_images,
+                                              message);
+}
+}  // namespace
 
+void BisonContents::DocumentHasImages(JNIEnv* env,
+                                   const JavaParamRef<jobject>& message) {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  ScopedJavaGlobalRef<jobject> j_message;
+  j_message.Reset(env, message);
+  render_view_host_ext_->DocumentHasImages(
+      base::BindOnce(&DocumentHasImagesCallback, j_message));
+}
+
+namespace {
+void GenerateMHTMLCallback(const JavaRef<jobject>& callback,
+                           const base::FilePath& path,
+                           int64_t size) {
+  JNIEnv* env = AttachCurrentThread();
+  // Android files are UTF8, so the path conversion below is safe.
+  Java_BisonContents_generateMHTMLCallback(
+      env, ConvertUTF8ToJavaString(env, path.AsUTF8Unsafe()), size, callback);
+}
+}  // namespace
+
+void BisonContents::GenerateMHTML(JNIEnv* env,
+                               const JavaParamRef<jstring>& jpath,
+                               const JavaParamRef<jobject>& callback) {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  base::FilePath target_path(ConvertJavaStringToUTF8(env, jpath));
+  web_contents_->GenerateMHTML(
+      content::MHTMLGenerationParams(target_path),
+      base::BindOnce(&GenerateMHTMLCallback,
+                     ScopedJavaGlobalRef<jobject>(env, callback), target_path));
+}
 
 namespace {
 

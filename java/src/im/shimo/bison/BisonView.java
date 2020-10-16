@@ -4,6 +4,9 @@ import android.content.Context;
 import android.util.AttributeSet;
 import android.widget.FrameLayout;
 import android.webkit.DownloadListener;
+import android.os.Message;
+
+import androidx.annotation.Nullable;
 
 import org.chromium.base.library_loader.LibraryLoader;
 import org.chromium.base.library_loader.LibraryProcessType;
@@ -111,6 +114,18 @@ public class BisonView extends FrameLayout {
 
     public void evaluateJavascript(String script, ValueCallback<String> resultCallback) {
         mBisonContents.evaluateJavaScript(script, CallbackConverter.fromValueCallback(resultCallback));
+    }
+
+    public void saveWebArchive(String filename) {
+        saveWebArchive(filename, false, null);
+    }
+
+    public void saveWebArchive(String basename, boolean autoname, @Nullable ValueCallback<String> callback) {
+        mBisonContents.saveWebArchive(basename,autoname,CallbackConverter.fromValueCallback(callback));
+    }
+
+    public void documentHasImages(Message response) {
+        mBisonContents.documentHasImages(response);
     }
 
     public void setBisonViewClient(BisonViewClient client) {
