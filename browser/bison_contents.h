@@ -50,6 +50,7 @@ using navigation_interception::InterceptNavigationDelegate;
 namespace bison {
 
 class BisonContentsClientBridge;
+class BisonPdfExporter;
 class BisonWebContentsDelegate;
 class PermissionRequestHandler;
 
@@ -104,10 +105,9 @@ class BisonContents : public BisonRenderViewHostExtClient,
   void GenerateMHTML(JNIEnv* env,
                      const base::android::JavaParamRef<jstring>& jpath,
                      const base::android::JavaParamRef<jobject>& callback);
-  // void CreatePdfExporter(
-  //     JNIEnv* env,
-  //     const base::android::JavaParamRef<jobject>& obj,
-  //     const base::android::JavaParamRef<jobject>& pdfExporter);
+  void CreatePdfExporter(
+      JNIEnv* env,
+      const base::android::JavaParamRef<jobject>& pdfExporter);
   // void AddVisitedLinks(
   //     JNIEnv* env,
   //     const base::android::JavaParamRef<jobject>& obj,
@@ -269,6 +269,7 @@ class BisonContents : public BisonRenderViewHostExtClient,
   std::unique_ptr<BisonContentsClientBridge> contents_client_bridge_;
   std::unique_ptr<BisonRenderViewHostExt> render_view_host_ext_;
 
+  std::unique_ptr<BisonPdfExporter> pdf_exporter_;
   std::unique_ptr<PermissionRequestHandler> permission_request_handler_;
   std::unique_ptr<autofill::AutofillProvider> autofill_provider_;
 

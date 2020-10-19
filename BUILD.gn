@@ -47,6 +47,7 @@ generate_jni("bison_jni_headers") {
     "java/src/im/shimo/bison/ContentViewRenderView.java",
     "java/src/im/shimo/bison/BisonRenderProcess.java",
     "java/src/im/shimo/bison/BisonContentsLifecycleNotifier.java",
+    "java/src/im/shimo/bison/BisonPdfExporter.java",
   ]
 }
 
@@ -113,6 +114,7 @@ android_library("bison_java") {
     "java/src/im/shimo/bison/BisonSupportLibIsomorphic.java",
     "java/src/im/shimo/bison/BisonActionModeCallback.java",
     "java/src/im/shimo/bison/AutofillActionModeCallback.java",
+    "java/src/im/shimo/bison/BisonPdfExporter.java",
   ]
 
   srcjar_deps = [

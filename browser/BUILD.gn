@@ -84,6 +84,10 @@ source_set("browser") {
     "bison_contents_lifecycle_notifier.h",
     "bison_render_process.cc",
     "bison_render_process.h",
+    "bison_pdf_exporter.cc",
+    "bison_pdf_exporter.h",
+    "bison_print_manager.cc",
+    "bison_print_manager.h",
 
     # network_service
     "network_service/android_stream_reader_url_loader.cc",
@@ -148,7 +152,8 @@ source_set("browser") {
     "//components/variations/service",
     "//services/viz/privileged/mojom",
     "//services/viz/public/mojom",
-
+    "//components/printing/browser",
+    "//components/printing/common",
     "//ui/gfx",
     "//ui/android",
     "//ui/gl",

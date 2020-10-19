@@ -13,6 +13,7 @@
 #include "bison/browser/bison_contents_client_bridge.h"
 #include "bison/browser/bison_contents_io_thread_client.h"
 #include "bison/browser/bison_contents_lifecycle_notifier.h"
+#include "bison/browser/bison_pdf_exporter.h"
 #include "bison/browser/bison_javascript_dialog_manager.h"
 #include "bison/browser/bison_render_process.h"
 #include "bison/browser/bison_settings.h"
@@ -170,9 +171,9 @@ BisonBrowserPermissionRequestDelegate::FromID(int render_process_id,
 
 
 // static
-// AwRenderProcessGoneDelegate* AwRenderProcessGoneDelegate::FromWebContents(
+// BisonRenderProcessGoneDelegate* BisonRenderProcessGoneDelegate::FromWebContents(
 //     content::WebContents* web_contents) {
-//   return AwContents::FromWebContents(web_contents);
+//   return BisonContents::FromWebContents(web_contents);
 // }
 
 BisonContents::BisonContents(std::unique_ptr<WebContents> web_contents)
@@ -383,6 +384,11 @@ void BisonContents::GenerateMHTML(JNIEnv* env,
       content::MHTMLGenerationParams(target_path),
       base::BindOnce(&GenerateMHTMLCallback,
                      ScopedJavaGlobalRef<jobject>(env, callback), target_path));
+}
+
+void BisonContents::CreatePdfExporter(JNIEnv* env,
+                                   const JavaParamRef<jobject>& pdfExporter) {
+  pdf_exporter_.reset(new BisonPdfExporter(env, pdfExporter, web_contents_.get()));
 }
 
 namespace {
@@ -637,7 +643,7 @@ void BisonContents::OnWebLayoutContentsSizeChanged(
   //         ? ScaleToRoundedSize(contents_size,
   //                              1 / browser_view_renderer_.dip_scale())
   //         : contents_size;
-  // Java_AwContents_onWebLayoutContentsSizeChanged(
+  // Java_BisonContents_onWebLayoutContentsSizeChanged(
   //     env, obj, contents_size_css.width(), contents_size_css.height());
 }
 

@@ -106,7 +106,7 @@ class BisonContents extends FrameLayout {
 
     private BisonAutofillClient mAutofillClient;
 
-
+    private BisonPdfExporter mBisonPdfExporter;
     private boolean mIsDestroyed;
 
     private AutofillProvider mAutofillProvider;
@@ -548,6 +548,20 @@ class BisonContents extends FrameLayout {
         return mNavigationController;
     }
 
+    public BisonSettings getSettings() {
+        return mSettings;
+    }
+
+    public BisonPdfExporter getPdfExporter() {
+        if (isDestroyed(WARN)) return null;
+        if (mBisonPdfExporter == null) {
+            mBisonPdfExporter = new BisonPdfExporter();
+            BisonContentsJni.get().createPdfExporter(
+                    mNativeBisonContents, mBisonPdfExporter);
+        }
+        return mBisonPdfExporter;
+    }
+
     /**
      * {link @ActionMode.Callback} that uses the default implementation in
      * {@link SelectionPopupController}.
@@ -582,10 +596,6 @@ class BisonContents extends FrameLayout {
     }
 
 
-    public void loadUrl(String url) {
-        if (url == null) return;
-        loadUrl(url, null);
-    }
 
     public void loadUrl(String url, Map<String, String> additionalHttpHeaders) {
         if (TRACE) Log.i(TAG, "%s loadUrl(extra headers)=%s", this, url);
@@ -602,6 +612,12 @@ class BisonContents extends FrameLayout {
         loadUrl(params);
     }
 
+    public void loadUrl(String url) {
+        if (TRACE) Log.i(TAG, "%s loadUrl=%s", this, url);
+        if (isDestroyed(WARN)) return;
+        if (url == null) return;
+        loadUrl(url, null);
+    }
     public void postUrl(String url, byte[] postData) {
         LoadUrlParams params = LoadUrlParams.createLoadHttpPostParams(url, postData);
         Map<String, String> headers = new HashMap<>();
@@ -654,6 +670,8 @@ class BisonContents extends FrameLayout {
     }
 
     public void loadData(String data, String mimeType, String encoding) {
+        if (TRACE) Log.i(TAG, "%s loadData", this);
+        if (isDestroyed(WARN)) return;
         loadUrl(LoadUrlParams.createLoadDataParams(
                 fixupData(data), fixupMimeType(mimeType), isBase64Encoded(encoding)));
     }
@@ -920,10 +938,7 @@ class BisonContents extends FrameLayout {
     }
 
 
-    public BisonSettings getSettings() {
-        return mSettings;
-    }
-
+    
 
     private float getDeviceScaleFactor() {
         return mWindowAndroid.getWindowAndroid().getDisplay().getDipScale();
@@ -1136,10 +1151,10 @@ class BisonContents extends FrameLayout {
 
         void setExtraHeadersForUrl(
                 long nativeBisonContents, String url, String extraHeaders);
-
         void invokeGeolocationCallback(
                 long nativeBisonContents, boolean value, String requestingFrame);
-
+        void createPdfExporter(
+                long nativeBisonContents, BisonPdfExporter bisonPdfExporter);
         String getProductVersion();
     }
 
