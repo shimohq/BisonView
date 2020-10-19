@@ -1,10 +1,10 @@
 package im.shimo.bison;
 
 import android.content.Context;
-import android.util.AttributeSet;
-import android.widget.FrameLayout;
-import android.webkit.DownloadListener;
 import android.os.Message;
+import android.util.AttributeSet;
+import android.webkit.DownloadListener;
+import android.widget.FrameLayout;
 
 import androidx.annotation.Nullable;
 
@@ -15,7 +15,7 @@ import org.chromium.content_public.browser.ChildProcessCreationParams;
 
 public class BisonView extends FrameLayout {
 
-    private static ClientCertLookupTable sClientCertLookupTable; 
+    private static ClientCertLookupTable sClientCertLookupTable;
 
     private BisonContentsClient mBisonContentsClient;
     private BisonContents mBisonContents;
@@ -36,17 +36,17 @@ public class BisonView extends FrameLayout {
     private void init(Context context) {
         ChildProcessCreationParams.set(context.getPackageName(), false,
                 LibraryProcessType.PROCESS_WEBVIEW_CHILD, true,
-                true, "im.shimo.bison.PrivilegedProcessService", 
+                true, "im.shimo.bison.PrivilegedProcessService",
                 "im.shimo.bison.SandboxedProcessService");
         BisonResources.resetIds(context);
         LibraryLoader.getInstance().ensureInitialized(LibraryProcessType.PROCESS_WEBVIEW);
         BrowserStartupController.get(LibraryProcessType.PROCESS_WEBVIEW)
                 .startBrowserProcessesSync(false);
         mBisonContentsClient = new BisonContentsClient(this, context);
-        mBisonContentsClientBridge = new BisonContentsClientBridge(context, mBisonContentsClient,getClientCertLookupTable());
+        mBisonContentsClientBridge = new BisonContentsClientBridge(context, mBisonContentsClient, getClientCertLookupTable());
         BisonWebContentsDelegate webContentsDelegate = new BisonWebContentsDelegate(mBisonContentsClient);
-        mBisonContents = new BisonContents(context,BisonBrowserContext.getDefault(), webContentsDelegate, 
-            mBisonContentsClientBridge,mBisonContentsClient);
+        mBisonContents = new BisonContents(context, BisonBrowserContext.getDefault(), webContentsDelegate,
+                mBisonContentsClientBridge, mBisonContentsClient);
         addView(mBisonContents);
     }
 
@@ -121,7 +121,7 @@ public class BisonView extends FrameLayout {
     }
 
     public void saveWebArchive(String basename, boolean autoname, @Nullable ValueCallback<String> callback) {
-        mBisonContents.saveWebArchive(basename,autoname,CallbackConverter.fromValueCallback(callback));
+        mBisonContents.saveWebArchive(basename, autoname, CallbackConverter.fromValueCallback(callback));
     }
 
     public void documentHasImages(Message response) {
@@ -154,7 +154,7 @@ public class BisonView extends FrameLayout {
         mBisonContents.addJavascriptInterface(obj, interfaceName);
     }
 
-    public BisonSettings getSettings(){
+    public BisonSettings getSettings() {
         return mBisonContents.getSettings();
     }
 
@@ -164,12 +164,12 @@ public class BisonView extends FrameLayout {
     }
 
     public static void setRemoteDebuggingEnabled(boolean enable) {
-        if (gBisonDevToolsServer == null ) {
+        if (gBisonDevToolsServer == null) {
             if (!enable) return;
             gBisonDevToolsServer = new BisonDevToolsServer();
         }
         gBisonDevToolsServer.setRemoteDebuggingEnabled(enable);
-        if (!enable){
+        if (!enable) {
             gBisonDevToolsServer.destroy();
             gBisonDevToolsServer = null;
         }
@@ -177,10 +177,10 @@ public class BisonView extends FrameLayout {
 
 
     private static ClientCertLookupTable getClientCertLookupTable() {
-        if (sClientCertLookupTable == null){
-            sClientCertLookupTable = new ClientCertLookupTable(); 
+        if (sClientCertLookupTable == null) {
+            sClientCertLookupTable = new ClientCertLookupTable();
         }
         return sClientCertLookupTable;
-    } 
+    }
 
 }

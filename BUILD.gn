@@ -111,6 +111,8 @@ android_library("bison_java") {
     "java/src/im/shimo/bison/BisonLayoutSizer.java",
     "java/src/im/shimo/bison/BisonRenderProcess.java",
     "java/src/im/shimo/bison/BisonSupportLibIsomorphic.java",
+    "java/src/im/shimo/bison/BisonActionModeCallback.java",
+    "java/src/im/shimo/bison/AutofillActionModeCallback.java",
   ]
 
   srcjar_deps = [

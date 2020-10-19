@@ -81,10 +81,9 @@ public class BisonWebContentsObserver extends WebContentsObserver {
 
         BisonContentsClient client = mBisonContentsClient.get();
         if (client != null) {
-
-            if (!navigation.isSameDocument() && !navigation.isErrorPage()) {
-               client.getCallbackHelper().postOnPageStarted(url);
-                
+            if (!navigation.isSameDocument() && !navigation.isErrorPage()
+                && navigation.isRendererInitiated()) {
+               client.getCallbackHelper().postOnPageStarted(url);               
             }
 
             boolean isReload = navigation.pageTransition() != null
@@ -114,10 +113,11 @@ public class BisonWebContentsObserver extends WebContentsObserver {
 
         if (client != null && navigation.isFragmentNavigation()) {
             // Note fragment navigations do not have a matching onPageStarted.
-           client.getCallbackHelper().postOnPageFinished(url);
-            
+           client.getCallbackHelper().postOnPageFinished(url);       
         }
     }
 
-
+    public boolean didEverCommitNavigation() {
+        return mCommittedNavigation;
+    }
 }

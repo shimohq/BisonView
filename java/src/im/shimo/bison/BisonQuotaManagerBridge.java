@@ -43,9 +43,9 @@ public class BisonQuotaManagerBridge {
 
     public BisonQuotaManagerBridge(long nativeBisonQuotaManagerBridge) {
         mNativeBisonQuotaManagerBridge = nativeBisonQuotaManagerBridge;
-        mPendingGetOriginCallbacks = new SparseArray<Callback<Origins>>();
-        mPendingGetQuotaForOriginCallbacks = new SparseArray<Callback<Long>>();
-        mPendingGetUsageForOriginCallbacks = new SparseArray<Callback<Long>>();
+        mPendingGetOriginCallbacks = new SparseArray<>();
+        mPendingGetQuotaForOriginCallbacks = new SparseArray<>();
+        mPendingGetUsageForOriginCallbacks = new SparseArray<>();
         BisonQuotaManagerBridgeJni.get().init(mNativeBisonQuotaManagerBridge, BisonQuotaManagerBridge.this);
     }
 
