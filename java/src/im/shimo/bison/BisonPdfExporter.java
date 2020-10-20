@@ -12,7 +12,7 @@ import org.chromium.base.annotations.JNINamespace;
 import org.chromium.base.annotations.NativeMethods;
 
 /**
- * Export the android webview as a PDF.
+ * Export the bisonview as a PDF.
  * @TODO(sgurun) explain the ownership of this class and its native counterpart
  */
 @SuppressLint("NewApi")  // Printing requires API level 19.

@@ -339,13 +339,12 @@ void BisonContents::DidFinishNavigation(
 }
 
 
-
-
-
-void BisonContents::SetOffscreenPreRaster(bool enabled) {
-  DCHECK_CURRENTLY_ON(BrowserThread::UI);
-  // browser_view_renderer_.SetOffscreenPreRaster(enabled);
+// static
+jint JNI_BisonContents_GetNativeInstanceCount(JNIEnv* env) {
+  return base::subtle::NoBarrier_Load(&g_instance_count);
 }
+
+
 
 namespace {
 void DocumentHasImagesCallback(const ScopedJavaGlobalRef<jobject>& message,
@@ -391,17 +390,13 @@ void BisonContents::CreatePdfExporter(JNIEnv* env,
   pdf_exporter_.reset(new BisonPdfExporter(env, pdfExporter, web_contents_.get()));
 }
 
+
+void BisonContents::SetOffscreenPreRaster(bool enabled) {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  // browser_view_renderer_.SetOffscreenPreRaster(enabled);
+}
+
 namespace {
-
-
-
-
-
-
-
-
-
-
 
 
 void ShowGeolocationPromptHelperTask(const JavaObjectWeakGlobalRef &java_ref,
@@ -443,7 +438,8 @@ void BisonContents::ShowGeolocationPrompt(
 
 // Invoked from Java
 void BisonContents::InvokeGeolocationCallback(
-    JNIEnv *env, jboolean value, const JavaParamRef<jstring> &origin) {
+    JNIEnv *env, 
+    jboolean value, const JavaParamRef<jstring> &origin) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
   if (pending_geolocation_prompts_.empty())
     return;
@@ -518,7 +514,13 @@ void BisonContents::OnPermissionRequestCanceled(
   Java_BisonContents_onPermissionRequestCanceled(env, j_ref, j_request);
 }
 
-
+void BisonContents::PreauthorizePermission(JNIEnv* env,
+                                        const JavaParamRef<jobject>& obj,
+                                        const JavaParamRef<jstring>& origin,
+                                        jlong resources) {
+  permission_request_handler_->PreauthorizePermission(
+      GURL(base::android::ConvertJavaStringToUTF8(env, origin)), resources);
+}
 
 void BisonContents::RequestProtectedMediaIdentifierPermission(
     const GURL &origin, base::OnceCallback<void(bool)> callback) {
@@ -576,7 +578,68 @@ void BisonContents::CancelMIDISysexPermissionRequests(const GURL &origin) {
       origin, BisonPermissionRequest::BisonPermissionRequest::MIDISysex);
 }
 
+void BisonContents::FindAllAsync(JNIEnv* env,
+                              const JavaParamRef<jstring>& search_string) {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  GetFindHelper()->FindAllAsync(ConvertJavaStringToUTF16(env, search_string));
+}
 
+void BisonContents::FindNext(JNIEnv* env,
+                          jboolean forward) {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  GetFindHelper()->FindNext(forward);
+}
+
+void BisonContents::ClearMatches(JNIEnv* env, const JavaParamRef<jobject>& obj) {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  GetFindHelper()->ClearMatches();
+}
+
+void BisonContents::ClearCache(JNIEnv* env,
+                            jboolean include_disk_files) {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  render_view_host_ext_->ClearCache();
+
+  if (include_disk_files) {
+    content::BrowsingDataRemover* remover =
+        content::BrowserContext::GetBrowsingDataRemover(
+            web_contents_->GetBrowserContext());
+    remover->Remove(
+        base::Time(), base::Time::Max(),
+        content::BrowsingDataRemover::DATA_TYPE_CACHE,
+        content::BrowsingDataRemover::ORIGIN_TYPE_UNPROTECTED_WEB |
+            content::BrowsingDataRemover::ORIGIN_TYPE_PROTECTED_WEB);
+  }
+}
+
+void BisonContents::KillRenderProcess(JNIEnv* env,
+                                   const JavaParamRef<jobject>& obj) {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  render_view_host_ext_->KillRenderProcess();
+}
+
+FindHelper* BisonContents::GetFindHelper() {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  if (!find_helper_.get()) {
+    find_helper_.reset(new FindHelper(web_contents_.get()));
+    find_helper_->SetListener(this);
+  }
+  return find_helper_.get();
+}
+
+
+void BisonContents::OnFindResultReceived(int active_ordinal,
+                                      int match_count,
+                                      bool finished) {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  JNIEnv* env = AttachCurrentThread();
+  ScopedJavaLocalRef<jobject> obj = java_ref_.get(env);
+  if (obj.is_null())
+    return;
+
+  Java_BisonContents_onFindResultReceived(env, obj, active_ordinal, match_count,
+                                       finished);
+}
 
 
 
@@ -608,6 +671,13 @@ bool BisonContents::AllowThirdPartyCookies() {
 
 
 
+
+void BisonContents::ZoomBy(JNIEnv* env,
+                        const base::android::JavaParamRef<jobject>& obj,
+                        jfloat delta) {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  // browser_view_renderer_.ZoomBy(delta);
+}
 
 void BisonContents::SetDipScale(JNIEnv *env, const JavaParamRef<jobject> &obj,
                                 jfloat dip_scale) {

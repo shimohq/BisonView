@@ -35,4 +35,8 @@ public class BisonWebChromeClient {
     }
 
     public void onPermissionRequestCanceled(PermissionRequest request) {}
+
+
+    public void onRequestFocus(BisonView view){}
+
 }

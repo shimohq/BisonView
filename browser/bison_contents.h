@@ -12,6 +12,7 @@
 #include "bison/browser/bison_browser_permission_request_delegate.h"
 #include "bison/browser/permission/permission_request_handler_client.h"
 #include "bison/browser/renderer_host/bison_render_view_host_ext.h"
+#include "bison/browser/find_helper.h"
 #include "base/android/scoped_java_ref.h"
 #include "base/callback_forward.h"
 
@@ -54,7 +55,8 @@ class BisonPdfExporter;
 class BisonWebContentsDelegate;
 class PermissionRequestHandler;
 
-class BisonContents : public BisonRenderViewHostExtClient,
+class BisonContents : public FindHelper::Listener,
+                      public BisonRenderViewHostExtClient,
                       public PermissionRequestHandlerClient,
                       public BisonBrowserPermissionRequestDelegate,
                       public WebContentsObserver {
@@ -155,9 +157,9 @@ class BisonContents : public BisonRenderViewHostExtClient,
   // void SetBackgroundColor(JNIEnv* env,
   //                         const base::android::JavaParamRef<jobject>& obj,
   //                         jint color);
-  // void ZoomBy(JNIEnv* env,
-  //             const base::android::JavaParamRef<jobject>& obj,
-  //             jfloat delta);
+  void ZoomBy(JNIEnv* env,
+              const base::android::JavaParamRef<jobject>& obj,
+              jfloat delta);
   // void OnComputeScroll(JNIEnv* env,
   //                      const base::android::JavaParamRef<jobject>& obj,
   //                      jlong animation_time_millis);
@@ -213,6 +215,12 @@ class BisonContents : public BisonRenderViewHostExtClient,
     return permission_request_handler_.get();
   }
 
+  void PreauthorizePermission(
+      JNIEnv* env,
+      const base::android::JavaParamRef<jobject>& obj,
+      const base::android::JavaParamRef<jstring>& origin,
+      jlong resources);
+
   // BisonBrowserPermissionRequestDelegate implementation.
   void RequestProtectedMediaIdentifierPermission(
       const GURL& origin,
@@ -228,9 +236,38 @@ class BisonContents : public BisonRenderViewHostExtClient,
       base::OnceCallback<void(bool)> callback) override;
   void CancelMIDISysexPermissionRequests(const GURL& origin) override;
 
+  // Find-in-page API and related methods.
+  void FindAllAsync(JNIEnv* env,
+                    const base::android::JavaParamRef<jstring>& search_string);
+  void FindNext(JNIEnv* env,
+                jboolean forward);
+  void ClearMatches(JNIEnv* env,
+                    const base::android::JavaParamRef<jobject>& obj);
+  FindHelper* GetFindHelper();
+
   // Per WebView Cookie Policy
   bool AllowThirdPartyCookies();
 
+  // FindHelper::Listener implementation.
+  void OnFindResultReceived(int active_ordinal,
+                            int match_count,
+                            bool finished) override;
+  // // IconHelper::Listener implementation.
+  // bool ShouldDownloadFavicon(const GURL& icon_url) override;
+  // void OnReceivedIcon(const GURL& icon_url, const SkBitmap& bitmap) override;
+  // void OnReceivedTouchIconUrl(const std::string& url,
+  //                             const bool precomposed) override;
+
+  // BisonRenderViewHostExtClient implementation.
+  void OnWebLayoutPageScaleFactorChanged(float page_scale_factor) override;
+  void OnWebLayoutContentsSizeChanged(const gfx::Size& contents_size) override;
+
+  gfx::Point GetLocationOnScreen();
+  
+  void ClearCache(JNIEnv* env,
+                  jboolean include_disk_files);
+  void KillRenderProcess(JNIEnv* env,
+                         const base::android::JavaParamRef<jobject>& obj);
   void SetDipScale(JNIEnv* env,
                    const base::android::JavaParamRef<jobject>& obj,
                    jfloat dip_scale);
@@ -248,9 +285,6 @@ class BisonContents : public BisonRenderViewHostExtClient,
   void DidFinishNavigation(
       content::NavigationHandle* navigation_handle) override;
 
-  // BisonRenderViewHostExtClient implementation.
-  void OnWebLayoutPageScaleFactorChanged(float page_scale_factor) override;
-  void OnWebLayoutContentsSizeChanged(const gfx::Size& contents_size) override;
 
 
   // jiang
@@ -268,7 +302,7 @@ class BisonContents : public BisonRenderViewHostExtClient,
   std::unique_ptr<BisonWebContentsDelegate> web_contents_delegate_;
   std::unique_ptr<BisonContentsClientBridge> contents_client_bridge_;
   std::unique_ptr<BisonRenderViewHostExt> render_view_host_ext_;
-
+  std::unique_ptr<FindHelper> find_helper_;
   std::unique_ptr<BisonPdfExporter> pdf_exporter_;
   std::unique_ptr<PermissionRequestHandler> permission_request_handler_;
   std::unique_ptr<autofill::AutofillProvider> autofill_provider_;

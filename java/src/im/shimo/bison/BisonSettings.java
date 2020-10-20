@@ -1773,9 +1773,8 @@ public class BisonSettings {
     }
 
     /**
-     * Sets whether this WebView should raster tiles when it is
-     * offscreen but attached to window. Turning this on can avoid
-     * rendering artifacts when animating an offscreen WebView on-screen.
+     * 设置此WebView在屏幕外但附加到窗口时是否应栅格化图块。
+     * 启用此功能可以避免在屏幕上为屏幕外的WebView设置动画时呈现伪像。
      * In particular, insertVisualStateCallback requires this mode to function.
      * Offscreen WebViews in this mode uses more memory. Please follow
      * these guidelines to limit memory usage:

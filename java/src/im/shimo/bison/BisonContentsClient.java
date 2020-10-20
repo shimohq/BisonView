@@ -10,11 +10,11 @@ import android.provider.Browser;
 import android.view.WindowManager;
 import android.text.TextUtils;
 import android.net.Uri;
-import android.webkit.DownloadListener;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import org.chromium.base.TraceEvent;
 import org.chromium.base.Callback;
 import org.chromium.base.ContextUtils;
 import org.chromium.base.Log;
@@ -31,12 +31,17 @@ import java.util.Map;
 import java.util.WeakHashMap;
 
 public class BisonContentsClient {
+    private static final boolean TRACE = false;
 
     private static final String TAG = "BisonContentsClient";
 
     static final BisonViewClient sNullBisonViewClient = new BisonViewClient();
 
     private BisonWebChromeClient mBisonWebChromeClient;
+
+    // The listener receiving find-in-page API results.
+    private BisonView.FindListener mFindListener;
+
     private BisonViewClient mBisonViewClient = sNullBisonViewClient;
     private BisonView mBisonView;
     private Context mContext;
@@ -44,7 +49,7 @@ public class BisonContentsClient {
 
     private WeakHashMap<BisonPermissionRequest, WeakReference<PermissionRequestAdapter>>
             mOngoingPermissionRequests;
-    private DownloadListener mDownloadListener;
+    private BisonView.DownloadListener mDownloadListener;
 
     private String mTitle = "";
 
@@ -70,8 +75,12 @@ public class BisonContentsClient {
         return mBisonViewClient;
     }
 
-    void setDownloadListener(DownloadListener listener) {
+    void setDownloadListener(BisonView.DownloadListener listener) {
         mDownloadListener = listener;
+    }
+
+    void setFindListener(BisonView.FindListener listener) {
+        mFindListener = listener;
     }
 
     public void onProgressChanged(int progress) {
@@ -568,7 +577,103 @@ public class BisonContentsClient {
     }
 
     public void onRendererResponsive(BisonRenderProcess renderProcess) {
-
+        
     }
+
+
+    //region FileChooser
+
+    public void showFileChooser(Callback<String[]> uploadFilePathsCallback, FileChooserParamsImpl fileChooserParams) {
+        try {
+            TraceEvent.begin("BisonContentsClient.showFileChooser");
+
+        } finally {
+            TraceEvent.end("BisonContentsClient.showFileChooser");
+        }
+    }
+
+    static class FileChooserParamsImpl {
+        private int mMode;
+        private String mAcceptTypes;
+        private String mTitle;
+        private String mDefaultFilename;
+        private boolean mCapture;
+
+        public FileChooserParamsImpl(int mode, String acceptTypes, String title,
+                String defaultFilename, boolean capture) {
+            mMode = mode;
+            mAcceptTypes = acceptTypes;
+            mTitle = title;
+            mDefaultFilename = defaultFilename;
+            mCapture = capture;
+        }
+
+        public String getAcceptTypesString() {
+            return mAcceptTypes;
+        }
+
+        public int getMode() {
+            return mMode;
+        }
+
+        public String[] getAcceptTypes() {
+            if (mAcceptTypes == null) {
+                return new String[0];
+            }
+            return mAcceptTypes.split(",");
+        }
+
+        public boolean isCaptureEnabled() {
+            return mCapture;
+        }
+
+        public CharSequence getTitle() {
+            return mTitle;
+        }
+
+        public String getFilenameHint() {
+            return mDefaultFilename;
+        }
+
+        public Intent createIntent() {
+            String mimeType = "*/*";
+            if (mAcceptTypes != null && !mAcceptTypes.trim().isEmpty()) {
+                mimeType = mAcceptTypes.split(",")[0];
+            }
+
+            Intent i = new Intent(Intent.ACTION_GET_CONTENT);
+            i.addCategory(Intent.CATEGORY_OPENABLE);
+            i.setType(mimeType);
+            return i;
+        }
+    }
+
+    //endregion
+
+    public void onFindResultReceived(int activeMatchOrdinal, int numberOfMatches,
+            boolean isDoneCounting){
+        try {
+            TraceEvent.begin("BisonContentsClient.onFindResultReceived");
+            if (mFindListener == null) return;
+            if (TRACE) Log.i(TAG, "onFindResultReceived");
+            mFindListener.onFindResultReceived(activeMatchOrdinal, numberOfMatches, isDoneCounting);
+        } finally {
+            TraceEvent.end("BisonContentsClient.onFindResultReceived");
+        }
+    }
+
+    public void onRequestFocus() {
+         try {
+            TraceEvent.begin("BisonContentsClient.onRequestFocus");
+            if (mBisonWebChromeClient != null) {
+                if (TRACE) Log.i(TAG, "onRequestFocus");
+                mBisonWebChromeClient.onRequestFocus(mBisonView);
+            }
+        } finally {
+            TraceEvent.end("BisonContentsClient.onRequestFocus");
+        }
+    }
+
+
 
 }

@@ -3,7 +3,6 @@ package im.shimo.bison;
 import android.content.Context;
 import android.os.Message;
 import android.util.AttributeSet;
-import android.webkit.DownloadListener;
 import android.widget.FrameLayout;
 
 import androidx.annotation.Nullable;
@@ -44,9 +43,8 @@ public class BisonView extends FrameLayout {
                 .startBrowserProcessesSync(false);
         mBisonContentsClient = new BisonContentsClient(this, context);
         mBisonContentsClientBridge = new BisonContentsClientBridge(context, mBisonContentsClient, getClientCertLookupTable());
-        BisonWebContentsDelegate webContentsDelegate = new BisonWebContentsDelegate(mBisonContentsClient);
-        mBisonContents = new BisonContents(context, BisonBrowserContext.getDefault(), webContentsDelegate,
-                mBisonContentsClientBridge, mBisonContentsClient);
+        mBisonContents = new BisonContents(context, BisonBrowserContext.getDefault(), mBisonContentsClientBridge, 
+                mBisonContentsClient);
         addView(mBisonContents);
     }
 
@@ -124,8 +122,20 @@ public class BisonView extends FrameLayout {
         mBisonContents.saveWebArchive(basename, autoname, CallbackConverter.fromValueCallback(callback));
     }
 
+    public void setFindListener(FindListener listener) {
+        mBisonContentsClient.setFindListener(listener);
+    }
+
     public void documentHasImages(Message response) {
         mBisonContents.documentHasImages(response);
+    }
+
+    public void findNext(boolean forward) {
+        mBisonContents.findNext(forward);
+    }
+
+    public void findAllAsync(String find) {
+        mBisonContents.findAllAsync(find);
     }
 
     public void setBisonViewClient(BisonViewClient client) {
@@ -141,12 +151,11 @@ public class BisonView extends FrameLayout {
     }
 
     public void pauseTimers() {
-        BisonBrowserContext.getDefault().pauseTimers();
+        mBisonContents.pauseTimers();
     }
 
-
     public void resumeTimers() {
-        BisonBrowserContext.getDefault().resumeTimers();
+        mBisonContents.resumeTimers();
     }
 
 
@@ -181,6 +190,28 @@ public class BisonView extends FrameLayout {
             sClientCertLookupTable = new ClientCertLookupTable();
         }
         return sClientCertLookupTable;
+    }
+
+
+    public interface FindListener {
+        void onFindResultReceived(int activeMatchOrdinal, int numberOfMatches,
+            boolean isDoneCounting);
+    }
+
+    public interface DownloadListener {
+
+    /**
+     * Notify the host application that a file should be downloaded
+     * @param url The full url to the content that should be downloaded
+     * @param userAgent the user agent to be used for the download.
+     * @param contentDisposition Content-disposition http header, if 
+     *                           present.
+     * @param mimetype The mimetype of the content reported by the server
+     * @param contentLength The file size reported by the server
+     */
+    public void onDownloadStart(String url, String userAgent,
+            String contentDisposition, String mimetype, long contentLength);
+
     }
 
 }

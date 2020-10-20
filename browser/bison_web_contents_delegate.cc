@@ -1,55 +1,160 @@
 #include "bison/browser/bison_web_contents_delegate.h"
+
 #include <utility>
 
 #include "bison/browser/bison_contents.h"
 #include "bison/browser/bison_contents_io_thread_client.h"
 #include "bison/browser/bison_javascript_dialog_manager.h"
+#include "bison/browser/find_helper.h"
+#include "bison/browser/permission/media_access_permission_request.h"
+#include "bison/browser/permission/permission_request_handler.h"
+#include "bison/bison_jni_headers/BisonWebContentsDelegate_jni.h"
+#include "base/android/jni_array.h"
+#include "base/android/jni_string.h"
+#include "base/android/scoped_java_ref.h"
 #include "base/lazy_instance.h"
-
+#include "base/location.h"
+#include "base/memory/ptr_util.h"
+#include "base/single_thread_task_runner.h"
+#include "base/strings/string_util.h"
+#include "base/strings/utf_string_conversions.h"
+#include "base/threading/thread_task_runner_handle.h"
 #include "components/navigation_interception/intercept_navigation_delegate.h"
-#include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/file_select_listener.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/render_process_host.h"
 #include "content/public/browser/render_view_host.h"
 #include "content/public/browser/render_widget_host.h"
 #include "content/public/browser/web_contents.h"
+#include "net/base/filename_util.h"
+#include "third_party/blink/public/common/mediastream/media_stream_request.h"
+#include "third_party/blink/public/mojom/mediastream/media_stream.mojom-shared.h"
 
-using content::NavigationController;
+using base::android::AttachCurrentThread;
+using base::android::ConvertUTF16ToJavaString;
+using base::android::ConvertUTF8ToJavaString;
+using base::android::JavaParamRef;
+using base::android::ScopedJavaLocalRef;
+using blink::mojom::FileChooserFileInfo;
+using blink::mojom::FileChooserFileInfoPtr;
+using blink::mojom::FileChooserParams;
+using content::WebContents;
 
 namespace bison {
 
 namespace {
 
-// const int kFileChooserModeOpenMultiple = 1 << 0;
-// const int kFileChooserModeOpenFolder = 1 << 1;
+// WARNING: these constants are exposed in the public interface Java side, so
+// must remain in sync with what clients are expecting.
+const int kFileChooserModeOpenMultiple = 1 << 0;
+const int kFileChooserModeOpenFolder = 1 << 1;
 
 base::LazyInstance<BisonJavaScriptDialogManager>::Leaky
     g_javascript_dialog_manager = LAZY_INSTANCE_INITIALIZER;
-}  // namespace
+}
 
 BisonWebContentsDelegate::BisonWebContentsDelegate(JNIEnv* env, jobject obj)
     : WebContentsDelegateAndroid(env, obj), is_fullscreen_(false) {}
 
 BisonWebContentsDelegate::~BisonWebContentsDelegate() {}
 
-// jiang 当js无响应回调
 void BisonWebContentsDelegate::RendererUnresponsive(
     content::WebContents* source,
     content::RenderWidgetHost* render_widget_host,
     base::RepeatingClosure hang_monitor_restarter) {
-
-    BisonContents* bison_contents = BisonContents::FromWebContents(source);
-    if (!bison_contents)
-      return;
+  BisonContents* aw_contents = BisonContents::FromWebContents(source);
+  if (!aw_contents)
+    return;
 
   content::RenderProcessHost* render_process_host =
       render_widget_host->GetProcess();
   if (render_process_host->IsInitializedAndNotDead()) {
-    bison_contents->RendererUnresponsive(render_widget_host->GetProcess());
+    aw_contents->RendererUnresponsive(render_widget_host->GetProcess());
     hang_monitor_restarter.Run();
   }
+}
 
+void BisonWebContentsDelegate::RendererResponsive(
+    content::WebContents* source,
+    content::RenderWidgetHost* render_widget_host) {
+  BisonContents* aw_contents = BisonContents::FromWebContents(source);
+  if (!aw_contents)
+    return;
+
+  content::RenderProcessHost* render_process_host =
+      render_widget_host->GetProcess();
+  if (render_process_host->IsInitializedAndNotDead()) {
+    aw_contents->RendererResponsive(render_widget_host->GetProcess());
+  }
+}
+
+content::JavaScriptDialogManager*
+BisonWebContentsDelegate::GetJavaScriptDialogManager(WebContents* source) {
+  return g_javascript_dialog_manager.Pointer();
+}
+
+void BisonWebContentsDelegate::FindReply(WebContents* web_contents,
+                                      int request_id,
+                                      int number_of_matches,
+                                      const gfx::Rect& selection_rect,
+                                      int active_match_ordinal,
+                                      bool final_update) {
+  BisonContents* aw_contents = BisonContents::FromWebContents(web_contents);
+  if (!aw_contents)
+    return;
+
+  aw_contents->GetFindHelper()->HandleFindReply(
+      request_id, number_of_matches, active_match_ordinal, final_update);
+}
+
+void BisonWebContentsDelegate::CanDownload(
+    const GURL& url,
+    const std::string& request_method,
+    base::OnceCallback<void(bool)> callback) {
+  // Android webview intercepts download in its resource dispatcher host
+  // delegate, so should not reach here.
+  NOTREACHED();
+  std::move(callback).Run(false);
+}
+
+void BisonWebContentsDelegate::RunFileChooser(
+    content::RenderFrameHost* render_frame_host,
+    std::unique_ptr<content::FileSelectListener> listener,
+    const FileChooserParams& params) {
+  JNIEnv* env = AttachCurrentThread();
+  ScopedJavaLocalRef<jobject> java_delegate = GetJavaDelegate(env);
+  if (!java_delegate.obj()) {
+    listener->FileSelectionCanceled();
+    return;
+  }
+
+  int mode_flags = 0;
+  if (params.mode == FileChooserParams::Mode::kOpenMultiple) {
+    mode_flags |= kFileChooserModeOpenMultiple;
+  } else if (params.mode == FileChooserParams::Mode::kUploadFolder) {
+    // Folder implies multiple in Chrome.
+    mode_flags |= kFileChooserModeOpenMultiple | kFileChooserModeOpenFolder;
+  } else if (params.mode == FileChooserParams::Mode::kSave) {
+    // Save not supported, so cancel it.
+    listener->FileSelectionCanceled();
+    return;
+  } else {
+    DCHECK_EQ(FileChooserParams::Mode::kOpen, params.mode);
+  }
+  DCHECK(!file_select_listener_)
+      << "Multiple concurrent FileChooser requests are not supported.";
+  file_select_listener_ = std::move(listener);
+  Java_BisonWebContentsDelegate_runFileChooser(
+      env, java_delegate, render_frame_host->GetProcess()->GetID(),
+      render_frame_host->GetRoutingID(), mode_flags,
+      ConvertUTF16ToJavaString(
+          env, base::JoinString(params.accept_types, base::ASCIIToUTF16(","))),
+      params.title.empty() ? nullptr
+                           : ConvertUTF16ToJavaString(env, params.title),
+      params.default_file_name.empty()
+          ? nullptr
+          : ConvertUTF8ToJavaString(env, params.default_file_name.value()),
+      params.use_media_capture);
 }
 
 void BisonWebContentsDelegate::AddNewContents(
@@ -59,86 +164,59 @@ void BisonWebContentsDelegate::AddNewContents(
     const gfx::Rect& initial_rect,
     bool user_gesture,
     bool* was_blocked) {
-  VLOG(0) << "AddNewContents";
+  JNIEnv* env = AttachCurrentThread();
+
+  bool is_dialog = disposition == WindowOpenDisposition::NEW_POPUP;
+  ScopedJavaLocalRef<jobject> java_delegate = GetJavaDelegate(env);
+  bool create_popup = false;
+
+  if (java_delegate.obj()) {
+    create_popup = Java_BisonWebContentsDelegate_addNewContents(
+        env, java_delegate, is_dialog, user_gesture);
+  }
+
+  if (create_popup) {
+    // The embedder would like to display the popup and we will receive
+    // a callback from them later with an BisonContents to use to display
+    // it. The source BisonContents takes ownership of the new WebContents
+    // until then, and when the callback is made we will swap the WebContents
+    // out into the new BisonContents.
+
+    // WebContents* raw_new_contents = new_contents.get();
+    // BisonContents::FromWebContents(source)->SetPendingWebContentsForPopup(
+    //     std::move(new_contents));
+
+    // It's possible that SetPendingWebContentsForPopup deletes |new_contents|,
+    // but it only does so asynchronously, so it's safe to use a raw pointer
+    // here.
+    // Hide the WebContents for the pop up now, we will show it again
+    // when the user calls us back with an BisonContents to use to show it.
+
+    // raw_new_contents->WasHidden();
+  } else {
+    // The embedder has forgone their chance to display this popup
+    // window, so we're done with the WebContents now. We use
+    // DeleteSoon as WebContentsImpl may call methods on |new_contents|
+    // after this method returns.
+    base::ThreadTaskRunnerHandle::Get()->DeleteSoon(FROM_HERE,
+                                                    std::move(new_contents));
+  }
+
+  if (was_blocked) {
+    *was_blocked = !create_popup;
+  }
 }
 
-void BisonWebContentsDelegate::LoadingStateChanged(WebContents* source,
-                                                   bool to_different_document) {
+void BisonWebContentsDelegate::NavigationStateChanged(
+    content::WebContents* source,
+    content::InvalidateTypes changed_flags) {
+  JNIEnv* env = AttachCurrentThread();
 
-}
-
-// void BisonWebContentsDelegate::LoadProgressChanged(WebContents* source,
-//                                                    double progress) {
-// JNIEnv* env = AttachCurrentThread();
-// Java_BisonWebContentsDelegate_onLoadProgressChanged(env, java_object_,
-//                                                     progress);
-// }
-
-void BisonWebContentsDelegate::SetOverlayMode(bool use_overlay_mode) {
-  // JNIEnv* env = base::android::AttachCurrentThread();
-  // return Java_BisonWebContentsDelegate_setOverlayMode(env, java_object_,
-  //                                                     use_overlay_mode);
-}
-
-void BisonWebContentsDelegate::EnterFullscreenModeForTab(
-    WebContents* web_contents,
-    const GURL& origin,
-    const blink::mojom::FullscreenOptions& options) {
-  // ToggleFullscreenModeForTab(web_contents, true);
-}
-
-void BisonWebContentsDelegate::CanDownload(
-    const GURL& url,
-    const std::string& request_method,
-    base::OnceCallback<void(bool)> callback) {
-  NOTREACHED();
-  std::move(callback).Run(false);
-}
-
-void BisonWebContentsDelegate::ExitFullscreenModeForTab(
-    WebContents* web_contents) {
-  // ToggleFullscreenModeForTab(web_contents, false);
-}
-
-bool BisonWebContentsDelegate::IsFullscreenForTabOrPending(
-    const WebContents* web_contents) {
-  // #if defined(OS_ANDROID)
-  //   return PlatformIsFullscreenForTabOrPending(web_contents);
-  // #else
-  //   return is_fullscreen_;
-  // #endif
-  return is_fullscreen_;
-}
-
-blink::mojom::DisplayMode BisonWebContentsDelegate::GetDisplayMode(
-    const WebContents* web_contents) {
-  // TODO: should return blink::mojom::DisplayModeFullscreen wherever user puts
-  // a browser window into fullscreen (not only in case of renderer-initiated
-  // fullscreen mode): crbug.com/476874.
-  return IsFullscreenForTabOrPending(web_contents)
-             ? blink::mojom::DisplayMode::kFullscreen
-             : blink::mojom::DisplayMode::kBrowser;
-}
-
-void BisonWebContentsDelegate::RequestToLockMouse(
-    WebContents* web_contents,
-    bool user_gesture,
-    bool last_unlocked_by_target) {
-  web_contents->GotResponseToLockMouseRequest(true);
-}
-
-void BisonWebContentsDelegate::CloseContents(WebContents* source) {
-  // Close();
-}
-
-
-
-void BisonWebContentsDelegate::DidNavigateMainFramePostCommit(
-    WebContents* web_contents) {}
-
-JavaScriptDialogManager* BisonWebContentsDelegate::GetJavaScriptDialogManager(
-    WebContents* source) {
-  return g_javascript_dialog_manager.Pointer();
+  ScopedJavaLocalRef<jobject> java_delegate = GetJavaDelegate(env);
+  if (java_delegate.obj()) {
+    Java_BisonWebContentsDelegate_navigationStateChanged(env, java_delegate,
+                                                      changed_flags);
+  }
 }
 
 // Notifies the delegate about the creation of a new WebContents. This
@@ -153,50 +231,80 @@ void BisonWebContentsDelegate::WebContentsCreated(
   BisonContentsIoThreadClient::RegisterPendingContents(new_contents);
 }
 
-std::unique_ptr<BluetoothChooser> BisonWebContentsDelegate::RunBluetoothChooser(
-    RenderFrameHost* frame,
-    const BluetoothChooser::EventHandler& event_handler) {
-  // BlinkTestController* blink_test_controller = BlinkTestController::Get();
-  // if (blink_test_controller && switches::IsRunWebTestsSwitchPresent())
-  //   return blink_test_controller->RunBluetoothChooser(frame, event_handler);
-  return nullptr;
+void BisonWebContentsDelegate::CloseContents(WebContents* source) {
+  JNIEnv* env = AttachCurrentThread();
+
+  ScopedJavaLocalRef<jobject> java_delegate = GetJavaDelegate(env);
+  if (java_delegate.obj()) {
+    Java_BisonWebContentsDelegate_closeContents(env, java_delegate);
+  }
 }
-
-std::unique_ptr<BluetoothScanningPrompt>
-BisonWebContentsDelegate::ShowBluetoothScanningPrompt(
-    RenderFrameHost* frame,
-    const BluetoothScanningPrompt::EventHandler& event_handler) {
-  // return std::make_unique<FakeBluetoothScanningPrompt>(event_handler);
-  return nullptr;
-}
-
-void BisonWebContentsDelegate::PortalWebContentsCreated(
-    WebContents* portal_web_contents) {}
-
 
 void BisonWebContentsDelegate::ActivateContents(WebContents* contents) {
-  contents->GetRenderViewHost()->GetWidget()->Focus();
+  JNIEnv* env = AttachCurrentThread();
+
+  ScopedJavaLocalRef<jobject> java_delegate = GetJavaDelegate(env);
+  if (java_delegate.obj()) {
+    Java_BisonWebContentsDelegate_activateContents(env, java_delegate);
+  }
 }
 
-bool BisonWebContentsDelegate::ShouldAllowRunningInsecureContent(
-    WebContents* web_contents,
-    bool allowed_per_prefs,
-    const url::Origin& origin,
-    const GURL& resource_url) {
-  return false;
-}
+void BisonWebContentsDelegate::LoadingStateChanged(WebContents* source,
+                                                bool to_different_document) {
+  // Page title may have changed, need to inform the embedder.
+  // |source| may be null if loading has started.
+  JNIEnv* env = AttachCurrentThread();
 
-PictureInPictureResult BisonWebContentsDelegate::EnterPictureInPicture(
-    WebContents* web_contents,
-    const viz::SurfaceId& surface_id,
-    const gfx::Size& natural_size) {
-  // During tests, returning success to pretend the window was created and allow
-  // tests to run accordingly.
-  return PictureInPictureResult::kSuccess;
+  ScopedJavaLocalRef<jobject> java_delegate = GetJavaDelegate(env);
+  if (java_delegate.obj()) {
+    Java_BisonWebContentsDelegate_loadingStateChanged(env, java_delegate);
+  }
 }
 
 bool BisonWebContentsDelegate::ShouldResumeRequestsForCreatedWindow() {
+  // Always return false here since we need to defer loading the created window
+  // until after we have attached a new delegate to the new webcontents (which
+  // happens asynchronously).
   return false;
+}
+
+void BisonWebContentsDelegate::RequestMediaAccessPermission(
+    WebContents* web_contents,
+    const content::MediaStreamRequest& request,
+    content::MediaResponseCallback callback) {
+  BisonContents* aw_contents = BisonContents::FromWebContents(web_contents);
+  if (!aw_contents) {
+    std::move(callback).Run(
+        blink::MediaStreamDevices(),
+        blink::mojom::MediaStreamRequestResult::FAILED_DUE_TO_SHUTDOWN,
+        nullptr);
+    return;
+  }
+  aw_contents->GetPermissionRequestHandler()->SendRequest(
+      std::make_unique<MediaAccessPermissionRequest>(request,
+                                                     std::move(callback)));
+}
+
+void BisonWebContentsDelegate::EnterFullscreenModeForTab(
+    content::WebContents* web_contents,
+    const GURL& origin,
+    const blink::mojom::FullscreenOptions& options) {
+  WebContentsDelegateAndroid::EnterFullscreenModeForTab(web_contents, origin,
+                                                        options);
+  is_fullscreen_ = true;
+  web_contents->GetRenderViewHost()->GetWidget()->SynchronizeVisualProperties();
+}
+
+void BisonWebContentsDelegate::ExitFullscreenModeForTab(
+    content::WebContents* web_contents) {
+  WebContentsDelegateAndroid::ExitFullscreenModeForTab(web_contents);
+  is_fullscreen_ = false;
+  web_contents->GetRenderViewHost()->GetWidget()->SynchronizeVisualProperties();
+}
+
+bool BisonWebContentsDelegate::IsFullscreenForTabOrPending(
+    const content::WebContents* web_contents) {
+  return is_fullscreen_;
 }
 
 void BisonWebContentsDelegate::UpdateUserGestureCarryoverInfo(
@@ -205,6 +313,77 @@ void BisonWebContentsDelegate::UpdateUserGestureCarryoverInfo(
       navigation_interception::InterceptNavigationDelegate::Get(web_contents);
   if (intercept_navigation_delegate)
     intercept_navigation_delegate->UpdateLastUserGestureCarryoverTimestamp();
+}
+
+std::unique_ptr<content::FileSelectListener>
+BisonWebContentsDelegate::TakeFileSelectListener() {
+  return std::move(file_select_listener_);
+}
+
+static void JNI_BisonWebContentsDelegate_FilesSelectedInChooser(
+    JNIEnv* env,
+    jint process_id,
+    jint render_id,
+    jint mode_flags,
+    const JavaParamRef<jobjectArray>& file_paths,
+    const JavaParamRef<jobjectArray>& display_names) {
+  content::RenderFrameHost* rfh =
+      content::RenderFrameHost::FromID(process_id, render_id);
+  auto* web_contents = WebContents::FromRenderFrameHost(rfh);
+  if (!web_contents)
+    return;
+  auto* delegate =
+      static_cast<BisonWebContentsDelegate*>(web_contents->GetDelegate());
+  if (!delegate)
+    return;
+  std::unique_ptr<content::FileSelectListener> listener =
+      delegate->TakeFileSelectListener();
+
+  if (!file_paths.obj()) {
+    listener->FileSelectionCanceled();
+    return;
+  }
+
+  std::vector<std::string> file_path_str;
+  std::vector<base::string16> display_name_str;
+  // Note file_paths maybe NULL, but this will just yield a zero-length vector.
+  base::android::AppendJavaStringArrayToStringVector(env, file_paths,
+                                                     &file_path_str);
+  base::android::AppendJavaStringArrayToStringVector(env, display_names,
+                                                     &display_name_str);
+  std::vector<FileChooserFileInfoPtr> files;
+  files.reserve(file_path_str.size());
+  for (size_t i = 0; i < file_path_str.size(); ++i) {
+    GURL url(file_path_str[i]);
+    if (!url.is_valid())
+      continue;
+    base::FilePath path;
+    if (url.SchemeIsFile()) {
+      if (!net::FileURLToFilePath(url, &path))
+        continue;
+    } else {
+      path = base::FilePath(file_path_str[i]);
+    }
+    auto file_info = blink::mojom::NativeFileInfo::New();
+    file_info->file_path = path;
+    if (!display_name_str[i].empty())
+      file_info->display_name = display_name_str[i];
+    files.push_back(FileChooserFileInfo::NewNativeFile(std::move(file_info)));
+  }
+  base::FilePath base_dir;
+  FileChooserParams::Mode mode;
+  if (mode_flags & kFileChooserModeOpenFolder) {
+    mode = FileChooserParams::Mode::kUploadFolder;
+    // We'd like to set |base_dir| to a folder which a user selected. But it's
+    // impossible with WebChromeClient API in the current Android.
+  } else if (mode_flags & kFileChooserModeOpenMultiple) {
+    mode = FileChooserParams::Mode::kOpenMultiple;
+  } else {
+    mode = FileChooserParams::Mode::kOpen;
+  }
+  DVLOG(0) << "File Chooser result: mode = " << mode
+           << ", file paths = " << base::JoinString(file_path_str, ":");
+  listener->FileSelected(std::move(files), base_dir, mode);
 }
 
 }  // namespace bison

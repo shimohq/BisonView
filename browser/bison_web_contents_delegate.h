@@ -30,19 +30,33 @@ class BisonWebContentsDelegate
       RenderWidgetHost* render_widget_host,
       base::RepeatingClosure hang_monitor_restarter) override;
 
-  // WebContentsDelegate
+  void RendererResponsive(
+      content::WebContents* source,
+      content::RenderWidgetHost* render_widget_host) override;
+
   JavaScriptDialogManager* GetJavaScriptDialogManager(
       WebContents* source) override;
+    void FindReply(content::WebContents* web_contents,
+                 int request_id,
+                 int number_of_matches,
+                 const gfx::Rect& selection_rect,
+                 int active_match_ordinal,
+                 bool final_update) override;
   void CanDownload(const GURL& url,
                    const std::string& request_method,
                    base::OnceCallback<void(bool)> callback) override;
+  void RunFileChooser(content::RenderFrameHost* render_frame_host,
+                      std::unique_ptr<content::FileSelectListener> listener,
+                      const blink::mojom::FileChooserParams& params) override;
   void AddNewContents(WebContents* source,
                       std::unique_ptr<WebContents> new_contents,
                       WindowOpenDisposition disposition,
                       const gfx::Rect& initial_rect,
                       bool user_gesture,
                       bool* was_blocked) override;
-  
+
+  void NavigationStateChanged(content::WebContents* source,
+                              content::InvalidateTypes changed_flags) override;
   void WebContentsCreated(content::WebContents* source_contents,
                           int opener_render_process_id,
                           int opener_render_frame_id,
@@ -50,56 +64,36 @@ class BisonWebContentsDelegate
                           const GURL& target_url,
                           content::WebContents* new_contents) override;
 
+  void CloseContents(content::WebContents* source) override;
+  void ActivateContents(content::WebContents* contents) override;
   void LoadingStateChanged(WebContents* source,
                            bool to_different_document) override;
   bool ShouldResumeRequestsForCreatedWindow() override;
-
-  void SetOverlayMode(bool use_overlay_mode) override;
+  void RequestMediaAccessPermission(
+      content::WebContents* web_contents,
+      const content::MediaStreamRequest& request,
+      content::MediaResponseCallback callback) override;
+  
   void EnterFullscreenModeForTab(
       WebContents* web_contents,
       const GURL& origin,
       const blink::mojom::FullscreenOptions& options) override;
   void ExitFullscreenModeForTab(WebContents* web_contents) override;
   bool IsFullscreenForTabOrPending(const WebContents* web_contents) override;
-  blink::mojom::DisplayMode GetDisplayMode(
-      const WebContents* web_contents) override;
-  void RequestToLockMouse(WebContents* web_contents,
-                          bool user_gesture,
-                          bool last_unlocked_by_target) override;
-  void CloseContents(WebContents* source) override;
-  
-  void DidNavigateMainFramePostCommit(WebContents* web_contents) override;
-  
-  std::unique_ptr<BluetoothChooser> RunBluetoothChooser(
-      RenderFrameHost* frame,
-      const BluetoothChooser::EventHandler& event_handler) override;
-  std::unique_ptr<BluetoothScanningPrompt> ShowBluetoothScanningPrompt(
-      RenderFrameHost* frame,
-      const BluetoothScanningPrompt::EventHandler& event_handler) override;
-  void PortalWebContentsCreated(WebContents* portal_web_contents) override;
-  
-  void ActivateContents(WebContents* contents) override;
-  // std::unique_ptr<content::WebContents> SwapWebContents(
-  //     content::WebContents* old_contents,
-  //     std::unique_ptr<content::WebContents> new_contents,
-  //     bool did_start_load,
-  //     bool did_finish_load) override;
-  bool ShouldAllowRunningInsecureContent(content::WebContents* web_contents,
-                                         bool allowed_per_prefs,
-                                         const url::Origin& origin,
-                                         const GURL& resource_url) override;
-  PictureInPictureResult EnterPictureInPicture(
-      content::WebContents* web_contents,
-      const viz::SurfaceId&,
-      const gfx::Size& natural_size) override;
-  
 
   void UpdateUserGestureCarryoverInfo(
       content::WebContents* web_contents) override;
 
+  std::unique_ptr<content::FileSelectListener> TakeFileSelectListener();
+
  private:
   bool is_fullscreen_;
-};
+
+  // Maintain a FileSelectListener instance passed to RunFileChooser() until
+  // a callback is called.
+  std::unique_ptr<content::FileSelectListener> file_select_listener_;
+
+};  
 
 }  // namespace bison
 

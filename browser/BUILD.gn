@@ -88,6 +88,8 @@ source_set("browser") {
     "bison_pdf_exporter.h",
     "bison_print_manager.cc",
     "bison_print_manager.h",
+    "find_helper.cc",
+    "find_helper.h",
 
     # network_service
     "network_service/android_stream_reader_url_loader.cc",
@@ -159,6 +161,8 @@ source_set("browser") {
     "//ui/gl",
     "//ui/resources",
     "//ui/touch_selection",
+    "//media/mojo:buildflags",
+    "//printing",
     
 
     "//components/heap_profiling",
