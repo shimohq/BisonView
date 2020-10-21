@@ -16,7 +16,7 @@ public class BisonResources {
     private final static String INTERNAL_RESOURCE_CLASSES[] = {
             "org.chromium.components.web_contents_delegate_android.R",
             "org.chromium.content.R",
-            "org.chromium.ui.R"
+            "org.chromium.ui.R",
     };
     private final static String GENERATED_RESOURCE_CLASS = "im.shimo.bison.R";
 
@@ -46,6 +46,7 @@ public class BisonResources {
                         try {
                             int value = generatedInnerClazz.getField(field.getName()).getInt(null);
                             field.setInt(null, value);
+                            Log.d(TAG, "set " + generatedInnerClazz.getName()+"."+ field.getName() + "=" + value);
                         } catch (IllegalAccessException e) {
                             Log.w(TAG, generatedInnerClazz.getName() + "." +
                                     field.getName() + " is not accessable.");

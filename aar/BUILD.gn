@@ -38,6 +38,10 @@ android_aar("bison_view_aar") {
   resource_included_patterns = [
     "*/bison/*",
     "*/ui/android/*",
+    "*/content/*",
+    # "*/components/embedder_support/*",
+    # "*/components/autofill/*",
+    # "*/media/base/*",
   ]
 
   jar_excluded_patterns = [
@@ -139,9 +143,6 @@ android_java_prebuilt("repackage_native_java") {
 repackage_jars("repackage_native_impl") {
   output = _native_intermediate_jar_path
 
-  # requires_android = true
-  # use_unprocessed_jars = true
-  # no_build_hooks = true
   deps = [
     "//bison:bison_java",
   ]

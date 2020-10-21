@@ -393,7 +393,7 @@ class BisonContents extends FrameLayout {
         mWebContents.initialize(
                 PRODUCT_VERSION, mViewAndroidDelegate, mContentView, mWindowAndroid.getWindowAndroid(), mWebContentsInternalsHolder);
         SelectionPopupController.fromWebContents(mWebContents)
-                .setActionModeCallback(defaultActionCallback());
+                .setActionModeCallback(new BisonActionModeCallback(context, this, mWebContents));
         
         mNavigationController = mWebContents.getNavigationController();
         if (getParent() != null) mWebContents.onShow();
@@ -601,39 +601,6 @@ class BisonContents extends FrameLayout {
                     mNativeBisonContents, mBisonPdfExporter);
         }
         return mBisonPdfExporter;
-    }
-
-    /**
-     * {link @ActionMode.Callback} that uses the default implementation in
-     * {@link SelectionPopupController}.
-     */
-    private ActionMode.Callback defaultActionCallback() {
-        final ActionModeCallbackHelper helper =
-                SelectionPopupController.fromWebContents(mWebContents)
-                        .getActionModeCallbackHelper();
-
-        return new ActionMode.Callback() {
-            @Override
-            public boolean onCreateActionMode(ActionMode mode, Menu menu) {
-                helper.onCreateActionMode(mode, menu);
-                return true;
-            }
-
-            @Override
-            public boolean onPrepareActionMode(ActionMode mode, Menu menu) {
-                return helper.onPrepareActionMode(mode, menu);
-            }
-
-            @Override
-            public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
-                return helper.onActionItemClicked(mode, item);
-            }
-
-            @Override
-            public void onDestroyActionMode(ActionMode mode) {
-                helper.onDestroyActionMode();
-            }
-        };
     }
 
     public void findAllAsync(String searchString) {

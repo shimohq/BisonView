@@ -44,11 +44,20 @@ _ANDROID_BUILD_DIR = os.path.dirname(os.path.dirname(__file__))
 def _MergeRTxt(r_paths, include_globs):
   """Merging the given R.txt files and returns them as a string."""
   all_lines = set()
+  keys = []
   for r_path in r_paths:
     if include_globs and not build_utils.MatchesGlob(r_path, include_globs):
       continue
+    lines = []
     with open(r_path) as f:
-      all_lines.update(f.readlines())
+      for line in f.readlines():
+         key = " ".join(line.split(' ')[:3])
+         if key not in keys :
+           keys.append(key)
+           lines.append(line)
+      
+      all_lines.update(lines)
+  print (''.join(sorted(all_lines)))  
   return ''.join(sorted(all_lines))
 
 
@@ -164,11 +173,13 @@ def main(args):
               jar_file.name, options.jars, path_transform=path_transform)
           build_utils.AddToZipHermetic(z, 'classes.jar', src_path=jar_file.name)
 
+        print("--_MergeRTxt--")            
         build_utils.AddToZipHermetic(
             z,
             'R.txt',
             data=_MergeRTxt(options.r_text_files,
-                            options.resource_included_globs))
+                            options.resource_included_globs))           
+        print("--_MergeRTxt--")                    
         build_utils.AddToZipHermetic(z, 'public.txt', data='')
 
         if options.proguard_configs:
