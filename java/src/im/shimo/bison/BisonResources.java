@@ -22,7 +22,6 @@ public class BisonResources {
 
 
     private static void doResetIds(Context context) {
-        // internal classes are loaded with the same classLoader of XWalkInternalResources
         ClassLoader classLoader = BisonResources.class.getClassLoader();
         ClassLoader appClassLoader = context.getApplicationContext().getClassLoader();
         for (String resourceClass : INTERNAL_RESOURCE_CLASSES) {
@@ -46,16 +45,9 @@ public class BisonResources {
                         try {
                             int value = generatedInnerClazz.getField(field.getName()).getInt(null);
                             field.setInt(null, value);
-                            Log.d(TAG, "set " + generatedInnerClazz.getName()+"."+ field.getName() + "=" + value);
-                        } catch (IllegalAccessException e) {
-                            Log.w(TAG, generatedInnerClazz.getName() + "." +
-                                    field.getName() + " is not accessable.");
-                        } catch (IllegalArgumentException e) {
-                            Log.w(TAG, generatedInnerClazz.getName() + "." +
-                                    field.getName() + " is not int.");
-                        } catch (NoSuchFieldException e) {
-                            Log.w(TAG, generatedInnerClazz.getName() + "." +
-                                    field.getName() + " is not found.");
+                            Log.d(TAG, "set " + generatedInnerClazz.getName() + "." + field.getName() + "=" + value);
+                        } catch (IllegalAccessException | NoSuchFieldException | IllegalArgumentException ignore) {
+
                         }
                         if (Modifier.isFinal(field.getModifiers())) field.setAccessible(false);
                     }

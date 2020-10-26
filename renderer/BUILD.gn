@@ -14,10 +14,6 @@ source_set("renderer") {
     "bison_render_thread_observer.h",
     "bison_render_view_ext.cc",
     "bison_render_view_ext.h",
-    "bison_url_loader_throttle_provider.cc",
-    "bison_url_loader_throttle_provider.h",
-    "bison_websocket_handshake_throttle_provider.cc",
-    "bison_websocket_handshake_throttle_provider.h",
     "js_java_interaction/js_binding.cc",
     "js_java_interaction/js_binding.h",
     "js_java_interaction/js_java_configurator.cc",
@@ -27,9 +23,9 @@ source_set("renderer") {
   ]
 
   deps = [
-    "//bison/common", 
-    "//bison/common:common_mojom",
     "//base",
+    "//bison/common",
+    "//bison/common:common_mojom",
     "//components/autofill/content/renderer",
     "//components/cdm/renderer",
     "//components/content_capture/common",
@@ -40,8 +36,6 @@ source_set("renderer") {
     "//components/safe_browsing:features",
     "//components/safe_browsing/common",
     "//components/safe_browsing/renderer:throttles",
-    "//components/spellcheck:buildflags",
-    "//components/spellcheck/renderer",
     "//components/visitedlink/renderer",
     "//content/public/child",
     "//content/public/common",

@@ -160,6 +160,8 @@ def main(args):
   # print (options.dependencies_res_zips)
   # print ("=======options.dependencies_res_zips========")
 
+  print ("options.android_manifest",options.android_manifest)
+
   with tempfile.NamedTemporaryFile(delete=False) as staging_file:
     try:
       with zipfile.ZipFile(staging_file.name, 'w') as z:

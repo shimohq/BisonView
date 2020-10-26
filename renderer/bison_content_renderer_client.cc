@@ -13,8 +13,8 @@
 #include "bison/renderer/bison_print_render_frame_helper_delegate.h"
 #include "bison/renderer/bison_render_frame_ext.h"
 #include "bison/renderer/bison_render_view_ext.h"
-#include "bison/renderer/bison_url_loader_throttle_provider.h"
-#include "bison/renderer/bison_websocket_handshake_throttle_provider.h"
+// #include "bison/renderer/bison_url_loader_throttle_provider.h"
+// #include "bison/renderer/bison_websocket_handshake_throttle_provider.h"
 #include "bison/renderer/js_java_interaction/js_java_configurator.h"
 #include "bison/renderer/print_render_frame_observer.h"
 
@@ -51,11 +51,6 @@
 #include "url/gurl.h"
 #include "url/url_constants.h"
 
-#if BUILDFLAG(ENABLE_SPELLCHECK)
-#include "components/spellcheck/renderer/spellcheck.h"
-#include "components/spellcheck/renderer/spellcheck_provider.h"
-#endif
-
 using content::RenderThread;
 
 namespace bison {
@@ -77,8 +72,6 @@ void BisonContentRendererClient::RenderThreadStarted() {
 
   visited_link_slave_.reset(new visitedlink::VisitedLinkSlave);
 
-  browser_interface_broker_ =
-      blink::Platform::Current()->GetBrowserInterfaceBrokerProxy();
 
   auto registry = std::make_unique<service_manager::BinderRegistry>();
   registry->AddInterface(visited_link_slave_->GetBindCallback(),
@@ -87,11 +80,6 @@ void BisonContentRendererClient::RenderThreadStarted() {
       ->GetServiceManagerConnection()
       ->AddConnectionFilter(std::make_unique<content::SimpleConnectionFilter>(
           std::move(registry)));
-
-#if BUILDFLAG(ENABLE_SPELLCHECK)
-  if (!spellcheck_)
-    spellcheck_ = std::make_unique<SpellCheck>(nullptr, this);
-#endif
 }
 
 bool BisonContentRendererClient::HandleNavigation(
@@ -175,13 +163,7 @@ void BisonContentRendererClient::RenderFrameCreated(
     RenderThread::Get()->Send(new BisonViewHostMsg_SubFrameCreated(
         parent_frame->GetRoutingID(), render_frame->GetRoutingID()));
   }
-
-#if BUILDFLAG(ENABLE_SPELLCHECK)
-  new SpellCheckProvider(render_frame, spellcheck_.get(), this);
-#endif
-
-  // Owned by |render_frame|.
-  new page_load_metrics::MetricsRenderFrameObserver(render_frame);
+  
 }
 
 void BisonContentRendererClient::RenderViewCreated(
@@ -266,27 +248,27 @@ void BisonContentRendererClient::AddSupportedKeySystems(
   BisonAddKeySystems(key_systems);
 }
 
-std::unique_ptr<content::WebSocketHandshakeThrottleProvider>
-BisonContentRendererClient::CreateWebSocketHandshakeThrottleProvider() {
-  return std::make_unique<BisonWebSocketHandshakeThrottleProvider>(
-      browser_interface_broker_.get());
-}
+// std::unique_ptr<content::WebSocketHandshakeThrottleProvider>
+// BisonContentRendererClient::CreateWebSocketHandshakeThrottleProvider() {
+//   return std::make_unique<BisonWebSocketHandshakeThrottleProvider>(
+//       browser_interface_broker_.get());
+// }
 
-std::unique_ptr<content::URLLoaderThrottleProvider>
-BisonContentRendererClient::CreateURLLoaderThrottleProvider(
-    content::URLLoaderThrottleProviderType provider_type) {
-  return std::make_unique<BisonURLLoaderThrottleProvider>(
-      browser_interface_broker_.get(), provider_type);
-}
+// std::unique_ptr<content::URLLoaderThrottleProvider>
+// BisonContentRendererClient::CreateURLLoaderThrottleProvider(
+//     content::URLLoaderThrottleProviderType provider_type) {
+//   return std::make_unique<BisonURLLoaderThrottleProvider>(
+//       browser_interface_broker_.get(), provider_type);
+// }
 
-void BisonContentRendererClient::GetInterface(
-    const std::string& interface_name,
-    mojo::ScopedMessagePipeHandle interface_pipe) {
-  // A dirty hack to make SpellCheckHost requests work on WebView.
-  // TODO(crbug.com/806394): Use a WebView-specific service for SpellCheckHost
-  // and SafeBrowsing, instead of |content_browser|.
-  RenderThread::Get()->BindHostReceiver(
-      mojo::GenericPendingReceiver(interface_name, std::move(interface_pipe)));
-}
+// void BisonContentRendererClient::GetInterface(
+//     const std::string& interface_name,
+//     mojo::ScopedMessagePipeHandle interface_pipe) {
+//   // A dirty hack to make SpellCheckHost requests work on WebView.
+//   // TODO(crbug.com/806394): Use a WebView-specific service for SpellCheckHost
+//   // and SafeBrowsing, instead of |content_browser|.
+//   RenderThread::Get()->BindHostReceiver(
+//       mojo::GenericPendingReceiver(interface_name, std::move(interface_pipe)));
+// }
 
 }  // namespace bison

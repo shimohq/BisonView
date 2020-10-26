@@ -1,4 +1,3 @@
-
 source_set("metrics") {
   sources = [
     "bison_metrics_log_uploader.cc",
@@ -9,9 +8,9 @@ source_set("metrics") {
     "memory_metrics_logger.h",
   ]
   deps = [
+    "//base",
     "//bison:bison_jni_headers",
     "//bison/common",
-    "//base",
     "//components/metrics",
     "//components/metrics:gpu",
     "//components/metrics:net",

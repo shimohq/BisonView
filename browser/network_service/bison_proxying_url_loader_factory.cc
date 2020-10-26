@@ -477,7 +477,7 @@ void OnReceivedErrorOnUiThread(int process_id,
                   << request.url;
     return;
   }
-  VLOG(0) << "OnReceivedErrorOnUiThread";
+  VLOG(0) << "OnReceivedErrorOnUiThread error_code" << error_code;
   // client->OnReceivedError(request, error_code, safebrowsing_hit);
 }
 

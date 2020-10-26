@@ -10,7 +10,6 @@ import androidx.annotation.Nullable;
 import org.chromium.base.library_loader.LibraryLoader;
 import org.chromium.base.library_loader.LibraryProcessType;
 import org.chromium.content_public.browser.BrowserStartupController;
-import org.chromium.content_public.browser.ChildProcessCreationParams;
 
 public class BisonView extends FrameLayout {
 
@@ -33,14 +32,8 @@ public class BisonView extends FrameLayout {
     }
 
     private void init(Context context) {
-        ChildProcessCreationParams.set(context.getPackageName(), false,
-                LibraryProcessType.PROCESS_WEBVIEW_CHILD, true,
-                true, "im.shimo.bison.PrivilegedProcessService",
-                "im.shimo.bison.SandboxedProcessService");
-        BisonResources.resetIds(context);
         LibraryLoader.getInstance().ensureInitialized(LibraryProcessType.PROCESS_WEBVIEW);
-        BrowserStartupController.get(LibraryProcessType.PROCESS_WEBVIEW)
-                .startBrowserProcessesSync(false);
+        BrowserStartupController.get(LibraryProcessType.PROCESS_WEBVIEW).startBrowserProcessesSync(false);
         mBisonContentsClient = new BisonContentsClient(this, context);
         mBisonContentsClientBridge = new BisonContentsClientBridge(context, mBisonContentsClient, getClientCertLookupTable());
         mBisonContents = new BisonContents(context, BisonBrowserContext.getDefault(), mBisonContentsClientBridge, 

@@ -129,9 +129,9 @@ class BisonContents : public FindHelper::Listener,
   //                    int h,
   //                    int ow,
   //                    int oh);
-  // void SetViewVisibility(JNIEnv* env,
-  //                        const base::android::JavaParamRef<jobject>& obj,
-  //                        bool visible);
+  void SetViewVisibility(JNIEnv* env,
+                         const base::android::JavaParamRef<jobject>& obj,
+                         bool visible);
   // void SetWindowVisibility(JNIEnv* env,
   //                          const base::android::JavaParamRef<jobject>& obj,
   //                          bool visible);

@@ -6,7 +6,6 @@ import("//build/config/android/rules.gni")
 import("//third_party/icu/config.gni")
 import("//tools/v8_context_snapshot/v8_context_snapshot.gni")
 
-
 _jar_excluded_patterns = [
   # Excludes Android support libraries crbug.com/832770.
   "android/*",
@@ -28,6 +27,7 @@ android_aar("bison_view_aar") {
   deps = [
     ":bison_aar_manifest",
     ":package_impl_native_java",
+
     #":bison_aar_assets"
   ]
 
@@ -39,6 +39,7 @@ android_aar("bison_view_aar") {
     "*/bison/*",
     "*/ui/android/*",
     "*/content/*",
+
     # "*/components/embedder_support/*",
     # "*/components/autofill/*",
     # "*/media/base/*",
@@ -80,6 +81,7 @@ shared_library("libbison_view") {
     "//bison:bison_lib",
     "//components/crash/content/app",
     "//components/crash/content/browser",
+
     # "//components/embedder_support/android:view",
     "//components/keyed_service/content",
     "//content/public/app:both",
@@ -149,7 +151,6 @@ repackage_jars("repackage_native_impl") {
 
   jar_excluded_patterns = _jar_excluded_patterns
 }
-
 
 android_assets("bison_aar_assets") {
   sources = [

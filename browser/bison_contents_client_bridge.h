@@ -10,7 +10,7 @@
 #include "base/callback.h"
 #include "base/containers/id_map.h"
 #include "base/supports_user_data.h"
-#include "components/security_interstitials/content/unsafe_resource.h"
+//#include "components/security_interstitials/content/unsafe_resource.h"
 #include "content/public/browser/certificate_request_result_type.h"
 #include "content/public/browser/javascript_dialog_manager.h"
 #include "content/public/browser/web_contents.h"

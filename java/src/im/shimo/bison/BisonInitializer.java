@@ -1,0 +1,69 @@
+package im.shimo.bison;
+
+import android.app.Application;
+import android.content.Context;
+import android.os.Build;
+
+import org.chromium.base.ApplicationStatus;
+import org.chromium.base.CommandLine;
+import org.chromium.base.PathUtils;
+import org.chromium.base.ContextUtils;
+import org.chromium.base.library_loader.LibraryLoader;
+import org.chromium.base.library_loader.LibraryProcessType;
+import org.chromium.content_public.browser.BrowserStartupController;
+import org.chromium.content_public.browser.ChildProcessCreationParams;
+import org.chromium.ui.base.ResourceBundle;
+
+public class BisonInitializer {
+
+    public static final String PRIVATE_DATA_DIRECTORY_SUFFIX = "bison";
+
+    private BisonInitializer() {
+    }
+
+    private static class SingletonInstance {
+        private static final BisonInitializer INSTANCE = new BisonInitializer();
+    }
+
+    public static BisonInitializer getInstance() {
+        return SingletonInstance.INSTANCE;
+    }
+
+    public void init(Context context) {
+        ContextUtils.initApplicationContext(context);
+        ResourceBundle.setNoAvailableLocalePaks();
+        ChildProcessCreationParams.set(context.getPackageName(), false,
+                LibraryProcessType.PROCESS_WEBVIEW_CHILD, true,
+                true, "im.shimo.bison.PrivilegedProcessService",
+                "im.shimo.bison.SandboxedProcessService");
+        if (isBrowserProcess()) {
+            PathUtils.setPrivateDataDirectorySuffix(PRIVATE_DATA_DIRECTORY_SUFFIX);
+            ApplicationStatus.initialize((Application) context.getApplicationContext());
+            BisonResources.resetIds(context);
+        }
+        if (!CommandLine.isInitialized()) {
+            CommandLine.initFromFile("/data/local/tmp/bison-view-command-line");
+        }
+    }
+
+    public static boolean isBrowserProcess() {
+        return !getProcessName().contains(":");
+    }
+
+    public static String getProcessName() {
+        if (Build.VERSION.SDK_INT >= 28) {
+            return Application.getProcessName();
+        } else {
+            try {
+                Class<?> activityThreadClazz = Class.forName("android.app.ActivityThread");
+                return (String)activityThreadClazz.getMethod("currentProcessName").invoke(null);
+            } catch (Exception var1) {
+                throw new RuntimeException(var1);
+            }
+        }
+    }
+
+
+
+
+}

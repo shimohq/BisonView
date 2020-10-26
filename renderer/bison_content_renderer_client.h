@@ -11,14 +11,9 @@
 #include "bison/renderer/bison_render_thread_observer.h"
 #include "base/compiler_specific.h"
 #include "base/memory/weak_ptr.h"
-#include "components/spellcheck/spellcheck_buildflags.h"
 #include "content/public/renderer/content_renderer_client.h"
-#include "services/service_manager/public/cpp/local_interface_provider.h"
 #include "third_party/blink/public/common/thread_safe_browser_interface_broker_proxy.h"
 
-#if BUILDFLAG(ENABLE_SPELLCHECK)
-class SpellCheck;
-#endif
 
 namespace visitedlink {
 class VisitedLinkSlave;
@@ -26,8 +21,7 @@ class VisitedLinkSlave;
 
 namespace bison {
 
-class BisonContentRendererClient : public content::ContentRendererClient,
-                                public service_manager::LocalInterfaceProvider {
+class BisonContentRendererClient : public content::ContentRendererClient {
  public:
   BisonContentRendererClient();
   ~BisonContentRendererClient() override;
@@ -48,8 +42,8 @@ class BisonContentRendererClient : public content::ContentRendererClient,
   void AddSupportedKeySystems(
       std::vector<std::unique_ptr<::media::KeySystemProperties>>* key_systems)
       override;
-  std::unique_ptr<content::WebSocketHandshakeThrottleProvider>
-  CreateWebSocketHandshakeThrottleProvider() override;
+  // std::unique_ptr<content::WebSocketHandshakeThrottleProvider>
+  // CreateWebSocketHandshakeThrottleProvider() override;
   bool HandleNavigation(content::RenderFrame* render_frame,
                         bool is_content_initiated,
                         bool render_view_was_created_by_renderer,
@@ -58,24 +52,18 @@ class BisonContentRendererClient : public content::ContentRendererClient,
                         blink::WebNavigationType type,
                         blink::WebNavigationPolicy default_policy,
                         bool is_redirect) override;
-  std::unique_ptr<content::URLLoaderThrottleProvider>
-  CreateURLLoaderThrottleProvider(
-      content::URLLoaderThrottleProviderType provider_type) override;
+  // std::unique_ptr<content::URLLoaderThrottleProvider>
+  // CreateURLLoaderThrottleProvider(
+  //     content::URLLoaderThrottleProviderType provider_type) override;
 
  private:
   // service_manager::LocalInterfaceProvider:
-  void GetInterface(const std::string& name,
-                    mojo::ScopedMessagePipeHandle request_handle) override;
+  // void GetInterface(const std::string& name,
+  //                   mojo::ScopedMessagePipeHandle request_handle) override;
 
   std::unique_ptr<BisonRenderThreadObserver> bison_render_thread_observer_;
   std::unique_ptr<visitedlink::VisitedLinkSlave> visited_link_slave_;
 
-  scoped_refptr<blink::ThreadSafeBrowserInterfaceBrokerProxy>
-      browser_interface_broker_;
-
-#if BUILDFLAG(ENABLE_SPELLCHECK)
-  std::unique_ptr<SpellCheck> spellcheck_;
-#endif
 
   DISALLOW_COPY_AND_ASSIGN(BisonContentRendererClient);
 };

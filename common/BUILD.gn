@@ -19,15 +19,15 @@ source_set("common") {
     "bison_descriptors.h",
     "bison_features.cc",
     "bison_features.h",
-    "url_constants.cc",
-    "url_constants.h",
-    "render_view_messages.cc",
-    "render_view_messages.h",
     "bison_hit_test_data.cc",
     "bison_hit_test_data.h",
-    "devtools_instrumentation.h",
     "bison_view_message_generator.cc",
     "bison_view_message_generator.h",
+    "devtools_instrumentation.h",
+    "render_view_messages.cc",
+    "render_view_messages.h",
+    "url_constants.cc",
+    "url_constants.h",
   ]
 
   deps = [

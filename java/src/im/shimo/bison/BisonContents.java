@@ -7,14 +7,12 @@ import android.os.Build;
 import android.os.Message;
 import android.text.TextUtils;
 import android.util.Base64;
-import android.view.ActionMode;
 import android.view.KeyEvent;
-import android.view.Menu;
-import android.view.MenuItem;
 import android.view.ViewGroup;
 import android.webkit.JavascriptInterface;
+import android.view.View;
 import android.widget.FrameLayout;
-
+import androidx.annotation.NonNull;
 import org.chromium.base.Callback;
 import org.chromium.base.ContextUtils;
 import org.chromium.base.LocaleUtils;
@@ -30,18 +28,13 @@ import org.chromium.components.autofill.AutofillProvider;
 import org.chromium.components.navigation_interception.InterceptNavigationDelegate;
 import org.chromium.components.navigation_interception.NavigationParams;
 import org.chromium.content_public.browser.ChildProcessImportance;
-import org.chromium.content_public.browser.ActionModeCallbackHelper;
-import org.chromium.content_public.browser.ImeAdapter;
-import org.chromium.content_public.browser.ImeEventObserver;
 import org.chromium.content_public.browser.JavaScriptCallback;
 import org.chromium.content_public.browser.JavascriptInjector;
 import org.chromium.content_public.browser.LoadUrlParams;
 import org.chromium.content_public.browser.NavigationController;
 import org.chromium.content_public.browser.NavigationHistory;
-import org.chromium.content_public.browser.SelectionClient;
 import org.chromium.content_public.browser.SelectionPopupController;
 import org.chromium.content_public.browser.UiThreadTaskTraits;
-import org.chromium.content_public.browser.ViewEventSink;
 import org.chromium.content_public.browser.WebContents;
 import org.chromium.content_public.browser.WebContentsInternals;
 import org.chromium.content_public.browser.navigation_controller.LoadURLType;
@@ -51,7 +44,6 @@ import org.chromium.content_public.common.Referrer;
 import org.chromium.network.mojom.ReferrerPolicy;
 import org.chromium.ui.base.ActivityWindowAndroid;
 import org.chromium.ui.base.PageTransition;
-import org.chromium.ui.base.ViewAndroidDelegate;
 import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.display.DisplayAndroid.DisplayAndroidObserver;
 
@@ -64,8 +56,6 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.WeakHashMap;
-import java.util.concurrent.Callable;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @JNINamespace("bison")
@@ -131,9 +121,11 @@ class BisonContents extends FrameLayout {
     private BisonSettings mSettings;
 
     
-    
     private boolean mIsPaused;
+    private boolean mIsViewVisible;
     private boolean mIsContentVisible;
+    private @RendererPriority int mRendererPriority;
+    private boolean mRendererPriorityWaivedWhenNotVisible;
 
     private ContentViewRenderView mContentViewRenderView;
     
@@ -371,6 +363,7 @@ class BisonContents extends FrameLayout {
                          BisonContentsClientBridge bisonContentsClientBridge,
                          BisonContentsClient bisonContentsClient) {
         super(context);
+        mRendererPriority = RendererPriority.HIGH;
         mSettings = new BisonSettings(context);
         updateDefaultLocale();
 
@@ -422,8 +415,8 @@ class BisonContents extends FrameLayout {
         mDisplayObserver.onDIPScaleChanged(getDeviceScaleFactor());
 
         mUpdateVisibilityRunnable = () -> updateWebContentsVisibility();
-
-
+        mCleanupReference = new CleanupReference(
+                this, new BisonContentsDestroyRunnable(mNativeBisonContents, mWindowAndroid));
     }
 
     
@@ -455,14 +448,16 @@ class BisonContents extends FrameLayout {
             return mWindowAndroid;
         }
     }
-    private static WeakHashMap<Context, WindowAndroidWrapper> sContextWindowMap;
+    // jiang  webview 加个开关 
+    // private static WeakHashMap<Context, WindowAndroidWrapper> sContextWindowMap;
 
     // getWindowAndroid is only called on UI thread, so there are no threading issues with lazy
     // initialization.
     private static WindowAndroidWrapper getWindowAndroid(Context context) {
-        if (sContextWindowMap == null) sContextWindowMap = new WeakHashMap<>();
-        WindowAndroidWrapper wrapper = sContextWindowMap.get(context);
-        if (wrapper != null) return wrapper;
+        // if (sContextWindowMap == null) sContextWindowMap = new WeakHashMap<>();
+        // WindowAndroidWrapper wrapper = sContextWindowMap.get(context);
+
+        WindowAndroidWrapper wrapper = null;
 
         try (ScopedSysTraceEvent e = ScopedSysTraceEvent.scoped("BisonContents.getWindowAndroid")) {
             boolean contextWrapsActivity = ContextUtils.activityFromContext(context) != null;
@@ -477,7 +472,7 @@ class BisonContents extends FrameLayout {
             } else {
                 wrapper = new WindowAndroidWrapper(new WindowAndroid(context));
             }
-            sContextWindowMap.put(context, wrapper);
+            // sContextWindowMap.put(context, wrapper);
         }
         return wrapper;
     }
@@ -526,16 +521,16 @@ class BisonContents extends FrameLayout {
     public void destroy() {
         if (TRACE) Log.i(TAG, "%s destroy", this);
         if (isDestroyed(NO_WARN)) return;
-
+        removeAllViews();
         if (mContentViewRenderView != null) {
             mContentViewRenderView.destroy();
             mContentViewRenderView= null;
         }
+
         // Remove pending messages
         mContentsClient.getCallbackHelper().removeCallbacksAndMessages();
-        removeAllViews();
         mIsDestroyed = true;
-        BisonContentsJni.get().destroy(mNativeBisonContents);
+        PostTask.postTask(UiThreadTaskTraits.DEFAULT, () -> destroyNatives());
     }
 
     private void destroyNatives() {
@@ -1025,6 +1020,14 @@ class BisonContents extends FrameLayout {
         }
     }
 
+    private void setViewVisibilityInternal(boolean visible) {
+        mIsViewVisible = visible;
+       
+        postUpdateWebContentsVisibility();
+    }
+
+   
+
     private void postUpdateWebContentsVisibility() {
         if (mIsUpdateVisibilityTaskPending) return;
         mIsUpdateVisibilityTaskPending = true;
@@ -1036,14 +1039,12 @@ class BisonContents extends FrameLayout {
         if (isDestroyed(NO_WARN)) return;
         //boolean contentVisible = BisonContentsJni.get().isVisible(mNativeBisonContents, this);
 
-        // if (!mIsContentVisible) {
-        //     mWebContents.onShow();
-        // } else if (!contentVisible && mIsContentVisible) {
-        //     mWebContents.onHide();
-        // }
-        mWebContents.onShow();
-        // mIsContentVisible = contentVisible;
-        //updateChildProcessImportance();
+        if (!mIsContentVisible) {
+            mWebContents.onShow();
+        } else {
+            mWebContents.onHide();
+        }
+        updateChildProcessImportance();
     }
 
     public void addJavascriptInterface(Object object, String name) {
@@ -1068,11 +1069,49 @@ class BisonContents extends FrameLayout {
 
 
     
+    private void updateChildProcessImportance() {
+        @ChildProcessImportance
+        int effectiveImportance = ChildProcessImportance.IMPORTANT;
+        if (mRendererPriorityWaivedWhenNotVisible && !mIsContentVisible) {
+            effectiveImportance = ChildProcessImportance.NORMAL;
+        } else {
+            switch (mRendererPriority) {
+                case RendererPriority.INITIAL:
+                case RendererPriority.HIGH:
+                    effectiveImportance = ChildProcessImportance.IMPORTANT;
+                    break;
+                case RendererPriority.LOW:
+                    effectiveImportance = ChildProcessImportance.MODERATE;
+                    break;
+                case RendererPriority.WAIVED:
+                    effectiveImportance = ChildProcessImportance.NORMAL;
+                    break;
+                default:
+                    assert false;
+            }
+        }
+        mWebContents.setImportance(effectiveImportance);
+    }
 
     private float getDeviceScaleFactor() {
         return mWindowAndroid.getWindowAndroid().getDisplay().getDipScale();
     }
 
+    @RendererPriority
+    public int getRendererRequestedPriority() {
+        return mRendererPriority;
+    }
+
+    public boolean getRendererPriorityWaivedWhenNotVisible() {
+        return mRendererPriorityWaivedWhenNotVisible;
+    }
+
+    public void setRendererPriorityPolicy(
+            @RendererPriority int rendererRequestedPriority, boolean waivedWhenNotVisible) {
+        mRendererPriority = rendererRequestedPriority;
+        mRendererPriorityWaivedWhenNotVisible = waivedWhenNotVisible;
+        updateChildProcessImportance();
+    }
 
     @CalledByNative
     private static void onDocumentHasImagesResponse(boolean result, Message message) {
@@ -1240,6 +1279,14 @@ class BisonContents extends FrameLayout {
         }
     }
 
+    
+    
+    @Override
+    protected void onVisibilityChanged(@NonNull View changedView, int visibility) {
+        super.onVisibilityChanged(changedView, visibility);
+        boolean viewVisible = getVisibility() == View.VISIBLE;
+        setViewVisibilityInternal(viewVisible);
+    }
     @CalledByNative
     private boolean useLegacyGeolocationPermissionAPI() {
         // Always return true since we are not ready to swap the geolocation yet.
@@ -1269,6 +1316,7 @@ class BisonContents extends FrameLayout {
         void killRenderProcess(long nativeBisonContents, BisonContents caller);
 
         void setDipScale(long nativeBisonContents, BisonContents caller, float dipScale);
+        
 
         void grantFileSchemeAccesstoChildProcess(long nativeBisonContents);
 

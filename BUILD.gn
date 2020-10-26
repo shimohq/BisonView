@@ -11,7 +11,6 @@ import("//tools/grit/grit_rule.gni")
 import("//tools/grit/repack.gni")
 import("//tools/v8_context_snapshot/v8_context_snapshot.gni")
 import("config.gni")
-
 group("bison") {
   deps = [
     "aar:bison_view_aar",
@@ -28,33 +27,32 @@ config("bison_lib_warnings") {
 generate_jni("bison_jni_headers") {
   sources = [
     "java/src/im/shimo/bison/AndroidProtocolHandler.java",
+    "java/src/im/shimo/bison/BisonAutofillClient.java",
+    "java/src/im/shimo/bison/BisonBrowserContext.java",
     "java/src/im/shimo/bison/BisonContents.java",
+    "java/src/im/shimo/bison/BisonContentsBackgroundThreadClient.java",
     "java/src/im/shimo/bison/BisonContentsClientBridge.java",
+    "java/src/im/shimo/bison/BisonContentsIoThreadClient.java",
+    "java/src/im/shimo/bison/BisonContentsLifecycleNotifier.java",
+    "java/src/im/shimo/bison/BisonCookieManager.java",
+    "java/src/im/shimo/bison/BisonDevToolsServer.java",
+    "java/src/im/shimo/bison/BisonFormDatabase.java",
+    "java/src/im/shimo/bison/BisonMetricsServiceClient.java",
+    "java/src/im/shimo/bison/BisonPdfExporter.java",
+    "java/src/im/shimo/bison/BisonPermissionRequest.java",
+    "java/src/im/shimo/bison/BisonQuotaManagerBridge.java",
+    "java/src/im/shimo/bison/BisonRenderProcess.java",
+    "java/src/im/shimo/bison/BisonSettings.java",
+    "java/src/im/shimo/bison/BisonVariationsSeedBridge.java",
+    "java/src/im/shimo/bison/BisonWebContentsDelegate.java",
     "java/src/im/shimo/bison/BisonWebResourceInterceptResponse.java",
     "java/src/im/shimo/bison/BisonWebResourceResponse.java",
-    "java/src/im/shimo/bison/InputStreamUtil.java",
-    "java/src/im/shimo/bison/BisonContentsBackgroundThreadClient.java",
-    "java/src/im/shimo/bison/BisonContentsIoThreadClient.java",
-    "java/src/im/shimo/bison/BisonSettings.java",
-    "java/src/im/shimo/bison/BisonCookieManager.java",
-    "java/src/im/shimo/bison/BisonBrowserContext.java",
-    "java/src/im/shimo/bison/BisonQuotaManagerBridge.java",
-    "java/src/im/shimo/bison/BisonDevToolsServer.java",
-    "java/src/im/shimo/bison/BisonPermissionRequest.java",
-    "java/src/im/shimo/bison/BisonVariationsSeedBridge.java",
-    "java/src/im/shimo/bison/BisonMetricsServiceClient.java",
-    "java/src/im/shimo/bison/BisonAutofillClient.java",
-    "java/src/im/shimo/bison/BisonFormDatabase.java",
     "java/src/im/shimo/bison/ContentViewRenderView.java",
-    "java/src/im/shimo/bison/BisonRenderProcess.java",
-    "java/src/im/shimo/bison/BisonContentsLifecycleNotifier.java",
-    "java/src/im/shimo/bison/BisonPdfExporter.java",
-    "java/src/im/shimo/bison/BisonWebContentsDelegate.java",
+    "java/src/im/shimo/bison/InputStreamUtil.java",
   ]
 }
 
 android_library("bison_java") {
-  
   min_sdk_version = 21
 
   java_files = [
@@ -117,6 +115,7 @@ android_library("bison_java") {
     "java/src/im/shimo/bison/BisonActionModeCallback.java",
     "java/src/im/shimo/bison/AutofillActionModeCallback.java",
     "java/src/im/shimo/bison/BisonPdfExporter.java",
+    "java/src/im/shimo/bison/BisonInitializer.java",
   ]
 
   srcjar_deps = [
