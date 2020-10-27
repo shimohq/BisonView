@@ -165,6 +165,12 @@ public class BisonView extends FrameLayout {
         removeAllViews();
     }
 
+    @Override
+    public void setBackgroundColor(int color) {
+        super.setBackgroundColor(color);
+        mBisonContents.setBackgroundColor(color);
+    }
+
     public static void setRemoteDebuggingEnabled(boolean enable) {
         if (gBisonDevToolsServer == null) {
             if (!enable) return;

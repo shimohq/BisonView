@@ -75,7 +75,6 @@ int BisonBrowserMainParts::PreCreateThreads() {
         std::make_unique<crash_reporter::ChildProcessCrashObserver>());
   }
 
-  VLOG(0) << "PreCreateThreads";
   return 0;
 }
 

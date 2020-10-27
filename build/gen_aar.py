@@ -32,6 +32,8 @@ SCRIPT_DIR = os.path.dirname(os.path.realpath(sys.argv[0]))
 SRC_DIR = os.path.normpath(os.path.join(SCRIPT_DIR, os.pardir, os.pardir))
 DEFAULT_ARCHS = ['armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64']
 
+MANIFEST_FILE = 'gen/bison/aar/bison_aar_manifest/AndroidManifest.xml'
+
 TARGETS = [
   'bison/aar:bison_view_aar'
 ]
@@ -42,10 +44,7 @@ import find_depot_tools
 def _ParseArgs():
   parser = argparse.ArgumentParser(description='bison_view.aar generator.')
 
-  parser.add_argument('--verison-name', 
-      help='Build dir. out')
-  parser.add_argument('--verison-code',
-      help='Build dir. out')
+  parser.add_argument('--verison-name', help='aar verison')
   parser.add_argument('--build-type', default='debug',
       help='Build type. default debug')
 
@@ -55,6 +54,9 @@ def _ParseArgs():
       help='Output file of the script.')
   parser.add_argument('--arch', default=DEFAULT_ARCHS, nargs='*',
       help='Architectures to build. Defaults to %(default)s.')
+
+
+  
 
   parser.add_argument('--verbose', action='store_true', default=False,
       help='Debug logging.')
@@ -139,7 +141,7 @@ def Collect(aar_file, build_dir, arch):
                    os.path.join(abi_dir, so_file))
 
 def Build(build_dir, build_type, arch, extra_gn_args, extra_gn_switches,
-          extra_ninja_switches):
+          extra_ninja_switches,verison_name = "1.0.0"):
   """Generates target architecture using GN and builds it using ninja."""
   logging.info('Building: %s', arch)
   output_directory = _GetOutputDirectory(build_dir, arch)
@@ -149,6 +151,7 @@ def Build(build_dir, build_type, arch, extra_gn_args, extra_gn_switches,
     'is_component_build': False,
     'rtc_include_tests': False,
     'target_cpu': _GetTargetCpu(arch),
+    'android_override_version_name' : verison_name,
   }
   
   gn_args_str = '--args=' + ' '.join([
@@ -165,7 +168,8 @@ def Build(build_dir, build_type, arch, extra_gn_args, extra_gn_switches,
 def BuildAar(archs, output_file, extra_gn_args=None,
              ext_build_dir=None, build_type = 'debug',
              extra_gn_switches=None,
-             extra_ninja_switches=None):
+             extra_ninja_switches=None,
+             verison_name = "1.0.0"):
   extra_gn_args = extra_gn_args or []
   extra_gn_switches = extra_gn_switches or []
   extra_ninja_switches = extra_ninja_switches or []
@@ -173,7 +177,7 @@ def BuildAar(archs, output_file, extra_gn_args=None,
   
   for arch in archs:
     Build(build_dir, build_type,arch, extra_gn_args, extra_gn_switches,
-          extra_ninja_switches)
+          extra_ninja_switches,verison_name)
 
   with zipfile.ZipFile(output_file, 'w') as aar_file:
     
@@ -181,17 +185,35 @@ def BuildAar(archs, output_file, extra_gn_args=None,
     for arch in archs:
       Collect(aar_file, build_dir, arch)
 
-  license_dir = os.path.dirname(os.path.realpath(output_file))
-
   if not ext_build_dir:
     shutil.rmtree(build_dir, True)
 
 def main():
   args = _ParseArgs()
   logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO)
-  BuildAar(args.arch, args.output, args.extra_gn_args,
-           args.build_dir,args.build_type, args.extra_gn_switches, args.extra_ninja_switches)
+  output = os.path.join(args.build_dir,args.output)
+  BuildAar(args.arch, output, args.extra_gn_args,
+           args.build_dir,args.build_type, args.extra_gn_switches, args.extra_ninja_switches,
+           args.verison_name)
 
 
 if __name__ == '__main__':
   sys.exit(main())
+  # with zipfile.ZipFile("out/release/bison_view.aar", 'w') as new_file:
+
+  # with zipfile.ZipFile("out/release/arm/aars/bison_view.aar", 'r') as aar_file :
+  #   aar_file.extractall('out/release/temp')
+  
+  # with zipfile.ZipFile("out/release/x86/aars/bison_view.aar", 'r') as aar_file :
+  #   aar_file.extractall('out/release/temp')
+
+  # with zipfile.ZipFile("out/release/bison_view.aar", 'w') as aar_file:
+  #   for root, file_dir, file_list in os.walk('out/release/temp'):
+  #     for f in file_list :
+  #       aar_file.write(os.path.join(root,f),os.path.join(root.replace('out/release/temp',''),f))
+        # aar_file.write(os.path.join(path,file_dir,filename),os.path.join(file_dir,filename))      
+
+  # with zipfile.ZipFile("out/release/bison_view.aar", 'r') as aar_file:
+  #   print (aar_file.namelist())
+
+  

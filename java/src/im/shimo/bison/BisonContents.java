@@ -875,6 +875,11 @@ class BisonContents extends FrameLayout {
         return url;
     }
 
+    @Override
+    public void setBackgroundColor(int color) {
+        super.setBackgroundColor(color);
+        mContentViewRenderView.setSurfaceViewBackgroundColor(color);
+    }
 
     private static String fixupMimeType(String mimeType) {
         return TextUtils.isEmpty(mimeType) ? "text/html" : mimeType;
@@ -977,6 +982,8 @@ class BisonContents extends FrameLayout {
     }   
 
     public void evaluateJavaScript(String script, Callback<String> callback) {
+        if (TRACE) Log.i(TAG, "%s evaluateJavascript=%s", this, script);
+        if (isDestroyed(WARN)) return;
         JavaScriptCallback jsCallback = null;
         if (callback != null) {
             jsCallback = jsonResult -> {
@@ -1022,7 +1029,6 @@ class BisonContents extends FrameLayout {
 
     private void setViewVisibilityInternal(boolean visible) {
         mIsViewVisible = visible;
-       
         postUpdateWebContentsVisibility();
     }
 
