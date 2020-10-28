@@ -11,6 +11,7 @@ import("//tools/grit/grit_rule.gni")
 import("//tools/grit/repack.gni")
 import("//tools/v8_context_snapshot/v8_context_snapshot.gni")
 import("config.gni")
+
 group("bison") {
   deps = [
     "aar:bison_view_aar",
@@ -163,7 +164,6 @@ shared_library("libbison") {
     "//base",
     "//components/crash/content/app",
     "//components/crash/content/browser",
-    "//components/embedder_support/android:view",
     "//components/keyed_service/content",
     "//content/public/app:both",
     "//content/public/browser",

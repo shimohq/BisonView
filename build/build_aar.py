@@ -77,7 +77,7 @@ def _AddResources(aar_zip, resource_zips, include_globs):
   Ensures all res/values/* files have unique names by prefixing them.
   """
   for i, path in enumerate(resource_zips):
-    print("res path",path)
+    print("res path" , path)
     if include_globs and not build_utils.MatchesGlob(path, include_globs):
       continue
     with zipfile.ZipFile(path) as res_zip:
@@ -93,7 +93,7 @@ def _AddResources(aar_zip, resource_zips, include_globs):
 
 
 def main(args):
-  # print ('args',args)
+  print ('args',args)
   args = build_utils.ExpandFileArgs(args)
   parser = argparse.ArgumentParser()
 
@@ -175,13 +175,11 @@ def main(args):
               jar_file.name, options.jars, path_transform=path_transform)
           build_utils.AddToZipHermetic(z, 'classes.jar', src_path=jar_file.name)
 
-        print("--_MergeRTxt--")            
         build_utils.AddToZipHermetic(
             z,
             'R.txt',
             data=_MergeRTxt(options.r_text_files,
                             options.resource_included_globs))           
-        print("--_MergeRTxt--")                    
         build_utils.AddToZipHermetic(z, 'public.txt', data='')
 
         if options.proguard_configs:

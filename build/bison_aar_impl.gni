@@ -26,11 +26,8 @@ template("build_aar_impl") {
 
   _deps += [ ":$_build_config_target_name" ]
 
-  _rebased_build_config = rebase_path(_build_config, root_build_dir)
 
-  # print ("======_rebased_build_config======")
-  # print (_rebased_build_config)
-  # print ("======_rebased_build_config======")
+  _rebased_build_config = rebase_path(_build_config, root_build_dir)
 
   action_with_pydeps(target_name) {
     forward_variables_from(invoker, [ "data" ])

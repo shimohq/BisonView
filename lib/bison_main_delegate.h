@@ -5,15 +5,13 @@
 
 #include <memory>
 
+#include "bison/browser/bison_feature_list_creator.h"
+#include "bison/common/bison_content_client.h"
+
 #include "base/compiler_specific.h"
 #include "base/macros.h"
 #include "build/build_config.h"
 #include "content/public/app/content_main_delegate.h"
-
-namespace content {
-class ContentClient;
-
-}  // namespace content
 
 using content::ContentBrowserClient;
 using content::ContentClient;
@@ -37,7 +35,9 @@ class BisonMainDelegate : public ContentMainDelegate {
   void PreSandboxStartup() override;
   int RunProcess(const std::string& process_type,
                  const MainFunctionParams& main_function_params) override;
-
+  void ProcessExiting(const std::string& process_type) override;
+  bool ShouldCreateFeatureList() override;
+  void PostEarlyInitialization(bool is_running_tests) override;
   void PreCreateMainMessageLoop() override;
   ContentBrowserClient* CreateContentBrowserClient() override;
   ContentGpuClient* CreateContentGpuClient() override;
@@ -46,11 +46,12 @@ class BisonMainDelegate : public ContentMainDelegate {
   static void InitializeResourceBundle();
 
  private:
+  std::unique_ptr<BisonFeatureListCreator> bison_feature_list_creator_;
   std::unique_ptr<BisonContentBrowserClient> browser_client_;
   std::unique_ptr<BisonContentGpuClient> gpu_client_;
   std::unique_ptr<BisonContentRendererClient> renderer_client_;
 
-  std::unique_ptr<ContentClient> content_client_;
+  BisonContentClient content_client_;
 
   DISALLOW_COPY_AND_ASSIGN(BisonMainDelegate);
 };

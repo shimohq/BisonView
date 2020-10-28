@@ -28,7 +28,9 @@ android_aar("bison_view_aar") {
     ":bison_aar_manifest",
     ":package_impl_native_java",
 
-    #":bison_aar_assets"
+    ":bison_aar_assets",
+    ":bison_icu_assets",
+    ":bison_v8_snapshot_assets",
   ]
 
   #bison_jni_registration_java
@@ -57,9 +59,7 @@ android_aar("bison_view_aar") {
     "*.stamp",
     "*/.readme",
     "*/*.properties",
-
-    # "im/shimo/bison/BisonView.class",
-    # "im/shimo/bison/BisonView\$*.class",
+    
   ]
 }
 
@@ -94,21 +94,15 @@ shared_library("libbison_view") {
   configs += [ "//build/config/android:hide_all_but_jni" ]
 }
 
+
+
 _package_dir = "$root_out_dir/bison_view_aar"
-
-# android_library("bison_view_aar_java") {
-#   ##srcjar_deps = [ ":bison_jni_registration" ]
-
-#   deps  = [
-#     ":package_impl_native_java",
-#   ]
-# }
 
 java_prebuilt("package_impl_native_java") {
   jar_path = "$_package_dir/impl_native_java.jar"
   supports_android = true
   requires_android = true
-  deps = bison_java_deps + [ ":repackage_native" ]
+  deps = [ ":repackage_native" ] + bison_java_deps
 }
 
 _registration_header = "$target_gen_dir/bison_jni_registration.h"
@@ -159,11 +153,40 @@ android_assets("bison_aar_assets") {
   disable_compression = true
   deps = [
     "//bison:pak",
+  ]
+}
+
+android_assets("bison_icu_assets") {
+  renaming_sources = ["$root_out_dir/icudtl.dat"]
+  renaming_destinations = [ "bison_icudtl.dat" ]
+  disable_compression = true
+  deps = [
     "//third_party/icu:icu_assets",
   ]
+}
+
+android_assets("bison_v8_snapshot_assets") {
+
+  disable_compression = true
   if (use_v8_context_snapshot) {
-    deps += [ "//tools/v8_context_snapshot:v8_context_snapshot_assets" ]
+    deps = [ "//tools/v8_context_snapshot:v8_context_snapshot_assets" ]
   } else {
-    deps += [ "//v8:v8_external_startup_data_assets" ]
+
+    renaming_sources = [
+      "$root_out_dir/natives_blob.bin" ,
+      "$root_out_dir/snapshot_blob.bin"
+    ]
+    
+    renaming_destinations = ["bison_snapshot_blob.bin"]
+    if (current_cpu == "arm" || current_cpu == "x86" ||
+          current_cpu == "mipsel") {
+    renaming_destinations += [ "bison_snapshot_blob_32.bin" ]
+  } else {
+    renaming_destinations += [ "bison_snapshot_blob_64.bin" ]
+  }
+
+    deps = [ "//v8:v8_external_startup_data_assets" ]
   }
 }
+
+

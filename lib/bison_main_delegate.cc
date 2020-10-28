@@ -3,6 +3,8 @@
 
 #include <iostream>
 
+#include "bison/browser/bison_media_url_interceptor.h"
+
 #include "base/base_switches.h"
 #include "base/command_line.h"
 #include "base/cpu.h"
@@ -13,18 +15,26 @@
 #include "base/path_service.h"
 #include "base/trace_event/trace_log.h"
 #include "bison/browser/bison_content_browser_client.h"
+#include "bison/browser/scoped_add_feature_flags.h"
 #include "bison/common/bison_content_client.h"
 #include "bison/common/bison_descriptors.h"
 #include "bison/gpu/bison_content_gpu_client.h"
 #include "bison/renderer/bison_content_renderer_client.h"
 #include "build/build_config.h"
 #include "cc/base/switches.h"
+#include "components/autofill/core/common/autofill_features.h"
 #include "components/crash/core/common/crash_key.h"
+#include "components/viz/common/features.h"
 #include "components/viz/common/switches.h"
 #include "content/common/content_constants_internal.h"
+#include "content/public/browser/android/media_url_interceptor_register.h"
 #include "content/public/browser/browser_main_runner.h"
+#include "content/public/common/content_descriptor_keys.h"
+#include "content/public/common/content_features.h"
 #include "content/public/common/content_switches.h"
 #include "content/public/common/url_constants.h"
+#include "gin/v8_initializer.h"
+#include "gpu/config/gpu_finch_features.h"
 #include "gpu/config/gpu_switches.h"
 #include "ipc/ipc_buildflags.h"
 #include "media/base/media_switches.h"
@@ -37,6 +47,7 @@
 #include "ui/base/ui_base_paths.h"
 #include "ui/base/ui_base_switches.h"
 #include "ui/display/display_switches.h"
+#include "ui/events/gesture_detection/gesture_configuration.h"
 #include "ui/gl/gl_implementation.h"
 #include "ui/gl/gl_switches.h"
 
@@ -55,9 +66,9 @@
 
 namespace {
 
-void InitLogging(const base::CommandLine& command_line) {
+void InitLogging(const base::CommandLine* command_line) {
   base::FilePath log_filename =
-      command_line.GetSwitchValuePath(switches::kLogFile);
+      command_line->GetSwitchValuePath(switches::kLogFile);
   if (log_filename.empty()) {
     base::PathService::Get(base::DIR_EXE, &log_filename);
     log_filename = log_filename.AppendASCII("bison.log");
@@ -70,6 +81,7 @@ void InitLogging(const base::CommandLine& command_line) {
   logging::InitLogging(settings);
   logging::SetLogItems(true /* Process ID */, true /* Thread ID */,
                        true /* Timestamp */, false /* Tick count */);
+  VLOG(0) << "log file at:" << log_filename.value().c_str();
 }
 
 }  // namespace
@@ -81,16 +93,111 @@ BisonMainDelegate::BisonMainDelegate() {}
 BisonMainDelegate::~BisonMainDelegate() {}
 
 bool BisonMainDelegate::BasicStartupComplete(int* exit_code) {
-  base::CommandLine& command_line = *base::CommandLine::ForCurrentProcess();
-  int dummy;
-  if (!exit_code)
-    exit_code = &dummy;
+  SetContentClient(&content_client_);
+
+  base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
+  InitLogging(cl);
+
+  cl->AppendSwitch(switches::kDisableOverscrollEdgeEffect);
+
+  cl->AppendSwitch(switches::kDisablePullToRefreshEffect);
+
+  cl->AppendSwitch(switches::kDisableSharedWorkers);
+
+  cl->AppendSwitch(switches::kDisableFileSystem);
+
+  cl->AppendSwitch(switches::kDisableNotifications);
+
+  cl->AppendSwitch(switches::kDisableSpeechSynthesisAPI);
+
+  cl->AppendSwitch(switches::kDisablePermissionsAPI);
+
+  cl->AppendSwitch(switches::kEnableAggressiveDOMStorageFlushing);
+
+  cl->AppendSwitch(switches::kDisablePresentationAPI);
+
+  cl->AppendSwitch(switches::kDisableRemotePlaybackAPI);
+
+  cl->AppendSwitch(switches::kDisableMediaSessionAPI);
+
+#if defined(V8_USE_EXTERNAL_STARTUP_DATA)
+  if (cl->GetSwitchValueASCII(switches::kProcessType).empty()) {
+    // Browser process (no type specified).
+
+    content::RegisterMediaUrlInterceptor(new BisonMediaUrlInterceptor());
+    // BrowserViewRenderer::CalculateTileMemoryPolicy();
+
+    ui::GestureConfiguration::GetInstance()
+        ->set_fling_touchscreen_tap_suppression_enabled(false);
+
+    // base::android::RegisterApkAssetWithFileDescriptorStore(
+    //     content::kV8NativesDataDescriptor,
+    //     gin::V8Initializer::GetNativesFilePath());
+    base::android::RegisterApkAssetWithFileDescriptorStore(
+        content::kV8NativesDataDescriptor,
+        base::FilePath(FILE_PATH_LITERAL("assets"))
+            .AppendASCII("bison_natives_blob.bin"));
+#if defined(USE_V8_CONTEXT_SNAPSHOT)
+    VLOG(0) << "defined USE_V8_CONTEXT_SNAPSHOT";
+    gin::V8Initializer::V8SnapshotFileType file_type =
+        gin::V8Initializer::V8SnapshotFileType::kWithAdditionalContext;
+#else
+    gin::V8Initializer::V8SnapshotFileType file_type =
+        gin::V8Initializer::V8SnapshotFileType::kDefault;
+#endif
+    VLOG(0) << gin::V8Initializer::GetSnapshotFilePath(true, file_type);
+    base::android::RegisterApkAssetWithFileDescriptorStore(
+        content::kV8Snapshot32DataDescriptor,
+        base::FilePath(FILE_PATH_LITERAL("assets"))
+            .AppendASCII("bison_snapshot_blob_32"));
+    base::android::RegisterApkAssetWithFileDescriptorStore(
+        content::kV8Snapshot64DataDescriptor,
+        gin::V8Initializer::GetSnapshotFilePath(false, file_type));
+  }
+#endif  // V8_USE_EXTERNAL_STARTUP_DATA
+
+  // if (cl->HasSwitch(switches::kWebViewSandboxedRenderer)) {
+  //   content::RenderProcessHost::SetMaxRendererProcessCount(1u);
+  //   cl->AppendSwitch(switches::kInProcessGPU);
+  // }
+
+  {
+    ScopedAddFeatureFlags features(cl);
+
+    features.EnableIfNotSet(
+        autofill::features::kAutofillSkipComparingInferredLabels);
+
+    features.DisableIfNotSet(::features::kWebPayments);
+
+    features.DisableIfNotSet(::features::kWebAuth);
+
+    // FATAL:compositor_impl_android.cc(299)] Check failed:
+    // features::IsVizDisplayCompositorEnabled().
+    // features.DisableIfNotSet(::features::kVizDisplayCompositor);
+
+    features.DisableIfNotSet(media::kUseAndroidOverlay);
+
+    features.EnableIfNotSet(media::kDisableSurfaceLayerForVideo);
+
+    features.DisableIfNotSet(media::kMediaDrmPersistentLicense);
+
+    features.DisableIfNotSet(media::kPictureInPictureAPI);
+
+    // features.DisableIfNotSet(
+    //     autofill::features::kAutofillRestrictUnownedFieldsToFormlessCheckout);
+
+    features.DisableIfNotSet(::features::kBackgroundFetch);
+
+    features.DisableIfNotSet(::features::kAndroidSurfaceControl);
+
+    features.DisableIfNotSet(::features::kSmsReceiver);
+
+    features.DisableIfNotSet(::features::kWebXr);
+
+    // features.EnableIfNotSet(::features::kDisableDeJelly);
+  }
 
   content::Compositor::Initialize();
-
-  InitLogging(command_line);
-  content_client_.reset(new BisonContentClient);
-  SetContentClient(content_client_.get());
 
   return false;
 }
@@ -163,6 +270,21 @@ int BisonMainDelegate::RunProcess(
   return 0;
 }
 
+void BisonMainDelegate::ProcessExiting(const std::string& process_type) {
+  logging::CloseLogFile();
+}
+
+bool BisonMainDelegate::ShouldCreateFeatureList() {
+  return false;
+}
+
+// This function is called only on the browser process.
+void BisonMainDelegate::PostEarlyInitialization(bool is_running_tests) {
+  // InitIcuAndResourceBundleBrowserSide();
+  bison_feature_list_creator_->CreateFeatureListAndFieldTrials();
+  PostFieldTrialInitialization();
+}
+
 void BisonMainDelegate::InitializeResourceBundle() {
   // On Android, the renderer runs with a different UID and can never access
   // the file system. Use the file descriptor passed in at launch time.
@@ -197,12 +319,15 @@ void BisonMainDelegate::InitializeResourceBundle() {
 void BisonMainDelegate::PreCreateMainMessageLoop() {}
 
 ContentBrowserClient* BisonMainDelegate::CreateContentBrowserClient() {
-  browser_client_.reset(new BisonContentBrowserClient);
+  bison_feature_list_creator_ = std::make_unique<BisonFeatureListCreator>();
+  browser_client_.reset(
+      new BisonContentBrowserClient(bison_feature_list_creator_.get()));
   return browser_client_.get();
 }
 
 ContentGpuClient* BisonMainDelegate::CreateContentGpuClient() {
-  gpu_client_.reset(new BisonContentGpuClient);
+  // gpu_client_.reset(new BisonContentGpuClient);
+  gpu_client_ = std::make_unique<BisonContentGpuClient>();
   return gpu_client_.get();
 }
 
