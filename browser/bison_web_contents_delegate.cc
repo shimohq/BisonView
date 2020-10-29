@@ -62,14 +62,14 @@ void BisonWebContentsDelegate::RendererUnresponsive(
     content::WebContents* source,
     content::RenderWidgetHost* render_widget_host,
     base::RepeatingClosure hang_monitor_restarter) {
-  BisonContents* aw_contents = BisonContents::FromWebContents(source);
-  if (!aw_contents)
+  BisonContents* bison_contents = BisonContents::FromWebContents(source);
+  if (!bison_contents)
     return;
 
   content::RenderProcessHost* render_process_host =
       render_widget_host->GetProcess();
   if (render_process_host->IsInitializedAndNotDead()) {
-    aw_contents->RendererUnresponsive(render_widget_host->GetProcess());
+    bison_contents->RendererUnresponsive(render_widget_host->GetProcess());
     hang_monitor_restarter.Run();
   }
 }
@@ -77,14 +77,14 @@ void BisonWebContentsDelegate::RendererUnresponsive(
 void BisonWebContentsDelegate::RendererResponsive(
     content::WebContents* source,
     content::RenderWidgetHost* render_widget_host) {
-  BisonContents* aw_contents = BisonContents::FromWebContents(source);
-  if (!aw_contents)
+  BisonContents* bison_contents = BisonContents::FromWebContents(source);
+  if (!bison_contents)
     return;
 
   content::RenderProcessHost* render_process_host =
       render_widget_host->GetProcess();
   if (render_process_host->IsInitializedAndNotDead()) {
-    aw_contents->RendererResponsive(render_widget_host->GetProcess());
+    bison_contents->RendererResponsive(render_widget_host->GetProcess());
   }
 }
 
@@ -99,11 +99,11 @@ void BisonWebContentsDelegate::FindReply(WebContents* web_contents,
                                       const gfx::Rect& selection_rect,
                                       int active_match_ordinal,
                                       bool final_update) {
-  BisonContents* aw_contents = BisonContents::FromWebContents(web_contents);
-  if (!aw_contents)
+  BisonContents* bison_contents = BisonContents::FromWebContents(web_contents);
+  if (!bison_contents)
     return;
 
-  aw_contents->GetFindHelper()->HandleFindReply(
+  bison_contents->GetFindHelper()->HandleFindReply(
       request_id, number_of_matches, active_match_ordinal, final_update);
 }
 
@@ -272,15 +272,15 @@ void BisonWebContentsDelegate::RequestMediaAccessPermission(
     WebContents* web_contents,
     const content::MediaStreamRequest& request,
     content::MediaResponseCallback callback) {
-  BisonContents* aw_contents = BisonContents::FromWebContents(web_contents);
-  if (!aw_contents) {
+  BisonContents* bison_contents = BisonContents::FromWebContents(web_contents);
+  if (!bison_contents) {
     std::move(callback).Run(
         blink::MediaStreamDevices(),
         blink::mojom::MediaStreamRequestResult::FAILED_DUE_TO_SHUTDOWN,
         nullptr);
     return;
   }
-  aw_contents->GetPermissionRequestHandler()->SendRequest(
+  bison_contents->GetPermissionRequestHandler()->SendRequest(
       std::make_unique<MediaAccessPermissionRequest>(request,
                                                      std::move(callback)));
 }

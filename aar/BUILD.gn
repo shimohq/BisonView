@@ -158,7 +158,7 @@ android_assets("bison_aar_assets") {
 
 android_assets("bison_icu_assets") {
   renaming_sources = ["$root_out_dir/icudtl.dat"]
-  renaming_destinations = [ "bison_icudtl.dat" ]
+  renaming_destinations = [ "bison/icudtl.dat" ]
   disable_compression = true
   deps = [
     "//third_party/icu:icu_assets",
@@ -171,20 +171,30 @@ android_assets("bison_v8_snapshot_assets") {
   if (use_v8_context_snapshot) {
     deps = [ "//tools/v8_context_snapshot:v8_context_snapshot_assets" ]
   } else {
+    
+    if (current_cpu == "arm" || current_cpu == "x86" ||
+          current_cpu == "mipsel") {
+      arch_suffix = "32"
+    } else {
+      arch_suffix = "64"
+    }
 
+    if (current_cpu == "arm" || current_cpu == "arm64") {
+      abi = "arm"
+    } else {
+      abi = "x86"
+    }
+    
     renaming_sources = [
       "$root_out_dir/natives_blob.bin" ,
       "$root_out_dir/snapshot_blob.bin"
     ]
     
-    renaming_destinations = ["bison_snapshot_blob.bin"]
-    if (current_cpu == "arm" || current_cpu == "x86" ||
-          current_cpu == "mipsel") {
-    renaming_destinations += [ "bison_snapshot_blob_32.bin" ]
-  } else {
-    renaming_destinations += [ "bison_snapshot_blob_64.bin" ]
-  }
-
+    renaming_destinations = [
+      "bison/natives_blob.bin",
+      "bison/$abi/snapshot_blob_$arch_suffix.bin"
+    ]
+    
     deps = [ "//v8:v8_external_startup_data_assets" ]
   }
 }

@@ -283,15 +283,16 @@ def _AddAssets(aar_zip, deps_configs ,build_dir, arch):
       config = json.loads(f.read())
       sources = reduce(lambda x, y : x.get(y),["deps_info","assets","sources"], config)
       sources_rebase =  [_RebasePath( build_dir , arch , v) for v in sources]
-      outputs = config.get("deps_info").get("outputs") or sources
-      print (config_path)
-      print (sources_rebase,outputs)
+      outputs = config.get("deps_info").get("assets").get("outputs") or sources
+ 
       for source , output in zip(sources_rebase,outputs) :
+        zip_path = os.path.join("assets",output)
+        if zip_path in aar_zip.namelist():
+          print (zip_path +" in namelist")
+          continue
         build_utils.AddToZipHermetic(
           aar_zip,os.path.join("assets",output),src_path=source)
       
-
-
 
 def _ReadConfig(build_dir , arch, config, *args):
   values = build_utils.ParseGnList(reduce(lambda x, y : x.get(y),args, config))
@@ -365,7 +366,7 @@ def BuildAar(archs, output_file, extra_gn_args=None,
         dependencies_res_zips =_ReadConfig(build_dir, arch, build_config ,'deps_info', 'dependency_zips') 
         r_text_files = _ReadConfig(build_dir, arch, build_config ,'deps_info', 'extra_r_text_files') 
         proguard_configs = _ReadConfig(build_dir, arch, build_config ,'deps_info', 'proguard_all_configs') 
-        deps_configs = _ReadConfig(build_dir, arch, build_config ,'deps_info', 'deps_configs') 
+        
 
 
   with zipfile.ZipFile(output_file, 'w') as aar_file:
@@ -391,10 +392,12 @@ def BuildAar(archs, output_file, extra_gn_args=None,
       _AddResources(aar_file, dependencies_res_zips,
                       resource_included_patterns)
 
-      _AddAssets(aar_file, deps_configs,build_dir, archs[0])
+      
 
     for arch in archs:
       Collect(aar_file, build_dir, arch)
+      deps_configs = _ReadConfig(build_dir, arch, build_config ,'deps_info', 'deps_configs') 
+      _AddAssets(aar_file, deps_configs, build_dir, arch)
 
   if not ext_build_dir:
     shutil.rmtree(build_dir, True)

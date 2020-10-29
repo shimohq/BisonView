@@ -71,14 +71,14 @@ bool BisonDownloadManagerDelegate::InterceptDownloadIfApplicable(
   if (!web_contents)
     return false;
 
-  std::string aw_user_agent = web_contents->GetUserAgentOverride();
-  if (aw_user_agent.empty()) {
+  std::string bison_user_agent = web_contents->GetUserAgentOverride();
+  if (bison_user_agent.empty()) {
     // use default user agent if nothing is provided
-    aw_user_agent = user_agent.empty() ? GetUserAgent() : user_agent;
+    bison_user_agent = user_agent.empty() ? GetUserAgent() : user_agent;
   }
   base::PostTask(FROM_HERE, {content::BrowserThread::UI},
                  base::BindOnce(&DownloadStartingOnUIThread, web_contents, url,
-                                aw_user_agent, content_disposition, mime_type,
+                                bison_user_agent, content_disposition, mime_type,
                                 content_length));
   return true;
 }

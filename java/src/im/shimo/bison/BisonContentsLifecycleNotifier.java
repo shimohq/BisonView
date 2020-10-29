@@ -7,7 +7,7 @@ import org.chromium.base.annotations.JNINamespace;
 
 /**
  * This class is intended to notify observers of the existence native instances of
- * aw_contents. It receives a callback when native aw_contents are created or
+ * bison_contents. It receives a callback when native bison_contents are created or
  * destroyed. Observers are notified when the first instance is created or the
  * last instance is destroyed.
  */
