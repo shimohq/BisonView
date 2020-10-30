@@ -11,6 +11,7 @@ import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.View.OnSystemUiVisibilityChangeListener;
+import android.view.ViewGroup;
 import android.view.ViewGroup.OnHierarchyChangeListener;
 import android.view.ViewStructure;
 import android.view.accessibility.AccessibilityNodeProvider;
@@ -36,13 +37,14 @@ import org.chromium.ui.base.EventForwarder;
 public class ContentView extends FrameLayout
         implements ViewEventSink.InternalAccessDelegate, SmartClipProvider,
                    OnHierarchyChangeListener, OnSystemUiVisibilityChangeListener {
-    private static final String TAG = "cr.ContentView";
-
+    private static final String TAG = "bison.ContentView";
+    
     // Default value to signal that the ContentView's size need not be overridden.
     public static final int DEFAULT_MEASURE_SPEC =
             MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED);
 
     private final WebContents mWebContents;
+    private final ViewGroup mContainerView;
     private final ObserverList<OnHierarchyChangeListener> mHierarchyChangeListeners =
             new ObserverList<>();
     private final ObserverList<OnSystemUiVisibilityChangeListener> mSystemUiChangeListeners =
@@ -64,11 +66,11 @@ public class ContentView extends FrameLayout
      * @param webContents The WebContents managing this content view.
      * @return an instance of a ContentView.
      */
-    public static ContentView createContentView(Context context, WebContents webContents) {
+    public static ContentView createContentView(Context context, WebContents webContents, ViewGroup containerView) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            return new ContentViewApi23(context, webContents);
+            return new ContentViewApi23(context, webContents ,containerView);
         }
-        return new ContentView(context, webContents);
+        return new ContentView(context, webContents ,containerView);
     }
 
     /**
@@ -77,7 +79,7 @@ public class ContentView extends FrameLayout
      *                access the current theme, resources, etc.
      * @param webContents A pointer to the WebContents managing this content view.
      */
-    ContentView(Context context, WebContents webContents) {
+    ContentView(Context context, WebContents webContents ,ViewGroup containerView) {
         super(context, null, android.R.attr.webViewStyle);
 
         if (getScrollBarStyle() == View.SCROLLBARS_INSIDE_OVERLAY) {
@@ -86,7 +88,7 @@ public class ContentView extends FrameLayout
         }
 
         mWebContents = webContents;
-
+        mContainerView = containerView;
         setFocusable(true);
         setFocusableInTouchMode(true);
 
@@ -218,6 +220,10 @@ public class ContentView extends FrameLayout
 
     @Override
     public InputConnection onCreateInputConnection(EditorInfo outAttrs) {
+        return mContainerView.onCreateInputConnection(outAttrs);
+    }
+
+    public InputConnection createInputConnection(EditorInfo outAttrs){
         // Calls may come while/after WebContents is destroyed. See https://crbug.com/821750#c8.
         if (mWebContents.isDestroyed()) return null;
         return ImeAdapter.fromWebContents(mWebContents).onCreateInputConnection(outAttrs);
@@ -420,8 +426,8 @@ public class ContentView extends FrameLayout
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
     private static class ContentViewApi23 extends ContentView {
-        public ContentViewApi23(Context context, WebContents webContents) {
-            super(context, webContents);
+        public ContentViewApi23(Context context, WebContents webContents ,ViewGroup containerView) {
+            super(context, webContents ,containerView);
         }
 
         @Override

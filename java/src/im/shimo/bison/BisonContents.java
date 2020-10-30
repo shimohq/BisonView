@@ -10,6 +10,8 @@ import android.util.Base64;
 import android.view.KeyEvent;
 import android.view.ViewGroup;
 import android.webkit.JavascriptInterface;
+import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputConnection;
 import android.view.View;
 import android.widget.FrameLayout;
 import androidx.annotation.NonNull;
@@ -28,6 +30,7 @@ import org.chromium.components.autofill.AutofillProvider;
 import org.chromium.components.navigation_interception.InterceptNavigationDelegate;
 import org.chromium.components.navigation_interception.NavigationParams;
 import org.chromium.content_public.browser.ChildProcessImportance;
+import org.chromium.content_public.browser.ImeAdapter;
 import org.chromium.content_public.browser.JavaScriptCallback;
 import org.chromium.content_public.browser.JavascriptInjector;
 import org.chromium.content_public.browser.LoadUrlParams;
@@ -105,6 +108,7 @@ class BisonContents extends FrameLayout {
     private long mNativeBisonContents;
     private BisonBrowserContext mBrowserContext;
     private ContentView mContentView;
+    private ViewGroup mContainerView;
     private WindowAndroidWrapper mWindowAndroid;
     private WebContents mWebContents;
     private WebContentsInternalsHolder mWebContentsInternalsHolder;
@@ -359,7 +363,7 @@ class BisonContents extends FrameLayout {
     }
 
     //--------------------------------------------------------------------------------------------
-    public BisonContents(Context context, BisonBrowserContext bisonBrowserContext,
+    public BisonContents(Context context, ViewGroup containerView, BisonBrowserContext bisonBrowserContext,
                          BisonContentsClientBridge bisonContentsClientBridge,
                          BisonContentsClient bisonContentsClient) {
         super(context);
@@ -371,15 +375,16 @@ class BisonContents extends FrameLayout {
 
         mNativeBisonContents = BisonContentsJni.get().init(this, mBrowserContext.getNativePointer());
         mWebContents = BisonContentsJni.get().getWebContents(mNativeBisonContents);
+        mContainerView = containerView;
 
         mWindowAndroid = getWindowAndroid(context);
         mContentViewRenderView = new ContentViewRenderView(getContext());
         mContentViewRenderView.onNativeLibraryLoaded(mWindowAndroid.getWindowAndroid());
-        mWindowAndroid.getWindowAndroid().setAnimationPlaceholderView(mContentViewRenderView.getSurfaceView());
+        //mWindowAndroid.getWindowAndroid().setAnimationPlaceholderView(mContentViewRenderView.getSurfaceView());
 
         addView(mContentViewRenderView);
 
-        mContentView = ContentView.createContentView(context, mWebContents);
+        mContentView = ContentView.createContentView(context, mWebContents ,mContainerView);
         mViewAndroidDelegate = new BisonViewAndroidDelegate(mContentView);
         mWebContentsInternalsHolder = new WebContentsInternalsHolder(this);
 
@@ -725,7 +730,11 @@ class BisonContents extends FrameLayout {
         this.mBisonWebChromeClient = client;
     }
 
-
+       @Override
+    public void setBackgroundColor(int color) {
+        super.setBackgroundColor(color);
+        mContentViewRenderView.setBackgroundColor(color);
+    }
     public void stopLoading() {
         if (TRACE) Log.i(TAG, "%s stopLoading", this);
         if (!isDestroyed(WARN)) mWebContents.stop();
@@ -784,6 +793,11 @@ class BisonContents extends FrameLayout {
 
     }
 
+    
+    @Override
+    public InputConnection onCreateInputConnection(EditorInfo outAttrs) {
+        return mContentView.createInputConnection(outAttrs);
+    }
     public void clearCache(boolean includeDiskFiles) {
         if (TRACE) Log.i(TAG, "%s clearCache", this);
         if (!isDestroyed(WARN)) {
@@ -875,11 +889,6 @@ class BisonContents extends FrameLayout {
         return url;
     }
 
-    @Override
-    public void setBackgroundColor(int color) {
-        super.setBackgroundColor(color);
-        mContentViewRenderView.setSurfaceViewBackgroundColor(color);
-    }
 
     private static String fixupMimeType(String mimeType) {
         return TextUtils.isEmpty(mimeType) ? "text/html" : mimeType;
@@ -1324,7 +1333,6 @@ class BisonContents extends FrameLayout {
         void setDipScale(long nativeBisonContents, BisonContents caller, float dipScale);
         
 
-        void grantFileSchemeAccesstoChildProcess(long nativeBisonContents);
 
         void setExtraHeadersForUrl(
                 long nativeBisonContents, String url, String extraHeaders);
@@ -1334,6 +1342,7 @@ class BisonContents extends FrameLayout {
                 long nativeBisonContents, BisonPdfExporter bisonPdfExporter);
         void preauthorizePermission(
                 long nativeBisonContents, BisonContents caller, String origin, long resources);
+        void grantFileSchemeAccesstoChildProcess(long nativeBisonContents);
         String getProductVersion();
     }
 

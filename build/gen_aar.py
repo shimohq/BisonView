@@ -83,7 +83,7 @@ from util import build_utils
 def _ParseArgs():
   parser = argparse.ArgumentParser(description='bison_view.aar generator.')
 
-  parser.add_argument('--verison-name', help='aar verison')
+  parser.add_argument('--version-name', help='aar version' ,default='1.0.0')
   parser.add_argument('--build-type', default='debug',
       help='Build type. default debug')
 
@@ -93,9 +93,6 @@ def _ParseArgs():
       help='Output file of the script.')
   parser.add_argument('--arch', default=DEFAULT_ARCHS, nargs='*',
       help='Architectures to build. Defaults to %(default)s.')
-
-
-  
 
   parser.add_argument('--verbose', action='store_true', default=False,
       help='Debug logging.')
@@ -314,7 +311,7 @@ def Collect(aar_file, build_dir, arch):
                    os.path.join(abi_dir, so_file))
 
 def Build(build_dir, build_type, arch, extra_gn_args, extra_gn_switches,
-          extra_ninja_switches,verison_name = "1.0.0"):
+          extra_ninja_switches,version_name = "1.0.0"):
   """Generates target architecture using GN and builds it using ninja."""
   logging.info('Building: %s', arch)
   output_directory = _GetOutputDirectory(build_dir, arch)
@@ -324,7 +321,7 @@ def Build(build_dir, build_type, arch, extra_gn_args, extra_gn_switches,
     'is_component_build': False,
     'rtc_include_tests': False,
     'target_cpu': _GetTargetCpu(arch),
-    'android_override_version_name' : verison_name,
+    'android_override_version_name' : version_name,
   }
   
   gn_args_str = '--args=' + ' '.join([
@@ -342,7 +339,7 @@ def BuildAar(archs, output_file, extra_gn_args=None,
              ext_build_dir=None, build_type = 'debug',
              extra_gn_switches=None,
              extra_ninja_switches=None,
-             verison_name = "1.0.0"):
+             version_name = "1.0.0"):
   extra_gn_args = extra_gn_args or []
   extra_gn_switches = extra_gn_switches or []
   extra_ninja_switches = extra_ninja_switches or []
@@ -354,7 +351,7 @@ def BuildAar(archs, output_file, extra_gn_args=None,
 
   for arch in archs:
     Build(build_dir, build_type,arch, extra_gn_args, extra_gn_switches,
-          extra_ninja_switches,verison_name)
+          extra_ninja_switches,version_name)
 
     if not isCommonArgsGetted :
       output_directory = _GetOutputDirectory(build_dir, arch)
@@ -410,7 +407,7 @@ def main():
   output = os.path.join(args.build_dir,args.build_type,args.output)
   BuildAar(args.arch, output, args.extra_gn_args,
            args.build_dir,args.build_type, args.extra_gn_switches, args.extra_ninja_switches,
-           args.verison_name)
+           args.version_name)
 
 
 if __name__ == '__main__':

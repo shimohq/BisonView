@@ -4,6 +4,8 @@ import android.content.Context;
 import android.os.Message;
 import android.util.AttributeSet;
 import android.widget.FrameLayout;
+import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputConnection;
 
 import androidx.annotation.Nullable;
 
@@ -36,7 +38,7 @@ public class BisonView extends FrameLayout {
         BrowserStartupController.get(LibraryProcessType.PROCESS_WEBVIEW).startBrowserProcessesSync(false);
         mBisonContentsClient = new BisonContentsClient(this, context);
         mBisonContentsClientBridge = new BisonContentsClientBridge(context, mBisonContentsClient, getClientCertLookupTable());
-        mBisonContents = new BisonContents(context, BisonBrowserContext.getDefault(), mBisonContentsClientBridge, 
+        mBisonContents = new BisonContents(context, this, BisonBrowserContext.getDefault(), mBisonContentsClientBridge, 
                 mBisonContentsClient);
         addView(mBisonContents);
     }
@@ -169,6 +171,11 @@ public class BisonView extends FrameLayout {
     public void setBackgroundColor(int color) {
         super.setBackgroundColor(color);
         mBisonContents.setBackgroundColor(color);
+    }
+
+    @Override
+    public InputConnection onCreateInputConnection(EditorInfo outAttrs) {
+        return mBisonContents.onCreateInputConnection(outAttrs);
     }
 
     public static void setRemoteDebuggingEnabled(boolean enable) {

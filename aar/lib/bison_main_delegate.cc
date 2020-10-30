@@ -180,6 +180,8 @@ bool BisonMainDelegate::BasicStartupComplete(int* exit_code) {
     features.EnableIfNotSet(
         autofill::features::kAutofillSkipComparingInferredLabels);
 
+    // 外面加开关？
+    features.EnableIfNotSet(::features::kLogJsConsoleMessages);
 
     features.DisableIfNotSet(::features::kWebPayments);
 
