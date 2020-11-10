@@ -29,6 +29,7 @@ import org.chromium.content_public.browser.ViewEventSink;
 import org.chromium.content_public.browser.WebContents;
 import org.chromium.content_public.browser.WebContentsAccessibility;
 import org.chromium.ui.base.EventForwarder;
+import org.chromium.ui.base.Clipboard;
 
 /**
  * The containing view for {@link WebContents} that exists in the Android UI hierarchy and exposes
@@ -251,6 +252,7 @@ public class ContentView extends FrameLayout
     public void onWindowFocusChanged(boolean hasWindowFocus) {
         super.onWindowFocusChanged(hasWindowFocus);
         getViewEventSink().onWindowFocusChanged(hasWindowFocus);
+        Clipboard.getInstance().onWindowFocusChanged(hasWindowFocus);
     }
 
     @Override
