@@ -137,6 +137,15 @@ public class BisonView extends FrameLayout {
         mBisonContentsClient.setBisonViewClient(client);
     }
 
+    public BisonRenderProcess getBisonRenderProcess() {
+        return null;
+    }
+
+    public void setBisonRenderProcessClient(BisonRenderProcessClient client){
+        mBisonContentsClient.setBisonRenderProcessClient(client);
+    }
+
+
     public void setBisonWebChromeClient(BisonWebChromeClient client) {
         mBisonContentsClient.setBisonWebChromeClient(client);
     }

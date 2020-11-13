@@ -21,6 +21,7 @@ import org.chromium.base.LocaleUtils;
 import org.chromium.base.Log;
 import org.chromium.base.VisibleForTesting;
 import org.chromium.base.annotations.CalledByNative;
+import org.chromium.base.annotations.CalledByNativeUnchecked;
 import org.chromium.base.annotations.JNINamespace;
 import org.chromium.base.annotations.NativeMethods;
 import org.chromium.base.metrics.ScopedSysTraceEvent;
@@ -518,6 +519,13 @@ class BisonContents extends FrameLayout {
     private void onRendererUnresponsive(BisonRenderProcess renderProcess) {
         if (isDestroyed(NO_WARN)) return;
         mContentsClient.onRendererUnresponsive(renderProcess);
+    }
+
+    @CalledByNativeUnchecked
+    protected boolean onRenderProcessGone(int childProcessID, boolean crashed) {
+        if (isDestroyed(NO_WARN)) return true;
+        return mContentsClient.onRenderProcessGone(new BisonRenderProcessGoneDetail(crashed,
+                BisonContentsJni.get().getEffectivePriority(mNativeBisonContents, this)));
     }
 
     /**
@@ -1338,6 +1346,7 @@ class BisonContents extends FrameLayout {
                 long nativeBisonContents, String url, String extraHeaders);
         void invokeGeolocationCallback(
                 long nativeBisonContents, boolean value, String requestingFrame);
+        int getEffectivePriority(long nativeBisonContents, BisonContents caller);
         void createPdfExporter(
                 long nativeBisonContents, BisonPdfExporter bisonPdfExporter);
         void preauthorizePermission(

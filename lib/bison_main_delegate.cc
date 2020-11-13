@@ -18,6 +18,7 @@
 #include "bison/browser/scoped_add_feature_flags.h"
 #include "bison/common/bison_content_client.h"
 #include "bison/common/bison_descriptors.h"
+#include "bison/common/bison_switches.h"
 #include "bison/gpu/bison_content_gpu_client.h"
 #include "bison/renderer/bison_content_renderer_client.h"
 #include "build/build_config.h"
@@ -163,10 +164,10 @@ bool BisonMainDelegate::BasicStartupComplete(int* exit_code) {
   }
 #endif  // V8_USE_EXTERNAL_STARTUP_DATA
 
-  // if (cl->HasSwitch(switches::kWebViewSandboxedRenderer)) {
-  //   content::RenderProcessHost::SetMaxRendererProcessCount(1u);
-  //   cl->AppendSwitch(switches::kInProcessGPU);
-  // }
+  if (cl->HasSwitch(switches::kWebViewSandboxedRenderer)) {
+    content::RenderProcessHost::SetMaxRendererProcessCount(1u);
+    cl->AppendSwitch(switches::kInProcessGPU);
+  }
 
   {
     ScopedAddFeatureFlags features(cl);

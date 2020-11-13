@@ -28,6 +28,8 @@ source_set("common") {
     "render_view_messages.h",
     "url_constants.cc",
     "url_constants.h",
+    "bison_switches.cc",
+    "bison_switches.h",
   ]
 
   deps = [

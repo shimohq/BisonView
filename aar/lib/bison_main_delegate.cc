@@ -18,6 +18,7 @@
 #include "bison/browser/scoped_add_feature_flags.h"
 #include "bison/common/bison_content_client.h"
 #include "bison/common/bison_descriptors.h"
+#include "bison/common/bison_switches.h"
 #include "bison/gpu/bison_content_gpu_client.h"
 #include "bison/renderer/bison_content_renderer_client.h"
 #include "build/build_config.h"
@@ -28,6 +29,7 @@
 #include "components/viz/common/switches.h"
 #include "content/common/content_constants_internal.h"
 #include "content/public/browser/android/media_url_interceptor_register.h"
+#include "content/public/browser/render_process_host.h"
 #include "content/public/browser/browser_main_runner.h"
 #include "content/public/common/content_descriptor_keys.h"
 #include "content/public/common/content_features.h"
@@ -169,10 +171,14 @@ bool BisonMainDelegate::BasicStartupComplete(int* exit_code) {
   }
 #endif  // V8_USE_EXTERNAL_STARTUP_DATA
 
+  // jiang 后面有世界加
   // if (cl->HasSwitch(switches::kWebViewSandboxedRenderer)) {
   //   content::RenderProcessHost::SetMaxRendererProcessCount(1u);
   //   cl->AppendSwitch(switches::kInProcessGPU);
   // }
+
+  content::RenderProcessHost::SetMaxRendererProcessCount(1u);
+  cl->AppendSwitch(switches::kInProcessGPU);
 
   {
     ScopedAddFeatureFlags features(cl);

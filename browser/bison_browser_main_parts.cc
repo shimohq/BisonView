@@ -1,15 +1,17 @@
 #include "bison/browser/bison_browser_main_parts.h"
 
 #include "bison/browser/bison_browser_context.h"
+#include "bison/browser/bison_browser_terminator.h"
 #include "bison/browser/bison_content_browser_client.h"
 #include "bison/browser/bison_contents.h"
 #include "bison/browser/bison_devtools_manager_delegate.h"
 #include "bison/browser/metrics/memory_metrics_logger.h"
 #include "bison/browser/network_service/bison_network_change_notifier_factory.h"
-// #include "bison/browser/bison_web_ui_controller_factory.h"
+#include "bison/common/bison_switches.h"
 
 #include "base/base_switches.h"
 #include "base/bind.h"
+#include "base/android/memory_pressure_listener_android.h"
 #include "base/command_line.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
@@ -67,14 +69,28 @@ int BisonBrowserMainParts::PreEarlyInitialization() {
 }
 
 int BisonBrowserMainParts::PreCreateThreads() {
+  base::android::MemoryPressureListenerAndroid::Initialize(
+      base::android::AttachCurrentThread());
   const base::CommandLine* command_line =
       base::CommandLine::ForCurrentProcess();
   crash_reporter::ChildExitObserver::Create();
+  
   if (command_line->HasSwitch(switches::kEnableCrashReporter)) {
     crash_reporter::ChildExitObserver::GetInstance()->RegisterClient(
         std::make_unique<crash_reporter::ChildProcessCrashObserver>());
   }
 
+  // if (base::CommandLine::ForCurrentProcess()->HasSwitch(
+  //         switches::kWebViewSandboxedRenderer)) {
+  //   // Create the renderers crash manager on the UI thread.
+  //   VLOG(0) << "enable kWebViewSandboxedRenderer";
+  //   ::crash_reporter::ChildExitObserver::GetInstance()->RegisterClient(
+  //       std::make_unique<BisonBrowserTerminator>());
+  // }else {
+  //   VLOG(0) << "disable kWebViewSandboxedRenderer";
+  // }
+  ::crash_reporter::ChildExitObserver::GetInstance()->RegisterClient(
+          std::make_unique<BisonBrowserTerminator>());
   return 0;
 }
 

@@ -15,6 +15,7 @@
 #include "bison/browser/bison_contents_lifecycle_notifier.h"
 #include "bison/browser/bison_pdf_exporter.h"
 #include "bison/browser/bison_javascript_dialog_manager.h"
+#include "bison/browser/bison_renderer_priority.h"
 #include "bison/browser/bison_render_process.h"
 #include "bison/browser/bison_settings.h"
 #include "bison/browser/bison_web_contents_delegate.h"
@@ -64,8 +65,6 @@
 #include "content/public/browser/render_view_host.h"
 #include "content/public/browser/render_widget_host.h"
 #include "content/public/browser/resource_context.h"
-#include "content/public/browser/web_contents.h"
-#include "content/public/common/content_switches.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/common/mhtml_generation_params.h"
 
@@ -138,7 +137,7 @@ private:
 };
 
 // static
-BisonContents *BisonContents::FromWebContents(WebContents *web_contents) {
+BisonContents *BisonContents::FromWebContents(WebContents* web_contents) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
   return BisonContentsUserData::GetContents(web_contents);
 }
@@ -169,12 +168,11 @@ BisonBrowserPermissionRequestDelegate::FromID(int render_process_id,
 
 // jiang removed
 
-
 // static
-// BisonRenderProcessGoneDelegate* BisonRenderProcessGoneDelegate::FromWebContents(
-//     content::WebContents* web_contents) {
-//   return BisonContents::FromWebContents(web_contents);
-// }
+BisonRenderProcessGoneDelegate* BisonRenderProcessGoneDelegate::FromWebContents(
+    content::WebContents* web_contents) {
+  return BisonContents::FromWebContents(web_contents);
+}
 
 BisonContents::BisonContents(std::unique_ptr<WebContents> web_contents)
     : WebContentsObserver(web_contents.get()),
@@ -284,6 +282,7 @@ BisonContents::~BisonContents() {
 }
 
 ScopedJavaLocalRef<jobject> BisonContents::GetWebContents(JNIEnv *env) {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
   return web_contents_.get()->GetJavaWebContents();
 }
 
@@ -293,9 +292,9 @@ BisonContents::CreateBisonContents(BrowserContext *browser_context) {
   std::unique_ptr<WebContents> web_contents =
       WebContents::Create(create_params);
   // WebContents* raw_web_contents = web_contents.get();
-  BisonContents *bison_view = new BisonContents(std::move(web_contents));
+  BisonContents *bison_contents = new BisonContents(std::move(web_contents));
 
-  return bison_view;
+  return bison_contents;
 }
 
 
@@ -311,7 +310,6 @@ jlong JNI_BisonContents_Init(JNIEnv *env, const JavaParamRef<jobject> &obj,
       reinterpret_cast<BisonBrowserContext *>(bison_browser_context);
   BisonContents *bison_contents =
       BisonContents::CreateBisonContents(browserContext);
-  VLOG(0) << "after create new window";
   bison_contents->java_ref_ = JavaObjectWeakGlobalRef(env, obj);
   return reinterpret_cast<intptr_t>(bison_contents);
 }
@@ -717,6 +715,22 @@ void BisonContents::OnWebLayoutContentsSizeChanged(
   //     env, obj, contents_size_css.width(), contents_size_css.height());
 }
 
+jint BisonContents::GetEffectivePriority(
+    JNIEnv* env,
+    const base::android::JavaParamRef<jobject>& obj) {
+  switch (
+      web_contents_->GetMainFrame()->GetProcess()->GetEffectiveImportance()) {
+    case content::ChildProcessImportance::NORMAL:
+      return static_cast<jint>(RendererPriority::WAIVED);
+    case content::ChildProcessImportance::MODERATE:
+      return static_cast<jint>(RendererPriority::LOW);
+    case content::ChildProcessImportance::IMPORTANT:
+      return static_cast<jint>(RendererPriority::HIGH);
+  }
+  NOTREACHED();
+  return 0;
+}
+
 
 
 
@@ -774,11 +788,25 @@ void BisonContents::RendererResponsive(
                                           render_process->GetJavaObject());
 }
 
+BisonContents::RenderProcessGoneResult BisonContents::OnRenderProcessGone(
+    int child_process_id,
+    bool crashed) {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  JNIEnv* env = AttachCurrentThread();
+  ScopedJavaLocalRef<jobject> obj = java_ref_.get(env);
+  if (obj.is_null())
+    return RenderProcessGoneResult::kHandled;
 
+  VLOG(0) << "OnRenderProcessGone";
+  bool result =
+      Java_BisonContents_onRenderProcessGone(env, obj, child_process_id, crashed);
 
+  if (HasException(env))
+    return RenderProcessGoneResult::kException;
 
-
-
+  return result ? RenderProcessGoneResult::kHandled
+                : RenderProcessGoneResult::kUnhandled;
+}
 
 // static
 ScopedJavaLocalRef<jstring> JNI_BisonContents_GetProductVersion(JNIEnv *env) {

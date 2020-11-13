@@ -91,6 +91,9 @@ source_set("browser") {
     "input_stream.h",
     "scoped_add_feature_flags.cc",
     "scoped_add_feature_flags.h",
+    "bison_browser_terminator.cc",
+    "bison_browser_terminator.h",
+    "bison_render_process_gone_delegate.h",
 
     # network_service
     "network_service/android_stream_reader_url_loader.cc",

@@ -60,4 +60,9 @@ public class BisonViewClient {
         //request.cancel();
     }
 
+
+    public boolean onRenderProcessGone(BisonView view, BisonRenderProcessGoneDetail detail) {
+        return false;
+    }
+
 }

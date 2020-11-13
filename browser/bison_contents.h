@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "bison/browser/bison_browser_permission_request_delegate.h"
+#include "bison/browser/bison_render_process_gone_delegate.h"
 #include "bison/browser/permission/permission_request_handler_client.h"
 #include "bison/browser/renderer_host/bison_render_view_host_ext.h"
 #include "bison/browser/find_helper.h"
@@ -57,6 +58,7 @@ class PermissionRequestHandler;
 
 class BisonContents : public FindHelper::Listener,
                       public BisonRenderViewHostExtClient,
+                      public BisonRenderProcessGoneDelegate,
                       public PermissionRequestHandlerClient,
                       public BisonBrowserPermissionRequestDelegate,
                       public WebContentsObserver {
@@ -202,8 +204,8 @@ class BisonContents : public FindHelper::Listener,
       jboolean value,
       const base::android::JavaParamRef<jstring>& origin);
 
-  // jint GetEffectivePriority(JNIEnv* env,
-  //                         const base::android::JavaParamRef<jobject>& obj);
+  jint GetEffectivePriority(JNIEnv* env,
+                          const base::android::JavaParamRef<jobject>& obj);
   // JsJavaConfiguratorHost* GetJsJavaConfiguratorHost();
 
   // PermissionRequestHandlerClient implementation.
@@ -286,6 +288,9 @@ class BisonContents : public FindHelper::Listener,
       content::NavigationHandle* navigation_handle) override;
 
 
+  // BisonRenderProcessGoneDelegate overrides
+  RenderProcessGoneResult OnRenderProcessGone(int child_process_id,
+                                              bool crashed) override;
 
   // jiang
   JavaObjectWeakGlobalRef java_ref_;

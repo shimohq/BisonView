@@ -6,7 +6,6 @@
 
 namespace bison {
 
-// TODO(boliu): Remove INITIAL.
 // GENERATED_JAVA_ENUM_PACKAGE: im.shimo.bison
 enum class RendererPriority { INITIAL = -1, WAIVED = 0, LOW = 1, HIGH = 2 };
 

@@ -117,6 +117,8 @@ android_library("bison_java") {
     "java/src/im/shimo/bison/AutofillActionModeCallback.java",
     "java/src/im/shimo/bison/BisonPdfExporter.java",
     "java/src/im/shimo/bison/BisonInitializer.java",
+    "java/src/im/shimo/bison/BisonRenderProcessClient.java",
+    "java/src/im/shimo/bison/BisonRenderProcessGoneDetail.java",
   ]
 
   srcjar_deps = [

@@ -409,12 +409,6 @@ public class BisonContentsClient {
     public void onFormResubmission(Message dontResend, Message resend) {
     }
 
-    public final void updateTitle(String title, boolean forceNotification) {
-        if (!forceNotification && TextUtils.equals(mTitle, title)) return;
-        mTitle = title;
-        mCallbackHelper.postOnReceivedTitle(mTitle);
-    }
-
     public BisonContentsClientCallbackHelper getCallbackHelper() {
         return mCallbackHelper;
     }
@@ -572,13 +566,7 @@ public class BisonContentsClient {
     public static class BisonWebResourceError {
     }
 
-    public void onRendererUnresponsive(BisonRenderProcess renderProcess){
 
-    }
-
-    public void onRendererResponsive(BisonRenderProcess renderProcess) {
-        
-    }
 
 
     //region FileChooser
@@ -676,4 +664,62 @@ public class BisonContentsClient {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    public final void updateTitle(String title, boolean forceNotification) {
+        if (!forceNotification && TextUtils.equals(mTitle, title)) return;
+        mTitle = title;
+        mCallbackHelper.postOnReceivedTitle(mTitle);
+    }
+    
+    private BisonRenderProcessClient mBisonRenderProcessClient;
+
+    public void setBisonRenderProcessClient(BisonRenderProcessClient client){
+        mBisonRenderProcessClient = client;
+    }
+
+    public void onRendererUnresponsive(BisonRenderProcess renderProcess){
+        if (mBisonRenderProcessClient != null ) {
+            mBisonRenderProcessClient.onRenderProcessUnresponsive(mBisonView,renderProcess);
+        }
+    }
+
+    public void onRendererResponsive(BisonRenderProcess renderProcess) {
+        if (mBisonRenderProcessClient != null){
+            mBisonRenderProcessClient.onRenderProcessResponsive(mBisonView,renderProcess);
+        }
+    }
+
+    public boolean onRenderProcessGone(BisonRenderProcessGoneDetail detail){
+        return mBisonViewClient.onRenderProcessGone(mBisonView,detail);
+    }
 }

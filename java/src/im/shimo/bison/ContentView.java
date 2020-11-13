@@ -241,7 +241,7 @@ public class ContentView extends FrameLayout
         try {
             TraceEvent.begin("ContentView.onFocusChanged");
             super.onFocusChanged(gainFocus, direction, previouslyFocusedRect);
-            getViewEventSink().setHideKeyboardOnBlur(true);
+            // getViewEventSink().setHideKeyboardOnBlur(true);
             getViewEventSink().onViewFocusChanged(gainFocus);
         } finally {
             TraceEvent.end("ContentView.onFocusChanged");
