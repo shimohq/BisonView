@@ -61,8 +61,6 @@ public class BisonViewClient {
     }
 
 
-    public boolean onRenderProcessGone(BisonView view, BisonRenderProcessGoneDetail detail) {
-        return false;
-    }
+    
 
 }

@@ -720,6 +720,6 @@ public class BisonContentsClient {
     }
 
     public boolean onRenderProcessGone(BisonRenderProcessGoneDetail detail){
-        return mBisonViewClient.onRenderProcessGone(mBisonView,detail);
+        return mBisonRenderProcessClient.onRenderProcessGone(mBisonView,detail);
     }
 }
