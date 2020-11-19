@@ -177,8 +177,8 @@ bool BisonMainDelegate::BasicStartupComplete(int* exit_code) {
   //   cl->AppendSwitch(switches::kInProcessGPU);
   // }
 
-  content::RenderProcessHost::SetMaxRendererProcessCount(1u);
-  cl->AppendSwitch(switches::kInProcessGPU);
+  // content::RenderProcessHost::SetMaxRendererProcessCount(1u);
+  // cl->AppendSwitch(switches::kInProcessGPU);
 
   {
     ScopedAddFeatureFlags features(cl);

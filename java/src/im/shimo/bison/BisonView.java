@@ -22,6 +22,7 @@ public class BisonView extends FrameLayout {
     private BisonContentsClientBridge mBisonContentsClientBridge;
 
     private static BisonDevToolsServer gBisonDevToolsServer;
+    private static boolean loaded ;
 
     public BisonView(Context context) {
         super(context);
@@ -34,8 +35,11 @@ public class BisonView extends FrameLayout {
     }
 
     private void init(Context context) {
-        LibraryLoader.getInstance().ensureInitialized(LibraryProcessType.PROCESS_WEBVIEW);
-        BrowserStartupController.get(LibraryProcessType.PROCESS_WEBVIEW).startBrowserProcessesSync(false);
+        if (!loaded){
+            LibraryLoader.getInstance().ensureInitialized(LibraryProcessType.PROCESS_WEBVIEW);
+            BrowserStartupController.get(LibraryProcessType.PROCESS_WEBVIEW).startBrowserProcessesSync(false);
+            loaded = true;
+        }
         mBisonContentsClient = new BisonContentsClient(this, context);
         mBisonContentsClientBridge = new BisonContentsClientBridge(context, mBisonContentsClient, getClientCertLookupTable());
         mBisonContents = new BisonContents(context, this, BisonBrowserContext.getDefault(), mBisonContentsClientBridge, 
