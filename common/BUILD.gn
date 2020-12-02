@@ -30,11 +30,14 @@ source_set("common") {
     "url_constants.h",
     "bison_switches.cc",
     "bison_switches.h",
+    "bison_resource_bundle.cc",
+    "bison_resource_bundle.h",
   ]
 
   deps = [
     "//base",
     "//content/public/common",
     "//ipc",
+    "//ui/base",
   ]
 }

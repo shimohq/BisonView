@@ -57,7 +57,6 @@ def _MergeRTxt(r_paths, include_globs):
            lines.append(line)
       
       all_lines.update(lines)
-  print (''.join(sorted(all_lines)))  
   return ''.join(sorted(all_lines))
 
 
@@ -93,7 +92,6 @@ def _AddResources(aar_zip, resource_zips, include_globs):
 
 
 def main(args):
-  print ('args',args)
   args = build_utils.ExpandFileArgs(args)
   parser = argparse.ArgumentParser()
 
@@ -151,10 +149,10 @@ def main(args):
   # options.jars = [jar for jar in options.jars if "third_party" not in jar]
   # options.dependencies_res_zips = [res_zip for res_zip in options.dependencies_res_zips if "third_party" not in res_zip]
 
-  print("options.r_text_files",options.r_text_files)
-  print ("=======options.jars========")
-  print ("\n".join(options.jars))
-  print ("=======options.jars========")
+  # print("options.r_text_files",options.r_text_files)
+  # print ("=======options.jars========")
+  # print ("\n".join(options.jars))
+  # print ("=======options.jars========")
   
   # print ("=======options.dependencies_res_zips========")
   # print (options.dependencies_res_zips)
@@ -199,8 +197,8 @@ def main(args):
         # TODO jiang 这里先写固定值,后面有时间再改成重配置读取
         build_utils.AddToZipHermetic(
           z,os.path.join("assets","bison_icudtl.dat"),src_path="icudtl.dat")
-        build_utils.AddToZipHermetic(
-          z,os.path.join("assets","bison_natives_blob.bin"),src_path="natives_blob.bin")
+        # build_utils.AddToZipHermetic(
+        #   z,os.path.join("assets","bison_natives_blob.bin"),src_path="natives_blob.bin")
         build_utils.AddToZipHermetic(
           z,os.path.join("assets","bison_snapshot_blob_32.bin"),src_path="snapshot_blob.bin")
           # snapshot_blob_32    snapshot_blob_32.bin
@@ -217,8 +215,7 @@ def main(args):
   if options.depfile:
     all_inputs = (options.jars + options.dependencies_res_zips +
                   options.r_text_files + options.proguard_configs)
-    build_utils.WriteDepfile(options.depfile, options.output, all_inputs,
-                             add_pydeps=False)
+    build_utils.WriteDepfile(options.depfile, options.output, all_inputs)
 
 
 if __name__ == '__main__':

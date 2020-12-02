@@ -1,10 +1,14 @@
 #include "bison/browser/network_service/bison_proxy_config_monitor.h"
 
 #include <memory>
+#include <string>
 #include <utility>
+#include <vector>
 
 #include "base/barrier_closure.h"
 #include "base/bind.h"
+#include "base/no_destructor.h"
+#include "base/trace_event/trace_event.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
 
 namespace bison {
@@ -12,8 +16,6 @@ namespace bison {
 namespace {
 const char kProxyServerSwitch[] = "proxy-server";
 const char kProxyBypassListSwitch[] = "proxy-bypass-list";
-
-base::LazyInstance<BisonProxyConfigMonitor>::Leaky g_instance;
 }  // namespace
 
 BisonProxyConfigMonitor::BisonProxyConfigMonitor() {
@@ -30,11 +32,12 @@ BisonProxyConfigMonitor::~BisonProxyConfigMonitor() {
 }
 
 BisonProxyConfigMonitor* BisonProxyConfigMonitor::GetInstance() {
-  return g_instance.Pointer();
+  static base::NoDestructor<BisonProxyConfigMonitor> instance;
+  return instance.get();
 }
 
 void BisonProxyConfigMonitor::AddProxyToNetworkContextParams(
-    network::mojom::NetworkContextParamsPtr& network_context_params) {
+    network::mojom::NetworkContextParams* network_context_params) {
   const base::CommandLine& command_line =
       *base::CommandLine::ForCurrentProcess();
   if (command_line.HasSwitch(kProxyServerSwitch)) {

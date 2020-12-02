@@ -1,14 +1,13 @@
 // create by jiang947 
 
-
 #ifndef BISON_BROWSER_BISON_COOKIE_ACCESS_POLICY_H_
 #define BISON_BROWSER_BISON_COOKIE_ACCESS_POLICY_H_
-
-
 
 #include "base/lazy_instance.h"
 #include "base/macros.h"
 #include "base/synchronization/lock.h"
+#include "base/no_destructor.h"
+#include "net/cookies/site_for_cookies.h"
 
 class GURL;
 
@@ -41,19 +40,19 @@ class BisonCookieAccessPolicy {
 
   // Whether or not to allow cookies for requests with these parameters.
   bool AllowCookies(const GURL& url,
-                    const GURL& first_party,
+                    const net::SiteForCookies& site_for_cookies,
                     int render_process_id,
                     int render_frame_id);
 
  private:
-  friend struct base::LazyInstanceTraitsBase<BisonCookieAccessPolicy>;
+  friend class base::NoDestructor<BisonCookieAccessPolicy>;
   friend class BisonCookieAccessPolicyTest;
 
   BisonCookieAccessPolicy();
   ~BisonCookieAccessPolicy();
 
   bool CanAccessCookies(const GURL& url,
-                        const GURL& site_for_cookies,
+                        const net::SiteForCookies& site_for_cookies,
                         bool accept_third_party_cookies);
   bool accept_cookies_;
   base::Lock lock_;

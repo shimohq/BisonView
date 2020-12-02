@@ -15,51 +15,41 @@
 #include "bison/renderer/bison_render_view_ext.h"
 // #include "bison/renderer/bison_url_loader_throttle_provider.h"
 // #include "bison/renderer/bison_websocket_handshake_throttle_provider.h"
-#include "bison/renderer/js_java_interaction/js_java_configurator.h"
-#include "bison/renderer/print_render_frame_observer.h"
+#include "bison/renderer/browser_exposed_renderer_interfaces.h"
 
 #include "base/command_line.h"
 #include "base/i18n/rtl.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/strings/string_util.h"
-#include "base/strings/utf_string_conversions.h"
+#include "components/js_injection/renderer/js_communication.h"
 #include "components/page_load_metrics/renderer/metrics_render_frame_observer.h"
 #include "components/printing/renderer/print_render_frame_helper.h"
-#include "components/visitedlink/renderer/visitedlink_slave.h"
+#include "components/visitedlink/renderer/visitedlink_reader.h"
 #include "content/public/child/child_thread.h"
-#include "content/public/common/service_manager_connection.h"
-#include "content/public/common/service_names.mojom.h"
-#include "content/public/common/simple_connection_filter.h"
 #include "content/public/common/url_constants.h"
 #include "content/public/renderer/document_state.h"
 #include "content/public/renderer/render_frame.h"
 #include "content/public/renderer/render_thread.h"
 #include "content/public/renderer/render_view.h"
-#include "net/base/escape.h"
-#include "net/base/net_errors.h"
-#include "services/service_manager/public/cpp/interface_provider.h"
+#include "mojo/public/cpp/bindings/binder_map.h"
 #include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/public/platform/web_string.h"
 #include "third_party/blink/public/platform/web_url.h"
-#include "third_party/blink/public/platform/web_url_error.h"
 #include "third_party/blink/public/platform/web_url_request.h"
 #include "third_party/blink/public/web/web_frame.h"
 #include "third_party/blink/public/web/web_navigation_type.h"
 #include "third_party/blink/public/web/web_security_policy.h"
-#include "ui/base/l10n/l10n_util.h"
-#include "ui/base/resource/resource_bundle.h"
 #include "url/gurl.h"
 #include "url/url_constants.h"
+
+#if BUILDFLAG(ENABLE_SPELLCHECK)
+#include "components/spellcheck/renderer/spellcheck.h"
+#include "components/spellcheck/renderer/spellcheck_provider.h"
+#endif
 
 using content::RenderThread;
 
 namespace bison {
-
-// namespace {
-// constexpr char kThrottledErrorDescription[] =
-//     "Request throttled. Visit http://dev.chromium.org/throttling for more "
-//     "information.";
-// }  // namespace
 
 BisonContentRendererClient::BisonContentRendererClient() = default;
 
@@ -70,16 +60,23 @@ void BisonContentRendererClient::RenderThreadStarted() {
   bison_render_thread_observer_.reset(new BisonRenderThreadObserver);
   thread->AddObserver(bison_render_thread_observer_.get());
 
-  visited_link_slave_.reset(new visitedlink::VisitedLinkSlave);
+  visited_link_reader_.reset(new visitedlink::VisitedLinkReader);
 
+  // browser_interface_broker_ =
+  //     blink::Platform::Current()->GetBrowserInterfaceBroker();
 
-  auto registry = std::make_unique<service_manager::BinderRegistry>();
-  registry->AddInterface(visited_link_slave_->GetBindCallback(),
-                         base::ThreadTaskRunnerHandle::Get());
-  content::ChildThread::Get()
-      ->GetServiceManagerConnection()
-      ->AddConnectionFilter(std::make_unique<content::SimpleConnectionFilter>(
-          std::move(registry)));
+#if BUILDFLAG(ENABLE_SPELLCHECK)
+  if (!spellcheck_)
+    spellcheck_ = std::make_unique<SpellCheck>(this);
+#endif
+}
+
+void BisonContentRendererClient::ExposeInterfacesToBrowser(
+    mojo::BinderMap* binders) {
+  // NOTE: Do not add binders directly within this method. Instead, modify the
+  // definition of |ExposeRendererInterfacesToBrowser()| to ensure security
+  // review coverage.
+  ExposeRendererInterfacesToBrowser(this, binders);
 }
 
 bool BisonContentRendererClient::HandleNavigation(
@@ -147,11 +144,10 @@ bool BisonContentRendererClient::HandleNavigation(
 void BisonContentRendererClient::RenderFrameCreated(
     content::RenderFrame* render_frame) {
   new BisonContentSettingsClient(render_frame);
-  new PrintRenderFrameObserver(render_frame);
   new printing::PrintRenderFrameHelper(
       render_frame, std::make_unique<BisonPrintRenderFrameHelperDelegate>());
   new BisonRenderFrameExt(render_frame);
-  new JsJavaConfigurator(render_frame);
+  new js_injection::JsCommunication(render_frame);
 
   // TODO(jam): when the frame tree moves into content and parent() works at
   // RenderFrame construction, simplify this by just checking parent().
@@ -163,7 +159,11 @@ void BisonContentRendererClient::RenderFrameCreated(
     RenderThread::Get()->Send(new BisonViewHostMsg_SubFrameCreated(
         parent_frame->GetRoutingID(), render_frame->GetRoutingID()));
   }
-  
+
+#if BUILDFLAG(ENABLE_SPELLCHECK)
+  new SpellCheckProvider(render_frame, spellcheck_.get(), this);
+#endif
+
 }
 
 void BisonContentRendererClient::RenderViewCreated(
@@ -177,7 +177,8 @@ bool BisonContentRendererClient::HasErrorPage(int http_status_code) {
 
 bool BisonContentRendererClient::ShouldSuppressErrorPage(
     content::RenderFrame* render_frame,
-    const GURL& url) {
+    const GURL& url,
+    int error_code) {
   DCHECK(render_frame != nullptr);
 
   BisonRenderFrameExt* render_frame_ext =
@@ -236,11 +237,26 @@ void BisonContentRendererClient::PrepareErrorPage(
 
 uint64_t BisonContentRendererClient::VisitedLinkHash(const char* canonical_url,
                                                   size_t length) {
-  return visited_link_slave_->ComputeURLFingerprint(canonical_url, length);
+  return visited_link_reader_->ComputeURLFingerprint(canonical_url, length);
 }
 
 bool BisonContentRendererClient::IsLinkVisited(uint64_t link_hash) {
-  return visited_link_slave_->IsVisited(link_hash);
+  return visited_link_reader_->IsVisited(link_hash);
+}
+
+void BisonContentRendererClient::RunScriptsAtDocumentStart(
+    content::RenderFrame* render_frame) {
+  js_injection::JsCommunication* communication =
+      js_injection::JsCommunication::Get(render_frame);
+  // We will get RunScriptsAtDocumentStart() event even before we received
+  // RenderFrameCreated() for that |render_frame|. This is because Blink code
+  // does initialization work on the main frame, which is not related to any
+  // real navigation. If the communication is nullptr, it means we haven't
+  // received RenderFrameCreated() yet, we simply ignore this event for
+  // JsCommunication since that is not the right time to run the script and
+  // the script may not reach renderer from browser yet.
+  if (communication)
+    communication->RunScriptsAtDocumentStart();
 }
 
 void BisonContentRendererClient::AddSupportedKeySystems(
@@ -261,14 +277,14 @@ void BisonContentRendererClient::AddSupportedKeySystems(
 //       browser_interface_broker_.get(), provider_type);
 // }
 
-// void BisonContentRendererClient::GetInterface(
-//     const std::string& interface_name,
-//     mojo::ScopedMessagePipeHandle interface_pipe) {
-//   // A dirty hack to make SpellCheckHost requests work on WebView.
-//   // TODO(crbug.com/806394): Use a WebView-specific service for SpellCheckHost
-//   // and SafeBrowsing, instead of |content_browser|.
-//   RenderThread::Get()->BindHostReceiver(
-//       mojo::GenericPendingReceiver(interface_name, std::move(interface_pipe)));
-// }
+void BisonContentRendererClient::GetInterface(
+    const std::string& interface_name,
+    mojo::ScopedMessagePipeHandle interface_pipe) {
+  // A dirty hack to make SpellCheckHost requests work on WebView.
+  // TODO(crbug.com/806394): Use a WebView-specific service for SpellCheckHost
+  // and SafeBrowsing, instead of |content_browser|.
+  RenderThread::Get()->BindHostReceiver(
+      mojo::GenericPendingReceiver(interface_name, std::move(interface_pipe)));
+}
 
 }  // namespace bison

@@ -45,7 +45,7 @@ public class BisonResources {
                         try {
                             int value = generatedInnerClazz.getField(field.getName()).getInt(null);
                             field.setInt(null, value);
-                            Log.d(TAG, "set " + generatedInnerClazz.getName() + "." + field.getName() + "=" + value);
+                            Log.d(TAG, "set " + innerClazz.getName() + " to " + generatedInnerClazz.getName() + "." + field.getName() + "=" + value);
                         } catch (IllegalAccessException | NoSuchFieldException | IllegalArgumentException ignore) {
 
                         }

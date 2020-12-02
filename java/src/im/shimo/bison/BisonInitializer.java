@@ -32,10 +32,13 @@ public class BisonInitializer {
     public void init(Context context) {
         ContextUtils.initApplicationContext(context);
         ResourceBundle.setNoAvailableLocalePaks();
-        ChildProcessCreationParams.set(context.getPackageName(), false,
-                LibraryProcessType.PROCESS_WEBVIEW_CHILD, true,
-                true, "im.shimo.bison.PrivilegedProcessService",
-                "im.shimo.bison.SandboxedProcessService");
+        final boolean isExternalService = false;
+        final boolean bindToCaller = true;
+        final boolean ignoreVisibilityForImportance = true;
+        ChildProcessCreationParams.set(context.getPackageName(),  "im.shimo.bison.PrivilegedProcessService",
+                context.getPackageName(), "im.shimo.bison.SandboxedProcessService", isExternalService,
+                LibraryProcessType.PROCESS_WEBVIEW_CHILD, bindToCaller,
+                ignoreVisibilityForImportance);   
         if (isBrowserProcess()) {
             PathUtils.setPrivateDataDirectorySuffix(PRIVATE_DATA_DIRECTORY_SUFFIX);
             ApplicationStatus.initialize((Application) context.getApplicationContext());

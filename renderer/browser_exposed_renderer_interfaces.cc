@@ -1,0 +1,21 @@
+// Copyright 2019 The Chromium Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#include "android_webview/renderer/browser_exposed_renderer_interfaces.h"
+
+#include "bison/renderer/bison_content_renderer_client.h"
+
+#include "base/threading/thread_task_runner_handle.h"
+#include "components/visitedlink/renderer/visitedlink_reader.h"
+#include "mojo/public/cpp/bindings/binder_map.h"
+
+namespace bison {
+
+void ExposeRendererInterfacesToBrowser(BisonContentRendererClient* client,
+                                       mojo::BinderMap* binders) {
+  binders->Add(client->visited_link_reader()->GetBindCallback(),
+               base::ThreadTaskRunnerHandle::Get());
+}
+
+}  // namespace bison

@@ -27,8 +27,7 @@ class BisonRenderFrameExt : public content::RenderFrameObserver {
  public:
   explicit BisonRenderFrameExt(content::RenderFrame* render_frame);
 
-  static BisonRenderFrameExt* FromRenderFrame(
-      content::RenderFrame* render_frame);
+  static BisonRenderFrameExt* FromRenderFrame(content::RenderFrame* render_frame);
 
   bool GetWillSuppressErrorPage();
 
@@ -39,8 +38,7 @@ class BisonRenderFrameExt : public content::RenderFrameObserver {
   bool OnAssociatedInterfaceRequestForFrame(
       const std::string& interface_name,
       mojo::ScopedInterfaceEndpointHandle* handle) override;
-  void DidCommitProvisionalLoad(bool is_same_document_navigation,
-                                ui::PageTransition transition) override;
+  void DidCommitProvisionalLoad(ui::PageTransition transition) override;
 
   bool OnMessageReceived(const IPC::Message& message) override;
   void FocusedElementChanged(const blink::WebElement& element) override;

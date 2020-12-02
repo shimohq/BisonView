@@ -3,9 +3,20 @@
 
 #include <iostream>
 
+#include "bison/browser/bison_content_browser_client.h"
 #include "bison/browser/bison_media_url_interceptor.h"
+#include "bison/browser/scoped_add_feature_flags.h"
+#include "bison/common/bison_resource_bundle.h"
+#include "bison/common/bison_content_client.h"
+#include "bison/common/bison_descriptors.h"
+#include "bison/common/bison_switches.h"
+#include "bison/gpu/bison_content_gpu_client.h"
+#include "bison/renderer/bison_content_renderer_client.h"
 
-#include "base/base_switches.h"
+#include "base/android/apk_assets.h"
+#include "base/android/build_info.h"
+#include "base/bind.h"
+#include "base/check_op.h"
 #include "base/command_line.h"
 #include "base/cpu.h"
 #include "base/files/file.h"
@@ -14,57 +25,42 @@
 #include "base/logging.h"
 #include "base/path_service.h"
 #include "base/trace_event/trace_log.h"
-#include "bison/browser/bison_content_browser_client.h"
-#include "bison/browser/scoped_add_feature_flags.h"
-#include "bison/common/bison_content_client.h"
-#include "bison/common/bison_descriptors.h"
-#include "bison/common/bison_switches.h"
-#include "bison/gpu/bison_content_gpu_client.h"
-#include "bison/renderer/bison_content_renderer_client.h"
 #include "build/build_config.h"
 #include "cc/base/switches.h"
 #include "components/autofill/core/common/autofill_features.h"
 #include "components/crash/core/common/crash_key.h"
+#include "components/gwp_asan/buildflags/buildflags.h"
+#include "components/spellcheck/spellcheck_buildflags.h"
 #include "components/viz/common/features.h"
-#include "components/viz/common/switches.h"
-#include "content/common/content_constants_internal.h"
+#include "content/public/browser/android/compositor.h"
 #include "content/public/browser/android/media_url_interceptor_register.h"
-#include "content/public/browser/render_process_host.h"
 #include "content/public/browser/browser_main_runner.h"
+#include "content/public/browser/browser_thread.h"
+#include "content/public/browser/render_process_host.h"
 #include "content/public/common/content_descriptor_keys.h"
 #include "content/public/common/content_features.h"
 #include "content/public/common/content_switches.h"
-#include "content/public/common/url_constants.h"
+#include "gin/public/isolate_holder.h"
 #include "gin/v8_initializer.h"
+#include "gpu/command_buffer/service/gpu_switches.h"
 #include "gpu/config/gpu_finch_features.h"
-#include "gpu/config/gpu_switches.h"
-#include "ipc/ipc_buildflags.h"
+#include "gpu/ipc/gl_in_process_context.h"
 #include "media/base/media_switches.h"
-#include "net/cookies/cookie_monster.h"
-#include "ppapi/buildflags/buildflags.h"
-#include "services/network/public/cpp/network_switches.h"
-#include "services/service_manager/embedder/switches.h"
-#include "skia/ext/test_fonts.h"
+#include "media/media_buildflags.h"
+#include "services/network/public/cpp/features.h"
 #include "ui/base/resource/resource_bundle.h"
+#include "ui/base/resource/resource_bundle_android.h"
 #include "ui/base/ui_base_paths.h"
 #include "ui/base/ui_base_switches.h"
-#include "ui/display/display_switches.h"
 #include "ui/events/gesture_detection/gesture_configuration.h"
-#include "ui/gl/gl_implementation.h"
-#include "ui/gl/gl_switches.h"
 
-#if BUILDFLAG(IPC_MESSAGE_LOG_ENABLED)
-#define IPC_MESSAGE_MACROS_LOG_ENABLED
-#include "content/public/common/content_ipc_logging.h"
-#define IPC_LOG_TABLE_ADD_ENTRY(msg_id, logger) \
-  content::RegisterIPCLogger(msg_id, logger)
+#if BUILDFLAG(ENABLE_SPELLCHECK)
+#include "components/spellcheck/common/spellcheck_features.h"
+#endif  // ENABLE_SPELLCHECK
+
+#if BUILDFLAG(ENABLE_GWP_ASAN)
+#include "components/gwp_asan/client/gwp_asan.h"  // nogncheck
 #endif
-
-#include "base/android/apk_assets.h"
-#include "base/posix/global_descriptors.h"
-#include "components/crash/content/app/crashpad.h"  // nogncheck
-#include "content/public/browser/android/compositor.h"
-#include "content/public/test/nested_message_pump_android.h"
 
 namespace {
 
@@ -104,10 +100,12 @@ bool BisonMainDelegate::BasicStartupComplete(int* exit_code) {
 
   cl->AppendSwitch(switches::kDisablePullToRefreshEffect);
 
+  // Not yet supported in single-process mode.
   cl->AppendSwitch(switches::kDisableSharedWorkers);
 
   cl->AppendSwitch(switches::kDisableFileSystem);
 
+  // Web Notification API and the Push API are not supported (crbug.com/434712)
   cl->AppendSwitch(switches::kDisableNotifications);
 
   cl->AppendSwitch(switches::kDisableSpeechSynthesisAPI);
@@ -133,22 +131,17 @@ bool BisonMainDelegate::BasicStartupComplete(int* exit_code) {
     // scroll/fling. As a result, fling animations may not be ticked,
     // potentially
     // confusing the tap suppression controller. Simply disable it for WebView
-    VLOG(0) << "defined USE_V8_CONTEXT_SNAPSHOT";
     ui::GestureConfiguration::GetInstance()
         ->set_fling_touchscreen_tap_suppression_enabled(false);
 
-    base::android::RegisterApkAssetWithFileDescriptorStore(
-        content::kV8NativesDataDescriptor,
-        base::FilePath(FILE_PATH_LITERAL("assets"))
-            .AppendASCII("bison/natives_blob.bin"));
-// #if defined(USE_V8_CONTEXT_SNAPSHOT)
-//     VLOG(0) << "defined USE_V8_CONTEXT_SNAPSHOT";
-//     gin::V8Initializer::V8SnapshotFileType file_type =
-//         gin::V8Initializer::V8SnapshotFileType::kWithAdditionalContext;
-// #else
-//     gin::V8Initializer::V8SnapshotFileType file_type =
-//         gin::V8Initializer::V8SnapshotFileType::kDefault;
-// #endif
+    // #if defined(USE_V8_CONTEXT_SNAPSHOT)
+    //     VLOG(0) << "defined USE_V8_CONTEXT_SNAPSHOT";
+    //     gin::V8Initializer::V8SnapshotFileType file_type =
+    //         gin::V8Initializer::V8SnapshotFileType::kWithAdditionalContext;
+    // #else
+    //     gin::V8Initializer::V8SnapshotFileType file_type =
+    //         gin::V8Initializer::V8SnapshotFileType::kDefault;
+    // #endif
 #if defined(ARCH_CPU_ARM_FAMILY)
     base::android::RegisterApkAssetWithFileDescriptorStore(
         content::kV8Snapshot32DataDescriptor,
@@ -177,9 +170,6 @@ bool BisonMainDelegate::BasicStartupComplete(int* exit_code) {
   //   cl->AppendSwitch(switches::kInProcessGPU);
   // }
 
-  // content::RenderProcessHost::SetMaxRendererProcessCount(1u);
-  // cl->AppendSwitch(switches::kInProcessGPU);
-
   {
     ScopedAddFeatureFlags features(cl);
 
@@ -193,29 +183,32 @@ bool BisonMainDelegate::BasicStartupComplete(int* exit_code) {
 
     features.DisableIfNotSet(::features::kWebAuth);
 
-    //FATAL:compositor_impl_android.cc(299)] Check failed: features::IsVizDisplayCompositorEnabled(). 
+    // FATAL:compositor_impl_android.cc(299)] Check failed:
+    // features::IsVizDisplayCompositorEnabled().
     // features.DisableIfNotSet(::features::kVizDisplayCompositor);
-
-    features.DisableIfNotSet(media::kUseAndroidOverlay);
-
     features.EnableIfNotSet(media::kDisableSurfaceLayerForVideo);
 
     features.DisableIfNotSet(media::kMediaDrmPersistentLicense);
 
     features.DisableIfNotSet(media::kPictureInPictureAPI);
 
-    // features.DisableIfNotSet(
-    //     autofill::features::kAutofillRestrictUnownedFieldsToFormlessCheckout);
-
     features.DisableIfNotSet(::features::kBackgroundFetch);
 
-    features.DisableIfNotSet(::features::kAndroidSurfaceControl);
-
+    features.EnableIfNotSet(::features::kDisableSurfaceControlForWebview);
     features.DisableIfNotSet(::features::kSmsReceiver);
 
     features.DisableIfNotSet(::features::kWebXr);
 
+    features.DisableIfNotSet(::features::kWebXrArModule);
+
+    features.DisableIfNotSet(::features::kWebXrHitTest);
+
     // features.EnableIfNotSet(::features::kDisableDeJelly);
+
+    features.DisableIfNotSet(network::features::kCrossOriginEmbedderPolicy);
+    features.DisableIfNotSet(::features::kInstalledApp);
+    // features.EnableIfNotSet(
+    //     metrics::UnsentLogStoreMetrics::kRecordLastUnsentLogMetadataMetrics);
   }
 
   content::Compositor::Initialize();
@@ -224,41 +217,28 @@ bool BisonMainDelegate::BasicStartupComplete(int* exit_code) {
 }
 
 void BisonMainDelegate::PreSandboxStartup() {
+  TRACE_EVENT0("startup", "BisonMainDelegate::PreSandboxStartup");
 #if defined(ARCH_CPU_ARM_FAMILY)
   // Create an instance of the CPU class to parse /proc/cpuinfo and cache
   // cpu_brand info.
   base::CPU cpu_info;
 #endif
 
-  VLOG(0) << "======调试宏定义======";
-#if defined(ARCH_CPU_ARM_FAMILY)
-  VLOG(0) << "defined(ARCH_CPU_ARM_FAMILY) true";
-#else
-  VLOG(0) << "defined(ARCH_CPU_ARM_FAMILY) false";
-#endif
-
-#if defined(OS_FUCHSIA)
-  VLOG(0) << "defined(OS_FUCHSIA) true";
-#else
-  VLOG(0) << "defined(OS_FUCHSIA) false";
-#endif
-
-#if defined(TOOLKIT_VIEWS)
-  VLOG(0) << "defined(TOOLKIT_VIEWS) true";
-#else
-  VLOG(0) << "defined(TOOLKIT_VIEWS) false";
-#endif
-
-#if BUILDFLAG(IPC_MESSAGE_LOG_ENABLED)
-  VLOG(0) << "BUILDFLAG(IPC_MESSAGE_LOG_ENABLED) true";
-#else
-  VLOG(0) << "BUILDFLAG(IPC_MESSAGE_LOG_ENABLED) false";
-#endif
-  VLOG(0) << "======调试宏定义======";
-
   crash_reporter::InitializeCrashKeys();
+  const base::CommandLine& command_line =
+      *base::CommandLine::ForCurrentProcess();
 
-  InitializeResourceBundle();
+  std::string process_type =
+      command_line.GetSwitchValueASCII(switches::kProcessType);
+  const bool is_browser_process = process_type.empty();
+  if (!is_browser_process) {
+    base::i18n::SetICUDefaultLocale(
+        command_line.GetSwitchValueASCII(switches::kLang));
+  }
+
+  if (process_type == switches::kRendererProcess) {
+    InitResourceBundleRendererSide();
+  }
 }
 
 int BisonMainDelegate::RunProcess(
@@ -269,8 +249,6 @@ int BisonMainDelegate::RunProcess(
     return -1;
 
   base::trace_event::TraceLog::GetInstance()->set_process_name("Browser");
-  base::trace_event::TraceLog::GetInstance()->SetProcessSortIndex(
-      content::kTraceEventBrowserProcessSortIndex);
 
   // On Android, we defer to the system message loop when the stack unwinds.
   // So here we only create (and leak) a BrowserMainRunner. The shutdown
@@ -296,48 +274,21 @@ void BisonMainDelegate::ProcessExiting(const std::string& process_type) {
 }
 
 bool BisonMainDelegate::ShouldCreateFeatureList() {
-  return false;
+  return true;
 }
 
 // This function is called only on the browser process.
 void BisonMainDelegate::PostEarlyInitialization(bool is_running_tests) {
-  // InitIcuAndResourceBundleBrowserSide();
+  InitIcuAndResourceBundleBrowserSide();
   bison_feature_list_creator_->CreateFeatureListAndFieldTrials();
   PostFieldTrialInitialization();
 }
 
-void BisonMainDelegate::InitializeResourceBundle() {
-  // On Android, the renderer runs with a different UID and can never access
-  // the file system. Use the file descriptor passed in at launch time.
-  auto* global_descriptors = base::GlobalDescriptors::GetInstance();
-  int pak_fd = global_descriptors->MaybeGet(kBisonPakDescriptor);
-  base::MemoryMappedFile::Region pak_region;
-  if (pak_fd >= 0) {
-    pak_region = global_descriptors->GetRegion(kBisonPakDescriptor);
-  } else {
-    pak_fd = base::android::OpenApkAsset("assets/bison.pak", &pak_region);
-    // Loaded from disk for browsertests.
-    if (pak_fd < 0) {
-      base::FilePath pak_file;
-      bool r = base::PathService::Get(base::DIR_ANDROID_APP_DATA, &pak_file);
-      DCHECK(r);
-      pak_file = pak_file.Append(FILE_PATH_LITERAL("paks"));
-      pak_file = pak_file.Append(FILE_PATH_LITERAL("bison.pak"));
-      int flags = base::File::FLAG_OPEN | base::File::FLAG_READ;
-      pak_fd = base::File(pak_file, flags).TakePlatformFile();
-      pak_region = base::MemoryMappedFile::Region::kWholeFile;
-    }
-    global_descriptors->Set(kBisonPakDescriptor, pak_fd, pak_region);
-  }
-  DCHECK_GE(pak_fd, 0);
-  // This is clearly wrong. See crbug.com/330930
-  ui::ResourceBundle::InitSharedInstanceWithPakFileRegion(base::File(pak_fd),
-                                                          pak_region);
-  ui::ResourceBundle::GetSharedInstance().AddDataPackFromFileRegion(
-      base::File(pak_fd), pak_region, ui::SCALE_FACTOR_100P);
+void BisonMainDelegate::PostFieldTrialInitialization() {
+ 
 }
 
-void BisonMainDelegate::PreCreateMainMessageLoop() {}
+
 
 ContentBrowserClient* BisonMainDelegate::CreateContentBrowserClient() {
   bison_feature_list_creator_ = std::make_unique<BisonFeatureListCreator>();
@@ -347,7 +298,6 @@ ContentBrowserClient* BisonMainDelegate::CreateContentBrowserClient() {
 }
 
 ContentGpuClient* BisonMainDelegate::CreateContentGpuClient() {
-  // gpu_client_.reset(new BisonContentGpuClient);
   gpu_client_ = std::make_unique<BisonContentGpuClient>();
   return gpu_client_.get();
 }

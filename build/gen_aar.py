@@ -45,14 +45,16 @@ jar_excluded_patterns = [
   "im/shimo/bison/R\$*.class",
   "im/shimo/bison/R.class",
 
-  "javax/*",
-  "android/*",
+  "android/support/*",
+  "*/third_party/android_deps/*",
   "androidx/*",
+  "android/support/*",
+  "gen/_third_party/*",
   "com/google/*",
+  "javax/*",
   "META-INF/*",
-  "*.stamp",
-  "*.readme",
-  "*.properties",
+  "*.txt",
+  "*.properties"
 ]
 
 resource_included_patterns = [
@@ -184,7 +186,7 @@ def MergeZips(output, input_zips, path_transform=None, compress=None):
 
   try:
     for in_file in input_zips:
-      print ('input',in_file)
+      # print ('input',in_file)
       with zipfile.ZipFile(in_file, 'r') as in_zip:
         # ijar creates zips with null CRCs.
         in_zip._expected_crc = None
@@ -207,9 +209,10 @@ def MergeZips(output, input_zips, path_transform=None, compress=None):
             if not already_added:
               print("already_added:",already_added,dst_name,in_file)
 
-          if "properties" in dst_name :
-            print("merge :" +dst_name)
+          # if "properties" in dst_name :
+          #   print("merge :" +dst_name)
           if not already_added:
+            print("merge :" +dst_name)
             if compress is not None:
               compress_entry = compress
             else:
@@ -238,7 +241,6 @@ def _MergeRTxt(r_paths, include_globs):
          if key not in keys :
            keys.append(key)
            lines.append(line)
-      
       all_lines.update(lines)
   return ''.join(sorted(all_lines))
 
@@ -258,18 +260,22 @@ def _AddResources(aar_zip, resource_zips, include_globs):
   Ensures all res/values/* files have unique names by prefixing them.
   """
   for i, path in enumerate(resource_zips):
-    print("res path" , path)
     if include_globs and not build_utils.MatchesGlob(path, include_globs):
       continue
+    print("res path" , path)
     with zipfile.ZipFile(path) as res_zip:
       for info in res_zip.infolist():
         data = res_zip.read(info)
+        info.filename = info.filename.replace('0_res','res', 1 ) if info.filename.startswith('0_res') else info.filename
         dirname, basename = posixpath.split(info.filename)
         if 'values' in dirname:
           root, ext = os.path.splitext(basename)
           basename = '{}_{}{}'.format(root, i, ext)
           info.filename = posixpath.join(dirname, basename)
-        info.filename = posixpath.join('res', info.filename)
+
+        if not info.filename.startswith('res'):
+          info.filename = posixpath.join('res', info.filename)
+        
         aar_zip.writestr(info, data)
 
 def _AddAssets(aar_zip, deps_configs ,build_dir, arch):
@@ -322,6 +328,8 @@ def Build(build_dir, build_type, arch, extra_gn_args, extra_gn_switches,
     'rtc_include_tests': False,
     'target_cpu': _GetTargetCpu(arch),
     'android_override_version_name' : version_name,
+    'v8_android_log_stdout' : True,
+    'symbol_level' : 1,
   }
   
   gn_args_str = '--args=' + ' '.join([
@@ -364,7 +372,7 @@ def BuildAar(archs, output_file, extra_gn_args=None,
         r_text_files = _ReadConfig(build_dir, arch, build_config ,'deps_info', 'extra_r_text_files') 
         proguard_configs = _ReadConfig(build_dir, arch, build_config ,'deps_info', 'proguard_all_configs') 
         
-
+  
 
   with zipfile.ZipFile(output_file, 'w') as aar_file:
     path_transform = CreatePathTransform(jar_excluded_patterns,

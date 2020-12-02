@@ -34,6 +34,7 @@
 #include "base/bind_helpers.h"
 #include "base/callback.h"
 #include "base/command_line.h"
+#include "base/feature_list.h"
 #include "base/i18n/rtl.h"
 #include "base/json/json_writer.h"
 #include "base/location.h"
@@ -44,10 +45,9 @@
 #include "base/single_thread_task_runner.h"
 #include "base/strings/string16.h"
 #include "base/supports_user_data.h"
-#include "base/task/post_task.h"
 #include "base/threading/thread_restrictions.h"
 #include "base/threading/thread_task_runner_handle.h"
-#include "components/autofill/android/autofill_provider_android.h"
+#include "components/autofill/android/provider/autofill_provider_android.h"
 #include "components/autofill/content/browser/content_autofill_driver_factory.h"
 #include "components/autofill/core/browser/autofill_manager.h"
 #include "components/autofill/core/browser/webdata/autofill_webdata_service.h"
@@ -195,10 +195,12 @@ BisonContents::BisonContents(std::unique_ptr<WebContents> web_contents)
 }
 
 void BisonContents::SetJavaPeers(
-    JNIEnv *env, const JavaParamRef<jobject> &web_contents_delegate,
-    const JavaParamRef<jobject> &contents_client_bridge,
-    const JavaParamRef<jobject> &io_thread_client,
-    const JavaParamRef<jobject> &intercept_navigation_delegate) {
+    JNIEnv* env, 
+    const JavaParamRef<jobject>& web_contents_delegate,
+    const JavaParamRef<jobject>& contents_client_bridge,
+    const JavaParamRef<jobject>& io_thread_client,
+    const JavaParamRef<jobject>& intercept_navigation_delegate,
+    const JavaParamRef<jobject>& autofill_provider) {
   web_contents_delegate_.reset(
       new BisonWebContentsDelegate(env, web_contents_delegate));
   web_contents_->SetDelegate(web_contents_delegate_.get());
@@ -213,6 +215,11 @@ void BisonContents::SetJavaPeers(
   InterceptNavigationDelegate::Associate(
       web_contents_.get(), std::make_unique<InterceptNavigationDelegate>(
                                env, intercept_navigation_delegate));
+
+  if (!autofill_provider.is_null()) {
+    autofill_provider_ = std::make_unique<autofill::AutofillProviderAndroid>(
+        autofill_provider, web_contents_.get());
+  }
 }
 
 void BisonContents::SetSaveFormData(bool enabled) {
@@ -288,7 +295,7 @@ ScopedJavaLocalRef<jobject> BisonContents::GetWebContents(JNIEnv *env) {
 
 BisonContents *
 BisonContents::CreateBisonContents(BrowserContext *browser_context) {
-  WebContents::CreateParams create_params(browser_context, NULL);
+  WebContents::CreateParams create_params(browser_context, nullptr);
   std::unique_ptr<WebContents> web_contents =
       WebContents::Create(create_params);
   // WebContents* raw_web_contents = web_contents.get();
@@ -755,7 +762,8 @@ void BisonContents::GrantFileSchemeAccesstoChildProcess(JNIEnv *env) {
 
 
 jlong BisonContents::GetAutofillProvider(
-    JNIEnv *env, const base::android::JavaParamRef<jobject> &obj) {
+    JNIEnv* env,
+    const base::android::JavaParamRef<jobject>& obj) {
   return reinterpret_cast<jlong>(autofill_provider_.get());
 }
 

@@ -27,10 +27,10 @@ public class BisonWebContentsDelegate extends WebContentsDelegateAndroid {
         mContentsClient = bisonContentsClient;
     }
 
-    @Override
-    public void onLoadProgressChanged(int progress) {
-        mContentsClient.getCallbackHelper().postOnProgressChanged(progress);
-    }
+    // @Override
+    // public void onLoadProgressChanged(int progress) {
+    //     mContentsClient.getCallbackHelper().postOnProgressChanged(progress);
+    // }
 
 
     @CalledByNative

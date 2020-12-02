@@ -1,12 +1,11 @@
 // create by jiang947 
 
-
 #ifndef BISON_BROWSER_BISON_DOWNLOAD_MANAGER_DELEGATE_H_
 #define BISON_BROWSER_BISON_DOWNLOAD_MANAGER_DELEGATE_H_
 
-
 #include <string>
 
+#include "base/macros.h"
 #include "base/supports_user_data.h"
 #include "content/public/browser/download_manager_delegate.h"
 
@@ -23,17 +22,10 @@ namespace bison {
 class BisonDownloadManagerDelegate : public content::DownloadManagerDelegate,
                                   public base::SupportsUserData::Data {
  public:
+  BisonDownloadManagerDelegate();
   ~BisonDownloadManagerDelegate() override;
 
   // content::DownloadManagerDelegate implementation.
-  bool DetermineDownloadTarget(
-      download::DownloadItem* item,
-      const content::DownloadTargetCallback& callback) override;
-  bool ShouldCompleteDownload(download::DownloadItem* item,
-                              base::OnceClosure complete_callback) override;
-  bool ShouldOpenDownload(
-      download::DownloadItem* item,
-      const content::DownloadOpenDelayedCallback& callback) override;
   bool InterceptDownloadIfApplicable(
       const GURL& url,
       const std::string& user_agent,
@@ -43,7 +35,9 @@ class BisonDownloadManagerDelegate : public content::DownloadManagerDelegate,
       int64_t content_length,
       bool is_transient,
       content::WebContents* web_contents) override;
-  void GetNextId(const content::DownloadIdCallback& callback) override;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(BisonDownloadManagerDelegate);
 };
 
 }  // namespace bison

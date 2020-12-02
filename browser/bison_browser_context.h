@@ -28,16 +28,18 @@ class AutocompleteHistoryManager;
 }
 
 namespace content {
-class ContentIndexProvider;
-class DownloadManagerDelegate;
 class PermissionControllerDelegate;
-
-class ZoomLevelDelegate;
+class ResourceContext;
+class SSLHostStateDelegate;
 class WebContents;
-}  // namespace content
+}
+
+namespace download {
+class InProgressDownloadManager;
+}
 
 namespace visitedlink {
-class VisitedLinkMaster;
+class VisitedLinkWriter;
 }
 
 namespace bison {
@@ -52,6 +54,7 @@ class BisonBrowserContext : public content::BrowserContext,
   BisonBrowserContext();
   ~BisonBrowserContext() override;
 
+  // Currently only one instance per process is supported.
   static BisonBrowserContext* GetDefault();
 
   static BisonBrowserContext* FromWebContents(
@@ -99,23 +102,29 @@ class BisonBrowserContext : public content::BrowserContext,
   content::BackgroundSyncController* GetBackgroundSyncController() override;
   content::BrowsingDataRemoverDelegate* GetBrowsingDataRemoverDelegate()
       override;
+  download::InProgressDownloadManager* RetriveInProgressDownloadManager()
+      override;
   // visitedlink::VisitedLinkDelegate implementation.
   void RebuildTable(const scoped_refptr<URLEnumerator>& enumerator) override;
 
   PrefService* GetPrefService() const { return user_pref_service_.get(); }
 
-  network::mojom::NetworkContextParamsPtr GetNetworkContextParams(
+  void SetExtendedReportingAllowed(bool allowed);
+  
+//   network::mojom::NetworkContextParamsPtr GetNetworkContextParams(
+//       bool in_memory,
+//       const base::FilePath& relative_partition_path);
+  void ConfigureNetworkContextParams(
       bool in_memory,
-      const base::FilePath& relative_partition_path);
+      const base::FilePath& relative_partition_path,
+      network::mojom::NetworkContextParams* network_context_params,
+      network::mojom::CertVerifierCreationParams*
+          cert_verifier_creation_params);
 
   base::android::ScopedJavaLocalRef<jobject> GetJavaBrowserContext();
 
-  // std::unique_ptr<content::BackgroundSyncController>
-  //     background_sync_controller_;
-
  private:
   void CreateUserPrefService();
-  std::unique_ptr<BisonDownloadManagerDelegate> download_manager_delegate_;
   base::FilePath context_storage_path_;
 
   scoped_refptr<BisonQuotaManagerBridge> quota_manager_bridge_;
@@ -123,10 +132,10 @@ class BisonBrowserContext : public content::BrowserContext,
   std::unique_ptr<autofill::AutocompleteHistoryManager>
       autocomplete_history_manager_;
 
-  std::unique_ptr<visitedlink::VisitedLinkMaster> visitedlink_master_;
+  std::unique_ptr<visitedlink::VisitedLinkWriter> visitedlink_writer_;
   std::unique_ptr<BisonResourceContext> resource_context_;
-  std::unique_ptr<PrefService> user_pref_service_;
 
+  std::unique_ptr<PrefService> user_pref_service_;
   std::unique_ptr<BisonSSLHostStateDelegate> ssl_host_state_delegate_;
   std::unique_ptr<content::PermissionControllerDelegate> permission_manager_;
 

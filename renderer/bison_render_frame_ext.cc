@@ -3,12 +3,13 @@
 #include <map>
 #include <memory>
 
-#include "base/lazy_instance.h"
-#include "base/strings/utf_string_conversions.h"
 #include "bison/common/bison_hit_test_data.h"
 #include "bison/common/render_view_messages.h"
-// #include "components/autofill/content/renderer/autofill_agent.h"
-// #include "components/autofill/content/renderer/password_autofill_agent.h"
+
+#include "base/no_destructor.h"
+#include "base/strings/utf_string_conversions.h"
+#include "components/autofill/content/renderer/autofill_agent.h"
+#include "components/autofill/content/renderer/password_autofill_agent.h"
 #include "components/content_capture/common/content_capture_features.h"
 #include "components/content_capture/renderer/content_capture_sender.h"
 #include "content/public/renderer/render_frame.h"
@@ -141,8 +142,10 @@ void PopulateHitTestData(const GURL& absolute_link_url,
 
 // Registry for RenderFrame => BisonRenderFrameExt lookups
 typedef std::map<content::RenderFrame*, BisonRenderFrameExt*> FrameExtMap;
-base::LazyInstance<FrameExtMap>::Leaky render_frame_ext_map =
-    LAZY_INSTANCE_INITIALIZER;
+FrameExtMap* GetFrameExtMap() {
+  static base::NoDestructor<FrameExtMap> map;
+  return map.get();
+}
 
 BisonRenderFrameExt::BisonRenderFrameExt(content::RenderFrame* render_frame)
     : content::RenderFrameObserver(render_frame) {
@@ -167,11 +170,11 @@ BisonRenderFrameExt::~BisonRenderFrameExt() {
   // all render_frames in the map and wipe the one(s) that point to this
   // BisonRenderFrameExt
 
-  auto& map = render_frame_ext_map.Get();
-  auto it = map.begin();
-  while (it != map.end()) {
+  auto* map = GetFrameExtMap();
+  auto it = map->begin();
+  while (it != map->end()) {
     if (it->second == this) {
-      it = map.erase(it);
+      it = map->erase(it);
     } else {
       ++it;
     }
@@ -181,8 +184,8 @@ BisonRenderFrameExt::~BisonRenderFrameExt() {
 BisonRenderFrameExt* BisonRenderFrameExt::FromRenderFrame(
     content::RenderFrame* render_frame) {
   DCHECK(render_frame != nullptr);
-  auto iter = render_frame_ext_map.Get().find(render_frame);
-  DCHECK(render_frame_ext_map.Get().end() != iter)
+  auto iter = GetFrameExtMap()->find(render_frame);
+  DCHECK(GetFrameExtMap()->end() != iter)
       << "Should always exist a render_frame_ext for a render_frame";
   BisonRenderFrameExt* render_frame_ext = iter->second;
   return render_frame_ext;
@@ -195,7 +198,6 @@ bool BisonRenderFrameExt::OnAssociatedInterfaceRequestForFrame(
 }
 
 void BisonRenderFrameExt::DidCommitProvisionalLoad(
-    bool is_same_document_navigation,
     ui::PageTransition transition) {
   // Clear the cache when we cross site boundaries in the main frame.
   //
@@ -278,7 +280,7 @@ void BisonRenderFrameExt::OnDoHitTest(const gfx::PointF& touch_center,
     return;
 
   const blink::WebHitTestResult result = webview->HitTestResultForTap(
-      blink::WebPoint(touch_center.x(), touch_center.y()),
+      gfx::Point(touch_center.x(), touch_center.y()),
       blink::WebSize(touch_area.width(), touch_area.height()));
   BisonHitTestData data;
 
@@ -298,13 +300,16 @@ void BisonRenderFrameExt::OnDoHitTest(const gfx::PointF& touch_center,
 }
 
 void BisonRenderFrameExt::OnSetTextZoomFactor(float zoom_factor) {
+  DCHECK(render_frame()->IsMainFrame());
+
   blink::WebView* webview = GetWebView();
   if (!webview)
     return;
 
   // Hide selection and autofill popups.
   webview->CancelPagePopup();
-  webview->SetTextZoomFactor(zoom_factor);
+
+  render_frame()->GetWebFrame()->FrameWidget()->SetTextZoomFactor(zoom_factor);
 }
 
 void BisonRenderFrameExt::OnResetScrollAndScaleState() {

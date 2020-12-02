@@ -14,6 +14,7 @@
 #include "bison/browser/network_service/net_helpers.h"
 #include "bison/common/bison_features.h"
 
+#include "base/base_paths_posix.h"
 #include "base/bind.h"
 #include "base/feature_list.h"
 #include "base/files/file_util.h"
@@ -23,6 +24,7 @@
 #include "components/autofill/core/browser/autocomplete_history_manager.h"
 #include "components/autofill/core/common/autofill_prefs.h"
 #include "components/cdm/browser/media_drm_storage_impl.h"
+#include "components/download/public/common/in_progress_download_manager.h"
 #include "components/keyed_service/core/simple_key_map.h"
 #include "components/policy/core/browser/browser_policy_connector_base.h"
 #include "components/policy/core/browser/configuration_policy_pref_store.h"
@@ -33,15 +35,18 @@
 #include "components/prefs/pref_registry_simple.h"
 #include "components/prefs/pref_service.h"
 #include "components/prefs/pref_service_factory.h"
+#include "components/url_formatter/url_fixer.h"
 #include "components/user_prefs/user_prefs.h"
-#include "components/variations/net/variations_http_headers.h"
-#include "components/visitedlink/browser/visitedlink_master.h"
+#include "components/visitedlink/browser/visitedlink_writer.h"
 #include "content/public/browser/browser_task_traits.h"
 #include "content/public/browser/browser_thread.h"
-#include "content/public/browser/cors_exempt_headers.h"
+#include "content/public/browser/download_request_utils.h"
+#include "content/public/browser/ssl_host_state_delegate.h"
 #include "content/public/browser/storage_partition.h"
-#include "content/public/common/content_switches.h"
+#include "content/public/browser/web_contents.h"
 #include "media/mojo/buildflags.h"
+#include "net/proxy_resolution/proxy_config_service_android.h"
+#include "net/proxy_resolution/proxy_resolution_service.h"
 #include "services/preferences/tracked/segregated_pref_store.h"
 
 using base::FilePath;
@@ -66,6 +71,10 @@ namespace {
 const void* const kDownloadManagerDelegateKey = &kDownloadManagerDelegateKey;
 
 BisonBrowserContext* g_browser_context = NULL;
+
+bool IgnoreOriginSecurityCheck(const GURL& url) {
+  return true;
+}
 }  // namespace
 
 BisonBrowserContext::BisonBrowserContext()
@@ -75,13 +84,11 @@ BisonBrowserContext::BisonBrowserContext()
   g_browser_context = this;
   SimpleKeyMap::GetInstance()->Associate(this, &simple_factory_key_);
 
-  BrowserContext::Initialize(this, context_storage_path_);
-
   CreateUserPrefService();
 
-  visitedlink_master_.reset(
-      new visitedlink::VisitedLinkMaster(this, this, false));
-  visitedlink_master_->Init();
+  visitedlink_writer_.reset(
+      new visitedlink::VisitedLinkWriter(this, this, false));
+  visitedlink_writer_->Init();
 
   form_database_service_.reset(
       new BisonFormDatabaseService(context_storage_path_));
@@ -179,6 +186,7 @@ void BisonBrowserContext::RegisterPrefs(PrefRegistrySimple* registry) {
 }
 
 void BisonBrowserContext::CreateUserPrefService() {
+  VLOG(0) << "CreateUserPrefService";
   auto pref_registry = base::MakeRefCounted<user_prefs::PrefRegistrySyncable>();
 
   RegisterPrefs(pref_registry.get());
@@ -212,6 +220,7 @@ void BisonBrowserContext::CreateUserPrefService() {
   // }
 
   user_prefs::UserPrefs::Set(this, user_pref_service_.get());
+  VLOG(0) << "end CreateUserPrefService";
 }
 
 // static
@@ -222,8 +231,8 @@ std::vector<std::string> BisonBrowserContext::GetAuthSchemes() {
 }
 
 void BisonBrowserContext::AddVisitedURLs(const std::vector<GURL>& urls) {
-  DCHECK(visitedlink_master_);
-  visitedlink_master_->AddURLs(urls);
+  DCHECK(visitedlink_writer_);
+  visitedlink_writer_->AddURLs(urls);
 }
 
 BisonQuotaManagerBridge* BisonBrowserContext::GetQuotaManagerBridge() {
@@ -270,12 +279,14 @@ ResourceContext* BisonBrowserContext::GetResourceContext() {
   return resource_context_.get();
 }
 
-DownloadManagerDelegate* BisonBrowserContext::GetDownloadManagerDelegate() {
-  if (!download_manager_delegate_.get()) {
-    download_manager_delegate_.reset(new BisonDownloadManagerDelegate());
+DownloadManagerDelegate* 
+BisonBrowserContext::GetDownloadManagerDelegate() {
+  if (!GetUserData(kDownloadManagerDelegateKey)) {
+    SetUserData(kDownloadManagerDelegateKey,
+                std::make_unique<BisonDownloadManagerDelegate>());
   }
-
-  return download_manager_delegate_.get();
+  return static_cast<BisonDownloadManagerDelegate*>(
+      GetUserData(kDownloadManagerDelegateKey));
 }
 
 BrowserPluginGuestManager* BisonBrowserContext::GetGuestManager() {
@@ -328,7 +339,14 @@ BisonBrowserContext::GetBrowsingDataRemoverDelegate() {
   return nullptr;
 }
 
-
+download::InProgressDownloadManager*
+BisonBrowserContext::RetriveInProgressDownloadManager() {
+  return new download::InProgressDownloadManager(
+      nullptr, base::FilePath(), nullptr,
+      base::BindRepeating(&IgnoreOriginSecurityCheck),
+      base::BindRepeating(&content::DownloadRequestUtils::IsURLSafe),
+      /*wake_lock_provider_binder*/ base::NullCallback());
+}
 
 void BisonBrowserContext::RebuildTable(
     const scoped_refptr<URLEnumerator>& enumerator) {
@@ -337,13 +355,19 @@ void BisonBrowserContext::RebuildTable(
   // Therefore this initialization path is not used.
   enumerator->OnComplete(true);
 }
-network::mojom::NetworkContextParamsPtr
-BisonBrowserContext::GetNetworkContextParams(
+
+void BisonBrowserContext::SetExtendedReportingAllowed(bool allowed) {
+  // user_pref_service_->SetBoolean(
+  //     ::prefs::kSafeBrowsingExtendedReportingOptInAllowed, allowed);
+}
+
+void BisonBrowserContext::ConfigureNetworkContextParams(
     bool in_memory,
-    const base::FilePath& relative_partition_path) {
-  VLOG(0) << "GetNetworkContextParams";
-  network::mojom::NetworkContextParamsPtr context_params =
-      network::mojom::NetworkContextParams::New();
+    const base::FilePath& relative_partition_path,
+    network::mojom::NetworkContextParams* context_params,
+    network::mojom::CertVerifierCreationParams* cert_verifier_creation_params) {
+  VLOG(0) << "ConfigureNetworkContextParams";    
+  DCHECK(context_params);    
   context_params->user_agent = bison::GetUserAgent();
 
   // TODO(ntfschr): set this value to a proper value based on the user's
@@ -358,20 +382,18 @@ BisonBrowserContext::GetNetworkContextParams(
   context_params->http_cache_max_size = GetHttpCacheSize();
   context_params->http_cache_path = GetCacheDir();
 
-  VLOG(0) << "http cacah path:" << GetCacheDir();
-  // VLOG(0) << "cookie path:" << BisonBrowserContext::GetCookieStorePath();
-
-  // jiang ?? 这里会...
-  // // BisonView should persist and restore cookies between app sessions
-  // // (including session cookies).
+  // BisonView should persist and restore cookies between app sessions (including
+  // session cookies).
   context_params->cookie_path = BisonBrowserContext::GetCookieStorePath();
-  VLOG(0) << "cookie_path:" << context_params->cookie_path.value();
   context_params->restore_old_session_cookies = true;
   context_params->persist_session_cookies = true;
   context_params->cookie_manager_params =
       network::mojom::CookieManagerParams::New();
   context_params->cookie_manager_params->allow_file_scheme_cookies =
-      GetCookieManager()->AllowFileSchemeCookies();
+      GetCookieManager()->GetAllowFileSchemeCookies();
+
+  context_params->cookie_manager_params->cookie_access_delegate_type =
+      network::mojom::CookieAccessDelegateType::ALWAYS_LEGACY;    
 
   context_params->initial_ssl_config = network::mojom::SSLConfig::New();
   // Allow SHA-1 to be used for locally-installed trust anchors, as WebView
@@ -395,16 +417,9 @@ BisonBrowserContext::GetNetworkContextParams(
   context_params->check_clear_text_permitted =
       BisonContentBrowserClient::get_check_cleartext_permitted();
 
-  // Update the cors_exempt_header_list to include internally-added headers, to
-  // avoid triggering CORS checks.
-  content::UpdateCorsExemptHeader(context_params.get());
-  variations::UpdateCorsExemptHeaderForVariations(context_params.get());
-
   // Add proxy settings
   BisonProxyConfigMonitor::GetInstance()->AddProxyToNetworkContextParams(
       context_params);
-
-  return context_params;
 }
 
 base::android::ScopedJavaLocalRef<jobject>

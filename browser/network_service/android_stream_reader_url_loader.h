@@ -3,12 +3,19 @@
 #ifndef BISON_BROWSER_NETWORK_SERVICE_ANDROID_STREAM_READER_URL_LOADER_H_
 #define BISON_BROWSER_NETWORK_SERVICE_ANDROID_STREAM_READER_URL_LOADER_H_
 
+#include <memory>
+#include <string>
+#include <vector>
+
+#include "base/optional.h"
 #include "base/threading/thread_checker.h"
+#include "mojo/public/cpp/bindings/pending_remote.h"
+#include "mojo/public/cpp/bindings/remote.h"
 #include "mojo/public/cpp/system/simple_watcher.h"
 #include "net/http/http_byte_range.h"
 #include "services/network/public/cpp/net_adapters.h"
-#include "services/network/public/cpp/resource_response.h"
 #include "services/network/public/mojom/url_loader.mojom.h"
+#include "services/network/public/mojom/url_response_head.mojom.h"
 
 namespace bison {
 
@@ -46,19 +53,27 @@ class AndroidStreamReaderURLLoader : public network::mojom::URLLoader {
                                        net::HttpResponseHeaders* headers) = 0;
   };
 
+  struct SecurityOptions {
+    bool disable_web_security = false;
+    bool allow_cors_to_same_scheme = false;
+  };
+
   AndroidStreamReaderURLLoader(
       const network::ResourceRequest& resource_request,
-      network::mojom::URLLoaderClientPtr client,
+      mojo::PendingRemote<network::mojom::URLLoaderClient> client,
       const net::MutableNetworkTrafficAnnotationTag& traffic_annotation,
-      std::unique_ptr<ResponseDelegate> response_delegate);
+      std::unique_ptr<ResponseDelegate> response_delegate,
+      base::Optional<SecurityOptions> security_options);
   ~AndroidStreamReaderURLLoader() override;
 
   void Start();
 
   // network::mojom::URLLoader overrides:
-  void FollowRedirect(const std::vector<std::string>& removed_headers,
-                      const net::HttpRequestHeaders& modified_headers,
-                      const base::Optional<GURL>& new_url) override;
+  void FollowRedirect(
+      const std::vector<std::string>& removed_headers,
+      const net::HttpRequestHeaders& modified_headers,
+      const net::HttpRequestHeaders& modified_cors_exempt_headers,
+      const base::Optional<GURL>& new_url) override;
   void SetPriority(net::RequestPriority priority,
                    int intra_priority_value) override;
   void PauseReadingBodyFromNet() override;
@@ -72,6 +87,8 @@ class AndroidStreamReaderURLLoader : public network::mojom::URLLoader {
       std::unique_ptr<bison::InputStream> input_stream);
   void OnReaderSeekCompleted(int result);
   void HeadersComplete(int status_code, const std::string& status_text);
+  void RequestCompleteWithStatus(
+      const network::URLLoaderCompletionStatus& status);
   void RequestComplete(int status_code);
   void SendBody();
 
@@ -96,8 +113,9 @@ class AndroidStreamReaderURLLoader : public network::mojom::URLLoader {
 
   net::HttpByteRange byte_range_;
   network::ResourceRequest resource_request_;
-  std::unique_ptr<network::ResourceResponseHead> resource_response_head_;
-  network::mojom::URLLoaderClientPtr client_;
+  network::mojom::URLResponseHeadPtr response_head_;
+  bool reject_cors_request_;
+  mojo::Remote<network::mojom::URLLoaderClient> client_;
   const net::MutableNetworkTrafficAnnotationTag traffic_annotation_;
   std::unique_ptr<ResponseDelegate> response_delegate_;
   scoped_refptr<InputStreamReaderWrapper> input_stream_reader_wrapper_;

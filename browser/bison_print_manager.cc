@@ -11,7 +11,9 @@
 #include "base/numerics/safe_conversions.h"
 #include "base/task/post_task.h"
 #include "base/task/task_traits.h"
+#include "base/task/thread_pool.h"
 #include "components/printing/browser/print_manager_utils.h"
+#include "components/printing/common/print.mojom.h"
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/render_frame_host.h"
 
@@ -55,6 +57,7 @@ BisonPrintManager::BisonPrintManager(
       fd_(file_descriptor) {
   DCHECK(settings_);
   pdf_writing_done_callback_ = std::move(callback);
+  DCHECK(pdf_writing_done_callback_);
   cookie_ = 1;  // Set a valid dummy cookie value.
 }
 
@@ -70,7 +73,8 @@ void BisonPrintManager::PdfWritingDone(int page_count) {
 bool BisonPrintManager::PrintNow() {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
   auto* rfh = web_contents()->GetMainFrame();
-  return rfh->Send(new PrintMsg_PrintPages(rfh->GetRoutingID()));
+  GetPrintRenderFrame(rfh)->PrintRequestedPages();
+  return true;
 }
 
 void BisonPrintManager::OnGetDefaultPrintSettings(
@@ -105,7 +109,7 @@ void BisonPrintManager::OnDidPrintDocument(
   if (params.document_cookie != cookie_)
     return;
 
-  const PrintHostMsg_DidPrintContent_Params& content = params.content;
+  const printing::mojom::DidPrintContentParams& content = params.content;
   if (!content.metafile_data_region.IsValid()) {
     NOTREACHED() << "invalid memory handle";
     web_contents()->Stop();
@@ -124,9 +128,9 @@ void BisonPrintManager::OnDidPrintDocument(
 
   DCHECK(pdf_writing_done_callback_);
   base::PostTaskAndReplyWithResult(
-      base::CreateTaskRunner({base::ThreadPool(), base::MayBlock(),
-                              base::TaskPriority::BEST_EFFORT,
-                              base::TaskShutdownBehavior::SKIP_ON_SHUTDOWN})
+      base::ThreadPool::CreateTaskRunner(
+          {base::MayBlock(), base::TaskPriority::BEST_EFFORT,
+           base::TaskShutdownBehavior::SKIP_ON_SHUTDOWN})
           .get(),
       FROM_HERE, base::BindOnce(&SaveDataToFd, fd_, number_pages_, data),
       base::BindOnce(&BisonPrintManager::OnDidPrintDocumentWritingDone,

@@ -2,17 +2,18 @@
 
 #include <memory>
 
-#include "base/android/jni_android.h"
-#include "base/android/jni_string.h"
-#include "base/macros.h"
-#include "base/no_destructor.h"
-#include "base/supports_user_data.h"
 #include "bison/bison_jni_headers/BisonSettings_jni.h"
 #include "bison/browser/bison_browser_context.h"
 #include "bison/browser/bison_content_browser_client.h"
 #include "bison/browser/bison_contents.h"
 #include "bison/browser/renderer_host/bison_render_view_host_ext.h"
 #include "bison/common/bison_content_client.h"
+
+#include "base/android/jni_android.h"
+#include "base/android/jni_string.h"
+#include "base/macros.h"
+#include "base/supports_user_data.h"
+#include "components/viz/common/features.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_entry.h"
 #include "content/public/browser/render_view_host.h"
@@ -40,6 +41,9 @@ void PopulateFixedWebPreferences(WebPreferences* web_prefs) {
   web_prefs->picture_in_picture_enabled = false;
   web_prefs->disable_features_depending_on_viz = true;
   web_prefs->disable_accelerated_small_canvases = true;
+  web_prefs->reenable_web_components_v0 = true;
+  // WebView has historically not adjusted font scale for text autosizing.
+  web_prefs->device_scale_adjustment = 1.0;
 }
 
 const void* const kBisonSettingsUserDataKey = &kBisonSettingsUserDataKey;
@@ -162,7 +166,8 @@ void BisonSettings::UpdateUserAgentLocked(JNIEnv* env,
 
   if (ua_overidden) {
     std::string override = base::android::ConvertJavaStringToUTF8(str);
-    web_contents()->SetUserAgentOverride(override, true);
+    web_contents()->SetUserAgentOverride(
+        blink::UserAgentOverride::UserAgentOnly(override), true);
   }
 
   content::NavigationController& controller = web_contents()->GetController();
@@ -183,7 +188,6 @@ void BisonSettings::UpdateWebkitPreferencesLocked(
       web_contents()->GetRenderViewHost();
   if (!render_view_host)
     return;
-  VLOG(0) << "OnWebkitPreferencesChanged";
   render_view_host->OnWebkitPreferencesChanged();
 }
 

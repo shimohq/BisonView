@@ -31,7 +31,8 @@ std::unique_ptr<policy::ConfigurationPolicyHandlerList> BuildHandlerList(
   std::unique_ptr<policy::ConfigurationPolicyHandlerList> handlers(
       new policy::ConfigurationPolicyHandlerList(
           base::BindRepeating(&PopulatePolicyHandlerParameters),
-          base::BindRepeating(&GetChromePolicyDetails)));
+          base::BindRepeating(&GetChromePolicyDetails),
+          false));
 
   // URL Filtering
   handlers->AddHandler(std::make_unique<policy::SimplePolicyHandler>(

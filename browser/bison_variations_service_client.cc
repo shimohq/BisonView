@@ -25,9 +25,9 @@ BisonVariationsServiceClient::BisonVariationsServiceClient() {}
 
 BisonVariationsServiceClient::~BisonVariationsServiceClient() {}
 
-base::Callback<base::Version(void)>
+BisonVariationsServiceClient::VersionCallback 
 BisonVariationsServiceClient::GetVersionForSimulationCallback() {
-  return base::BindRepeating(&GetVersionForSimulation);
+  return base::BindOnce(&GetVersionForSimulation);
 }
 
 scoped_refptr<network::SharedURLLoaderFactory>

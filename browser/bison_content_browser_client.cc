@@ -31,38 +31,40 @@
 #include "base/base_paths_android.h"
 #include "base/base_switches.h"
 #include "base/bind.h"
+#include "base/callback_helpers.h"
 #include "base/command_line.h"
-#include "base/debug/leak_annotations.h"
 #include "base/feature_list.h"
-#include "base/files/file.h"
-#include "base/files/file_util.h"
 #include "base/files/scoped_file.h"
 #include "base/memory/ptr_util.h"
-#include "base/no_destructor.h"
 #include "base/path_service.h"
 #include "base/stl_util.h"
 #include "base/strings/utf_string_conversions.h"
-#include "base/task/post_task.h"
 #include "build/build_config.h"
+#include "components/autofill/content/browser/content_autofill_driver_factory.h"
 #include "components/cdm/browser/cdm_message_filter_android.h"
-#include "components/cdm/browser/media_drm_storage_impl.h"
+#include "components/content_capture/browser/content_capture_receiver_manager.h"
 #include "components/crash/content/browser/crash_handler_host_linux.h"
 #include "components/navigation_interception/intercept_navigation_delegate.h"
 #include "components/page_load_metrics/browser/metrics_navigation_throttle.h"
 #include "components/page_load_metrics/browser/metrics_web_contents_observer.h"
 #include "components/policy/content/policy_blacklist_navigation_throttle.h"
-#include "components/version_info/version_info.h"
+#include "components/policy/core/browser/browser_policy_connector_base.h"
+#include "components/prefs/pref_service.h"
+#include "components/safe_browsing/core/features.h"
+#include "components/spellcheck/spellcheck_buildflags.h"
 #include "content/public/browser/browser_message_filter.h"
-#include "content/public/browser/browser_task_traits.h"  //
+#include "content/public/browser/browser_task_traits.h"
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/child_process_security_policy.h"
 #include "content/public/browser/client_certificate_delegate.h"
-#include "content/public/browser/cors_exempt_headers.h"
-#include "content/public/browser/login_delegate.h"
+#include "content/public/browser/file_url_loader.h"
 #include "content/public/browser/navigation_handle.h"
+#include "content/public/browser/navigation_throttle.h"
 #include "content/public/browser/network_service_instance.h"
-#include "content/public/browser/page_navigator.h"
+#include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/render_process_host.h"
+#include "content/public/browser/render_view_host.h"
+#include "content/public/browser/shared_cors_origin_access_list.h"
 #include "content/public/browser/storage_partition.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/common/content_descriptors.h"
@@ -72,29 +74,31 @@
 #include "content/public/common/url_constants.h"
 #include "content/public/common/user_agent.h"
 #include "content/public/common/web_preferences.h"
-#include "media/mojo/buildflags.h"
-#include "net/ssl/client_cert_identity.h"
-#include "net/url_request/url_request.h"
-#include "net/url_request/url_request_context_getter.h"
-#include "services/network/public/mojom/network_service.mojom.h"
-#include "services/service_manager/public/cpp/manifest.h"
-#include "services/service_manager/public/cpp/manifest_builder.h"
-#include "storage/browser/quota/quota_settings.h"
-#include "third_party/blink/public/common/features.h"
+#include "mojo/public/cpp/bindings/pending_associated_receiver.h"
+#include "mojo/public/cpp/bindings/pending_receiver.h"
+#include "mojo/public/cpp/bindings/self_owned_receiver.h"
+#include "net/android/network_library.h"
+#include "net/http/http_util.h"
+#include "net/net_buildflags.h"
+#include "net/ssl/ssl_cert_request_info.h"
+#include "net/ssl/ssl_info.h"
+#include "services/network/network_service.h"
+#include "services/network/public/cpp/resource_request.h"
+#include "services/network/public/mojom/cookie_manager.mojom-forward.h"
+#include "services/service_manager/public/cpp/binder_registry.h"
+#include "services/service_manager/public/cpp/interface_provider.h"
 #include "third_party/blink/public/common/loader/url_loader_throttle.h"
-#include "ui/base/ui_base_features.h"
-#include "ui/base/ui_base_switches.h"
-#include "url/gurl.h"
-#include "url/origin.h"
+#include "third_party/blink/public/mojom/loader/resource_load_info.mojom-shared.h"
+#include "ui/base/resource/resource_bundle.h"
+#include "ui/base/resource/resource_bundle_android.h"
+#include "ui/display/display.h"
+#include "ui/resources/grit/ui_resources.h"
 
-#if BUILDFLAG(ENABLE_MOJO_MEDIA_IN_BROWSER_PROCESS) || \
-    BUILDFLAG(ENABLE_CAST_RENDERER)
-#include "media/mojo/mojom/constants.mojom.h"           // nogncheck
-#include "media/mojo/services/media_service_factory.h"  // nogncheck
+#if BUILDFLAG(ENABLE_SPELLCHECK)
+#include "components/spellcheck/browser/spell_check_host_impl.h"
 #endif
 
 using content::BrowserThread;
-using content::StoragePartition;
 using content::WebContents;
 
 namespace bison {
@@ -120,6 +124,7 @@ class BisonContentsMessageFilter : public content::BrowserMessageFilter {
   void OverrideThreadForMessage(const IPC::Message& message,
                                 BrowserThread::ID* thread) override;
   bool OnMessageReceived(const IPC::Message& message) override;
+
   void OnShouldOverrideUrlLoading(int routing_id,
                                   const base::string16& url,
                                   bool has_user_gesture,
@@ -192,63 +197,10 @@ void BisonContentsMessageFilter::OnSubFrameCreated(int parent_render_frame_id,
       process_id_, parent_render_frame_id, child_render_frame_id);
 }
 
-// A dummy binder for mojo interface autofill::mojom::PasswordManagerDriver.
-// void DummyBindPasswordManagerDriver(
-//     mojo::PendingReceiver<autofill::mojom::PasswordManagerDriver> receiver,
-//     content::RenderFrameHost* render_frame_host) {}
 
-void PassMojoCookieManagerToCookieManager(
-    CookieManager* cookie_manager,
-    const mojo::Remote<network::mojom::NetworkContext>& network_context) {
-  // Get the CookieManager from the NetworkContext.
-  mojo::PendingRemote<network::mojom::CookieManager> cookie_manager_remote;
-  network_context->GetCookieManager(
-      cookie_manager_remote.InitWithNewPipeAndPassReceiver());
 
-  // Pass the mojo::PendingRemote<network::mojom::CookieManager> to
-  // bison::CookieManager, so it can implement its APIs with this mojo
-  // CookieManager.
-  cookie_manager->SetMojoCookieManager(std::move(cookie_manager_remote));
-}
 
-#if BUILDFLAG(ENABLE_MOJO_CDM)
-void CreateOriginId(cdm::MediaDrmStorageImpl::OriginIdObtainedCB callback) {
-  std::move(callback).Run(true, base::UnguessableToken::Create());
-}
 
-void AllowEmptyOriginIdCB(base::OnceCallback<void(bool)> callback) {
-  // Since CreateOriginId() always returns a non-empty origin ID, we don't need
-  // to allow empty origin ID.
-  std::move(callback).Run(false);
-}
-
-void CreateMediaDrmStorage(content::RenderFrameHost* render_frame_host,
-                           ::media::mojom::MediaDrmStorageRequest request) {
-  DCHECK(render_frame_host);
-
-  if (render_frame_host->GetLastCommittedOrigin().opaque()) {
-    DVLOG(1) << __func__ << ": Unique origin.";
-    return;
-  }
-
-  content::WebContents* web_contents =
-      content::WebContents::FromRenderFrameHost(render_frame_host);
-  DCHECK(web_contents) << "WebContents not available.";
-
-  auto* bison_browser_context =
-      static_cast<BisonBrowserContext*>(web_contents->GetBrowserContext());
-  DCHECK(bison_browser_context) << "BisonBrowserContext not available.";
-
-  PrefService* pref_service = bison_browser_context->GetPrefService();
-  DCHECK(pref_service);
-
-  // The object will be deleted on connection error, or when the frame navigates
-  // away.
-  new cdm::MediaDrmStorageImpl(
-      render_frame_host, pref_service, base::BindRepeating(&CreateOriginId),
-      base::BindRepeating(&AllowEmptyOriginIdCB), std::move(request));
-}
-#endif  // BUILDFLAG(ENABLE_MOJO_CDM)
 
 }  // namespace
 
@@ -258,11 +210,12 @@ std::string GetProduct() {
 
 std::string GetUserAgent() {
   std::string product = "Bison/1.0 " + GetProduct();
-  base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
-  if (command_line->HasSwitch(switches::kUseMobileUserAgent))
+  if (base::CommandLine::ForCurrentProcess()->HasSwitch(
+          switches::kUseMobileUserAgent)) {
     product += " Mobile";
-  return content::BuildUserAgentFromProductAndExtraOSInfo(product, "; wv",
-                                                          true);
+  }
+  return content::BuildUserAgentFromProductAndExtraOSInfo(
+      product, "; wv", content::IncludeAndroidBuildNumber::Include);
 }
 
 // TODO(yirui): can use similar logic as in PrependToAcceptLanguagesIfNecessary
@@ -293,11 +246,9 @@ bool BisonContentBrowserClient::get_check_cleartext_permitted() {
 
 BisonContentBrowserClient::BisonContentBrowserClient(
     BisonFeatureListCreator* feature_list_creator)
-    : bison_feature_list_creator_(feature_list_creator) {
+    : sniff_file_urls_(BisonSettings::GetAllowSniffingFileUrls()),
+      bison_feature_list_creator_(feature_list_creator) {
   DCHECK(bison_feature_list_creator_);
-
-  // frame_interfaces_.AddInterface(
-  //     base::BindRepeating(&DummyBindPasswordManagerDriver));
 }
 
 BisonContentBrowserClient::~BisonContentBrowserClient() {}
@@ -310,30 +261,34 @@ void BisonContentBrowserClient::OnNetworkServiceCreated(
   content::GetNetworkService()->SetUpHttpAuth(std::move(auth_static_params));
 }
 
-mojo::Remote<network::mojom::NetworkContext>
-BisonContentBrowserClient::CreateNetworkContext(
-    BrowserContext* context,
+
+void BisonContentBrowserClient::ConfigureNetworkContextParams(
+    content::BrowserContext* context,
     bool in_memory,
-    const base::FilePath& relative_partition_path) {
+    const base::FilePath& relative_partition_path,
+    network::mojom::NetworkContextParams* network_context_params,
+    network::mojom::CertVerifierCreationParams* cert_verifier_creation_params) {
   DCHECK(context);
 
-  auto* bison_context = static_cast<BisonBrowserContext*>(context);
-  mojo::Remote<network::mojom::NetworkContext> network_context;
-  network::mojom::NetworkContextParamsPtr context_params =
-      bison_context->GetNetworkContextParams(in_memory,
-                                             relative_partition_path);
+  content::GetNetworkService()->ConfigureHttpAuthPrefs(
+      BisonBrowserProcess::GetInstance()->CreateHttpAuthDynamicParams());
+
+  BisonBrowserContext* bison_context = static_cast<BisonBrowserContext*>(context);
+  bison_context->ConfigureNetworkContextParams(in_memory, relative_partition_path,
+                                            network_context_params,
+                                            cert_verifier_creation_params);
+  
+  mojo::PendingRemote<network::mojom::CookieManager> cookie_manager_remote;
+  network_context_params->cookie_manager =
+      cookie_manager_remote.InitWithNewPipeAndPassReceiver();
 
 #if DCHECK_IS_ON()
   g_created_network_context_params = true;
 #endif
-  content::GetNetworkService()->CreateNetworkContext(
-      network_context.BindNewPipeAndPassReceiver(), std::move(context_params));
 
-  // Pass a CookieManager to the code supporting BisonCookieManager.java (i.e.,
-  // the Cookies APIs).
-  PassMojoCookieManagerToCookieManager(bison_context->GetCookieManager(),
-                                       network_context);
-  return network_context;
+  bison_context->GetCookieManager()->SetMojoCookieManager(
+      std::move(cookie_manager_remote));
+  VLOG(0) << "ConfigureNetworkContextParams";    
 }
 
 BisonBrowserContext* BisonContentBrowserClient::InitBrowserContext() {
@@ -345,6 +300,13 @@ std::unique_ptr<BrowserMainParts>
 BisonContentBrowserClient::CreateBrowserMainParts(
     const MainFunctionParams& parameters) {
   return std::make_unique<BisonBrowserMainParts>(this);
+}
+
+WebContentsViewDelegate* BisonContentBrowserClient::GetWebContentsViewDelegate(
+    WebContents* web_contents) {
+  // return CreateShellWebContentsViewDelegate(web_contents);
+  VLOG(0) << "GetWebContentsViewDelegate";
+  return nullptr;
 }
 
 void BisonContentBrowserClient::RenderProcessWillLaunch(
@@ -365,138 +327,83 @@ bool BisonContentBrowserClient::IsExplicitNavigation(
   return ui::PageTransitionCoreTypeIs(transition, ui::PAGE_TRANSITION_TYPED);
 }
 
-bool BisonContentBrowserClient::ShouldUseMobileFlingCurve() {
-  return true;
-}
-
 bool BisonContentBrowserClient::IsHandledURL(const GURL& url) {
-  if (!url.is_valid())
+  if (!url.is_valid()) {
+    // We handle error cases.
     return true;
+  }
+
   const std::string scheme = url.scheme();
   DCHECK_EQ(scheme, base::ToLowerASCII(scheme));
   static const char* const kProtocolList[] = {
-      url::kDataScheme,         url::kBlobScheme,    url::kFileSystemScheme,
-      content::kChromeUIScheme, url::kContentScheme,
+    url::kHttpScheme,
+    url::kHttpsScheme,
+#if BUILDFLAG(ENABLE_WEBSOCKETS)
+    url::kWsScheme,
+    url::kWssScheme,
+#endif  // BUILDFLAG(ENABLE_WEBSOCKETS)
+    url::kDataScheme,
+    url::kBlobScheme,
+    url::kFileSystemScheme,
+    content::kChromeUIScheme,
+    url::kContentScheme,
   };
   if (scheme == url::kFileScheme) {
     // Return false for the "special" file URLs, so they can be loaded
     // even if access to file: scheme is not granted to the child process.
     return !IsAndroidSpecialFileUrl(url);
   }
-  for (size_t i = 0; i < base::size(kProtocolList); ++i) {
-    if (scheme == kProtocolList[i])
+  for (const char* supported_protocol : kProtocolList) {
+    if (scheme == supported_protocol)
       return true;
   }
-  return net::URLRequest::IsHandledProtocol(scheme);
-}
-
-void BisonContentBrowserClient::BindInterfaceRequestFromFrame(
-    content::RenderFrameHost* render_frame_host,
-    const std::string& interface_name,
-    mojo::ScopedMessagePipeHandle interface_pipe) {
-  if (!frame_interfaces_) {
-    frame_interfaces_ = std::make_unique<
-        service_manager::BinderRegistryWithArgs<content::RenderFrameHost*>>();
-  }
-
-  frame_interfaces_->TryBindInterface(interface_name, &interface_pipe,
-                                      render_frame_host);
-}
-
-void BisonContentBrowserClient::RunServiceInstance(
-    const service_manager::Identity& identity,
-    mojo::PendingReceiver<service_manager::mojom::Service>* receiver) {
-#if BUILDFLAG(ENABLE_MOJO_MEDIA_IN_BROWSER_PROCESS) || \
-    BUILDFLAG(ENABLE_CAST_RENDERER)
-  bool is_media_service = false;
-#if BUILDFLAG(ENABLE_MOJO_MEDIA_IN_BROWSER_PROCESS)
-  if (identity.name() == media::mojom::kMediaServiceName)
-    is_media_service = true;
-#endif  // BUILDFLAG(ENABLE_MOJO_MEDIA_IN_BROWSER_PROCESS)
-#if BUILDFLAG(ENABLE_CAST_RENDERER)
-  if (identity.name() == media::mojom::kMediaRendererServiceName)
-    is_media_service = true;
-#endif  // BUILDFLAG(ENABLE_CAST_RENDERER)
-
-    // if (is_media_service) {
-    //   service_manager::Service::RunAsyncUntilTermination(
-    //       media::CreateMediaServiceForTesting(std::move(*receiver)));
-    // }
-#endif  // BUILDFLAG(ENABLE_MOJO_MEDIA_IN_BROWSER_PROCESS) ||
-        // BUILDFLAG(ENABLE_CAST_RENDERER)
-}
-
-bool BisonContentBrowserClient::ShouldTerminateOnServiceQuit(
-    const service_manager::Identity& id) {
-  if (should_terminate_on_service_quit_callback_)
-    return std::move(should_terminate_on_service_quit_callback_).Run(id);
   return false;
 }
 
-base::Optional<service_manager::Manifest>
-BisonContentBrowserClient::GetServiceManifestOverlay(base::StringPiece name) {
-  // Check failed: false. The Service Manager prevented service
-  // "content_renderer" from binding interface "ws.mojom.Gpu" in target service
-  // "content_browser". You probably need to update one or more service
-  // manifests to ensure that "content_browser" exposes "ws.mojom.Gpu" through a
-  // capability
-  // and that "content_renderer" requires that capability from the
-  // "content_browser" service.
-  // VLOG(0) << "GetServiceManifestOverlay : name " << name;
-  if (name == content::mojom::kBrowserServiceName)
-    return GetContentBrowserOverlayManifest();
-  if (name == content::mojom::kRendererServiceName)
-    return GetContentRendererOverlayManifest();
-  return base::nullopt;
+bool BisonContentBrowserClient::ForceSniffingFileUrlsForHtml() {
+  return sniff_file_urls_;
 }
 
 void BisonContentBrowserClient::AppendExtraCommandLineSwitches(
     base::CommandLine* command_line,
     int child_process_id) {
-  // if (base::CommandLine::ForCurrentProcess()->HasSwitch(
-  //         switches::kExposeInternalsForTesting)) {
-  //   command_line->AppendSwitch(switches::kExposeInternalsForTesting);
-  // }
-  // if (base::CommandLine::ForCurrentProcess()->HasSwitch(
-  //         switches::kEnableCrashReporter)) {
-  //   command_line->AppendSwitch(switches::kEnableCrashReporter);
-  // }
-  // if (base::CommandLine::ForCurrentProcess()->HasSwitch(
-  //         switches::kCrashDumpsDir)) {
-  //   command_line->AppendSwitchPath(
-  //       switches::kCrashDumpsDir,
-  //       base::CommandLine::ForCurrentProcess()->GetSwitchValuePath(
-  //           switches::kCrashDumpsDir));
-  // }
-  // if (base::CommandLine::ForCurrentProcess()->HasSwitch(
-  //         switches::kRegisterFontFiles)) {
-  //   command_line->AppendSwitchASCII(
-  //       switches::kRegisterFontFiles,
-  //       base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
-  //           switches::kRegisterFontFiles));
+  command_line->AppendSwitch(switches::kAppCacheForceEnabled);
+
+  // if (!command_line->HasSwitch(switches::kSingleProcess)) {
+  //   // The only kind of a child process WebView can have is renderer or utility.
+  //   std::string process_type =
+  //       command_line->GetSwitchValueASCII(switches::kProcessType);
+  //   DCHECK(process_type == switches::kRendererProcess ||
+  //          process_type == switches::kUtilityProcess)
+  //       << process_type;
+  //   // Pass crash reporter enabled state to renderer processes.
+  //   if (base::CommandLine::ForCurrentProcess()->HasSwitch(
+  //           ::switches::kEnableCrashReporter)) {
+  //     command_line->AppendSwitch(::switches::kEnableCrashReporter);
+  //   }
+  //   if (base::CommandLine::ForCurrentProcess()->HasSwitch(
+  //           ::switches::kEnableCrashReporterForTesting)) {
+  //     command_line->AppendSwitch(::switches::kEnableCrashReporterForTesting);
+  //   }
   // }
 }
 
-std::string BisonContentBrowserClient::GetAcceptLangs(BrowserContext* context) {
+std::string BisonContentBrowserClient::GetApplicationLocale() {
+  return base::android::GetDefaultLocaleString();
+}
+
+std::string BisonContentBrowserClient::GetAcceptLangs(
+    content::BrowserContext* context) {
   return GetAcceptLangsImpl();
 }
 
-std::string BisonContentBrowserClient::GetDefaultDownloadName() {
-  NOTREACHED() << "BisonView does not use chromium downloads";
-  return std::string();
-}
 
 bool BisonContentBrowserClient::AllowAppCache(
     const GURL& manifest_url,
-    const GURL& first_party,
+    const GURL& site_for_cookies,
+    const base::Optional<url::Origin>& top_frame_origin,
     content::BrowserContext* context) {
   return true;
-}
-
-WebContentsViewDelegate* BisonContentBrowserClient::GetWebContentsViewDelegate(
-    WebContents* web_contents) {
-  // return CreateShellWebContentsViewDelegate(web_contents);
-  return nullptr;
 }
 
 // scoped_refptr<content::QuotaPermissionContext>
@@ -504,12 +411,6 @@ WebContentsViewDelegate* BisonContentBrowserClient::GetWebContentsViewDelegate(
 //   return new ShellQuotaPermissionContext();
 // }
 
-void BisonContentBrowserClient::GetQuotaSettings(
-    BrowserContext* context,
-    StoragePartition* partition,
-    storage::OptionalQuotaSettingsCallback callback) {
-  std::move(callback).Run(storage::GetHardCodedSettings(100 * 1024 * 1024));
-}
 
 GeneratedCodeCacheSettings
 BisonContentBrowserClient::GetGeneratedCodeCacheSettings(
@@ -529,16 +430,21 @@ void BisonContentBrowserClient::AllowCertificateError(
     const GURL& request_url,
     bool is_main_frame_request,
     bool strict_enforcement,
-    const base::Callback<void(content::CertificateRequestResultType)>&
-        callback) {
+    base::OnceCallback<void(content::CertificateRequestResultType)> callback) {
   BisonContentsClientBridge* client =
       BisonContentsClientBridge::FromWebContents(web_contents);
   bool cancel_request = true;
-  if (client)
+
+  base::RepeatingCallback<void(content::CertificateRequestResultType)>
+      repeating_callback = base::AdaptCallbackForRepeating(std::move(callback));
+  if (client) {
     client->AllowCertificateError(cert_error, ssl_info.cert.get(), request_url,
-                                  callback, &cancel_request);
-  if (cancel_request)
-    callback.Run(content::CERTIFICATE_REQUEST_RESULT_TYPE_DENY);
+                                  base::BindOnce(repeating_callback),
+                                  &cancel_request);
+  }
+  if (cancel_request) {
+    repeating_callback.Run(content::CERTIFICATE_REQUEST_RESULT_TYPE_DENY);
+  }
 }
 
 base::OnceClosure BisonContentBrowserClient::SelectClientCertificate(
@@ -553,10 +459,83 @@ base::OnceClosure BisonContentBrowserClient::SelectClientCertificate(
   return base::OnceClosure();
 }
 
+bool BisonContentBrowserClient::CanCreateWindow(
+    content::RenderFrameHost* opener,
+    const GURL& opener_url,
+    const GURL& opener_top_level_frame_url,
+    const url::Origin& source_origin,
+    content::mojom::WindowContainerType container_type,
+    const GURL& target_url,
+    const content::Referrer& referrer,
+    const std::string& frame_name,
+    WindowOpenDisposition disposition,
+    const blink::mojom::WindowFeatures& features,
+    bool user_gesture,
+    bool opener_suppressed,
+    bool* no_javascript_access) {
+  // We unconditionally allow popup windows at this stage and will give
+  // the embedder the opporunity to handle displaying of the popup in
+  // WebContentsDelegate::AddContents (via the
+  // AwContentsClient.onCreateWindow callback).
+  // Note that if the embedder has blocked support for creating popup
+  // windows through AwSettings, then we won't get to this point as
+  // the popup creation will have been blocked at the WebKit level.
+  if (no_javascript_access) {
+    *no_javascript_access = false;
+  }
+
+  content::WebContents* web_contents =
+      content::WebContents::FromRenderFrameHost(opener);
+  BisonSettings* settings = BisonSettings::FromWebContents(web_contents);
+
+  return (settings && settings->GetJavaScriptCanOpenWindowsAutomatically()) ||
+         user_gesture;
+}
+
+base::FilePath BisonContentBrowserClient::GetDefaultDownloadDirectory() {
+  // Android WebView does not currently use the Chromium downloads system.
+  // Download requests are cancelled immedately when recognized; see
+  // AwResourceDispatcherHost::CreateResourceHandlerForDownload. However the
+  // download system still tries to start up and calls this before recognizing
+  // the request has been cancelled.
+  return base::FilePath();
+}
+
+std::string BisonContentBrowserClient::GetDefaultDownloadName() {
+  NOTREACHED() << "BisonView does not use chromium downloads";
+  return std::string();
+}
+
+void BisonContentBrowserClient::DidCreatePpapiPlugin(
+    content::BrowserPpapiHost* browser_host) {
+  NOTREACHED() << "BisonView does not support plugins";
+}
+
+bool BisonContentBrowserClient::AllowPepperSocketAPI(
+    content::BrowserContext* browser_context,
+    const GURL& url,
+    bool private_api,
+    const content::SocketPermissionRequest* params) {
+  NOTREACHED() << "Android WebView does not support plugins";
+  return false;
+}
+
+bool BisonContentBrowserClient::IsPepperVpnProviderAPIAllowed(
+    content::BrowserContext* browser_context,
+    const GURL& url) {
+  NOTREACHED() << "Android WebView does not support plugins";
+  return false;
+}
+
+// content::TracingDelegate* BisonContentBrowserClient::GetTracingDelegate() {
+//   return new nullptr;
+// }
+
 void BisonContentBrowserClient::GetAdditionalMappedFilesForChildProcess(
     const base::CommandLine& command_line,
     int child_process_id,
     content::PosixFileDescriptorInfo* mappings) {
+  VLOG(0) << "GetAdditionalMappedFilesForChildProcess";    
   mappings->ShareWithRegion(
       kBisonPakDescriptor,
       base::GlobalDescriptors::GetInstance()->Get(kBisonPakDescriptor),
@@ -585,7 +564,7 @@ BisonContentBrowserClient::CreateThrottlesForNavigation(
   VLOG(0) << "CreateThrottlesForNavigation";
   std::vector<std::unique_ptr<content::NavigationThrottle>> throttles;
   if (navigation_handle->IsInMainFrame()) {
-    // 这个好像可以不加
+    //jiang 这个好像可以不加
     throttles.push_back(page_load_metrics::MetricsNavigationThrottle::Create(
         navigation_handle));
     throttles.push_back(
@@ -604,6 +583,51 @@ BisonContentBrowserClient::GetDevToolsManagerDelegate() {
   return new BisonDevToolsManagerDelegate();
 }
 
+base::Optional<service_manager::Manifest>
+BisonContentBrowserClient::GetServiceManifestOverlay(base::StringPiece name) {
+  if (name == content::mojom::kBrowserServiceName)
+    return GetContentBrowserOverlayManifest();
+  return base::nullopt;
+}
+
+bool BisonContentBrowserClient::BindAssociatedReceiverFromFrame(
+    content::RenderFrameHost* render_frame_host,
+    const std::string& interface_name,
+    mojo::ScopedInterfaceEndpointHandle* handle) {
+  if (interface_name == autofill::mojom::AutofillDriver::Name_) {
+    autofill::ContentAutofillDriverFactory::BindAutofillDriver(
+        mojo::PendingAssociatedReceiver<autofill::mojom::AutofillDriver>(
+            std::move(*handle)),
+        render_frame_host);
+    return true;
+  }
+  // if (interface_name == content_capture::mojom::ContentCaptureReceiver::Name_) {
+  //   content_capture::ContentCaptureReceiverManager::BindContentCaptureReceiver(
+  //       mojo::PendingAssociatedReceiver<
+  //           content_capture::mojom::ContentCaptureReceiver>(std::move(*handle)),
+  //       render_frame_host);
+  //   return true;
+  // }
+
+  return false;
+}
+
+void BisonContentBrowserClient::ExposeInterfacesToRenderer(
+    service_manager::BinderRegistry* registry,
+    blink::AssociatedInterfaceRegistry* associated_registry,
+    content::RenderProcessHost* render_process_host) {
+
+#if BUILDFLAG(ENABLE_SPELLCHECK)
+  auto create_spellcheck_host =
+      [](mojo::PendingReceiver<spellcheck::mojom::SpellCheckHost> receiver) {
+        mojo::MakeSelfOwnedReceiver(std::make_unique<SpellCheckHostImpl>(),
+                                    std::move(receiver));
+      };
+  registry->AddInterface(base::BindRepeating(create_spellcheck_host),
+                         content::GetUIThreadTaskRunner({}));
+#endif
+}
+
 std::vector<std::unique_ptr<blink::URLLoaderThrottle>>
 BisonContentBrowserClient::CreateURLLoaderThrottles(
     const network::ResourceRequest& request,
@@ -616,7 +640,7 @@ BisonContentBrowserClient::CreateURLLoaderThrottles(
   std::vector<std::unique_ptr<blink::URLLoaderThrottle>> result;
 
   if (request.resource_type ==
-      static_cast<int>(content::ResourceType::kMainFrame)) {
+      static_cast<int>(blink::mojom::ResourceType::kMainFrame)) {
     const bool is_load_url =
         request.transition_type & ui::PAGE_TRANSITION_FROM_API;
     const bool is_go_back_forward =
@@ -634,14 +658,6 @@ BisonContentBrowserClient::CreateURLLoaderThrottles(
   return result;
 }
 
-void BisonContentBrowserClient::ExposeInterfacesToMediaService(
-    service_manager::BinderRegistry* registry,
-    content::RenderFrameHost* render_frame_host) {
-#if BUILDFLAG(ENABLE_MOJO_CDM)
-  registry->AddInterface(
-      base::BindRepeating(&CreateMediaDrmStorage, render_frame_host));
-#endif
-}
 
 bool BisonContentBrowserClient::ShouldOverrideUrlLoading(
     int frame_tree_node_id,
@@ -653,7 +669,8 @@ bool BisonContentBrowserClient::ShouldOverrideUrlLoading(
     bool is_main_frame,
     ui::PageTransition transition,
     bool* ignore_navigation) {
-  VLOG(0) << "ShouldOverrideUrlLoading";
+  *ignore_navigation = false;    
+
   if (request_method != "GET")
     return true;
 
@@ -672,7 +689,6 @@ bool BisonContentBrowserClient::ShouldOverrideUrlLoading(
       WebContents::FromFrameTreeNodeId(frame_tree_node_id);
   if (web_contents == nullptr)
     return true;
-
   BisonContentsClientBridge* client_bridge =
       BisonContentsClientBridge::FromWebContents(web_contents);
   if (client_bridge == nullptr)
@@ -687,16 +703,71 @@ bool BisonContentBrowserClient::ShouldCreateThreadPool() {
   return g_should_create_thread_pool;
 }
 
-std::unique_ptr<LoginDelegate> BisonContentBrowserClient::CreateLoginDelegate(
-    const net::AuthChallengeInfo& auth_info,
-    content::WebContents* web_contents,
-    const content::GlobalRequestID& request_id,
-    bool is_main_frame,
+// std::unique_ptr<content::LoginDelegate>
+// BisonContentBrowserClient::CreateLoginDelegate(
+//     const net::AuthChallengeInfo& auth_info,
+//     content::WebContents* web_contents,
+//     const content::GlobalRequestID& request_id,
+//     bool is_main_frame,
+//     const GURL& url,
+//     scoped_refptr<net::HttpResponseHeaders> response_headers,
+//     bool first_auth_attempt,
+//     LoginAuthRequiredCallback auth_required_callback) {
+//   return nullptr;
+// }
+
+bool BisonContentBrowserClient::HandleExternalProtocol(
     const GURL& url,
-    scoped_refptr<net::HttpResponseHeaders> response_headers,
-    bool first_auth_attempt,
-    LoginAuthRequiredCallback auth_required_callback) {
-  return nullptr;
+    content::WebContents::OnceGetter web_contents_getter,
+    int child_id,
+    content::NavigationUIData* navigation_data,
+    bool is_main_frame,
+    ui::PageTransition page_transition,
+    bool has_user_gesture,
+    const base::Optional<url::Origin>& initiating_origin,
+    mojo::PendingRemote<network::mojom::URLLoaderFactory>* out_factory) {
+  mojo::PendingReceiver<network::mojom::URLLoaderFactory> receiver =
+      out_factory->InitWithNewPipeAndPassReceiver();
+  // We don't need to care for |security_options| as the factories constructed
+  // below are used only for navigation.
+  if (content::BrowserThread::CurrentlyOn(content::BrowserThread::IO)) {
+    // Manages its own lifetime.
+    new bison::BisonProxyingURLLoaderFactory(
+        0 /* process_id */, std::move(receiver), mojo::NullRemote(),
+        true /* intercept_only */, base::nullopt /* security_options */);
+  } else {
+    content::GetIOThreadTaskRunner({})->PostTask(
+        FROM_HERE,
+        base::BindOnce(
+            [](mojo::PendingReceiver<network::mojom::URLLoaderFactory>
+                   receiver) {
+              // Manages its own lifetime.
+              new bison::BisonProxyingURLLoaderFactory(
+                  0 /* process_id */, std::move(receiver), mojo::NullRemote(),
+                  true /* intercept_only */,
+                  base::nullopt /* security_options */);
+            },
+            std::move(receiver)));
+  }
+  return false;
+}
+
+void BisonContentBrowserClient::RegisterNonNetworkSubresourceURLLoaderFactories(
+    int render_process_id,
+    int render_frame_id,
+    NonNetworkURLLoaderFactoryMap* factories) {
+  WebContents* web_contents = content::WebContents::FromRenderFrameHost(
+      content::RenderFrameHost::FromID(render_process_id, render_frame_id));
+  BisonSettings* bison_settings = BisonSettings::FromWebContents(web_contents);
+
+  if (bison_settings && bison_settings->GetAllowFileAccess()) {
+    BisonBrowserContext* bison_browser_context =
+        BisonBrowserContext::FromWebContents(web_contents);
+    auto file_factory = CreateFileURLLoaderFactory(
+        bison_browser_context->GetPath(),
+        bison_browser_context->GetSharedCorsOriginAccessList());
+    factories->emplace(url::kFileScheme, std::move(file_factory));
+  }
 }
 
 bool BisonContentBrowserClient::ShouldIsolateErrorPage(bool in_main_frame) {
@@ -704,10 +775,6 @@ bool BisonContentBrowserClient::ShouldIsolateErrorPage(bool in_main_frame) {
 }
 
 bool BisonContentBrowserClient::ShouldEnableStrictSiteIsolation() {
-  // TODO(lukasza): When/if we eventually add OOPIF support for AW we should
-  // consider running AW tests with and without site-per-process (and this might
-  // require returning true below).  Adding OOPIF support for AW is tracked by
-  // https://crbug.com/869494.
   return false;
 }
 
@@ -728,10 +795,13 @@ bool BisonContentBrowserClient::WillCreateURLLoaderFactory(
     int render_process_id,
     URLLoaderFactoryType type,
     const url::Origin& request_initiator,
+    base::Optional<int64_t> navigation_id,
     mojo::PendingReceiver<network::mojom::URLLoaderFactory>* factory_receiver,
     mojo::PendingRemote<network::mojom::TrustedURLLoaderHeaderClient>*
         header_client,
-    bool* bypass_redirect_checks) {
+    bool* bypass_redirect_checks,
+    bool* disable_secure_dns,
+    network::mojom::URLLoaderFactoryOverridePtr* factory_override) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
 
   auto proxied_receiver = std::move(*factory_receiver);
@@ -741,28 +811,12 @@ bool BisonContentBrowserClient::WillCreateURLLoaderFactory(
       type == URLLoaderFactoryType::kNavigation ? 0 : render_process_id;
 
   // BisonView has one non off-the-record browser context.
-  base::PostTask(FROM_HERE, {content::BrowserThread::IO},
-                 base::BindOnce(&BisonProxyingURLLoaderFactory::CreateProxy,
+  content::GetIOThreadTaskRunner({})->PostTask(
+        FROM_HERE, base::BindOnce(&BisonProxyingURLLoaderFactory::CreateProxy,
                                 process_id, std::move(proxied_receiver),
-                                std::move(target_factory_info)));
+                                std::move(target_factory_info),
+                                  base::nullopt /* security_options */));
   return true;
-}
-
-void BisonContentBrowserClient::
-    WillCreateURLLoaderFactoryForAppCacheSubresource(
-        int render_process_id,
-        mojo::PendingRemote<network::mojom::URLLoaderFactory>*
-            pending_factory) {
-  DCHECK_CURRENTLY_ON(BrowserThread::UI);
-
-  auto pending_proxy = std::move(*pending_factory);
-  mojo::PendingReceiver<network::mojom::URLLoaderFactory> factory_receiver =
-      pending_factory->InitWithNewPipeAndPassReceiver();
-
-  base::PostTask(FROM_HERE, {content::BrowserThread::IO},
-                 base::BindOnce(&BisonProxyingURLLoaderFactory::CreateProxy,
-                                render_process_id, std::move(factory_receiver),
-                                std::move(pending_proxy)));
 }
 
 uint32_t BisonContentBrowserClient::GetWebSocketOptions(
@@ -790,7 +844,7 @@ bool BisonContentBrowserClient::WillCreateRestrictedCookieManager(
     network::mojom::RestrictedCookieManagerRole role,
     content::BrowserContext* browser_context,
     const url::Origin& origin,
-    const GURL& site_for_cookies,
+    const net::SiteForCookies& site_for_cookies,
     const url::Origin& top_frame_origin,
     bool is_service_worker,
     int process_id,
@@ -818,6 +872,20 @@ std::string BisonContentBrowserClient::GetUserAgent() {
   return bison::GetUserAgent();
 }
 
+content::ContentBrowserClient::WideColorGamutHeuristic
+BisonContentBrowserClient::GetWideColorGamutHeuristic() {
+  // if (base::FeatureList::IsEnabled(features::kWebViewWideColorGamutSupport))
+  //   return WideColorGamutHeuristic::kUseWindow;
+
+  if (display::Display::HasForceDisplayColorProfile() &&
+      display::Display::GetForcedDisplayColorProfile() ==
+          gfx::ColorSpace::CreateDisplayP3D65()) {
+    return WideColorGamutHeuristic::kUseWindow;
+  }
+
+  return WideColorGamutHeuristic::kNone;
+}
+
 void BisonContentBrowserClient::LogWebFeatureForCurrentPage(
     content::RenderFrameHost* render_frame_host,
     blink::mojom::WebFeature feature) {
@@ -825,6 +893,13 @@ void BisonContentBrowserClient::LogWebFeatureForCurrentPage(
   page_load_metrics::mojom::PageLoadFeatures new_features({feature}, {}, {});
   page_load_metrics::MetricsWebContentsObserver::RecordFeatureUsage(
       render_frame_host, new_features);
+}
+
+bool BisonContentBrowserClient::IsOriginTrialRequiredForAppCache(
+    content::BrowserContext* browser_text) {
+  // WebView has no way of specifying an origin trial, and so never
+  // consider it a requirement.
+  return false;
 }
 
 // content::SpeechRecognitionManagerDelegate*

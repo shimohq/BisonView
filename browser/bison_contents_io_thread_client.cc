@@ -4,6 +4,14 @@
 #include <memory>
 #include <utility>
 
+#include "bison/bison_jni_headers/BisonContentsBackgroundThreadClient_jni.h"
+#include "bison/bison_jni_headers/BisonContentsIoThreadClient_jni.h"
+#include "bison/browser/input_stream.h"
+#include "bison/browser/network_service/bison_web_resource_intercept_response.h"
+#include "bison/browser/network_service/bison_web_resource_request.h"
+#include "bison/browser/network_service/bison_web_resource_response.h"
+#include "bison/common/devtools_instrumentation.h"
+
 #include "base/android/jni_array.h"
 #include "base/android/jni_string.h"
 #include "base/android/jni_weak_ref.h"
@@ -14,13 +22,6 @@
 #include "base/metrics/histogram_macros.h"
 #include "base/synchronization/lock.h"
 #include "base/threading/scoped_blocking_call.h"
-#include "bison/bison_jni_headers/BisonContentsBackgroundThreadClient_jni.h"
-#include "bison/bison_jni_headers/BisonContentsIoThreadClient_jni.h"
-#include "bison/browser/input_stream.h"
-#include "bison/browser/network_service/bison_web_resource_intercept_response.h"
-#include "bison/browser/network_service/bison_web_resource_request.h"
-#include "bison/browser/network_service/bison_web_resource_response.h"
-#include "bison/common/devtools_instrumentation.h"
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/render_process_host.h"
@@ -39,7 +40,6 @@ using base::android::ScopedJavaLocalRef;
 using base::android::ToJavaArrayOfStrings;
 using content::BrowserThread;
 using content::RenderFrameHost;
-using content::ResourceType;
 using content::WebContents;
 using std::map;
 using std::pair;
@@ -320,9 +320,7 @@ BisonContentsIoThreadClient::BisonContentsIoThreadClient(
     const JavaRef<jobject>& obj)
     : pending_association_(pending_association), java_object_(obj) {}
 
-BisonContentsIoThreadClient::~BisonContentsIoThreadClient() {
-  // explict, out-of-line destructor.
-}
+BisonContentsIoThreadClient::~BisonContentsIoThreadClient() = default;
 
 bool BisonContentsIoThreadClient::PendingAssociation() const {
   return pending_association_;
@@ -343,7 +341,7 @@ namespace {
 // Used to specify what kind of url was intercepted by the embedded
 // using shouldIntercepterRequest callback.
 // Note: these values are persisted in UMA logs, so they should never be
-// renumbered nor reused.
+// renumbered or reused.
 enum class InterceptionType {
   kNoIntercept,
   kOther,

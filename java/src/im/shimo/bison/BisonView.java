@@ -36,8 +36,9 @@ public class BisonView extends FrameLayout {
 
     private void init(Context context) {
         if (!loaded){
-            LibraryLoader.getInstance().ensureInitialized(LibraryProcessType.PROCESS_WEBVIEW);
-            BrowserStartupController.get(LibraryProcessType.PROCESS_WEBVIEW).startBrowserProcessesSync(false);
+            LibraryLoader.getInstance().setLibraryProcessType(LibraryProcessType.PROCESS_WEBVIEW);
+            LibraryLoader.getInstance().loadNow();
+            BrowserStartupController.getInstance().startBrowserProcessesSync(LibraryProcessType.PROCESS_WEBVIEW,false);
             loaded = true;
         }
         mBisonContentsClient = new BisonContentsClient(this, context);

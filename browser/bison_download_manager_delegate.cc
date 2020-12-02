@@ -12,52 +12,8 @@
 
 namespace bison {
 
-namespace {
-
-void DownloadStartingOnUIThread(content::WebContents* web_contents,
-                                const GURL& url,
-                                const std::string& user_agent,
-                                const std::string& content_disposition,
-                                const std::string& mime_type,
-                                int64_t content_length) {
-  BisonContentsClientBridge* client =
-      BisonContentsClientBridge::FromWebContents(web_contents);
-  if (!client)
-    return;
-  client->NewDownload(url, user_agent, content_disposition, mime_type,
-                      content_length);
-}
-
-}  // namespace
-
+BisonDownloadManagerDelegate::BisonDownloadManagerDelegate() = default;
 BisonDownloadManagerDelegate::~BisonDownloadManagerDelegate() {}
-
-bool BisonDownloadManagerDelegate::DetermineDownloadTarget(
-    download::DownloadItem* item,
-    const content::DownloadTargetCallback& callback) {
-  // Note this cancel is independent of the URLRequest cancel in
-  // BisonResourceDispatcherHostDelegate::DownloadStarting. The request
-  // could have already finished by the time DownloadStarting is called.
-  callback.Run(base::FilePath() /* Empty file path for cancel */,
-               download::DownloadItem::TARGET_DISPOSITION_OVERWRITE,
-               download::DOWNLOAD_DANGER_TYPE_NOT_DANGEROUS, base::FilePath(),
-               download::DOWNLOAD_INTERRUPT_REASON_USER_CANCELED);
-  return true;
-}
-
-bool BisonDownloadManagerDelegate::ShouldCompleteDownload(
-    download::DownloadItem* item,
-    base::OnceClosure complete_callback) {
-  NOTREACHED();
-  return true;
-}
-
-bool BisonDownloadManagerDelegate::ShouldOpenDownload(
-    download::DownloadItem* item,
-    const content::DownloadOpenDelayedCallback& callback) {
-  NOTREACHED();
-  return true;
-}
 
 bool BisonDownloadManagerDelegate::InterceptDownloadIfApplicable(
     const GURL& url,
@@ -71,22 +27,8 @@ bool BisonDownloadManagerDelegate::InterceptDownloadIfApplicable(
   if (!web_contents)
     return false;
 
-  std::string bison_user_agent = web_contents->GetUserAgentOverride();
-  if (bison_user_agent.empty()) {
-    // use default user agent if nothing is provided
-    bison_user_agent = user_agent.empty() ? GetUserAgent() : user_agent;
-  }
-  base::PostTask(FROM_HERE, {content::BrowserThread::UI},
-                 base::BindOnce(&DownloadStartingOnUIThread, web_contents, url,
-                                bison_user_agent, content_disposition, mime_type,
-                                content_length));
+  // jiang 未完成 需要 ClientBridge
   return true;
-}
-
-void BisonDownloadManagerDelegate::GetNextId(
-    const content::DownloadIdCallback& callback) {
-  static uint32_t next_id = download::DownloadItem::kInvalidId + 1;
-  callback.Run(next_id++);
 }
 
 }  // namespace bison

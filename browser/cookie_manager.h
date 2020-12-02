@@ -9,7 +9,7 @@
 
 #include "base/android/scoped_java_ref.h"
 #include "base/containers/circular_deque.h"
-#include "base/lazy_instance.h"
+#include "base/no_destructor.h"
 #include "base/thread_annotations.h"
 #include "base/threading/thread.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
@@ -48,6 +48,10 @@ class CookieManager {
   void SetMojoCookieManager(
       mojo::PendingRemote<network::mojom::CookieManager> cookie_manager_remote);
 
+  void SetWorkaroundHttpSecureCookiesForTesting(
+      JNIEnv* env,
+      const base::android::JavaParamRef<jobject>& obj,
+      jboolean allow);
   void SetShouldAcceptCookies(JNIEnv* env,
                               const base::android::JavaParamRef<jobject>& obj,
                               jboolean accept);
@@ -88,19 +92,19 @@ class CookieManager {
                         const base::android::JavaParamRef<jobject>& obj);
   jboolean HasCookies(JNIEnv* env,
                       const base::android::JavaParamRef<jobject>& obj);
-  bool AllowFileSchemeCookies();
-  jboolean AllowFileSchemeCookies(
+  bool GetAllowFileSchemeCookies();
+  jboolean GetAllowFileSchemeCookies(
       JNIEnv* env,
       const base::android::JavaParamRef<jobject>& obj);
-  void SetAcceptFileSchemeCookies(
+  void SetAllowFileSchemeCookies(
       JNIEnv* env,
       const base::android::JavaParamRef<jobject>& obj,
-      jboolean accept);
+      jboolean allow);
 
   base::FilePath GetCookieStorePath();
 
  private:
-  friend struct base::LazyInstanceTraitsBase<CookieManager>;
+  friend class base::NoDestructor<CookieManager>;
 
   CookieManager();
   ~CookieManager();
@@ -129,14 +133,18 @@ class CookieManager {
                        const std::string& value,
                        base::OnceCallback<void(bool)> callback);
 
+  void SetWorkaroundHttpSecureCookiesAsyncHelper(bool allow,
+                                                 base::OnceClosure complete);
+
   void GotCookies(const std::vector<net::CanonicalCookie>& cookies);
   void GetCookieListAsyncHelper(const GURL& host,
                                 net::CookieList* result,
                                 base::OnceClosure complete);
-  void GetCookieListCompleted(base::OnceClosure complete,
-                              net::CookieList* result,
-                              const net::CookieStatusList& value,
-                              const net::CookieStatusList& excluded_cookies);
+  void GetCookieListCompleted(
+      base::OnceClosure complete,
+      net::CookieList* result,
+      const net::CookieAccessResultList& value,
+      const net::CookieAccessResultList& excluded_cookies);
 
   void RemoveSessionCookiesHelper(base::OnceCallback<void(bool)> callback);
   void RemoveAllCookiesHelper(base::OnceCallback<void(bool)> callback);
@@ -157,27 +165,29 @@ class CookieManager {
                            bool* result,
                            const net::CookieList& cookies);
 
-  void AllowFileSchemeCookiesAsyncHelper(bool accept,
-                                         base::OnceClosure complete);
+  void SetAllowFileSchemeCookiesAsyncHelper(bool allow,
+                                            base::OnceClosure complete);
   // |can_change_schemes| indicates whether or not this call was successful,
   // indicating whether we may update |accept_file_scheme_cookies_|.
-  void AllowFileSchemeCookiesCompleted(base::OnceClosure complete,
-                                       bool accept,
-                                       bool can_change_schemes);
+  void SetAllowFileSchemeCookiesCompleted(base::OnceClosure complete,
+                                          bool allow,
+                                          bool can_change_schemes);
   void MigrateCookieStorePath();
 
   base::FilePath cookie_store_path_;
 
   // This protects the following bool, as it's used on multiple threads.
-  base::Lock accept_file_scheme_cookies_lock_;
+  base::Lock allow_file_scheme_cookies_lock_;
   // True if cookies should be allowed for file URLs. Can only be changed prior
   // to creating the CookieStore.
-  bool accept_file_scheme_cookies_ GUARDED_BY(accept_file_scheme_cookies_lock_);
+  bool allow_file_scheme_cookies_ GUARDED_BY(allow_file_scheme_cookies_lock_);
   // True once the cookie store has been created. Just used to track when
   // |accept_file_scheme_cookies_| can no longer be modified. Only accessed on
   // |cookie_store_task_runner_|.
   bool cookie_store_created_;
 
+  bool workaround_http_secure_cookies_;
+  
   base::Thread cookie_store_client_thread_;
   base::Thread cookie_store_backend_thread_;
 

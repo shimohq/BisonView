@@ -1,4 +1,5 @@
 import("//build/config/android/rules.gni")
+import("//components/spellcheck/spellcheck_build_features.gni")
 
 java_cpp_enum("browser_enums") {
   sources = [
@@ -137,38 +138,61 @@ source_set("browser") {
   ]
 
   deps = [
-    "metrics",
-    "//base",
+    # "metrics",
     "//bison:bison_jni_headers",
     "//bison/common",
     "//bison/common:common_mojom",
-    "//components/autofill/android:provider",
+
+    "//base",
+    "//components/autofill/android/provider",
     "//components/autofill/content/browser",
     "//components/cdm/browser",
     "//components/embedder_support/android:web_contents_delegate",
-    "//components/heap_profiling",
+    "//components/embedder_support/android/metrics",
+    "//components/heap_profiling/multi_process",
+    "//components/js_injection/browser",
+    "//components/js_injection/common",
+    "//components/js_injection/common:common_mojom",
     "//components/navigation_interception",
     "//components/page_load_metrics/browser",
     "//components/policy/content/",
     "//components/policy/core/browser",
     "//components/printing/browser",
     "//components/printing/common",
+    "//components/printing/common:mojo_interfaces",
+    "//components/security_interstitials/content:security_interstitial_page",
+    "//components/security_interstitials/core",
+    "//components/services/heap_profiling/public/cpp",
+    "//components/spellcheck:buildflags",
+    "//components/url_formatter",
+    "//components/user_prefs",
     "//components/variations",
     "//components/variations/net",
     "//components/variations/service",
     "//components/version_info",
     "//components/version_info/android:channel_getter",
     "//components/visitedlink/browser",
+    "//components/webdata/common",
     "//content/public/browser",
     "//media/mojo:buildflags",
     "//printing",
     "//services/preferences/tracked",
-    "//services/viz/privileged/mojom",
-    "//services/viz/public/mojom",
+    "//services/proxy_resolver:lib",
+    "//third_party/blink/public/common",
+    "//third_party/blink/public/mojom/frame",
+    "//third_party/crashpad/crashpad/client",
     "//ui/android",
-    "//ui/gfx",
     "//ui/gl",
     "//ui/resources",
     "//ui/touch_selection",
+  ]
+
+  if (enable_spellcheck) {
+    deps += [ "//components/spellcheck/browser" ]
+  }
+
+  configs += [
+    "//tools/v8_context_snapshot:use_v8_context_snapshot",
+    "//v8:external_startup_data",
   ]
 }

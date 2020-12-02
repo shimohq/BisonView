@@ -77,14 +77,14 @@ shared_library("libbison_view") {
 
   deps = [
     ":bison_jni_registration",
-    "//base",
     "//bison:bison_lib",
-    "//components/crash/content/app",
+    "//base",
+    "//components/crash/core/app",
     "//components/crash/content/browser",
 
     # "//components/embedder_support/android:view",
     "//components/keyed_service/content",
-    "//content/public/app:both",
+    "//content/public/app",
     "//content/public/browser",
     "//content/public/renderer",
     "//ui/gfx",
@@ -109,8 +109,9 @@ _registration_header = "$target_gen_dir/bison_jni_registration.h"
 
 # TODO 差重定义shared_library
 generate_jni_registration("bison_jni_registration") {
-  target = "//bison:bison_java"
+  targets = ["//bison:bison_java"]
   header_output = _registration_header
+  namespace = "bison"
 }
 
 android_library("bison_jni_registration_java") {
@@ -132,7 +133,7 @@ _native_intermediate_jar_path = "$target_out_dir/repackage_native_impl.jar"
 android_java_prebuilt("repackage_native_java") {
   jar_path = _native_intermediate_jar_path
 
-  enable_bytecode_rewriter = false
+  enable_bytecode_checks = false
   deps = bison_java_deps + [ ":repackage_native_impl" ]
 }
 
@@ -186,12 +187,10 @@ android_assets("bison_v8_snapshot_assets") {
     }
     
     renaming_sources = [
-      "$root_out_dir/natives_blob.bin" ,
       "$root_out_dir/snapshot_blob.bin"
     ]
     
     renaming_destinations = [
-      "bison/natives_blob.bin",
       "bison/$abi/snapshot_blob_$arch_suffix.bin"
     ]
     

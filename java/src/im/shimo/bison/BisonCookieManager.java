@@ -4,12 +4,12 @@ import android.os.Handler;
 import android.os.Looper;
 
 import androidx.annotation.Nullable;
+import androidx.annotation.VisibleForTesting;
 
 import org.chromium.base.Callback;
 import org.chromium.base.annotations.JNINamespace;
 import org.chromium.base.annotations.NativeMethods;
 import org.chromium.base.library_loader.LibraryLoader;
-import org.chromium.base.library_loader.LibraryProcessType;
 
 /**
  * BisonCookieManager manages cookies according to RFC2109 spec.
@@ -25,7 +25,7 @@ public final class BisonCookieManager {
     }
 
     public BisonCookieManager(long nativeCookieManager) {
-        LibraryLoader.getInstance().ensureInitialized(LibraryProcessType.PROCESS_WEBVIEW);
+        LibraryLoader.getInstance().ensureInitialized();
         mNativeCookieManager = nativeCookieManager;
     }
 
@@ -155,7 +155,7 @@ public final class BisonCookieManager {
      * Whether cookies are accepted for file scheme URLs.
      */
     public boolean allowFileSchemeCookies() {
-        return BisonCookieManagerJni.get().allowFileSchemeCookies(
+        return BisonCookieManagerJni.get().getAllowFileSchemeCookies(
                 mNativeCookieManager, BisonCookieManager.this);
     }
 
@@ -169,8 +169,18 @@ public final class BisonCookieManager {
      * instance has been created.
      */
     public void setAcceptFileSchemeCookies(boolean accept) {
-        BisonCookieManagerJni.get().setAcceptFileSchemeCookies(
+        BisonCookieManagerJni.get().setAllowFileSchemeCookies(
                 mNativeCookieManager, BisonCookieManager.this, accept);
+    }
+
+    /**
+     * Sets whether cookies for insecure schemes (http:) are permitted to include the "Secure"
+     * directive.
+     */
+    @VisibleForTesting
+    public void setWorkaroundHttpSecureCookiesForTesting(boolean allow) {
+        BisonCookieManagerJni.get().setWorkaroundHttpSecureCookiesForTesting(
+                mNativeCookieManager, BisonCookieManager.this, allow);
     }
 
     /**
@@ -202,7 +212,7 @@ public final class BisonCookieManager {
         public void onResult(final Boolean result) {
             if (mHandler == null) return;
             assert mCallback != null;
-            mHandler.post(() -> mCallback.onResult(result));
+            mHandler.post(mCallback.bind(result));
         }
     }
 
@@ -263,8 +273,10 @@ public final class BisonCookieManager {
         void removeExpiredCookies(long nativeCookieManager, BisonCookieManager caller);
         void flushCookieStore(long nativeCookieManager, BisonCookieManager caller);
         boolean hasCookies(long nativeCookieManager, BisonCookieManager caller);
-        boolean allowFileSchemeCookies(long nativeCookieManager, BisonCookieManager caller);
-        void setAcceptFileSchemeCookies(
+        boolean getAllowFileSchemeCookies(long nativeCookieManager, BisonCookieManager caller);
+        void setAllowFileSchemeCookies(
                 long nativeCookieManager, BisonCookieManager caller, boolean accept);
+        void setWorkaroundHttpSecureCookiesForTesting(
+                long nativeCookieManager, BisonCookieManager caller, boolean allow);
     }
 }

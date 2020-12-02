@@ -8,15 +8,19 @@
 #include "bison/browser/bison_browser_context.h"
 #include "bison/browser/bison_browser_process.h"
 
+#include "base/compiler_specific.h"
 #include "base/macros.h"
 #include "base/task/single_thread_task_executor.h"
 #include "content/public/browser/browser_main_parts.h"
+
+namespace metrics {
+class MemoryMetricsLogger;
+}
 
 namespace bison {
 
 class BisonBrowserProcess;
 class BisonContentBrowserClient;
-class MemoryMetricsLogger;
 
 class BisonBrowserMainParts : public content::BrowserMainParts {
  public:
@@ -35,7 +39,7 @@ class BisonBrowserMainParts : public content::BrowserMainParts {
 
   BisonContentBrowserClient* browser_client_;
 
-  std::unique_ptr<MemoryMetricsLogger> metrics_logger_;
+  //std::unique_ptr<metrics::MemoryMetricsLogger> metrics_logger_;
 
   std::unique_ptr<BisonBrowserProcess> browser_process_;
 

@@ -3,12 +3,15 @@
 #include <memory>
 
 #include "bison/browser/bison_contents_io_thread_client.h"
-#include "base/logging.h"
+
+#include "base/check_op.h"
+#include "base/no_destructor.h"
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/websocket_handshake_request_info.h"
 #include "net/base/net_errors.h"
-#include "net/base/static_cookie_policy.h"
+#include "net/cookies/site_for_cookies.h"
+#include "net/cookies/static_cookie_policy.h"
 #include "url/gurl.h"
 
 using base::AutoLock;
@@ -17,19 +20,15 @@ using content::WebSocketHandshakeRequestInfo;
 
 namespace bison {
 
-namespace {
-base::LazyInstance<BisonCookieAccessPolicy>::Leaky g_lazy_instance;
-}  // namespace
-
-BisonCookieAccessPolicy::~BisonCookieAccessPolicy() {
-}
+BisonCookieAccessPolicy::~BisonCookieAccessPolicy() = default;
 
 BisonCookieAccessPolicy::BisonCookieAccessPolicy()
     : accept_cookies_(true) {
 }
 
 BisonCookieAccessPolicy* BisonCookieAccessPolicy::GetInstance() {
-  return g_lazy_instance.Pointer();
+  static base::NoDestructor<BisonCookieAccessPolicy> instance;
+  return instance.get();
 }
 
 bool BisonCookieAccessPolicy::GetShouldAcceptCookies() {
@@ -59,20 +58,22 @@ bool BisonCookieAccessPolicy::GetShouldAcceptThirdPartyCookies(
   return io_thread_client->ShouldAcceptThirdPartyCookies();
 }
 
-bool BisonCookieAccessPolicy::AllowCookies(const GURL& url,
-                                        const GURL& first_party,
-                                        int render_process_id,
-                                        int render_frame_id) {
+bool BisonCookieAccessPolicy::AllowCookies(
+    const GURL& url,
+    const net::SiteForCookies& site_for_cookies,
+    int render_process_id,
+    int render_frame_id) {
   DCHECK_CURRENTLY_ON(BrowserThread::IO);
   bool third_party = GetShouldAcceptThirdPartyCookies(
       render_process_id, render_frame_id,
       content::RenderFrameHost::kNoFrameTreeNodeId);
-  return CanAccessCookies(url, first_party, third_party);
+  return CanAccessCookies(url, site_for_cookies, third_party);
 }
 
-bool BisonCookieAccessPolicy::CanAccessCookies(const GURL& url,
-                                            const GURL& site_for_cookies,
-                                            bool accept_third_party_cookies) {
+bool BisonCookieAccessPolicy::CanAccessCookies(
+    const GURL& url,
+    const net::SiteForCookies& site_for_cookies,
+    bool accept_third_party_cookies) {
   if (!accept_cookies_)
     return false;
 
