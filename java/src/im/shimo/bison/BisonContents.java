@@ -651,6 +651,8 @@ class BisonContents extends FrameLayout {
         loadUrl(url, null);
     }
     public void postUrl(String url, byte[] postData) {
+        if (TRACE) Log.i(TAG, "%s postUrl=%s", this, url);
+        if (isDestroyed(WARN)) return;
         LoadUrlParams params = LoadUrlParams.createLoadHttpPostParams(url, postData);
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/x-www-form-urlencoded");
@@ -1160,6 +1162,7 @@ class BisonContents extends FrameLayout {
     }
 
     public void invokeGeolocationCallback(boolean value, String requestingFrame) {
+        if (isDestroyed(NO_WARN)) return;
         BisonContentsJni.get().invokeGeolocationCallback(
                 mNativeBisonContents, value, requestingFrame);
     }
@@ -1227,8 +1230,7 @@ class BisonContents extends FrameLayout {
 
 
     private void saveWebArchiveInternal(String path, final Callback<String> callback) {
-        //|| isDestroyed(WARN)
-        if (path == null) {
+        if (path == null || isDestroyed(WARN)) {
             if (callback == null) return;
 
             PostTask.runOrPostTask(UiThreadTaskTraits.DEFAULT, () -> callback.onResult(null));
@@ -1321,6 +1323,11 @@ class BisonContents extends FrameLayout {
         return true;
     }
 
+
+    static void logCommandLineForDebugging() {
+        BisonContentsJni.get().logCommandLineForDebugging();
+    }
+
     @NativeMethods
     interface Natives {
         long init(BisonContents caller, long nativeBisonBrowserContext);
@@ -1357,6 +1364,7 @@ class BisonContents extends FrameLayout {
                 long nativeBisonContents, BisonContents caller, String origin, long resources);
         void grantFileSchemeAccesstoChildProcess(long nativeBisonContents);
         String getProductVersion();
+        void logCommandLineForDebugging();
     }
 
 }

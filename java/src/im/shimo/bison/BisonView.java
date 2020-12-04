@@ -212,6 +212,9 @@ public class BisonView extends FrameLayout {
         return sClientCertLookupTable;
     }
 
+    public void logCommandLineForDebugging(){
+        BisonContents.logCommandLineForDebugging();
+    }
 
     public interface FindListener {
         void onFindResultReceived(int activeMatchOrdinal, int numberOfMatches,

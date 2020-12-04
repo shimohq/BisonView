@@ -822,4 +822,18 @@ ScopedJavaLocalRef<jstring> JNI_BisonContents_GetProductVersion(JNIEnv *env) {
       env, version_info::GetVersionNumber());
 }
 
+//static
+void JNI_BisonContents_LogCommandLineForDebugging(JNIEnv *env) {
+  const base::CommandLine& command_line =
+      *base::CommandLine::ForCurrentProcess();
+  for (const auto& pair : command_line.GetSwitches()) {
+    const std::string& key = pair.first;
+    const base::CommandLine::StringType& value = pair.second;
+    LOG(INFO) << "BisonViewCommandLine '" << key << "': '" << value << "'";
+  }
+}
+
+
+
+
 } // namespace bison

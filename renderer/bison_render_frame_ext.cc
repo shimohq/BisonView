@@ -159,8 +159,8 @@ BisonRenderFrameExt::BisonRenderFrameExt(content::RenderFrame* render_frame)
   // if (content_capture::features::IsContentCaptureEnabled())
   //   new content_capture::ContentCaptureSender(render_frame, &registry_);
 
-  // // Add myself to the RenderFrame => BisonRenderFrameExt register.
-  // render_frame_ext_map.Get().emplace(render_frame, this);
+  // Add myself to the RenderFrame => BisonRenderFrameExt register.
+  GetFrameExtMap()->emplace(render_frame, this);
 }
 
 BisonRenderFrameExt::~BisonRenderFrameExt() {

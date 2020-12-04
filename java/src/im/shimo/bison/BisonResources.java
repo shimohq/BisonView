@@ -10,7 +10,6 @@ public class BisonResources {
 
     private static final String TAG = "BisonResources";
 
-
     private static boolean loaded;
 
     private final static String INTERNAL_RESOURCE_CLASSES[] = {

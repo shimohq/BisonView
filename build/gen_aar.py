@@ -328,10 +328,9 @@ def Build(build_dir, build_type, arch, extra_gn_args, extra_gn_switches,
     'rtc_include_tests': False,
     'target_cpu': _GetTargetCpu(arch),
     'android_override_version_name' : version_name,
-    'v8_android_log_stdout' : True,
-    'symbol_level' : 1,
+    'v8_android_log_stdout' : 'debug'== build_type,
+    # 'v8_embed_script' : '//bison/app.bundle2.js',
   }
-  
   gn_args_str = '--args=' + ' '.join([
       k + '=' + _EncodeForGN(v) for k, v in gn_args.items()] + extra_gn_args)
 
