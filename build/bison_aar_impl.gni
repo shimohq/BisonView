@@ -15,6 +15,8 @@ template("build_aar_impl") {
   _build_config = "$target_gen_dir/$target_name.build_config"
   _build_config_target_name = "$target_name$build_config_target_suffix"
 
+  print ("_build_config_target_name",_build_config_target_name)
+
   write_build_config(_build_config_target_name) {
     type = "dist_aar"
     forward_variables_from(invoker, [ "proguard_configs" ])
@@ -59,6 +61,7 @@ template("build_aar_impl") {
       "--dependencies-res-zips=@FileArg($_rebased_build_config:deps_info:dependency_zips)",
       "--r-text-files=@FileArg($_rebased_build_config:deps_info:extra_r_text_files)",
       "--proguard-configs=@FileArg($_rebased_build_config:deps_info:proguard_all_configs)",
+      "--deps-configs=@FileArg($_rebased_build_config:deps_info:deps_configs)"
     ]
 
 

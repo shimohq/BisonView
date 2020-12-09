@@ -38,12 +38,10 @@ class BisonMainDelegate : public ContentMainDelegate {
   void ProcessExiting(const std::string& process_type) override;
   bool ShouldCreateFeatureList() override;
   void PostEarlyInitialization(bool is_running_tests) override;
-  void PreCreateMainMessageLoop() override;
+  void PostFieldTrialInitialization() override;
   ContentBrowserClient* CreateContentBrowserClient() override;
   ContentGpuClient* CreateContentGpuClient() override;
   ContentRendererClient* CreateContentRendererClient() override;
-
-  static void InitializeResourceBundle();
 
  private:
   std::unique_ptr<BisonFeatureListCreator> bison_feature_list_creator_;

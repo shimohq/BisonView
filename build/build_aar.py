@@ -25,6 +25,7 @@ import shutil
 import sys
 import tempfile
 import zipfile
+import json
 
 
 GYP_ANDROID_DIR = os.path.join(os.path.dirname(__file__),
@@ -36,59 +37,10 @@ sys.path.append(GYP_ANDROID_DIR)
 
 from filter_zip import CreatePathTransform
 from util import build_utils
+from bison_build_util import AddResources, MergeRTxt , MergeProguardConfigs ,AddAssets
 
 
 _ANDROID_BUILD_DIR = os.path.dirname(os.path.dirname(__file__))
-
-
-def _MergeRTxt(r_paths, include_globs):
-  """Merging the given R.txt files and returns them as a string."""
-  all_lines = set()
-  keys = []
-  for r_path in r_paths:
-    if include_globs and not build_utils.MatchesGlob(r_path, include_globs):
-      continue
-    lines = []
-    with open(r_path) as f:
-      for line in f.readlines():
-         key = " ".join(line.split(' ')[:3])
-         if key not in keys :
-           keys.append(key)
-           lines.append(line)
-      
-      all_lines.update(lines)
-  return ''.join(sorted(all_lines))
-
-
-def _MergeProguardConfigs(proguard_configs):
-  """Merging the given proguard config files and returns them as a string."""
-  ret = []
-  for config in proguard_configs:
-    ret.append('# FROM: {}'.format(config))
-    with open(config) as f:
-      ret.append(f.read())
-  return '\n'.join(ret)
-
-
-def _AddResources(aar_zip, resource_zips, include_globs):
-  """Adds all resource zips to the given aar_zip.
-
-  Ensures all res/values/* files have unique names by prefixing them.
-  """
-  for i, path in enumerate(resource_zips):
-    print("res path" , path)
-    if include_globs and not build_utils.MatchesGlob(path, include_globs):
-      continue
-    with zipfile.ZipFile(path) as res_zip:
-      for info in res_zip.infolist():
-        data = res_zip.read(info)
-        dirname, basename = posixpath.split(info.filename)
-        if 'values' in dirname:
-          root, ext = os.path.splitext(basename)
-          basename = '{}_{}{}'.format(root, i, ext)
-          info.filename = posixpath.join(dirname, basename)
-        info.filename = posixpath.join('res', info.filename)
-        aar_zip.writestr(info, data)
 
 
 def main(args):
@@ -105,6 +57,9 @@ def main(args):
                       help='GN list of R.txt files to merge')
   parser.add_argument('--proguard-configs', required=True,
                       help='GN list of ProGuard flag files to merge.')
+  parser.add_argument('--deps-configs', required=False,
+                      help='GN list of ProGuard flag files to merge.')
+
   parser.add_argument(
       '--android-manifest',
       help='Path to AndroidManifest.xml to include.',
@@ -144,21 +99,7 @@ def main(args):
   options.resource_included_globs = build_utils.ParseGnList(
       options.resource_included_globs)
 
-
-  # options.r_text_files = [r_text_file for r_text_file in options.r_text_files if "third_party" not in r_text_file]
-  # options.jars = [jar for jar in options.jars if "third_party" not in jar]
-  # options.dependencies_res_zips = [res_zip for res_zip in options.dependencies_res_zips if "third_party" not in res_zip]
-
-  # print("options.r_text_files",options.r_text_files)
-  # print ("=======options.jars========")
-  # print ("\n".join(options.jars))
-  # print ("=======options.jars========")
-  
-  # print ("=======options.dependencies_res_zips========")
-  # print (options.dependencies_res_zips)
-  # print ("=======options.dependencies_res_zips========")
-
-  print ("options.android_manifest",options.android_manifest)
+  options.deps_configs= build_utils.ParseGnList(options.deps_configs)
 
   with tempfile.NamedTemporaryFile(delete=False) as staging_file:
     try:
@@ -176,16 +117,16 @@ def main(args):
         build_utils.AddToZipHermetic(
             z,
             'R.txt',
-            data=_MergeRTxt(options.r_text_files,
+            data=MergeRTxt(options.r_text_files,
                             options.resource_included_globs))           
         build_utils.AddToZipHermetic(z, 'public.txt', data='')
 
         if options.proguard_configs:
           build_utils.AddToZipHermetic(
               z, 'proguard.txt',
-              data=_MergeProguardConfigs(options.proguard_configs))
+              data=MergeProguardConfigs(options.proguard_configs))
 
-        _AddResources(z, options.dependencies_res_zips,
+        AddResources(z, options.dependencies_res_zips,
                       options.resource_included_globs)
 
         for native_library in options.native_libraries:
@@ -193,19 +134,7 @@ def main(args):
           build_utils.AddToZipHermetic(
               z, os.path.join('jni', options.abi, libname),
               src_path=native_library)
-
-        # TODO jiang 这里先写固定值,后面有时间再改成重配置读取
-        build_utils.AddToZipHermetic(
-          z,os.path.join("assets","bison_icudtl.dat"),src_path="icudtl.dat")
-        # build_utils.AddToZipHermetic(
-        #   z,os.path.join("assets","bison_natives_blob.bin"),src_path="natives_blob.bin")
-        build_utils.AddToZipHermetic(
-          z,os.path.join("assets","bison_snapshot_blob_32.bin"),src_path="snapshot_blob.bin")
-          # snapshot_blob_32    snapshot_blob_32.bin
-
-        #gen/bison/core/chrome_100_percent.pak
-        build_utils.AddToZipHermetic(
-          z,os.path.join("assets","bison.pak"),src_path="bison.pak")
+          AddAssets(z, options.deps_configs)
           
     except:
       os.unlink(staging_file.name)
