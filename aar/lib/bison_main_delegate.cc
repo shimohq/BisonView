@@ -230,32 +230,6 @@ void BisonMainDelegate::PreSandboxStartup() {
   base::CPU cpu_info;
 #endif
 
-  VLOG(0) << "======调试宏定义======";
-#if defined(ARCH_CPU_ARM_FAMILY)
-  VLOG(0) << "defined(ARCH_CPU_ARM_FAMILY) true";
-#else
-  VLOG(0) << "defined(ARCH_CPU_ARM_FAMILY) false";
-#endif
-
-#if defined(OS_FUCHSIA)
-  VLOG(0) << "defined(OS_FUCHSIA) true";
-#else
-  VLOG(0) << "defined(OS_FUCHSIA) false";
-#endif
-
-#if defined(TOOLKIT_VIEWS)
-  VLOG(0) << "defined(TOOLKIT_VIEWS) true";
-#else
-  VLOG(0) << "defined(TOOLKIT_VIEWS) false";
-#endif
-
-#if BUILDFLAG(IPC_MESSAGE_LOG_ENABLED)
-  VLOG(0) << "BUILDFLAG(IPC_MESSAGE_LOG_ENABLED) true";
-#else
-  VLOG(0) << "BUILDFLAG(IPC_MESSAGE_LOG_ENABLED) false";
-#endif
-  VLOG(0) << "======调试宏定义======";
-
   crash_reporter::InitializeCrashKeys();
 
   InitializeResourceBundle();

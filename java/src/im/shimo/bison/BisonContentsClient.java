@@ -714,12 +714,15 @@ public class BisonContentsClient {
     }
 
     public void onRendererResponsive(BisonRenderProcess renderProcess) {
-        if (mBisonRenderProcessClient != null){
+        if (mBisonRenderProcessClient != null) {
             mBisonRenderProcessClient.onRenderProcessResponsive(mBisonView,renderProcess);
         }
     }
 
     public boolean onRenderProcessGone(BisonRenderProcessGoneDetail detail){
-        return mBisonRenderProcessClient.onRenderProcessGone(mBisonView,detail);
+        if (mBisonRenderProcessClient != null) {
+            return mBisonRenderProcessClient.onRenderProcessGone(mBisonView , detail);
+        }
+        return true;
     }
 }
