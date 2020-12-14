@@ -11,8 +11,8 @@
 #include "base/android/jni_android.h"
 #include "base/android/jni_string.h"
 #include "base/android/scoped_java_ref.h"
-#include "base/logging.h"
 #include "base/metrics/histogram_macros.h"
+#include "base/notreached.h"
 #include "components/autofill/core/browser/payments/legal_message_line.h"
 #include "components/autofill/core/browser/ui/autofill_popup_delegate.h"
 #include "components/autofill/core/browser/ui/suggestion.h"
@@ -36,7 +36,7 @@ using content::WebContents;
 namespace bison {
 
 BisonAutofillClient::~BisonAutofillClient() {
-  HideAutofillPopup();
+  HideAutofillPopup(autofill::PopupHidingReason::kTabGone);
 }
 
 void BisonAutofillClient::SetSaveFormData(bool enabled) {
@@ -117,47 +117,6 @@ void BisonAutofillClient::OnUnmaskVerificationResult(PaymentsRpcResult result) {
   NOTIMPLEMENTED();
 }
 
-void BisonAutofillClient::ShowLocalCardMigrationDialog(
-    base::OnceClosure show_migration_dialog_closure) {
-  NOTIMPLEMENTED();
-}
-
-void BisonAutofillClient::ConfirmMigrateLocalCardToCloud(
-    const autofill::LegalMessageLines& legal_message_lines,
-    const std::string& user_email,
-    const std::vector<autofill::MigratableCreditCard>& migratable_credit_cards,
-    LocalCardMigrationCallback start_migrating_cards_callback) {
-  NOTIMPLEMENTED();
-}
-
-void BisonAutofillClient::ShowLocalCardMigrationResults(
-    const bool has_server_error,
-    const base::string16& tip_message,
-    const std::vector<autofill::MigratableCreditCard>& migratable_credit_cards,
-    MigrationDeleteCardCallback delete_local_card_callback) {
-  NOTIMPLEMENTED();
-}
-
-void BisonAutofillClient::ShowWebauthnOfferDialog(
-    WebauthnOfferDialogCallback callback) {
-  NOTIMPLEMENTED();
-}
-
-void BisonAutofillClient::ConfirmSaveAutofillProfile(
-    const autofill::AutofillProfile& profile,
-    base::OnceClosure callback) {
-  // Since there is no confirmation needed to save an Autofill Profile,
-  // running |callback| will proceed with saving |profile|.
-  std::move(callback).Run();
-}
-
-void BisonAutofillClient::ConfirmSaveCreditCardLocally(
-    const autofill::CreditCard& card,
-    SaveCreditCardOptions options,
-    LocalSaveCardPromptCallback callback) {
-  NOTIMPLEMENTED();
-}
-
 void BisonAutofillClient::ConfirmAccountNameFixFlow(
     base::OnceCallback<void(const base::string16&)> callback) {
   NOTIMPLEMENTED();
@@ -167,6 +126,13 @@ void BisonAutofillClient::ConfirmExpirationDateFixFlow(
     const autofill::CreditCard& card,
     base::OnceCallback<void(const base::string16&, const base::string16&)>
         callback) {
+  NOTIMPLEMENTED();
+}
+
+void BisonAutofillClient::ConfirmSaveCreditCardLocally(
+    const autofill::CreditCard& card,
+    SaveCreditCardOptions options,
+    LocalSaveCardPromptCallback callback) {
   NOTIMPLEMENTED();
 }
 
@@ -192,28 +158,24 @@ bool BisonAutofillClient::HasCreditCardScanFeature() {
   return false;
 }
 
-void BisonAutofillClient::ScanCreditCard(const CreditCardScanCallback& callback) {
+void BisonAutofillClient::ScanCreditCard(CreditCardScanCallback callback) {
   NOTIMPLEMENTED();
 }
 
 void BisonAutofillClient::ShowAutofillPopup(
-    const gfx::RectF& element_bounds,
-    base::i18n::TextDirection text_direction,
-    const std::vector<autofill::Suggestion>& suggestions,
-    bool /*unused_autoselect_first_suggestion*/,
-    autofill::PopupType popup_type,
+    const autofill::AutofillClient::PopupOpenArgs& open_args,
     base::WeakPtr<autofill::AutofillPopupDelegate> delegate) {
-  suggestions_ = suggestions;
+  suggestions_ = open_args.suggestions;
   delegate_ = delegate;
 
   // Convert element_bounds to be in screen space.
   gfx::Rect client_area = web_contents_->GetContainerBounds();
   gfx::RectF element_bounds_in_screen_space =
-      element_bounds + client_area.OffsetFromOrigin();
+      open_args.element_bounds + client_area.OffsetFromOrigin();
 
   ShowAutofillPopupImpl(element_bounds_in_screen_space,
-                        text_direction == base::i18n::RIGHT_TO_LEFT,
-                        suggestions);
+                        open_args.text_direction == base::i18n::RIGHT_TO_LEFT,
+                        open_args.suggestions);
 }
 
 void BisonAutofillClient::UpdateAutofillPopupDataListValues(
@@ -224,7 +186,29 @@ void BisonAutofillClient::UpdateAutofillPopupDataListValues(
   // See crrev.com/18102002 if need to implement.
 }
 
-void BisonAutofillClient::HideAutofillPopup() {
+base::span<const autofill::Suggestion> BisonAutofillClient::GetPopupSuggestions()
+    const {
+  NOTIMPLEMENTED();
+  return base::span<const autofill::Suggestion>();
+}
+
+void BisonAutofillClient::PinPopupView() {
+  NOTIMPLEMENTED();
+}
+
+autofill::AutofillClient::PopupOpenArgs BisonAutofillClient::GetReopenPopupArgs()
+    const {
+  NOTIMPLEMENTED();
+  return {};
+}
+
+void BisonAutofillClient::UpdatePopup(
+    const std::vector<autofill::Suggestion>& suggestions,
+    autofill::PopupType popup_type) {
+  NOTIMPLEMENTED();
+}
+
+void BisonAutofillClient::HideAutofillPopup(autofill::PopupHidingReason reason) {
   JNIEnv* env = AttachCurrentThread();
   ScopedJavaLocalRef<jobject> obj = java_ref_.get(env);
   if (obj.is_null())

@@ -35,6 +35,8 @@ public class BisonWebContentsObserver extends WebContentsObserver {
         }
     }
 
+
+
     @Override
     public void didStopLoading(String validatedUrl) {
         if (validatedUrl.length() == 0) validatedUrl = ContentUrlConstants.ABOUT_BLANK_DISPLAY_URL;
@@ -47,7 +49,7 @@ public class BisonWebContentsObserver extends WebContentsObserver {
 
     @Override
     public void didFailLoad(
-            boolean isMainFrame, @NetError int errorCode, String description, String failingUrl) {
+            boolean isMainFrame, @NetError int errorCode, String failingUrl) {
         BisonContentsClient client = mBisonContentsClient.get();
         if (client == null) return;
         if (isMainFrame && errorCode == NetError.ERR_ABORTED) {
@@ -69,8 +71,7 @@ public class BisonWebContentsObserver extends WebContentsObserver {
     public void didFinishNavigation(NavigationHandle navigation) {
         String url = navigation.getUrl();
         if (navigation.errorCode() != 0 && !navigation.isDownload()) {
-            didFailLoad(navigation.isInMainFrame(), navigation.errorCode(),
-                    navigation.errorDescription(), url);
+            didFailLoad(navigation.isInMainFrame(), navigation.errorCode(), url);
         }
 
         if (!navigation.hasCommitted()) return;

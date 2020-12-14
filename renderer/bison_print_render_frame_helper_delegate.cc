@@ -10,11 +10,6 @@ BisonPrintRenderFrameHelperDelegate::BisonPrintRenderFrameHelperDelegate() = def
 
 BisonPrintRenderFrameHelperDelegate::~BisonPrintRenderFrameHelperDelegate() = default;
 
-bool BisonPrintRenderFrameHelperDelegate::CancelPrerender(
-    content::RenderFrame* render_frame) {
-  return false;
-}
-
 blink::WebElement BisonPrintRenderFrameHelperDelegate::GetPdfElement(
     blink::WebLocalFrame* frame) {
   return blink::WebElement();

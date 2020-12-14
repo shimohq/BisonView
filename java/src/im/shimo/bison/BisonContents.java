@@ -14,12 +14,14 @@ import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
 import android.view.View;
 import android.widget.FrameLayout;
+
+import androidx.annotation.VisibleForTesting;
 import androidx.annotation.NonNull;
+
 import org.chromium.base.Callback;
 import org.chromium.base.ContextUtils;
 import org.chromium.base.LocaleUtils;
 import org.chromium.base.Log;
-import org.chromium.base.VisibleForTesting;
 import org.chromium.base.annotations.CalledByNative;
 import org.chromium.base.annotations.CalledByNativeUnchecked;
 import org.chromium.base.annotations.JNINamespace;
@@ -50,6 +52,7 @@ import org.chromium.ui.base.ActivityWindowAndroid;
 import org.chromium.ui.base.PageTransition;
 import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.display.DisplayAndroid.DisplayAndroidObserver;
+import org.chromium.url.GURL;
 
 import java.io.File;
 import java.lang.annotation.Annotation;
@@ -414,7 +417,7 @@ class BisonContents extends FrameLayout {
         mDisplayObserver = new BisonDisplayAndroidObserver();
 
         BisonContentsJni.get().setJavaPeers(mNativeBisonContents, mWebContentsDelegate,
-                mBisonContentsClientBridge, mIoThreadClient, mInterceptNavigationDelegate);
+                mBisonContentsClientBridge, mIoThreadClient, mInterceptNavigationDelegate, mAutofillProvider);
         installWebContentsObserver();        
         mSettings.setWebContents(mWebContents);
 
@@ -523,7 +526,7 @@ class BisonContents extends FrameLayout {
 
     @CalledByNativeUnchecked
     protected boolean onRenderProcessGone(int childProcessID, boolean crashed) {
-        if (isDestroyed(NO_WARN)) return true;
+        if (isDestroyed(NO_WARN)) return false;
         return mContentsClient.onRenderProcessGone(new BisonRenderProcessGoneDetail(crashed,
                 BisonContentsJni.get().getEffectivePriority(mNativeBisonContents, this)));
     }
@@ -648,6 +651,8 @@ class BisonContents extends FrameLayout {
         loadUrl(url, null);
     }
     public void postUrl(String url, byte[] postData) {
+        if (TRACE) Log.i(TAG, "%s postUrl=%s", this, url);
+        if (isDestroyed(WARN)) return;
         LoadUrlParams params = LoadUrlParams.createLoadHttpPostParams(url, postData);
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/x-www-form-urlencoded");
@@ -892,9 +897,9 @@ class BisonContents extends FrameLayout {
 
 
     public String getUrl() {
-        String url = mWebContents.getVisibleUrl();
-        if (url == null || url.trim().isEmpty()) return null;
-        return url;
+        GURL url = mWebContents.getVisibleUrl();
+        //if (url == null || url.trim().isEmpty()) return null;
+        return url == null ? null : url.getSpec();
     }
 
 
@@ -1157,6 +1162,7 @@ class BisonContents extends FrameLayout {
     }
 
     public void invokeGeolocationCallback(boolean value, String requestingFrame) {
+        if (isDestroyed(NO_WARN)) return;
         BisonContentsJni.get().invokeGeolocationCallback(
                 mNativeBisonContents, value, requestingFrame);
     }
@@ -1224,8 +1230,7 @@ class BisonContents extends FrameLayout {
 
 
     private void saveWebArchiveInternal(String path, final Callback<String> callback) {
-        //|| isDestroyed(WARN)
-        if (path == null) {
+        if (path == null || isDestroyed(WARN)) {
             if (callback == null) return;
 
             PostTask.runOrPostTask(UiThreadTaskTraits.DEFAULT, () -> callback.onResult(null));
@@ -1318,6 +1323,11 @@ class BisonContents extends FrameLayout {
         return true;
     }
 
+
+    static void logCommandLineForDebugging() {
+        BisonContentsJni.get().logCommandLineForDebugging();
+    }
+
     @NativeMethods
     interface Natives {
         long init(BisonContents caller, long nativeBisonBrowserContext);
@@ -1325,9 +1335,10 @@ class BisonContents extends FrameLayout {
         void destroy(long nativeBisonContents);
         void updateDefaultLocale(String locale, String localeList);
         void setJavaPeers(long nativeBisonContents, BisonWebContentsDelegate webContentsDelegate,
-                          BisonContentsClientBridge bisonContentsClientBridge,
-                          BisonContentsIoThreadClient ioThreadClient,
-                          InterceptNavigationDelegate interceptNavigationDelegate);
+                BisonContentsClientBridge bisonContentsClientBridge,
+                BisonContentsIoThreadClient ioThreadClient,
+                InterceptNavigationDelegate navigationInterceptionDelegate,
+                AutofillProvider autofillProvider);
         WebContents getWebContents(long nativeBisonContents);
         void documentHasImages(long nativeBisonContents, Message message);
         void generateMHTML(
@@ -1353,6 +1364,7 @@ class BisonContents extends FrameLayout {
                 long nativeBisonContents, BisonContents caller, String origin, long resources);
         void grantFileSchemeAccesstoChildProcess(long nativeBisonContents);
         String getProductVersion();
+        void logCommandLineForDebugging();
     }
 
 }

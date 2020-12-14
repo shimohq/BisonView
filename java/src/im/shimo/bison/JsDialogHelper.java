@@ -104,34 +104,34 @@ class JsDialogHelper {
 //        builder.show();
     }
 
-    private class CancelListener implements DialogInterface.OnCancelListener,
-            DialogInterface.OnClickListener {
-        @Override
-        public void onCancel(DialogInterface dialog) {
-            mResult.cancel();
-        }
-        @Override
-        public void onClick(DialogInterface dialog, int which) {
-            mResult.cancel();
-        }
-    }
+    // private class CancelListener implements DialogInterface.OnCancelListener,
+    //         DialogInterface.OnClickListener {
+    //     @Override
+    //     public void onCancel(DialogInterface dialog) {
+    //         mResult.cancel();
+    //     }
+    //     @Override
+    //     public void onClick(DialogInterface dialog, int which) {
+    //         mResult.cancel();
+    //     }
+    // }
 
-    private class PositiveListener implements DialogInterface.OnClickListener {
-        private final EditText mEdit;
+    // private class PositiveListener implements DialogInterface.OnClickListener {
+    //     private final EditText mEdit;
 
-        public PositiveListener(EditText edit) {
-            mEdit = edit;
-        }
+    //     public PositiveListener(EditText edit) {
+    //         mEdit = edit;
+    //     }
 
-        @Override
-        public void onClick(DialogInterface dialog, int which) {
-            if (mEdit == null) {
-                mResult.confirm();
-            } else {
-                mResult.confirm(mEdit.getText().toString());
-            }
-        }
-    }
+    //     @Override
+    //     public void onClick(DialogInterface dialog, int which) {
+    //         if (mEdit == null) {
+    //             mResult.confirm();
+    //         } else {
+    //             mResult.confirm(mEdit.getText().toString());
+    //         }
+    //     }
+    // }
 
     private String getJsDialogTitle(Context context) {
         String title = mUrl;

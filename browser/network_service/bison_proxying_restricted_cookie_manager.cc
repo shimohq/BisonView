@@ -19,7 +19,7 @@ class BisonProxyingRestrictedCookieManagerListener
  public:
   BisonProxyingRestrictedCookieManagerListener(
       const GURL& url,
-      const GURL& site_for_cookies,
+      const net::SiteForCookies& site_for_cookies,
       base::WeakPtr<BisonProxyingRestrictedCookieManager>
           aw_restricted_cookie_manager,
       mojo::PendingRemote<network::mojom::CookieChangeListener> client_listener)
@@ -36,7 +36,7 @@ class BisonProxyingRestrictedCookieManagerListener
 
  private:
   const GURL url_;
-  const GURL site_for_cookies_;
+  const net::SiteForCookies site_for_cookies_;
   base::WeakPtr<BisonProxyingRestrictedCookieManager>
       aw_restricted_cookie_manager_;
   mojo::Remote<network::mojom::CookieChangeListener> client_listener_;
@@ -51,8 +51,8 @@ void BisonProxyingRestrictedCookieManager::CreateAndBind(
     mojo::PendingReceiver<network::mojom::RestrictedCookieManager> receiver) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
 
-  base::PostTask(
-      FROM_HERE, {content::BrowserThread::IO},
+  content::GetIOThreadTaskRunner({})->PostTask(
+      FROM_HERE, 
       base::BindOnce(
           &BisonProxyingRestrictedCookieManager::CreateAndBindOnIoThread,
           std::move(underlying_rcm), is_service_worker, process_id, frame_id,
@@ -65,7 +65,7 @@ BisonProxyingRestrictedCookieManager::~BisonProxyingRestrictedCookieManager() {
 
 void BisonProxyingRestrictedCookieManager::GetAllForUrl(
     const GURL& url,
-    const GURL& site_for_cookies,
+    const net::SiteForCookies& site_for_cookies,
     const url::Origin& top_frame_origin,
     network::mojom::CookieManagerGetOptionsPtr options,
     GetAllForUrlCallback callback) {
@@ -76,14 +76,14 @@ void BisonProxyingRestrictedCookieManager::GetAllForUrl(
         url, site_for_cookies, top_frame_origin, std::move(options),
         std::move(callback));
   } else {
-    std::move(callback).Run(std::vector<net::CanonicalCookie>());
+    std::move(callback).Run(std::vector<net::CookieWithAccessResult>());
   }
 }
 
 void BisonProxyingRestrictedCookieManager::SetCanonicalCookie(
     const net::CanonicalCookie& cookie,
     const GURL& url,
-    const GURL& site_for_cookies,
+    const net::SiteForCookies& site_for_cookies,
     const url::Origin& top_frame_origin,
     SetCanonicalCookieCallback callback) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::IO);
@@ -98,7 +98,7 @@ void BisonProxyingRestrictedCookieManager::SetCanonicalCookie(
 
 void BisonProxyingRestrictedCookieManager::AddChangeListener(
     const GURL& url,
-    const GURL& site_for_cookies,
+    const net::SiteForCookies& site_for_cookies,
     const url::Origin& top_frame_origin,
     mojo::PendingRemote<network::mojom::CookieChangeListener> listener,
     AddChangeListenerCallback callback) {
@@ -122,7 +122,7 @@ void BisonProxyingRestrictedCookieManager::AddChangeListener(
 
 void BisonProxyingRestrictedCookieManager::SetCookieFromString(
     const GURL& url,
-    const GURL& site_for_cookies,
+    const net::SiteForCookies& site_for_cookies,
     const url::Origin& top_frame_origin,
     const std::string& cookie,
     SetCookieFromStringCallback callback) {
@@ -138,7 +138,7 @@ void BisonProxyingRestrictedCookieManager::SetCookieFromString(
 
 void BisonProxyingRestrictedCookieManager::GetCookiesString(
     const GURL& url,
-    const GURL& site_for_cookies,
+    const net::SiteForCookies& site_for_cookies,
     const url::Origin& top_frame_origin,
     GetCookiesStringCallback callback) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::IO);
@@ -153,7 +153,7 @@ void BisonProxyingRestrictedCookieManager::GetCookiesString(
 
 void BisonProxyingRestrictedCookieManager::CookiesEnabledFor(
     const GURL& url,
-    const GURL& site_for_cookies,
+    const net::SiteForCookies& site_for_cookies,
     const url::Origin& top_frame_origin,
     CookiesEnabledForCallback callback) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::IO);
@@ -189,7 +189,7 @@ void BisonProxyingRestrictedCookieManager::CreateAndBindOnIoThread(
 
 bool BisonProxyingRestrictedCookieManager::AllowCookies(
     const GURL& url,
-    const GURL& site_for_cookies) const {
+    const net::SiteForCookies& site_for_cookies) const {
   if (is_service_worker_) {
     // Service worker cookies are always first-party, so only need to check
     // the global toggle.

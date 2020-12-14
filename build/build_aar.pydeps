@@ -3,6 +3,5 @@
 ../../build/android/gyp/filter_zip.py
 ../../build/android/gyp/util/__init__.py
 ../../build/android/gyp/util/build_utils.py
-../../build/android/gyp/util/md5_check.py
 ../../build/gn_helpers.py
 build_aar.py

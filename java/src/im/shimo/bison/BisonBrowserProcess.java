@@ -133,8 +133,8 @@ public final class BisonBrowserProcess {
 
                 try (ScopedSysTraceEvent e2 = ScopedSysTraceEvent.scoped(
                              "BisonBrowserProcess.startBrowserProcessesSync")) {
-                    BrowserStartupController.get(LibraryProcessType.PROCESS_WEBVIEW)
-                            .startBrowserProcessesSync(!multiProcess);
+                    BrowserStartupController.getInstance().startBrowserProcessesSync(
+                            LibraryProcessType.PROCESS_WEBVIEW, !multiProcess);
                 }
             });
         }

@@ -11,10 +11,10 @@ source_set("metrics") {
     "//base",
     "//bison:bison_jni_headers",
     "//bison/common",
+
+    "//base",
+
     "//components/metrics",
-    "//components/metrics:gpu",
-    "//components/metrics:net",
-    "//components/metrics:ui",
     "//components/prefs",
     "//components/version_info",
     "//components/version_info/android:channel_getter",

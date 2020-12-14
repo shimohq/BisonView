@@ -1,4 +1,10 @@
+
 #include "bison/browser/bison_browser_main_parts.h"
+
+#include <memory>
+#include <set>
+#include <string>
+#include <utility>
 
 #include "bison/browser/bison_browser_context.h"
 #include "bison/browser/bison_browser_terminator.h"
@@ -9,38 +15,34 @@
 #include "bison/browser/network_service/bison_network_change_notifier_factory.h"
 #include "bison/common/bison_switches.h"
 
-#include "base/base_switches.h"
-#include "base/bind.h"
+#include "base/android/apk_assets.h"
+#include "base/android/build_info.h"
 #include "base/android/memory_pressure_listener_android.h"
+#include "base/base_paths_android.h"
+#include "base/bind_helpers.h"
 #include "base/command_line.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
+#include "base/i18n/rtl.h"
 #include "base/message_loop/message_loop_current.h"
-#include "base/threading/thread.h"
-#include "base/threading/thread_restrictions.h"
-#include "build/build_config.h"
-#include "cc/base/switches.h"
+#include "base/message_loop/message_pump_type.h"
+#include "base/path_service.h"
 #include "components/crash/content/browser/child_exit_observer_android.h"
-#include "components/crash/content/browser/child_process_crash_observer_android.h"
-#include "components/heap_profiling/supervisor.h"
+#include "components/embedder_support/android/metrics/memory_metrics_logger.h"
+#include "components/heap_profiling/multi_process/supervisor.h"
 #include "components/services/heap_profiling/public/cpp/settings.h"
-#include "content/public/browser/browser_thread.h"
-#include "content/public/browser/devtools_agent_host.h"
+#include "content/public/browser/android/synchronous_compositor.h"
 #include "content/public/browser/render_frame_host.h"
-#include "content/public/browser/storage_partition.h"
+#include "content/public/browser/render_process_host.h"
+#include "content/public/common/content_client.h"
 #include "content/public/common/content_switches.h"
-#include "content/public/common/main_function_params.h"
-#include "content/public/common/url_constants.h"
-#include "device/bluetooth/bluetooth_adapter_factory.h"
+#include "content/public/common/result_codes.h"
+#include "content/public/common/service_names.mojom.h"
 #include "net/android/network_change_notifier_factory_android.h"
-#include "net/base/filename_util.h"
-#include "net/base/net_module.h"
 #include "net/base/network_change_notifier.h"
-#include "net/grit/net_resources.h"
-#include "services/service_manager/embedder/result_codes.h"
-#include "ui/base/material_design/material_design_controller.h"
-#include "ui/base/resource/resource_bundle.h"
-#include "url/gurl.h"
+#include "ui/base/l10n/l10n_util.h"
+#include "ui/base/layout.h"
+#include "ui/gl/gl_surface.h"
 
 namespace bison {
 
@@ -71,14 +73,8 @@ int BisonBrowserMainParts::PreEarlyInitialization() {
 int BisonBrowserMainParts::PreCreateThreads() {
   base::android::MemoryPressureListenerAndroid::Initialize(
       base::android::AttachCurrentThread());
-  const base::CommandLine* command_line =
-      base::CommandLine::ForCurrentProcess();
-  crash_reporter::ChildExitObserver::Create();
+  ::crash_reporter::ChildExitObserver::Create();
   
-  if (command_line->HasSwitch(switches::kEnableCrashReporter)) {
-    crash_reporter::ChildExitObserver::GetInstance()->RegisterClient(
-        std::make_unique<crash_reporter::ChildProcessCrashObserver>());
-  }
 
   // if (base::CommandLine::ForCurrentProcess()->HasSwitch(
   //         switches::kWebViewSandboxedRenderer)) {
@@ -91,7 +87,7 @@ int BisonBrowserMainParts::PreCreateThreads() {
   // }
   ::crash_reporter::ChildExitObserver::GetInstance()->RegisterClient(
           std::make_unique<BisonBrowserTerminator>());
-  return 0;
+  return service_manager::RESULT_CODE_NORMAL_EXIT;
 }
 
 void BisonBrowserMainParts::PreMainMessageLoopRun() {
@@ -100,7 +96,7 @@ void BisonBrowserMainParts::PreMainMessageLoopRun() {
   // content::WebUIControllerFactory::RegisterFactory(
   //     BisonWebUIControllerFactory::GetInstance());
   content::RenderFrameHost::AllowInjectingJavaScript();
-  metrics_logger_ = std::make_unique<MemoryMetricsLogger>();
+  //metrics_logger_ = std::make_unique<metrics::MemoryMetricsLogger>();
 }
 
 bool BisonBrowserMainParts::MainMessageLoopRun(int* result_code) {

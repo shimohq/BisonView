@@ -18,10 +18,13 @@ namespace bison {
 // is enabled.
 class BisonProxyConfigMonitor : public net::ProxyConfigService::Observer {
  public:
+  BisonProxyConfigMonitor(const BisonProxyConfigMonitor&) = delete;
+  BisonProxyConfigMonitor& operator=(const BisonProxyConfigMonitor&) = delete;
+
   static BisonProxyConfigMonitor* GetInstance();
 
   void AddProxyToNetworkContextParams(
-      network::mojom::NetworkContextParamsPtr& network_context_params);
+      network::mojom::NetworkContextParams* network_context_params);
   std::string SetProxyOverride(
       const std::vector<net::ProxyConfigServiceAndroid::ProxyOverrideRule>&
           proxy_rules,
@@ -31,13 +34,9 @@ class BisonProxyConfigMonitor : public net::ProxyConfigService::Observer {
 
  private:
   BisonProxyConfigMonitor();
-  ~BisonProxyConfigMonitor() override;
+  ~BisonProxyConfigMonitor() override;  
 
-  BisonProxyConfigMonitor(const BisonProxyConfigMonitor&) = delete;
-  BisonProxyConfigMonitor& operator=(const BisonProxyConfigMonitor&) = delete;
-
-  friend struct base::LazyInstanceTraitsBase<BisonProxyConfigMonitor>;
-
+  friend class base::NoDestructor<BisonProxyConfigMonitor>;
   // net::ProxyConfigService::Observer implementation:
   void OnProxyConfigChanged(
       const net::ProxyConfigWithAnnotation& config,

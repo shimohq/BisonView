@@ -12,24 +12,26 @@
 #include "bison/browser/network_service/bison_web_resource_request.h"
 #include "bison/browser/network_service/bison_web_resource_response.h"
 #include "bison/browser/network_service/net_helpers.h"
+#include "bison/common/url_constants.h"
+
 // #include "bison/browser/renderer_host/auto_login_parser.h"
 #include "base/android/build_info.h"
 #include "base/bind.h"
 #include "base/optional.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/stringprintf.h"
-#include "bison/common/url_constants.h"
+
 #include "content/public/browser/browser_task_traits.h"
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/global_request_id.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/common/content_constants.h"
-#include "content/public/common/resource_type.h"
 #include "content/public/common/url_utils.h"
-#include "mojo/public/cpp/bindings/binding.h"
+#include "mojo/public/cpp/bindings/receiver.h"
 #include "net/base/load_flags.h"
 #include "net/http/http_util.h"
 #include "services/network/public/cpp/resource_request.h"
+#include "third_party/blink/public/mojom/loader/resource_load_info.mojom-shared.h"
 #include "url/gurl.h"
 
 namespace bison {
@@ -50,10 +52,12 @@ class InterceptedRequest : public network::mojom::URLLoader,
       uint32_t options,
       const network::ResourceRequest& request,
       const net::MutableNetworkTrafficAnnotationTag& traffic_annotation,
-      network::mojom::URLLoaderRequest loader_request,
-      network::mojom::URLLoaderClientPtr client,
-      network::mojom::URLLoaderFactoryPtr target_factory,
-      bool intercept_only);
+      mojo::PendingReceiver<network::mojom::URLLoader> loader_receiver,
+      mojo::PendingRemote<network::mojom::URLLoaderClient> client,
+      mojo::PendingRemote<network::mojom::URLLoaderFactory> target_factory,
+      bool intercept_only,
+      base::Optional<BisonProxyingURLLoaderFactory::SecurityOptions>
+          security_options);
   ~InterceptedRequest() override;
 
   void Restart();
@@ -72,9 +76,11 @@ class InterceptedRequest : public network::mojom::URLLoader,
   void OnComplete(const network::URLLoaderCompletionStatus& status) override;
 
   // network::mojom::URLLoader
-  void FollowRedirect(const std::vector<std::string>& removed_headers,
-                      const net::HttpRequestHeaders& modified_headers,
-                      const base::Optional<GURL>& new_url) override;
+  void FollowRedirect(
+      const std::vector<std::string>& removed_headers,
+      const net::HttpRequestHeaders& modified_headers,
+      const net::HttpRequestHeaders& modified_cors_exempt_headers,
+      const base::Optional<GURL>& new_url) override;
   void SetPriority(net::RequestPriority priority,
                    int32_t intra_priority_value) override;
   void PauseReadingBodyFromNet() override;
@@ -128,6 +134,8 @@ class InterceptedRequest : public network::mojom::URLLoader,
   // shouldInterceptRequest callback provided a non-null response.
   bool intercept_only_ = false;
 
+  base::Optional<BisonProxyingURLLoaderFactory::SecurityOptions> security_options_;
+
   // If the |target_loader_| called OnComplete with an error this stores it.
   // That way the destructor can send it to OnReceivedError if safe browsing
   // error didn't occur.
@@ -137,12 +145,13 @@ class InterceptedRequest : public network::mojom::URLLoader,
 
   const net::MutableNetworkTrafficAnnotationTag traffic_annotation_;
 
-  mojo::Binding<network::mojom::URLLoader> proxied_loader_binding_;
-  network::mojom::URLLoaderClientPtr target_client_;
+  mojo::Receiver<network::mojom::URLLoader> proxied_loader_receiver_;
+  mojo::Remote<network::mojom::URLLoaderClient> target_client_;
 
-  mojo::Binding<network::mojom::URLLoaderClient> proxied_client_binding_;
-  network::mojom::URLLoaderPtr target_loader_;
-  network::mojom::URLLoaderFactoryPtr target_factory_;
+  mojo::Receiver<network::mojom::URLLoaderClient> proxied_client_receiver_{
+      this};
+  mojo::Remote<network::mojom::URLLoader> target_loader_;
+  mojo::Remote<network::mojom::URLLoaderFactory> target_factory_;
 
   base::WeakPtrFactory<InterceptedRequest> weak_factory_{this};
 
@@ -255,27 +264,28 @@ InterceptedRequest::InterceptedRequest(
     uint32_t options,
     const network::ResourceRequest& request,
     const net::MutableNetworkTrafficAnnotationTag& traffic_annotation,
-    network::mojom::URLLoaderRequest loader_request,
-    network::mojom::URLLoaderClientPtr client,
-    network::mojom::URLLoaderFactoryPtr target_factory,
-    bool intercept_only)
+    mojo::PendingReceiver<network::mojom::URLLoader> loader_receiver,
+    mojo::PendingRemote<network::mojom::URLLoaderClient> client,
+    mojo::PendingRemote<network::mojom::URLLoaderFactory> target_factory,
+    bool intercept_only,
+    base::Optional<BisonProxyingURLLoaderFactory::SecurityOptions>
+        security_options)
     : process_id_(process_id),
       request_id_(request_id),
       routing_id_(routing_id),
       options_(options),
       intercept_only_(intercept_only),
+      security_options_(security_options),
       request_(request),
       traffic_annotation_(traffic_annotation),
-      proxied_loader_binding_(this, std::move(loader_request)),
+      proxied_loader_receiver_(this, std::move(loader_receiver)),
       target_client_(std::move(client)),
-      proxied_client_binding_(this),
       target_factory_(std::move(target_factory)) {
   // If there is a client error, clean up the request.
-  target_client_.set_connection_error_handler(base::BindOnce(
+  target_client_.set_disconnect_handler(base::BindOnce(
       &InterceptedRequest::OnURLLoaderClientError, base::Unretained(this)));
-  proxied_loader_binding_.set_connection_error_with_reason_handler(
-      base::BindOnce(&InterceptedRequest::OnURLLoaderError,
-                     base::Unretained(this)));
+  proxied_loader_receiver_.set_disconnect_with_reason_handler(base::BindOnce(
+      &InterceptedRequest::OnURLLoaderError, base::Unretained(this)));
 }
 
 InterceptedRequest::~InterceptedRequest() {
@@ -387,7 +397,7 @@ bool InterceptedRequest::InputStreamFailed(bool restart_needed) {
   }
 
   input_stream_previously_failed_ = true;
-  proxied_client_binding_.Unbind();
+  proxied_client_receiver_.reset();
   Restart();
   return true;  // request restarted
 }
@@ -406,33 +416,32 @@ void InterceptedRequest::ContinueAfterIntercept() {
   if (!input_stream_previously_failed_ &&
       (request_.url.SchemeIs(url::kContentScheme) ||
        bison::IsAndroidSpecialFileUrl(request_.url))) {
-    network::mojom::URLLoaderClientPtr proxied_client;
-    proxied_client_binding_.Bind(mojo::MakeRequest(&proxied_client));
     AndroidStreamReaderURLLoader* loader = new AndroidStreamReaderURLLoader(
-        request_, std::move(proxied_client), traffic_annotation_,
+        request_, proxied_client_receiver_.BindNewPipeAndPassRemote(),
+        traffic_annotation_,
         std::make_unique<ProtocolResponseDelegate>(request_.url,
-                                                   weak_factory_.GetWeakPtr()));
+                                                   weak_factory_.GetWeakPtr()),
+        security_options_);
     loader->Start();
     return;
   }
 
   if (!target_loader_ && target_factory_) {
-    network::mojom::URLLoaderClientPtr proxied_client;
-    proxied_client_binding_.Bind(mojo::MakeRequest(&proxied_client));
     target_factory_->CreateLoaderAndStart(
-        mojo::MakeRequest(&target_loader_), routing_id_, request_id_, options_,
-        request_, std::move(proxied_client), traffic_annotation_);
+        target_loader_.BindNewPipeAndPassReceiver(), routing_id_, request_id_,
+        options_, request_, proxied_client_receiver_.BindNewPipeAndPassRemote(),
+        traffic_annotation_);
   }
 }
 
 void InterceptedRequest::ContinueAfterInterceptWithOverride(
     std::unique_ptr<BisonWebResourceResponse> response) {
-  network::mojom::URLLoaderClientPtr proxied_client;
-  proxied_client_binding_.Bind(mojo::MakeRequest(&proxied_client));
   AndroidStreamReaderURLLoader* loader = new AndroidStreamReaderURLLoader(
-      request_, std::move(proxied_client), traffic_annotation_,
+      request_, proxied_client_receiver_.BindNewPipeAndPassRemote(),
+      traffic_annotation_,
       std::make_unique<InterceptResponseDelegate>(std::move(response),
-                                                  weak_factory_.GetWeakPtr()));
+                                                  weak_factory_.GetWeakPtr()),
+      base::nullopt);
   loader->Start();
 }
 
@@ -511,11 +520,11 @@ void InterceptedRequest::OnReceiveResponse(
     std::unique_ptr<BisonContentsClientBridge::HttpErrorInfo> error_info =
         BisonContentsClientBridge::ExtractHttpErrorInfo(head->headers.get());
 
-    base::PostTask(FROM_HERE, {content::BrowserThread::UI},
-                   base::BindOnce(&OnReceivedHttpErrorOnUiThread, process_id_,
-                                  request_.render_frame_id,
-                                  BisonWebResourceRequest(request_),
-                                  std::move(error_info)));
+    content::GetUIThreadTaskRunner({})->PostTask(
+        FROM_HERE,
+        base::BindOnce(&OnReceivedHttpErrorOnUiThread, process_id_,
+                      request_.render_frame_id, BisonWebResourceRequest(request_),
+                      std::move(error_info)));
   }
 
   // BisonView 不支持 x-aoto-login
@@ -587,12 +596,16 @@ void InterceptedRequest::OnComplete(
 void InterceptedRequest::FollowRedirect(
     const std::vector<std::string>& removed_headers,
     const net::HttpRequestHeaders& modified_headers,
+    const net::HttpRequestHeaders& modified_cors_exempt_headers,
     const base::Optional<GURL>& new_url) {
-  if (target_loader_)
-    target_loader_->FollowRedirect(removed_headers, modified_headers, new_url);
+  if (target_loader_) {
+    target_loader_->FollowRedirect(removed_headers, modified_headers,
+                                   modified_cors_exempt_headers, new_url);
+  }
+    
 
   // If |OnURLLoaderClientError| was called then we're just waiting for the
-  // connection error handler of |proxied_loader_binding_|. Don't restart the
+  // connection error handler of |proxied_loader_receiver_|. Don't restart the
   // job since that'll create another URLLoader
   if (!target_client_)
     return;
@@ -666,13 +679,13 @@ void InterceptedRequest::CallOnComplete(
   if (target_client_)
     target_client_->OnComplete(status);
 
-  if (proxied_loader_binding_ && wait_for_loader_error) {
+  if (proxied_loader_receiver_.is_bound() && wait_for_loader_error) {
     // Since the original client is gone no need to continue loading the
     // request.
-    proxied_client_binding_.Close();
+    proxied_client_receiver_.reset();
     target_loader_.reset();
 
-    // Don't delete |this| yet, in case the |proxied_loader_binding_|'s
+    // Don't delete |this| yet, in case the |proxied_loader_receiver_|'s
     // error_handler is called with a reason to indicate an error which we want
     // to send to the client bridge. Also reset |target_client_| so we don't
     // get its error_handler called and then delete |this|.
@@ -702,11 +715,12 @@ void InterceptedRequest::SendErrorCallback(int error_code,
     return;
 
   sent_error_callback_ = true;
-  base::PostTask(FROM_HERE, {content::BrowserThread::UI},
-                 base::BindOnce(&OnReceivedErrorOnUiThread, process_id_,
-                                request_.render_frame_id,
-                                BisonWebResourceRequest(request_), error_code,
-                                safebrowsing_hit));
+  content::GetUIThreadTaskRunner({})->PostTask(
+      FROM_HERE,
+      base::BindOnce(&OnReceivedErrorOnUiThread, process_id_,
+                    request_.render_frame_id,
+                    BisonWebResourceRequest(request_), error_code,
+                    safebrowsing_hit));
 }
 
 }  // namespace
@@ -718,14 +732,17 @@ void InterceptedRequest::SendErrorCallback(int error_code,
 BisonProxyingURLLoaderFactory::BisonProxyingURLLoaderFactory(
     int process_id,
     mojo::PendingReceiver<network::mojom::URLLoaderFactory> loader_receiver,
-    network::mojom::URLLoaderFactoryPtrInfo target_factory_info,
-    bool intercept_only)
-    : process_id_(process_id), intercept_only_(intercept_only) {
+    mojo::PendingRemote<network::mojom::URLLoaderFactory> target_factory_remote,
+    bool intercept_only,
+    base::Optional<SecurityOptions> security_options)
+    : process_id_(process_id),
+      intercept_only_(intercept_only),
+      security_options_(security_options) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::IO);
-  DCHECK(!(intercept_only_ && target_factory_info));
-  if (target_factory_info) {
-    target_factory_.Bind(std::move(target_factory_info));
-    target_factory_.set_connection_error_handler(
+  DCHECK(!(intercept_only_ && target_factory_remote));
+  if (target_factory_remote) {
+    target_factory_.Bind(std::move(target_factory_remote));
+    target_factory_.set_disconnect_handler(
         base::BindOnce(&BisonProxyingURLLoaderFactory::OnTargetFactoryError,
                        base::Unretained(this)));
   }
@@ -741,28 +758,32 @@ BisonProxyingURLLoaderFactory::~BisonProxyingURLLoaderFactory() {}
 void BisonProxyingURLLoaderFactory::CreateProxy(
     int process_id,
     mojo::PendingReceiver<network::mojom::URLLoaderFactory> loader_receiver,
-    network::mojom::URLLoaderFactoryPtrInfo target_factory_info) {
+    mojo::PendingRemote<network::mojom::URLLoaderFactory> target_factory_remote,
+    base::Optional<SecurityOptions> security_options) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::IO);
 
   // will manage its own lifetime
   new BisonProxyingURLLoaderFactory(process_id, std::move(loader_receiver),
-                                    std::move(target_factory_info), false);
+                                 std::move(target_factory_remote), false,
+                                 security_options);
 }
 
 void BisonProxyingURLLoaderFactory::CreateLoaderAndStart(
-    network::mojom::URLLoaderRequest loader,
+    mojo::PendingReceiver<network::mojom::URLLoader> loader,
     int32_t routing_id,
     int32_t request_id,
     uint32_t options,
     const network::ResourceRequest& request,
-    network::mojom::URLLoaderClientPtr client,
+    mojo::PendingRemote<network::mojom::URLLoaderClient> client,
     const net::MutableNetworkTrafficAnnotationTag& traffic_annotation) {
   // TODO(timvolodine): handle interception, modification (headers for
   // webview), blocking, callbacks etc..
 
-  network::mojom::URLLoaderFactoryPtr target_factory_clone;
-  if (target_factory_)
-    target_factory_->Clone(MakeRequest(&target_factory_clone));
+  mojo::PendingRemote<network::mojom::URLLoaderFactory> target_factory_clone;
+  if (target_factory_) {
+    target_factory_->Clone(
+        target_factory_clone.InitWithNewPipeAndPassReceiver());
+  }
 
   bool global_cookie_policy =
       BisonCookieAccessPolicy::GetInstance()->GetShouldAcceptCookies();
@@ -788,7 +809,7 @@ void BisonProxyingURLLoaderFactory::CreateLoaderAndStart(
   InterceptedRequest* req = new InterceptedRequest(
       process_id_, request_id, routing_id, options, request, traffic_annotation,
       std::move(loader), std::move(client), std::move(target_factory_clone),
-      intercept_only_);
+      intercept_only_, security_options_);
   req->Restart();
 }
 

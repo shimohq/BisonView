@@ -9,12 +9,13 @@
 #include "bison/browser/permission/media_access_permission_request.h"
 #include "bison/browser/permission/permission_request_handler.h"
 #include "bison/bison_jni_headers/BisonWebContentsDelegate_jni.h"
+
 #include "base/android/jni_array.h"
 #include "base/android/jni_string.h"
 #include "base/android/scoped_java_ref.h"
-#include "base/lazy_instance.h"
 #include "base/location.h"
 #include "base/memory/ptr_util.h"
+#include "base/no_destructor.h"
 #include "base/single_thread_task_runner.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
@@ -49,8 +50,6 @@ namespace {
 const int kFileChooserModeOpenMultiple = 1 << 0;
 const int kFileChooserModeOpenFolder = 1 << 1;
 
-base::LazyInstance<BisonJavaScriptDialogManager>::Leaky
-    g_javascript_dialog_manager = LAZY_INSTANCE_INITIALIZER;
 }
 
 BisonWebContentsDelegate::BisonWebContentsDelegate(JNIEnv* env, jobject obj)
@@ -90,7 +89,9 @@ void BisonWebContentsDelegate::RendererResponsive(
 
 content::JavaScriptDialogManager*
 BisonWebContentsDelegate::GetJavaScriptDialogManager(WebContents* source) {
-  return g_javascript_dialog_manager.Pointer();
+  static base::NoDestructor<BisonJavaScriptDialogManager>
+      javascript_dialog_manager;
+  return javascript_dialog_manager.get();    
 }
 
 void BisonWebContentsDelegate::FindReply(WebContents* web_contents,
@@ -105,16 +106,6 @@ void BisonWebContentsDelegate::FindReply(WebContents* web_contents,
 
   bison_contents->GetFindHelper()->HandleFindReply(
       request_id, number_of_matches, active_match_ordinal, final_update);
-}
-
-void BisonWebContentsDelegate::CanDownload(
-    const GURL& url,
-    const std::string& request_method,
-    base::OnceCallback<void(bool)> callback) {
-  // Android webview intercepts download in its resource dispatcher host
-  // delegate, so should not reach here.
-  NOTREACHED();
-  std::move(callback).Run(false);
 }
 
 void BisonWebContentsDelegate::RunFileChooser(
@@ -160,6 +151,7 @@ void BisonWebContentsDelegate::RunFileChooser(
 void BisonWebContentsDelegate::AddNewContents(
     WebContents* source,
     std::unique_ptr<WebContents> new_contents,
+    const GURL& target_url,
     WindowOpenDisposition disposition,
     const gfx::Rect& initial_rect,
     bool user_gesture,
@@ -286,13 +278,12 @@ void BisonWebContentsDelegate::RequestMediaAccessPermission(
 }
 
 void BisonWebContentsDelegate::EnterFullscreenModeForTab(
-    content::WebContents* web_contents,
-    const GURL& origin,
+    content::RenderFrameHost* requesting_frame,
     const blink::mojom::FullscreenOptions& options) {
-  WebContentsDelegateAndroid::EnterFullscreenModeForTab(web_contents, origin,
+  WebContentsDelegateAndroid::EnterFullscreenModeForTab(requesting_frame,
                                                         options);
   is_fullscreen_ = true;
-  web_contents->GetRenderViewHost()->GetWidget()->SynchronizeVisualProperties();
+  requesting_frame->GetRenderViewHost()->GetWidget()->SynchronizeVisualProperties();
 }
 
 void BisonWebContentsDelegate::ExitFullscreenModeForTab(

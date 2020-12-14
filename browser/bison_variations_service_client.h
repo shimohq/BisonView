@@ -25,8 +25,7 @@ class BisonVariationsServiceClient : public variations::VariationsServiceClient 
   ~BisonVariationsServiceClient() override;
 
  private:
-  base::Callback<base::Version(void)> GetVersionForSimulationCallback()
-      override;
+  VersionCallback GetVersionForSimulationCallback()override;
   scoped_refptr<network::SharedURLLoaderFactory> GetURLLoaderFactory() override;
   network_time::NetworkTimeTracker* GetNetworkTimeTracker() override;
   version_info::Channel GetChannel() override;

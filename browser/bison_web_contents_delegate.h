@@ -42,14 +42,12 @@ class BisonWebContentsDelegate
                  const gfx::Rect& selection_rect,
                  int active_match_ordinal,
                  bool final_update) override;
-  void CanDownload(const GURL& url,
-                   const std::string& request_method,
-                   base::OnceCallback<void(bool)> callback) override;
   void RunFileChooser(content::RenderFrameHost* render_frame_host,
                       std::unique_ptr<content::FileSelectListener> listener,
                       const blink::mojom::FileChooserParams& params) override;
-  void AddNewContents(WebContents* source,
-                      std::unique_ptr<WebContents> new_contents,
+  void AddNewContents(content::WebContents* source,
+                      std::unique_ptr<content::WebContents> new_contents,
+                      const GURL& target_url,
                       WindowOpenDisposition disposition,
                       const gfx::Rect& initial_rect,
                       bool user_gesture,
@@ -73,10 +71,8 @@ class BisonWebContentsDelegate
       content::WebContents* web_contents,
       const content::MediaStreamRequest& request,
       content::MediaResponseCallback callback) override;
-  
   void EnterFullscreenModeForTab(
-      WebContents* web_contents,
-      const GURL& origin,
+      content::RenderFrameHost* requesting_frame,
       const blink::mojom::FullscreenOptions& options) override;
   void ExitFullscreenModeForTab(WebContents* web_contents) override;
   bool IsFullscreenForTabOrPending(const WebContents* web_contents) override;
@@ -92,13 +88,9 @@ class BisonWebContentsDelegate
   // Maintain a FileSelectListener instance passed to RunFileChooser() until
   // a callback is called.
   std::unique_ptr<content::FileSelectListener> file_select_listener_;
-
 };  
 
 }  // namespace bison
 
-// BisonWebContentsDelegate::BisonWebContentsDelegate(/* args */) {}
-
-// BisonWebContentsDelegate::~BisonWebContentsDelegate() {}
 
 #endif  // BISON_BROWSER_BISON_WEB_CONTENTS_DELEGATE_H_

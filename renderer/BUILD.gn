@@ -14,36 +14,34 @@ source_set("renderer") {
     "bison_render_thread_observer.h",
     "bison_render_view_ext.cc",
     "bison_render_view_ext.h",
-    "js_java_interaction/js_binding.cc",
-    "js_java_interaction/js_binding.h",
-    "js_java_interaction/js_java_configurator.cc",
-    "js_java_interaction/js_java_configurator.h",
-    "print_render_frame_observer.cc",
-    "print_render_frame_observer.h",
+    "browser_exposed_renderer_interfaces.cc",
+    "browser_exposed_renderer_interfaces.h",
+    
   ]
 
   deps = [
-    "//base",
     "//bison/common",
     "//bison/common:common_mojom",
+
+    "//base",
+    
     "//components/autofill/content/renderer",
     "//components/cdm/renderer",
     "//components/content_capture/common",
     "//components/content_capture/renderer",
+    "//components/js_injection/common",
+    "//components/js_injection/renderer",
     "//components/page_load_metrics/renderer",
     "//components/printing/common",
     "//components/printing/renderer",
-    "//components/safe_browsing:features",
-    "//components/safe_browsing/common",
-    "//components/safe_browsing/renderer:throttles",
+    "//components/spellcheck:buildflags",
+    "//components/spellcheck/renderer",
     "//components/visitedlink/renderer",
     "//content/public/child",
     "//content/public/common",
     "//content/public/renderer",
-    "//gin",
     "//third_party/blink/public:blink",
     "//ui/base",
     "//url",
-    "//v8",
   ]
 }

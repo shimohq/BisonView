@@ -1,4 +1,12 @@
 #include "android_stream_reader_url_loader.h"
+#include <memory>
+#include <string>
+#include <utility>
+#include <vector>
+
+#include "bison/browser/input_stream.h"
+#include "bison/browser/network_service/input_stream_reader.h"
+#include "bison/common/bison_features.h"
 
 #include "base/android/jni_android.h"
 #include "base/bind.h"
@@ -6,25 +14,27 @@
 #include "base/feature_list.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/task/post_task.h"
+#include "base/task/thread_pool.h"
 #include "base/threading/thread.h"
 #include "base/threading/thread_task_runner_handle.h"
-#include "bison/browser/input_stream.h"
-#include "bison/browser/network_service/input_stream_reader.h"
-#include "bison/common/bison_features.h"
 #include "content/public/browser/browser_thread.h"
 #include "net/base/io_buffer.h"
 #include "net/base/mime_sniffer.h"
 #include "net/http/http_status_code.h"
 #include "net/http/http_util.h"
+#include "services/network/public/cpp/cors/cors.h"
 #include "services/network/public/cpp/url_loader_completion_status.h"
 
 namespace bison {
 
 namespace {
-const char kResponseHeaderViaShouldInterceptRequest[] =
-    "Client-Via: shouldInterceptRequest";
+
+const char kResponseHeaderViaShouldInterceptRequestName[] = "Client-Via";
+const char kResponseHeaderViaShouldInterceptRequestValue[] =
+    "shouldInterceptRequest";
 const char kHTTPOkText[] = "OK";
 const char kHTTPNotFoundText[] = "Not Found";
+
 }  // namespace
 
 namespace {
@@ -90,12 +100,13 @@ class InputStreamReaderWrapper
 
 AndroidStreamReaderURLLoader::AndroidStreamReaderURLLoader(
     const network::ResourceRequest& resource_request,
-    network::mojom::URLLoaderClientPtr client,
+    mojo::PendingRemote<network::mojom::URLLoaderClient> client,
     const net::MutableNetworkTrafficAnnotationTag& traffic_annotation,
-    std::unique_ptr<ResponseDelegate> response_delegate)
+    std::unique_ptr<ResponseDelegate> response_delegate,
+    base::Optional<SecurityOptions> security_options)
     : resource_request_(resource_request),
-      resource_response_head_(
-          std::make_unique<network::ResourceResponseHead>()),
+      response_head_(network::mojom::URLResponseHead::New()),
+      reject_cors_request_(false),
       client_(std::move(client)),
       traffic_annotation_(traffic_annotation),
       response_delegate_(std::move(response_delegate)),
@@ -104,9 +115,23 @@ AndroidStreamReaderURLLoader::AndroidStreamReaderURLLoader(
                                base::SequencedTaskRunnerHandle::Get()) {
   DCHECK(response_delegate_);
   // If there is a client error, clean up the request.
-  client_.set_connection_error_handler(
+  client_.set_disconnect_handler(
       base::BindOnce(&AndroidStreamReaderURLLoader::RequestComplete,
                      weak_factory_.GetWeakPtr(), net::ERR_ABORTED));
+
+  bool is_request_considered_same_origin = false;
+  if (security_options) {
+    DCHECK(!security_options->allow_cors_to_same_scheme ||
+           resource_request.request_initiator);
+    is_request_considered_same_origin =
+        security_options->disable_web_security ||
+        (security_options->allow_cors_to_same_scheme &&
+         resource_request.request_initiator->IsSameOriginWith(
+             url::Origin::Create(resource_request_.url)));
+    reject_cors_request_ = true;
+  }
+  response_head_->response_type = network::cors::CalculateResponseType(
+      resource_request_.mode, is_request_considered_same_origin);
 }
 
 AndroidStreamReaderURLLoader::~AndroidStreamReaderURLLoader() {}
@@ -114,6 +139,7 @@ AndroidStreamReaderURLLoader::~AndroidStreamReaderURLLoader() {}
 void AndroidStreamReaderURLLoader::FollowRedirect(
     const std::vector<std::string>& removed_headers,
     const net::HttpRequestHeaders& modified_headers,
+    const net::HttpRequestHeaders& modified_cors_exempt_headers,
     const base::Optional<GURL>& new_url) {}
 void AndroidStreamReaderURLLoader::SetPriority(net::RequestPriority priority,
                                                int intra_priority_value) {}
@@ -123,13 +149,24 @@ void AndroidStreamReaderURLLoader::ResumeReadingBodyFromNet() {}
 void AndroidStreamReaderURLLoader::Start() {
   DCHECK(thread_checker_.CalledOnValidThread());
 
+  // if (base::FeatureList::IsEnabled(
+  //         features::kWebViewOriginCheckForStreamReader) &&
+  //     reject_cors_request_ &&
+  //     response_head_->response_type ==
+  //         network::mojom::FetchResponseType::kCors) {
+  //   RequestCompleteWithStatus(
+  //       network::URLLoaderCompletionStatus(network::CorsErrorStatus(
+  //           network::mojom::CorsError::kCorsDisabledScheme)));
+  //   return;
+  // }
+
   if (!ParseRange(resource_request_.headers)) {
     RequestComplete(net::ERR_REQUEST_RANGE_NOT_SATISFIABLE);
     return;
   }
 
-  base::PostTask(
-      FROM_HERE, {base::ThreadPool(), base::MayBlock()},
+  base::ThreadPool::PostTask(
+      FROM_HERE, {base::MayBlock()},
       base::BindOnce(
           &OpenInputStreamOnWorkerThread, base::ThreadTaskRunnerHandle::Get(),
           // This is intentional - the loader could be deleted while the
@@ -180,8 +217,8 @@ void AndroidStreamReaderURLLoader::OnInputStreamOpened(
   input_stream_reader_wrapper_ = base::MakeRefCounted<InputStreamReaderWrapper>(
       std::move(input_stream), std::move(input_stream_reader));
 
-  base::PostTaskAndReplyWithResult(
-      FROM_HERE, {base::ThreadPool(), base::MayBlock()},
+  base::ThreadPool::PostTaskAndReplyWithResult(
+      FROM_HERE, {base::MayBlock()},
       base::BindOnce(&InputStreamReaderWrapper::Seek,
                      input_stream_reader_wrapper_, byte_range_),
       base::BindOnce(&AndroidStreamReaderURLLoader::OnReaderSeekCompleted,
@@ -212,7 +249,7 @@ void AndroidStreamReaderURLLoader::HeadersComplete(
   // HttpResponseHeaders expects its input string to be terminated by two NULs.
   status.append("\0\0", 2);
 
-  network::ResourceResponseHead& head = *resource_response_head_;
+  network::mojom::URLResponseHead& head = *response_head_;
   head.request_start = base::TimeTicks::Now();
   head.response_start = base::TimeTicks::Now();
   head.headers = new net::HttpResponseHeaders(status);
@@ -226,12 +263,8 @@ void AndroidStreamReaderURLLoader::HeadersComplete(
                                    &head.charset);
 
     if (expected_content_size_ != -1) {
-      std::string content_length_header(
-          net::HttpRequestHeaders::kContentLength);
-      content_length_header.append(": ");
-      content_length_header.append(
-          base::NumberToString(expected_content_size_));
-      head.headers->AddHeader(content_length_header);
+      head.headers->SetHeader(net::HttpRequestHeaders::kContentLength,
+                              base::NumberToString(expected_content_size_));
       head.content_length = expected_content_size_;
     }
 
@@ -240,10 +273,7 @@ void AndroidStreamReaderURLLoader::HeadersComplete(
             env, resource_request_.url,
             input_stream_reader_wrapper_->input_stream(), &mime_type) &&
         !mime_type.empty()) {
-      std::string content_type_header(net::HttpRequestHeaders::kContentType);
-      content_type_header.append(": ");
-      content_type_header.append(mime_type);
-      head.headers->AddHeader(content_type_header);
+      head.headers->SetHeader(net::HttpRequestHeaders::kContentType, mime_type);
       head.mime_type = mime_type;
     }
   }
@@ -253,7 +283,8 @@ void AndroidStreamReaderURLLoader::HeadersComplete(
   // Indicate that the response had been obtained via shouldInterceptRequest.
   // TODO(jam): why is this added for protocol handler (e.g. content scheme and
   // file resources?). The old path does this as well.
-  head.headers->AddHeader(kResponseHeaderViaShouldInterceptRequest);
+  head.headers->SetHeader(kResponseHeaderViaShouldInterceptRequestName,
+                          kResponseHeaderViaShouldInterceptRequestValue);
 
   SendBody();
 }
@@ -280,7 +311,7 @@ void AndroidStreamReaderURLLoader::SendBody() {
   //    needs the ability to break the stream after getting the headers but
   //    before finishing the read.
   if (!base::FeatureList::IsEnabled(features::kWebViewSniffMimeType) ||
-      !resource_response_head_->mime_type.empty()) {
+      !response_head_->mime_type.empty()) {
     SendResponseToClient();
   }
   ReadMore();
@@ -289,8 +320,7 @@ void AndroidStreamReaderURLLoader::SendBody() {
 void AndroidStreamReaderURLLoader::SendResponseToClient() {
   DCHECK(consumer_handle_.is_valid());
   DCHECK(client_.is_bound());
-  client_->OnReceiveResponse(*resource_response_head_);
-  resource_response_head_ = nullptr;
+  client_->OnReceiveResponse(std::move(response_head_));
   client_->OnStartLoadingResponseBody(std::move(consumer_handle_));
 }
 
@@ -326,8 +356,8 @@ void AndroidStreamReaderURLLoader::ReadMore() {
   }
 
   // TODO(timvolodine): consider using a sequenced task runner.
-  base::PostTaskAndReplyWithResult(
-      FROM_HERE, {base::ThreadPool(), base::MayBlock()},
+  base::ThreadPool::PostTaskAndReplyWithResult(
+      FROM_HERE, {base::MayBlock()},
       base::BindOnce(
           &InputStreamReaderWrapper::ReadRawData, input_stream_reader_wrapper_,
           base::RetainedRef(buffer.get()), base::checked_cast<int>(num_bytes)),
@@ -354,7 +384,7 @@ void AndroidStreamReaderURLLoader::DidRead(int result) {
     // We only hit this on for the first buffer read, which we expect to be
     // enough to determine the MIME type.
     DCHECK(base::FeatureList::IsEnabled(features::kWebViewSniffMimeType));
-    if (resource_response_head_->mime_type.empty()) {
+    if (response_head_->mime_type.empty()) {
       // Limit sniffing to the first net::kMaxBytesToSniff.
       size_t data_length = result;
       if (data_length > net::kMaxBytesToSniff)
@@ -367,8 +397,8 @@ void AndroidStreamReaderURLLoader::DidRead(int result) {
       // SniffMimeType() returns false if there is not enough data to
       // determine the mime type. However, even if it returns false, it
       // returns a new type that is probably better than the current one.
-      resource_response_head_->mime_type.assign(new_type);
-      resource_response_head_->did_mime_sniff = true;
+      response_head_->mime_type.assign(new_type);
+      response_head_->did_mime_sniff = true;
     }
 
     SendResponseToClient();
@@ -393,15 +423,20 @@ void AndroidStreamReaderURLLoader::OnDataPipeWritable(MojoResult result) {
   ReadMore();
 }
 
-void AndroidStreamReaderURLLoader::RequestComplete(int status_code) {
+void AndroidStreamReaderURLLoader::RequestCompleteWithStatus(
+    const network::URLLoaderCompletionStatus& status) {
   DCHECK(thread_checker_.CalledOnValidThread());
   if (consumer_handle_.is_valid()) {
     // We can hit this before reading any buffers under error conditions.
     SendResponseToClient();
   }
 
-  client_->OnComplete(network::URLLoaderCompletionStatus(status_code));
+  client_->OnComplete(status);
   CleanUp();
+}
+
+void AndroidStreamReaderURLLoader::RequestComplete(int status_code) {
+  RequestCompleteWithStatus(network::URLLoaderCompletionStatus(status_code));
 }
 
 void AndroidStreamReaderURLLoader::CleanUp() {

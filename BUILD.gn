@@ -5,24 +5,64 @@ import("//build/config/ui.gni")
 import("//gpu/vulkan/features.gni")
 import("//media/media_options.gni")
 import("//mojo/public/tools/bindings/mojom.gni")
-
-#import("//ppapi/buildflags/buildflags.gni")
 import("//tools/grit/grit_rule.gni")
 import("//tools/grit/repack.gni")
 import("//tools/v8_context_snapshot/v8_context_snapshot.gni")
+import("//components/spellcheck/spellcheck_build_features.gni")
+import("//components/gwp_asan/buildflags/buildflags.gni")
+import("//third_party/icu/config.gni")
 import("config.gni")
+import("//bison/build/aar.gni")
+
 
 group("bison") {
   deps = [
-    "aar:bison_view_aar",
-    "apk:bison_apk_java",
+    ":bison_view_aar",
   ]
 }
 
-config("bison_lib_warnings") {
-  if (is_clang) {
-    cflags = [ "-Wno-nonnull" ]
-  }
+bison_aar_manifest_xml =
+    "$target_gen_dir/bison_aar_manifest/AndroidManifest.xml"
+
+android_aar("bison_view_aar") {
+  android_manifest = bison_aar_manifest_xml
+
+  output = "$root_build_dir/aars/bison_view.aar"
+
+  deps = [
+    ":bison_aar_manifest",
+    ":bison_java",
+    ":bison_assets",
+    ":bison_icu_assets",
+    ":bison_v8_snapshot_assets",
+  ]
+
+  shared_libraries = [ ":libbison_view" ]
+
+  resource_included_patterns = [
+    "*/bison/*",
+    "*/ui/android/*",
+    "*/content/*",
+  ]
+
+  jar_excluded_patterns = [
+    "im/shimo/bison/R\$*.class",
+    "im/shimo/bison/R.class",
+
+    "javax/*",
+    "android/*",
+    "androidx/*",
+    "com/google/*",
+    "META-INF/*",
+    "*.stamp",
+    "*/.readme",
+    "*/*.properties",
+  ]
+}
+
+jinja_template("bison_aar_manifest") {
+  input = "java/AndroidManifest.xml.jinja2"
+  output = bison_aar_manifest_xml
 }
 
 generate_jni("bison_jni_headers") {
@@ -54,9 +94,7 @@ generate_jni("bison_jni_headers") {
 }
 
 android_library("bison_java") {
-  min_sdk_version = 21
-
-  java_files = [
+  sources = [
     "java/src/im/shimo/bison/BisonContents.java",
     "java/src/im/shimo/bison/BisonWebChromeClient.java",
     "java/src/im/shimo/bison/BisonView.java",
@@ -149,12 +187,12 @@ action("generate_sandboxed_service_srcjar") {
   ]
 }
 
-android_resources("bison_java_resources") {
-  resource_dirs = [ "java/res" ]
-  custom_package = "im.shimo.bison"
-}
+# android_resources("bison_java_resources") {
+#   sources = [ "java/res" ]
+#   custom_package = "im.shimo.bison"
+# }
 
-shared_library("libbison") {
+shared_library("libbison_view") {
   sources = [
     "lib/bison_main_delegate.cc",
     "lib/bison_main_delegate.h",
@@ -164,10 +202,10 @@ shared_library("libbison") {
   deps = [
     ":bison_lib",
     "//base",
-    "//components/crash/content/app",
+    "//components/crash/core/app",
     "//components/crash/content/browser",
     "//components/keyed_service/content",
-    "//content/public/app:both",
+    "//content/public/app",
     "//content/public/browser",
     "//content/public/renderer",
     "//ui/gfx",
@@ -238,7 +276,7 @@ repack("pak") {
 
   deps = [
     ":resources",
-    "//content:resources",
+    "//content:content_resources",
     "//content/app/resources",
     "//content/browser/tracing:resources",
     "//mojo/public/js:resources",
@@ -252,3 +290,56 @@ repack("pak") {
 
   output = "$root_out_dir/bison.pak"
 }
+
+
+android_assets("bison_assets") {
+  sources = [
+    "$root_out_dir/bison.pak",
+  ]
+  disable_compression = true
+  deps = [
+    "//bison:pak",
+  ]
+}
+
+android_assets("bison_icu_assets") {
+  renaming_sources = ["$root_out_dir/icudtl.dat"]
+  renaming_destinations = [ "bison/icudtl.dat" ]
+  disable_compression = true
+  deps = [
+    "//third_party/icu:icu_assets",
+  ]
+}
+
+android_assets("bison_v8_snapshot_assets") {
+
+  disable_compression = true
+  if (use_v8_context_snapshot) {
+    deps = [ "//tools/v8_context_snapshot:v8_context_snapshot_assets" ]
+  } else {
+    
+    if (current_cpu == "arm" || current_cpu == "x86" ||
+          current_cpu == "mipsel") {
+      arch_suffix = "32"
+    } else {
+      arch_suffix = "64"
+    }
+
+    if (current_cpu == "arm" || current_cpu == "arm64") {
+      abi = "arm"
+    } else {
+      abi = "x86"
+    }
+    
+    renaming_sources = [
+      "$root_out_dir/snapshot_blob.bin"
+    ]
+    
+    renaming_destinations = [
+      "bison/$abi/snapshot_blob_$arch_suffix.bin"
+    ]
+    
+    deps = [ "//v8:v8_external_startup_data_assets" ]
+  }
+}
+

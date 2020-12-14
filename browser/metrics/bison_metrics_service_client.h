@@ -9,16 +9,15 @@
 #include "base/lazy_instance.h"
 #include "base/macros.h"
 #include "base/metrics/field_trial.h"
+#include "base/no_destructor.h"
 #include "base/sequence_checker.h"
+#include "base/time/time.h"
+#include "components/embedder_support/android/metrics/android_metrics_service_client.h"
 #include "components/metrics/enabled_state_provider.h"
 #include "components/metrics/metrics_log_uploader.h"
 #include "components/metrics/metrics_service_client.h"
-
-class PrefService;
-
-namespace metrics {
-class MetricsStateManager;
-}
+#include "content/public/browser/notification_observer.h"
+#include "content/public/browser/notification_registrar.h"
 
 namespace bison {
 
@@ -87,41 +86,39 @@ enum class BackfillInstallDate {
 // the client ID (generating a new ID if there was none). If this client is in
 // the sample, it then calls MetricsService::Start(). If consent was not
 // granted, MaybeStartMetrics() instead clears the client ID, if any.
-class BisonMetricsServiceClient : public metrics::MetricsServiceClient,
-                               public metrics::EnabledStateProvider {
-  friend struct base::LazyInstanceTraitsBase<BisonMetricsServiceClient>;
+// jiang 
+class BisonMetricsServiceClient : public metrics::MetricsServiceClient {
+  friend class base::NoDestructor<BisonMetricsServiceClient>;
 
  public:
+  // This interface define the tasks that depend on the
+  // android_webview/browser directory.
+  // class Delegate {
+  //  public:
+  //   Delegate();
+  //   virtual ~Delegate();
+
+  //   // Not copyable or movable
+  //   Delegate(const Delegate&) = delete;
+  //   Delegate& operator=(const Delegate&) = delete;
+  //   Delegate(Delegate&&) = delete;
+  //   Delegate& operator=(Delegate&&) = delete;
+
+  //   virtual void RegisterAdditionalMetricsProviders(
+  //       metrics::MetricsService* service) = 0;
+  //   virtual void AddWebViewAppStateObserver(
+  //       WebViewAppStateObserver* observer) = 0;
+  //   virtual bool HasContentsEverCreated() const = 0;
+  // };
+  
   static BisonMetricsServiceClient* GetInstance();
 
   BisonMetricsServiceClient();
   ~BisonMetricsServiceClient() override;
 
-  void Initialize(PrefService* pref_service);
-  void SetHaveMetricsConsent(bool user_consent, bool app_consent);
-  std::unique_ptr<const base::FieldTrial::EntropyProvider>
-  CreateLowEntropyProvider();
-
-  // metrics::EnabledStateProvider
-  bool IsConsentGiven() const override;
-  bool IsReportingEnabled() const override;
-
   // metrics::MetricsServiceClient
-  metrics::MetricsService* GetMetricsService() override;
-  void SetMetricsClientId(const std::string& client_id) override;
   int32_t GetProduct() override;
-  std::string GetApplicationLocale() override;
-  bool GetBrand(std::string* brand_code) override;
-  metrics::SystemProfileProto::Channel GetChannel() override;
-  std::string GetVersionString() override;
-  void CollectFinalMetricsForLog(const base::Closure& done_callback) override;
-  std::unique_ptr<metrics::MetricsLogUploader> CreateUploader(
-      const GURL& server_url,
-      const GURL& insecure_server_url,
-      base::StringPiece mime_type,
-      metrics::MetricsLogUploader::MetricServiceType service_type,
-      const metrics::MetricsLogUploader::UploadCallback& on_upload_complete)
-      override;
+
   base::TimeDelta GetStandardUploadInterval() override;
   std::string GetAppPackageName() override;
 
@@ -131,7 +128,6 @@ class BisonMetricsServiceClient : public metrics::MetricsServiceClient,
  private:
   void MaybeStartMetrics();
 
-  std::unique_ptr<metrics::MetricsStateManager> metrics_state_manager_;
   std::unique_ptr<metrics::MetricsService> metrics_service_;
   PrefService* pref_service_ = nullptr;
   bool init_finished_ = false;

@@ -7,7 +7,7 @@
 
 #include "bison/browser/metrics/bison_metrics_log_uploader.h"
 #include "bison/bison_jni_headers/BisonMetricsServiceClient_jni.h"
-#include "bison/common/bison_features.h"
+
 #include "base/android/jni_android.h"
 #include "base/android/jni_array.h"
 #include "base/android/jni_string.h"
@@ -15,11 +15,11 @@
 #include "base/i18n/rtl.h"
 #include "base/lazy_instance.h"
 #include "base/metrics/histogram_functions.h"
+#include "base/no_destructor.h"
 #include "base/strings/string16.h"
 #include "components/metrics/call_stack_profile_metrics_provider.h"
 #include "components/metrics/cpu_metrics_provider.h"
 #include "components/metrics/enabled_state_provider.h"
-#include "components/metrics/gpu/gpu_metrics_provider.h"
 #include "components/metrics/metrics_log_uploader.h"
 #include "components/metrics/metrics_pref_names.h"
 #include "components/metrics/metrics_service.h"
@@ -34,8 +34,6 @@
 #include "content/public/browser/network_service_instance.h"
 
 namespace bison {
-
-base::LazyInstance<BisonMetricsServiceClient>::Leaky g_lazy_instance_;
 
 namespace {
 
@@ -54,6 +52,7 @@ const double kBetaDevCanarySampledInRate = 0.02;
 
 // Callbacks for metrics::MetricsStateManager::Create. Store/LoadClientInfo
 // allow Windows Chrome to back up ClientInfo. They're no-ops for WebView.
+BisonMetricsServiceClient* g_bison_metrics_service_client = nullptr;
 
 void StoreClientInfo(const metrics::ClientInfo& client_info) {}
 
@@ -110,8 +109,6 @@ std::unique_ptr<metrics::MetricsService> CreateMetricsService(
   service->RegisterMetricsProvider(
       std::make_unique<metrics::CPUMetricsProvider>());
   service->RegisterMetricsProvider(
-      std::make_unique<metrics::GPUMetricsProvider>());
-  service->RegisterMetricsProvider(
       std::make_unique<metrics::ScreenInfoMetricsProvider>());
   service->RegisterMetricsProvider(
       std::make_unique<metrics::CallStackProfileMetricsProvider>());
@@ -154,148 +151,22 @@ void PopulateSystemInstallDateIfNecessary(PrefService* prefs) {
 
 }  // namespace
 
-// static
-BisonMetricsServiceClient* BisonMetricsServiceClient::GetInstance() {
-  BisonMetricsServiceClient* client = g_lazy_instance_.Pointer();
-  DCHECK_CALLED_ON_VALID_SEQUENCE(client->sequence_checker_);
-  return client;
-}
+
 
 BisonMetricsServiceClient::BisonMetricsServiceClient() {}
 BisonMetricsServiceClient::~BisonMetricsServiceClient() {}
 
-void BisonMetricsServiceClient::Initialize(PrefService* pref_service) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  DCHECK(!init_finished_);
 
-  pref_service_ = pref_service;
 
-  PopulateSystemInstallDateIfNecessary(pref_service_);
-  metrics_state_manager_ = metrics::MetricsStateManager::Create(
-      pref_service_, this, base::string16(),
-      base::BindRepeating(&StoreClientInfo),
-      base::BindRepeating(&LoadClientInfo));
-
-  init_finished_ = true;
-  MaybeStartMetrics();
+// static
+BisonMetricsServiceClient* BisonMetricsServiceClient::GetInstance() {
+  DCHECK(g_bison_metrics_service_client);
+  g_bison_metrics_service_client->EnsureOnValidSequence();
+  return g_bison_metrics_service_client;
 }
-
-void BisonMetricsServiceClient::MaybeStartMetrics() {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  // Treat the debugging flag the same as user consent because the user set it,
-  // but keep app_consent_ separate so we never persist data from an opted-out
-  // app.
-  bool user_consent_or_flag = user_consent_ || IsMetricsReportingForceEnabled();
-  if (init_finished_ && set_consent_finished_) {
-    if (app_consent_ && user_consent_or_flag) {
-      metrics_service_ = CreateMetricsService(metrics_state_manager_.get(),
-                                              this, pref_service_);
-      metrics_state_manager_->ForceClientIdCreation();
-      is_in_sample_ = IsInSample();
-      if (IsReportingEnabled()) {
-        // WebView has no shutdown sequence, so there's no need for a matching
-        // Stop() call.
-        metrics_service_->Start();
-      }
-    } else {
-      pref_service_->ClearPref(metrics::prefs::kMetricsClientID);
-    }
-  }
-}
-
-void BisonMetricsServiceClient::SetHaveMetricsConsent(bool user_consent,
-                                                   bool app_consent) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  set_consent_finished_ = true;
-  user_consent_ = user_consent;
-  app_consent_ = app_consent;
-  MaybeStartMetrics();
-}
-
-std::unique_ptr<const base::FieldTrial::EntropyProvider>
-BisonMetricsServiceClient::CreateLowEntropyProvider() {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  return metrics_state_manager_->CreateLowEntropyProvider();
-}
-
-bool BisonMetricsServiceClient::IsConsentGiven() const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  return user_consent_ && app_consent_;
-}
-
-bool BisonMetricsServiceClient::IsReportingEnabled() const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (!app_consent_)
-    return false;
-  return IsMetricsReportingForceEnabled() ||
-         (EnabledStateProvider::IsReportingEnabled() && is_in_sample_);
-}
-
-metrics::MetricsService* BisonMetricsServiceClient::GetMetricsService() {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  // This will be null if initialization hasn't finished, or if metrics
-  // collection is disabled.
-  return metrics_service_.get();
-}
-
-// In Chrome, UMA and Breakpad are enabled/disabled together by the same
-// checkbox and they share the same client ID (a.k.a. GUID). SetMetricsClientId
-// is intended to provide the ID to Breakpad. In WebView, UMA and Breakpad are
-// independent, so this is a no-op.
-void BisonMetricsServiceClient::SetMetricsClientId(const std::string& client_id) {}
 
 int32_t BisonMetricsServiceClient::GetProduct() {
   return metrics::ChromeUserMetricsExtension::ANDROID_WEBVIEW;
-}
-
-std::string BisonMetricsServiceClient::GetApplicationLocale() {
-  return base::i18n::GetConfiguredLocale();
-}
-
-bool BisonMetricsServiceClient::GetBrand(std::string* brand_code) {
-  // WebView doesn't use brand codes.
-  return false;
-}
-
-metrics::SystemProfileProto::Channel BisonMetricsServiceClient::GetChannel() {
-  return metrics::AsProtobufChannel(version_info::android::GetChannel());
-}
-
-std::string BisonMetricsServiceClient::GetVersionString() {
-  return version_info::GetVersionNumber();
-}
-
-void BisonMetricsServiceClient::CollectFinalMetricsForLog(
-    const base::Closure& done_callback) {
-  done_callback.Run();
-}
-
-std::unique_ptr<metrics::MetricsLogUploader>
-BisonMetricsServiceClient::CreateUploader(
-    const GURL& server_url,
-    const GURL& insecure_server_url,
-    base::StringPiece mime_type,
-    metrics::MetricsLogUploader::MetricServiceType service_type,
-    const metrics::MetricsLogUploader::UploadCallback& on_upload_complete) {
-  // |server_url|, |insecure_server_url|, and |mime_type| are unused because
-  // WebView sends metrics to the platform logging mechanism rather than to
-  // Chrome's metrics server.
-  
-  return std::make_unique<BisonMetricsLogUploader>(on_upload_complete);
-}
-
-base::TimeDelta BisonMetricsServiceClient::GetStandardUploadInterval() {
-  // In WebView, metrics collection (when we batch up all logged histograms into
-  // a ChromeUserMetricsExtension proto) and metrics uploading (when the proto
-  // goes to the server) happen separately.
-  //
-  // This interval controls the metrics collection rate, so we choose the
-  // standard upload interval to make sure we're collecting metrics consistently
-  // with Chrome for Android. The metrics uploading rate for WebView is
-  // controlled by the platform logging mechanism. Since this mechanism has its
-  // own logic for rate-limiting on cellular connections, we disable the
-  // component-layer logic.
-  return metrics::GetUploadInterval(false /* use_cellular_upload_interval */);
 }
 
 std::string BisonMetricsServiceClient::GetAppPackageName() {
@@ -316,8 +187,6 @@ bool BisonMetricsServiceClient::IsInSample() {
 void JNI_BisonMetricsServiceClient_SetHaveMetricsConsent(JNIEnv* env,
                                                       jboolean user_consent,
                                                       jboolean app_consent) {
-  BisonMetricsServiceClient::GetInstance()->SetHaveMetricsConsent(user_consent,
-                                                               app_consent);
 }
 
 }  // namespace bison

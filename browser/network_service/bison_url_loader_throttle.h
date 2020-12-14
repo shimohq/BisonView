@@ -25,16 +25,19 @@ class BisonURLLoaderThrottle : public blink::URLLoaderThrottle {
                         bool* defer) override;
   void WillRedirectRequest(
       net::RedirectInfo* redirect_info,
-      const network::ResourceResponseHead& response_head,
+      const network::mojom::URLResponseHead& response_head,
       bool* defer,
       std::vector<std::string>* to_be_removed_request_headers,
-      net::HttpRequestHeaders* modified_request_headers) override;
+      net::HttpRequestHeaders* modified_request_headers,
+      net::HttpRequestHeaders* modified_cors_exempt_request_headers) override;
 
  private:
   void AddExtraHeadersIfNeeded(const GURL& url,
                                net::HttpRequestHeaders* headers);
 
   BisonResourceContext* aw_resource_context_;
+  std::vector<std::string> added_headers_;
+  url::Origin original_origin_;
 
   DISALLOW_COPY_AND_ASSIGN(BisonURLLoaderThrottle);
 };

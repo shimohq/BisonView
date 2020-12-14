@@ -10,9 +10,8 @@
 #include "base/logging.h"
 #include "base/stl_util.h"
 #include "base/strings/stringprintf.h"
-#include "base/task/post_task.h"
-#include "components/crash/content/app/crashpad.h"
 #include "components/crash/content/browser/crash_metrics_reporter_android.h"
+#include "components/crash/core/app/crashpad.h"
 #include "content/public/browser/browser_task_traits.h"
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/child_process_data.h"
@@ -124,8 +123,8 @@ void BisonBrowserTerminator::OnChildExit(
   std::vector<ScopedJavaGlobalRef<jobject>> java_web_contents;
   GetJavaWebContentsForRenderProcess(rph, &java_web_contents);
 
-  base::PostTask(FROM_HERE,
-                 {content::BrowserThread::UI, base::TaskPriority::HIGHEST},
+  content::GetUIThreadTaskRunner({base::TaskPriority::HIGHEST})
+      ->PostTask(FROM_HERE,
                  base::BindOnce(OnRenderProcessGone, java_web_contents,
                                 info.pid, info.is_crashed()));
 }

@@ -9,6 +9,7 @@
 // base::GlobalDescriptors object (see base/posix/global_descriptors.h)
 enum {
   kBisonPakDescriptor = kContentIPCDescriptorMax + 1,
+  kBisonView100PercentPakDescriptor,
   kAndroidMinidumpDescriptor,
 };
 

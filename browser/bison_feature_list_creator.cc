@@ -10,7 +10,7 @@
 #include "bison/browser/bison_browser_process.h"
 #include "bison/browser/bison_pref_names.h"
 #include "bison/browser/bison_variations_seed_bridge.h"
-#include "bison/browser/metrics/bison_metrics_service_client.h"
+// #include "bison/browser/metrics/bison_metrics_service_client.h"
 
 #include "base/base_switches.h"
 #include "base/bind.h"
@@ -105,20 +105,6 @@ std::unique_ptr<PrefService> CreatePrefService() {
   return pref_service_factory.Create(pref_registry);
 }
 
-void CountOrRecordRestartsWithStaleSeed(PrefService* local_state,
-                                        bool is_loaded_seed_fresh) {
-  int restarts = local_state->GetInteger(prefs::kRestartsWithStaleSeed);
-  if (!is_loaded_seed_fresh) {
-    // If the seed isn't fresh, increase the restart count pref.
-    local_state->SetInteger(prefs::kRestartsWithStaleSeed, restarts + 1);
-  } else if (restarts > 0) {
-    // If the seed is fresh and the last restart had a stale seed, record and
-    // reset the restart count.
-    local_state->SetInteger(prefs::kRestartsWithStaleSeed, 0);
-    UMA_HISTOGRAM_COUNTS_100("Variations.RestartsWithStaleSeed", restarts);
-  }
-}
-
 }  // namespace
 
 BisonFeatureListCreator::BisonFeatureListCreator()
@@ -127,7 +113,7 @@ BisonFeatureListCreator::BisonFeatureListCreator()
 BisonFeatureListCreator::~BisonFeatureListCreator() {}
 
 void BisonFeatureListCreator::SetUpFieldTrials() {
-  auto* metrics_client = BisonMetricsServiceClient::GetInstance();
+  // auto* metrics_client = BisonMetricsServiceClient::GetInstance();
 
   // Chrome uses the default entropy provider here (rather than low entropy
   // provider). The default provider needs to know whether UMA is enabled, but
@@ -137,58 +123,58 @@ void BisonFeatureListCreator::SetUpFieldTrials() {
   // entropy provider has fewer unique experiment combinations. This is better
   // for privacy (since experiment state doesn't identify users), but also means
   // fewer combinations tested in the wild.
-  DCHECK(!field_trial_list_);
-  field_trial_list_ = std::make_unique<base::FieldTrialList>(
-      metrics_client->CreateLowEntropyProvider());
+  // DCHECK(!field_trial_list_);
+  // field_trial_list_ = std::make_unique<base::FieldTrialList>(
+  //     metrics_client->CreateLowEntropyProvider());
 
-  std::unique_ptr<variations::SeedResponse> seed = GetAndClearJavaSeed();
-  base::Time null_time;
-  base::Time seed_date =
-      seed ? base::Time::FromJavaTime(seed->date) : null_time;
-  variations::UIStringOverrider ui_string_overrider;
-  client_ = std::make_unique<BisonVariationsServiceClient>();
-  auto seed_store = std::make_unique<variations::VariationsSeedStore>(
-      local_state_.get(), /*initial_seed=*/std::move(seed),
-      /*on_initial_seed_stored=*/base::DoNothing());
+  // std::unique_ptr<variations::SeedResponse> seed = GetAndClearJavaSeed();
+  // base::Time null_time;
+  // base::Time seed_date =
+  //     seed ? base::Time::FromJavaTime(seed->date) : null_time;
+  // variations::UIStringOverrider ui_string_overrider;
+  // client_ = std::make_unique<BisonVariationsServiceClient>();
+  // auto seed_store = std::make_unique<variations::VariationsSeedStore>(
+  //     local_state_.get(), /*initial_seed=*/std::move(seed),
+  //     /*on_initial_seed_stored=*/base::DoNothing());
 
-  // We set the seed fetch time to when the service downloaded the seed rather
-  // than base::Time::Now() because we want to compute seed freshness based on
-  // the initial download time, which happened in the service at some earlier
-  // point.
-  if (!seed_date.is_null())
-    seed_store->RecordLastFetchTime(seed_date);
+  // // We set the seed fetch time to when the service downloaded the seed rather
+  // // than base::Time::Now() because we want to compute seed freshness based on
+  // // the initial download time, which happened in the service at some earlier
+  // // point.
+  // if (!seed_date.is_null())
+  //   seed_store->RecordLastFetchTime(seed_date);
 
-  variations_field_trial_creator_ =
-      std::make_unique<variations::VariationsFieldTrialCreator>(
-          local_state_.get(), client_.get(), std::move(seed_store),
-          ui_string_overrider);
-  variations_field_trial_creator_->OverrideVariationsPlatform(
-      variations::Study::PLATFORM_ANDROID_WEBVIEW);
+  // variations_field_trial_creator_ =
+  //     std::make_unique<variations::VariationsFieldTrialCreator>(
+  //         local_state_.get(), client_.get(), std::move(seed_store),
+  //         ui_string_overrider);
+  // variations_field_trial_creator_->OverrideVariationsPlatform(
+  //     variations::Study::PLATFORM_ANDROID_WEBVIEW);
 
-  // Safe Mode is a feature which reverts to a previous variations seed if the
-  // current one is suspected to be causing crashes, or preventing new seeds
-  // from being downloaded. It's not implemented for WebView because 1) it's
-  // difficult for WebView to implement Safe Mode's crash detection, and 2)
-  // downloading and disseminating seeds is handled by the WebView service,
-  // which itself doesn't support variations; therefore a bad seed shouldn't be
-  // able to break seed downloads. See https://crbug.com/801771 for more info.
-  std::set<std::string> unforceable_field_trials;
-  variations::SafeSeedManager ignored_safe_seed_manager(true,
-                                                        local_state_.get());
+  // // Safe Mode is a feature which reverts to a previous variations seed if the
+  // // current one is suspected to be causing crashes, or preventing new seeds
+  // // from being downloaded. It's not implemented for WebView because 1) it's
+  // // difficult for WebView to implement Safe Mode's crash detection, and 2)
+  // // downloading and disseminating seeds is handled by the WebView service,
+  // // which itself doesn't support variations; therefore a bad seed shouldn't be
+  // // able to break seed downloads. See https://crbug.com/801771 for more info.
+  // std::set<std::string> unforceable_field_trials;
+  // variations::SafeSeedManager ignored_safe_seed_manager(true,
+  //                                                       local_state_.get());
 
-  // Populate FieldTrialList. Since low_entropy_provider is null, it will fall
-  // back to the provider we previously gave to FieldTrialList, which is a low
-  // entropy provider.
-  variations_field_trial_creator_->SetupFieldTrials(
-      cc::switches::kEnableGpuBenchmarking, switches::kEnableFeatures,
-      switches::kDisableFeatures, unforceable_field_trials,
-      std::vector<std::string>(),
-      content::GetSwitchDependentFeatureOverrides(
-          *base::CommandLine::ForCurrentProcess()),
-      /*low_entropy_provider=*/nullptr, std::make_unique<base::FeatureList>(),
-      aw_field_trials_.get(), &ignored_safe_seed_manager);
+  // // Populate FieldTrialList. Since low_entropy_provider is null, it will fall
+  // // back to the provider we previously gave to FieldTrialList, which is a low
+  // // entropy provider.
+  // variations_field_trial_creator_->SetupFieldTrials(
+  //     cc::switches::kEnableGpuBenchmarking, switches::kEnableFeatures,
+  //     switches::kDisableFeatures, unforceable_field_trials,
+  //     std::vector<std::string>(),
+  //     content::GetSwitchDependentFeatureOverrides(
+  //         *base::CommandLine::ForCurrentProcess()),
+  //     /*low_entropy_provider=*/nullptr, std::make_unique<base::FeatureList>(),
+  //     aw_field_trials_.get(), &ignored_safe_seed_manager);
 
-  CountOrRecordRestartsWithStaleSeed(local_state_.get(), IsSeedFresh());
+  // CountOrRecordRestartsWithStaleSeed(local_state_.get(), IsSeedFresh());
 }
 
 void BisonFeatureListCreator::CreateLocalState() {
@@ -198,7 +184,8 @@ void BisonFeatureListCreator::CreateLocalState() {
 
 void BisonFeatureListCreator::CreateFeatureListAndFieldTrials() {
   CreateLocalState();
-  BisonMetricsServiceClient::GetInstance()->Initialize(local_state_.get());
+  // jiang 
+  //BisonMetricsServiceClient::GetInstance()->Initialize(local_state_.get());
   SetUpFieldTrials();
 }
 

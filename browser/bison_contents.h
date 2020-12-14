@@ -3,32 +3,36 @@
 #ifndef BISON_BROWSER_BISON_VIEW_H_
 #define BISON_BROWSER_BISON_VIEW_H_
 
-#include <stdint.h>
-
+#include <list>
 #include <memory>
 #include <string>
-#include <vector>
+#include <utility>
 
 #include "bison/browser/bison_browser_permission_request_delegate.h"
 #include "bison/browser/bison_render_process_gone_delegate.h"
 #include "bison/browser/permission/permission_request_handler_client.h"
 #include "bison/browser/renderer_host/bison_render_view_host_ext.h"
 #include "bison/browser/find_helper.h"
+
+#include "base/android/jni_weak_ref.h"
 #include "base/android/scoped_java_ref.h"
 #include "base/callback_forward.h"
-
-#include "build/build_config.h"
+#include "base/macros.h"
+#include "components/js_injection/browser/js_communication_host.h"
 #include "components/navigation_interception/intercept_navigation_delegate.h"
 #include "content/public/browser/session_storage_namespace.h"
 #include "content/public/browser/web_contents_delegate.h"
 #include "content/public/browser/web_contents_observer.h"
 
+class SkBitmap;
+
 namespace autofill {
 class AutofillProvider;
 }
+
 namespace content {
 class WebContents;
-}  // namespace content
+}
 
 class GURL;
 
@@ -90,7 +94,8 @@ class BisonContents : public FindHelper::Listener,
                     const JavaParamRef<jobject>& web_contents_delegate,
                     const JavaParamRef<jobject>& contents_client_bridge,
                     const JavaParamRef<jobject>& io_thread_client,
-                    const JavaParamRef<jobject>& intercept_navigation_delegate);
+                    const JavaParamRef<jobject>& intercept_navigation_delegate,
+                    const JavaParamRef<jobject>& autofill_provider);
   base::android::ScopedJavaLocalRef<jobject> GetWebContents(JNIEnv* env);
   // base::android::ScopedJavaLocalRef<jobject> GetBrowserContext(
   //     JNIEnv* env,
