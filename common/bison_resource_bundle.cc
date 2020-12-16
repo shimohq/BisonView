@@ -21,6 +21,10 @@ namespace bison {
 void InitIcuAndResourceBundleBrowserSide() {
   TRACE_EVENT0("startup", "InitIcuAndResourceBundleBrowserSide");
   ui::SetLocalePaksStoredInApk(true);
+  std::string locale = ui::ResourceBundle::InitSharedInstanceWithLocale(
+      base::android::GetDefaultLocaleString(), NULL,
+      ui::ResourceBundle::DO_NOT_LOAD_COMMON_RESOURCES);
+  
 
   auto* global_descriptors = base::GlobalDescriptors::GetInstance();
   int pak_fd = global_descriptors->MaybeGet(kBisonPakDescriptor);
