@@ -260,7 +260,7 @@ def Collect(aar_file, build_dir, arch):
                    os.path.join(abi_dir, so_file))
 
 def Build(build_dir, build_type, arch, extra_gn_args, extra_gn_switches,
-          extra_ninja_switches,version_name = "1.0.0"):
+          extra_ninja_switches):
   """Generates target architecture using GN and builds it using ninja."""
   logging.info('Building: %s', arch)
   output_directory = _GetOutputDirectory(build_dir, arch)
@@ -288,8 +288,7 @@ def Build(build_dir, build_type, arch, extra_gn_args, extra_gn_switches,
 def BuildAar(archs, output_file, extra_gn_args=None,
              ext_build_dir=None, build_type = 'debug',
              extra_gn_switches=None,
-             extra_ninja_switches=None,
-             version_name = "1.0.0"):
+             extra_ninja_switches=None):
   extra_gn_args = extra_gn_args or []
   extra_gn_switches = extra_gn_switches or []
   extra_ninja_switches = extra_ninja_switches or []
@@ -299,7 +298,7 @@ def BuildAar(archs, output_file, extra_gn_args=None,
 
   for arch in archs:
     Build(build_dir, build_type,arch, extra_gn_args, extra_gn_switches,
-          extra_ninja_switches,version_name)
+          extra_ninja_switches)
 
     if not isCommonArgsGetted :
       output_directory = _GetOutputDirectory(build_dir, arch)
@@ -384,14 +383,13 @@ def main():
   
   verison = args.version_name
   if args.publish and args.snapshot:
-    verison = verison + "-SNAPSHOT" # + datetime.now().strftime('%Y%m%d%H%M%S') 
+    verison = verison + "-SNAPSHOT"
 
   base_name = ARTIFACT_ID + '-' + verison
 
   output = os.path.join(args.build_dir,args.build_type, base_name+".aar")
   BuildAar(args.arch, output, args.extra_gn_args,
-           args.build_dir,args.build_type, args.extra_gn_switches, args.extra_ninja_switches,
-           verison)
+           args.build_dir,args.build_type, args.extra_gn_switches, args.extra_ninja_switches)
   if args.publish:
     publish(output,verison, args.snapshot)
   

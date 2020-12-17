@@ -388,7 +388,7 @@ class BisonContents extends FrameLayout {
 
         addView(mContentViewRenderView);
 
-        mContentView = ContentView.createContentView(context, mWebContents ,mContainerView);
+        mContentView = ContentView.createContentView(context,null, mWebContents ,mContainerView);
         mViewAndroidDelegate = new BisonViewAndroidDelegate(mContentView);
         mWebContentsInternalsHolder = new WebContentsInternalsHolder(this);
 
