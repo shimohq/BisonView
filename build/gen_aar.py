@@ -271,6 +271,7 @@ def Build(build_dir, build_type, arch, extra_gn_args, extra_gn_switches,
     'rtc_include_tests': False,
     'target_cpu': _GetTargetCpu(arch),
     'v8_android_log_stdout' : 'debug'== build_type,
+    'use_v8_context_snapshot' : True
     # 'v8_embed_script' : '//bison/app.bundle2.js',
   }
   # 'android_override_version_name' : version_name,

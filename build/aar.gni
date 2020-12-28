@@ -2,7 +2,7 @@ import("//build/config/android/config.gni")
 import("//build/config/android/rules.gni")
 import("//build/util/version.gni")
 import("//bison/build/bison_aar_impl.gni")
-
+import("//tools/v8_context_snapshot/v8_context_snapshot.gni")
 
 template("repackage_jars") {
   dist_jar(target_name) {
@@ -17,7 +17,7 @@ template("repackage_jars") {
 # _jni_registration_header = "$target_gen_dir/bison_jni_registration.h"
 template("android_aar") {
   assert(defined(invoker.shared_libraries))
-  # assert(defined(invoker.jni_registration_header))  
+  # assert(defined(invoker.jni_registration_header))
   # _build_config = "$target_gen_dir/$target_name.build_config"
   # print("_build_config path:", _build_config)
 
@@ -75,7 +75,7 @@ template("android_aar") {
     }
     _deps += [":${_template_name}__final_jni_java"]
   }
-  
+
 
   if (defined(invoker.deps)) {
     _deps += invoker.deps
@@ -101,9 +101,3 @@ template("android_aar") {
     native_libraries = _native_libraries
   }
 }
-
-
-
-
-
-

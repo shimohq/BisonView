@@ -134,14 +134,29 @@ bool BisonMainDelegate::BasicStartupComplete(int* exit_code) {
     ui::GestureConfiguration::GetInstance()
         ->set_fling_touchscreen_tap_suppression_enabled(false);
 
-    // #if defined(USE_V8_CONTEXT_SNAPSHOT)
-    //     VLOG(0) << "defined USE_V8_CONTEXT_SNAPSHOT";
-    //     gin::V8Initializer::V8SnapshotFileType file_type =
-    //         gin::V8Initializer::V8SnapshotFileType::kWithAdditionalContext;
-    // #else
-    //     gin::V8Initializer::V8SnapshotFileType file_type =
-    //         gin::V8Initializer::V8SnapshotFileType::kDefault;
-    // #endif
+#if defined(USE_V8_CONTEXT_SNAPSHOT)
+    VLOG(0) << "define USE_V8_CONTEXT_SNAPSHOT";
+#if defined(ARCH_CPU_ARM_FAMILY)
+    base::android::RegisterApkAssetWithFileDescriptorStore(
+        content::kV8Snapshot32DataDescriptor,
+        base::FilePath(FILE_PATH_LITERAL("assets"))
+            .AppendASCII("bison/arm/v8_context_snapshot_32.bin"));
+    base::android::RegisterApkAssetWithFileDescriptorStore(
+        content::kV8Snapshot64DataDescriptor,
+        base::FilePath(FILE_PATH_LITERAL("assets"))
+            .AppendASCII("bison/arm/v8_context_snapshot_64.bin"));
+#else
+    base::android::RegisterApkAssetWithFileDescriptorStore(
+        content::kV8Snapshot32DataDescriptor,
+        base::FilePath(FILE_PATH_LITERAL("assets"))
+            .AppendASCII("bison/x86/v8_context_snapshot_32.bin"));
+    base::android::RegisterApkAssetWithFileDescriptorStore(
+        content::kV8Snapshot64DataDescriptor,
+        base::FilePath(FILE_PATH_LITERAL("assets"))
+            .AppendASCII("bison/x86/v8_context_snapshot_64.bin"));
+#endif  // ARCH_CPU_ARM_FAMILY
+#else
+    VLOG(0) << "undefine USE_V8_CONTEXT_SNAPSHOT";
 #if defined(ARCH_CPU_ARM_FAMILY)
     base::android::RegisterApkAssetWithFileDescriptorStore(
         content::kV8Snapshot32DataDescriptor,
@@ -161,6 +176,7 @@ bool BisonMainDelegate::BasicStartupComplete(int* exit_code) {
         base::FilePath(FILE_PATH_LITERAL("assets"))
             .AppendASCII("bison/x86/snapshot_blob_64.bin"));
 #endif  // ARCH_CPU_ARM_FAMILY
+#endif
   }
 #endif  // V8_USE_EXTERNAL_STARTUP_DATA
 
@@ -285,7 +301,7 @@ void BisonMainDelegate::PostEarlyInitialization(bool is_running_tests) {
 }
 
 void BisonMainDelegate::PostFieldTrialInitialization() {
- 
+
 }
 
 
