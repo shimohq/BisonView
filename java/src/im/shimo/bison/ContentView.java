@@ -42,7 +42,7 @@ public class ContentView extends FrameLayout
         implements ViewEventSink.InternalAccessDelegate, SmartClipProvider,
                    OnHierarchyChangeListener, OnSystemUiVisibilityChangeListener {
     private static final String TAG = "bison.ContentView";
-    
+
     // Default value to signal that the ContentView's size need not be overridden.
     public static final int DEFAULT_MEASURE_SPEC =
             MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED);
@@ -73,7 +73,7 @@ public class ContentView extends FrameLayout
      * @param webContents The WebContents managing this content view.
      * @return an instance of a ContentView.
      */
-    public static ContentView createContentView(Context context, 
+    public static ContentView createContentView(Context context,
             @Nullable EventOffsetHandler eventOffsetHandler,
             WebContents webContents, ViewGroup containerView) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -88,7 +88,7 @@ public class ContentView extends FrameLayout
      *                access the current theme, resources, etc.
      * @param webContents A pointer to the WebContents managing this content view.
      */
-    ContentView(Context context, EventOffsetHandler eventOffsetHandler, 
+    ContentView(Context context, EventOffsetHandler eventOffsetHandler,
             WebContents webContents ,ViewGroup containerView) {
         super(context, null, android.R.attr.webViewStyle);
 
@@ -518,7 +518,7 @@ public class ContentView extends FrameLayout
     }
 
     private static class ContentViewApi23 extends ContentView {
-        public ContentViewApi23(Context context, EventOffsetHandler eventOffsetHandler, 
+        public ContentViewApi23(Context context, EventOffsetHandler eventOffsetHandler,
                 WebContents webContents ,ViewGroup containerView) {
             super(context,eventOffsetHandler, webContents ,containerView);
         }

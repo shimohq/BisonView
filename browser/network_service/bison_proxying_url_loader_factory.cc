@@ -487,7 +487,7 @@ void OnReceivedErrorOnUiThread(int process_id,
     return;
   }
   VLOG(0) << "OnReceivedErrorOnUiThread error_code" << error_code;
-  // client->OnReceivedError(request, error_code, safebrowsing_hit);
+  client->OnReceivedError(request, error_code);
 }
 
 // void OnNewLoginRequestOnUiThread(int process_id,
@@ -602,7 +602,7 @@ void InterceptedRequest::FollowRedirect(
     target_loader_->FollowRedirect(removed_headers, modified_headers,
                                    modified_cors_exempt_headers, new_url);
   }
-    
+
 
   // If |OnURLLoaderClientError| was called then we're just waiting for the
   // connection error handler of |proxied_loader_receiver_|. Don't restart the

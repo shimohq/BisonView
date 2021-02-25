@@ -80,7 +80,7 @@ class BisonContents extends FrameLayout {
     private static String sCurrentLocales = "";
     private static final float ZOOM_CONTROLS_EPSILON = 0.007f;
 
-    
+
 
 
 
@@ -128,7 +128,7 @@ class BisonContents extends FrameLayout {
     private final DisplayAndroidObserver mDisplayObserver;
     private BisonSettings mSettings;
 
-    
+
     private boolean mIsPaused;
     private boolean mIsViewVisible;
     private boolean mIsContentVisible;
@@ -136,7 +136,7 @@ class BisonContents extends FrameLayout {
     private boolean mRendererPriorityWaivedWhenNotVisible;
 
     private ContentViewRenderView mContentViewRenderView;
-    
+
     private BisonViewAndroidDelegate mViewAndroidDelegate;
 
 
@@ -145,10 +145,10 @@ class BisonContents extends FrameLayout {
     private float mPageScaleFactor = 1.0f;
     private float mMinPageScaleFactor = 1.0f;
     private float mMaxPageScaleFactor = 1.0f;
-    
-    
-    
-    
+
+
+
+
 
     private BisonAutofillClient mAutofillClient;
 
@@ -396,13 +396,13 @@ class BisonContents extends FrameLayout {
                 PRODUCT_VERSION, mViewAndroidDelegate, mContentView, mWindowAndroid.getWindowAndroid(), mWebContentsInternalsHolder);
         SelectionPopupController.fromWebContents(mWebContents)
                 .setActionModeCallback(new BisonActionModeCallback(context, this, mWebContents));
-        
+
         mNavigationController = mWebContents.getNavigationController();
         if (getParent() != null) mWebContents.onShow();
         addView(mContentView);
         mContentView.requestFocus();
-        mContentViewRenderView.setCurrentWebContents(mWebContents);        
-        
+        mContentViewRenderView.setCurrentWebContents(mWebContents);
+
 
         mBisonContentsClientBridge = bisonContentsClientBridge;
         //mAutofillProvider
@@ -418,7 +418,7 @@ class BisonContents extends FrameLayout {
 
         BisonContentsJni.get().setJavaPeers(mNativeBisonContents, mWebContentsDelegate,
                 mBisonContentsClientBridge, mIoThreadClient, mInterceptNavigationDelegate, mAutofillProvider);
-        installWebContentsObserver();        
+        installWebContentsObserver();
         mSettings.setWebContents(mWebContents);
 
         mDisplayObserver.onDIPScaleChanged(getDeviceScaleFactor());
@@ -428,7 +428,7 @@ class BisonContents extends FrameLayout {
                 this, new BisonContentsDestroyRunnable(mNativeBisonContents, mWindowAndroid));
     }
 
-    
+
     // This class destroys the WindowAndroid when after it is gc-ed.
     private static class WindowAndroidWrapper {
         private final WindowAndroid mWindowAndroid;
@@ -457,7 +457,7 @@ class BisonContents extends FrameLayout {
             return mWindowAndroid;
         }
     }
-    // jiang  webview 加个开关 
+    // jiang  webview 加个开关
     // private static WeakHashMap<Context, WindowAndroidWrapper> sContextWindowMap;
 
     // getWindowAndroid is only called on UI thread, so there are no threading issues with lazy
@@ -504,7 +504,7 @@ class BisonContents extends FrameLayout {
         }
         mWebContentsObserver = new BisonWebContentsObserver(mWebContents, this, mContentsClient);
     }
-    
+
     private JavascriptInjector getJavascriptInjector() {
         if (mJavascriptInjector == null) {
             mJavascriptInjector = JavascriptInjector.fromWebContents(mWebContents);
@@ -806,7 +806,15 @@ class BisonContents extends FrameLayout {
 
     }
 
-    
+    public void onResume() {
+        if (TRACE) Log.i(TAG, "%s onResume", this);
+        if (!mIsPaused || isDestroyed(NO_WARN)) return;
+        mIsPaused = false;
+
+        updateWebContentsVisibility();
+    }
+
+
     @Override
     public InputConnection onCreateInputConnection(EditorInfo outAttrs) {
         return mContentView.createInputConnection(outAttrs);
@@ -831,7 +839,7 @@ class BisonContents extends FrameLayout {
     public void documentHasImages(Message message) {
         if (!isDestroyed(WARN)) {
             BisonContentsJni.get().documentHasImages(mNativeBisonContents, message);
-        } 
+        }
     }
 
     public void saveWebArchive(
@@ -889,7 +897,7 @@ class BisonContents extends FrameLayout {
     //             : SslUtil.getCertificateFromDerBytes(
     //                     AwContentsJni.get().getCertificate(mNativeAwContents, AwContents.this));
     // }
-    
+
     public void clearSslPreferences() {
         if (TRACE) Log.i(TAG, "%s clearSslPreferences", this);
         if (!isDestroyed(WARN)) mNavigationController.clearSslPreferences();
@@ -954,7 +962,7 @@ class BisonContents extends FrameLayout {
         return url;
     }
 
-    
+
 
     public boolean isSelectActionModeAllowed(int actionModeItem) {
         return (mSettings.getDisabledActionModeMenuItems() & actionModeItem) != actionModeItem;
@@ -965,7 +973,7 @@ class BisonContents extends FrameLayout {
         final float zoomInExtent = mMaxPageScaleFactor - mPageScaleFactor;
         return zoomInExtent > ZOOM_CONTROLS_EPSILON;
     }
-    
+
     public boolean canZoomOut() {
         if (isDestroyed(WARN)) return false;
         final float zoomOutExtent = mPageScaleFactor - mMinPageScaleFactor;
@@ -979,7 +987,7 @@ class BisonContents extends FrameLayout {
         return true;
     }
 
-    
+
 
     public boolean zoomOut() {
         if (!canZoomOut()) {
@@ -1001,7 +1009,7 @@ class BisonContents extends FrameLayout {
         if (isDestroyed(NO_WARN)) return;
         BisonContentsJni.get().preauthorizePermission(
                 mNativeBisonContents, this, origin.toString(), resources);
-    }   
+    }
 
     public void evaluateJavaScript(String script, Callback<String> callback) {
         if (TRACE) Log.i(TAG, "%s evaluateJavascript=%s", this, script);
@@ -1049,12 +1057,33 @@ class BisonContents extends FrameLayout {
         }
     }
 
+
+
+
+
+
+
+
+
+
+
+    @Override
+    protected void onWindowVisibilityChanged(int visibility) {
+        super.onWindowVisibilityChanged(visibility);
+
+        if (visibility == View.GONE) {
+            mWebContents.onHide();
+        } else if (visibility == View.VISIBLE) {
+            mWebContents.onShow();
+        }
+
+    }
     private void setViewVisibilityInternal(boolean visible) {
         mIsViewVisible = visible;
         postUpdateWebContentsVisibility();
     }
 
-   
+
 
     private void postUpdateWebContentsVisibility() {
         if (mIsUpdateVisibilityTaskPending) return;
@@ -1096,7 +1125,7 @@ class BisonContents extends FrameLayout {
     }
 
 
-    
+
     private void updateChildProcessImportance() {
         @ChildProcessImportance
         int effectiveImportance = ChildProcessImportance.IMPORTANT;
@@ -1208,7 +1237,7 @@ class BisonContents extends FrameLayout {
         mContentsClient.onFindResultReceived(activeMatchOrdinal, numberOfMatches, isDoneCounting);
     }
 
-    
+
     // @CalledByNative
     private int[] getLocationOnScreen() {
         int[] result = new int[2];
@@ -1290,7 +1319,7 @@ class BisonContents extends FrameLayout {
 
 
     // Return true if the GeolocationPermissionAPI should be used.
-    
+
 
     public void updateDefaultLocale() {
         String locales = LocaleUtils.getDefaultLocaleListString();
@@ -1307,8 +1336,8 @@ class BisonContents extends FrameLayout {
         }
     }
 
-    
-    
+
+
     @Override
     protected void onVisibilityChanged(@NonNull View changedView, int visibility) {
         super.onVisibilityChanged(changedView, visibility);
@@ -1343,14 +1372,14 @@ class BisonContents extends FrameLayout {
         void documentHasImages(long nativeBisonContents, Message message);
         void generateMHTML(
                 long nativeBisonContents, String path, Callback<String> callback);
-        void zoomBy(long nativeBisonContents, BisonContents caller, float delta);        
+        void zoomBy(long nativeBisonContents, BisonContents caller, float delta);
         void findAllAsync(long nativeBisonContents, String searchString);
         void findNext(long nativeBisonContents, boolean forward);
         void clearCache(long nativeBisonContents, boolean includeDiskFiles);
         void killRenderProcess(long nativeBisonContents, BisonContents caller);
 
         void setDipScale(long nativeBisonContents, BisonContents caller, float dipScale);
-        
+
 
 
         void setExtraHeadersForUrl(

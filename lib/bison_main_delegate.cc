@@ -135,7 +135,6 @@ bool BisonMainDelegate::BasicStartupComplete(int* exit_code) {
         ->set_fling_touchscreen_tap_suppression_enabled(false);
 
 #if defined(USE_V8_CONTEXT_SNAPSHOT)
-    VLOG(0) << "define USE_V8_CONTEXT_SNAPSHOT";
 #if defined(ARCH_CPU_ARM_FAMILY)
     base::android::RegisterApkAssetWithFileDescriptorStore(
         content::kV8Snapshot32DataDescriptor,
@@ -156,7 +155,6 @@ bool BisonMainDelegate::BasicStartupComplete(int* exit_code) {
             .AppendASCII("bison/x86/v8_context_snapshot_64.bin"));
 #endif  // ARCH_CPU_ARM_FAMILY
 #else
-    VLOG(0) << "undefine USE_V8_CONTEXT_SNAPSHOT";
 #if defined(ARCH_CPU_ARM_FAMILY)
     base::android::RegisterApkAssetWithFileDescriptorStore(
         content::kV8Snapshot32DataDescriptor,
