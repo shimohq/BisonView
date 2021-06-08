@@ -6,15 +6,16 @@
 #include "bison/browser/bison_content_browser_client.h"
 #include "bison/browser/bison_media_url_interceptor.h"
 #include "bison/browser/scoped_add_feature_flags.h"
-#include "bison/common/bison_resource_bundle.h"
 #include "bison/common/bison_content_client.h"
 #include "bison/common/bison_descriptors.h"
+#include "bison/common/bison_resource_bundle.h"
 #include "bison/common/bison_switches.h"
 #include "bison/gpu/bison_content_gpu_client.h"
 #include "bison/renderer/bison_content_renderer_client.h"
 
 #include "base/android/apk_assets.h"
 #include "base/android/build_info.h"
+#include "base/android/java_exception_reporter.h"
 #include "base/bind.h"
 #include "base/check_op.h"
 #include "base/command_line.h"
@@ -62,27 +63,27 @@
 #include "components/gwp_asan/client/gwp_asan.h"  // nogncheck
 #endif
 
-namespace {
+// namespace {
 
-void InitLogging(const base::CommandLine* command_line) {
-  base::FilePath log_filename =
-      command_line->GetSwitchValuePath(switches::kLogFile);
-  if (log_filename.empty()) {
-    base::PathService::Get(base::DIR_EXE, &log_filename);
-    log_filename = log_filename.AppendASCII("bison.log");
-  }
+// void InitLogging(const base::CommandLine* command_line) {
+//   base::FilePath log_filename =
+//       command_line->GetSwitchValuePath(switches::kLogFile);
+//   if (log_filename.empty()) {
+//     base::PathService::Get(base::DIR_ANDROID_APP_DATA, &log_filename);
+//     log_filename = log_filename.AppendASCII("bison.log");
+//   }
 
-  logging::LoggingSettings settings;
-  settings.logging_dest = logging::LOG_TO_ALL;
-  settings.log_file_path = log_filename.value().c_str();
-  settings.delete_old = logging::DELETE_OLD_LOG_FILE;
-  logging::InitLogging(settings);
-  logging::SetLogItems(true /* Process ID */, true /* Thread ID */,
-                       true /* Timestamp */, false /* Tick count */);
-  VLOG(0) << "log file at:" << log_filename.value().c_str();
-}
+//   logging::LoggingSettings settings;
+//   settings.logging_dest = logging::LOG_TO_ALL;
+//   settings.log_file_path = log_filename.value().c_str();
+//   settings.delete_old = logging::DELETE_OLD_LOG_FILE;
+//   logging::InitLogging(settings);
+//   logging::SetLogItems(true /* Process ID */, true /* Thread ID */,
+//                        true /* Timestamp */, false /* Tick count */);
+//   VLOG(0) << "log file at:" << log_filename.value().c_str();
+// }
 
-}  // namespace
+// }  // namespace
 
 namespace bison {
 
@@ -94,7 +95,8 @@ bool BisonMainDelegate::BasicStartupComplete(int* exit_code) {
   SetContentClient(&content_client_);
 
   base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
-  InitLogging(cl);
+  //
+  // InitLogging(cl);
 
   cl->AppendSwitch(switches::kDisableOverscrollEdgeEffect);
 
@@ -119,6 +121,8 @@ bool BisonMainDelegate::BasicStartupComplete(int* exit_code) {
   cl->AppendSwitch(switches::kDisableRemotePlaybackAPI);
 
   cl->AppendSwitch(switches::kDisableMediaSessionAPI);
+
+  cl->AppendSwitch(switches::kAppCacheForceEnabled);
 
 #if defined(V8_USE_EXTERNAL_STARTUP_DATA)
   if (cl->GetSwitchValueASCII(switches::kProcessType).empty()) {
@@ -253,6 +257,12 @@ void BisonMainDelegate::PreSandboxStartup() {
   if (process_type == switches::kRendererProcess) {
     InitResourceBundleRendererSide();
   }
+
+  if (process_type.empty()) {
+    base::android::InitJavaExceptionReporter();
+  } else {
+    base::android::InitJavaExceptionReporterForChildProcess();
+  }
 }
 
 int BisonMainDelegate::RunProcess(
@@ -298,11 +308,7 @@ void BisonMainDelegate::PostEarlyInitialization(bool is_running_tests) {
   PostFieldTrialInitialization();
 }
 
-void BisonMainDelegate::PostFieldTrialInitialization() {
-
-}
-
-
+void BisonMainDelegate::PostFieldTrialInitialization() {}
 
 ContentBrowserClient* BisonMainDelegate::CreateContentBrowserClient() {
   bison_feature_list_creator_ = std::make_unique<BisonFeatureListCreator>();
