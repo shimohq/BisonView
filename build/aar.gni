@@ -14,6 +14,25 @@ template("repackage_jars") {
   }
 }
 
+template("bison_view_apk_tmpl") {
+  
+  _native_lib_file =
+          rebase_path("$root_gen_dir/CHROME_VERSION.json", root_out_dir)
+  _native_lib_version_arg = "@FileArg($_native_lib_file:full-quoted)"
+  # _native_lib_version_rule = "//build/util:chrome_version_json"
+  # _deps = []
+  # if (defined(invoker.deps)){
+  #   _deps += invoker.deps
+  # }
+
+  android_apk(target_name) {
+    forward_variables_from(invoker, "*")
+    native_lib_version_arg = _native_lib_version_arg
+    native_lib_version_rule = "//build/util:chrome_version_json"
+  }
+
+}
+
 # _jni_registration_header = "$target_gen_dir/bison_jni_registration.h"
 template("android_aar") {
   assert(defined(invoker.shared_libraries))

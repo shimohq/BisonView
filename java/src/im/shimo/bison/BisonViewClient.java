@@ -4,7 +4,6 @@ import android.graphics.Bitmap;
 import android.net.http.SslError;
 import android.webkit.SslErrorHandler;
 import android.webkit.WebResourceError;
-import android.webkit.WebResourceResponse;
 
 public class BisonViewClient {
 
@@ -61,6 +60,6 @@ public class BisonViewClient {
     }
 
 
-    
+
 
 }

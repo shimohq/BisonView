@@ -11,32 +11,14 @@ import org.chromium.base.PathUtils;
 import org.chromium.base.multidex.ChromiumMultiDexInstaller;
 import org.chromium.ui.base.ResourceBundle;
 
+import im.shimo.bison.BisonInitializer;
 
 public class App extends Application {
-    public static final String COMMAND_LINE_FILE = "/data/local/tmp/bison-apk-command-line";
-    private static final String PRIVATE_DATA_DIRECTORY_SUFFIX = "bison";
 
     @Override
-    protected void attachBaseContext(Context base) {
-        super.attachBaseContext(base);
-        boolean isBrowserProcess = !ContextUtils.getProcessName().contains(":");
-        ContextUtils.initApplicationContext(this);
-        ResourceBundle.setNoAvailableLocalePaks();
-        if (isBrowserProcess) {
-            if (BuildConfig.IS_MULTIDEX_ENABLED) {
-                ChromiumMultiDexInstaller.install(this);
-            }
-            PathUtils.setPrivateDataDirectorySuffix(PRIVATE_DATA_DIRECTORY_SUFFIX);
-            ApplicationStatus.initialize(this);
-        } 
-
-        initCommandLine();
-
+    public void onCreate() {
+      super.onCreate();
+      BisonInitializer.getInstance().init(this);
     }
 
-    public void initCommandLine() {
-        if (!CommandLine.isInitialized()) {
-            CommandLine.initFromFile(COMMAND_LINE_FILE);
-        }
-    }
 }

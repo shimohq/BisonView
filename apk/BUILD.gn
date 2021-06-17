@@ -2,12 +2,14 @@ import("//build/config/android/config.gni")
 import("//build/config/android/rules.gni")
 import("//third_party/icu/config.gni")
 import("//tools/v8_context_snapshot/v8_context_snapshot.gni")
+import("//bison/config.gni")
+import("//bison/build/aar.gni")
 
 bison_apk_manifest_xml =
     "$target_gen_dir/bison_apk_manifest/AndroidManifest.xml"
 
 android_library("bison_apk_java") {
-  java_files = [
+  sources = [
     "java/im/shimo/bison/sample/App.java",
     "java/im/shimo/bison/sample/MainActivity.java",
   ]
@@ -17,49 +19,48 @@ android_library("bison_apk_java") {
     ":bison_apk_resources",
     "//base:base_java",
     "//bison:bison_java",
-    "//components/embedder_support/android:view_java",
     "//content/public/android:content_java",
     "//net/android:net_java",
-    "//third_party/jsr-305:jsr_305_javalib",
     "//ui/android:ui_java",
   ]
 
-  android_manifest_for_lint = bison_apk_manifest_xml
 }
 
 android_resources("bison_apk_resources") {
-  resource_dirs = [ "res" ]
+  sources = [
+    "res/drawable/progress.xml",
+    "res/layout/main_activity.xml",
+    "res/mipmap-hdpi/app_icon.png",
+    "res/mipmap-mdpi/app_icon.png",
+    "res/mipmap-xhdpi/app_icon.png",
+    "res/mipmap-xxhdpi/app_icon.png",
+    "res/mipmap-xxxhdpi/app_icon.png",
+    "res/values/strings.xml",
+  ]
   android_manifest = bison_apk_manifest_xml
   android_manifest_dep = ":bison_apk_manifest"
 }
 
-android_assets("bison_apk_assets") {
-  sources = [
-    "$root_out_dir/bison.pak",
-  ]
-  disable_compression = true
-  deps = [
-    "//bison:pak",
-    "//third_party/icu:icu_assets",
-  ]
-  if (use_v8_context_snapshot) {
-    deps += [ "//tools/v8_context_snapshot:v8_context_snapshot_assets" ]
-  } else {
-    deps += [ "//v8:v8_external_startup_data_assets" ]
-  }
-}
 
-android_apk("bison_sample_apk") {
+bison_view_apk_tmpl("bison_sample_apk") {
   apk_name = "BisonApk"
   android_manifest = bison_apk_manifest_xml
   android_manifest_dep = ":bison_apk_manifest"
+  min_sdk_version = 21 
+  target_sdk_version = android_sdk_version
 
   deps = [
-    ":bison_apk_assets",
     ":bison_apk_java",
+    "//bison:bison_assets",
+    "//bison:bison_icu_assets",
+    "//bison:bison_v8_snapshot_assets",
   ]
-  shared_libraries = [ "//bison:libbison" ]
+  shared_libraries = [ "//bison:libbison_view" ]
 }
+
+
+
+
 
 jinja_template("bison_apk_manifest") {
   input = "AndroidManifest.xml.jinja2"

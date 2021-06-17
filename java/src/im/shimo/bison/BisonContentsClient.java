@@ -131,7 +131,7 @@ public class BisonContentsClient {
                     .showDialog(activityContext);
         } catch (WindowManager.BadTokenException e) {
             Log.w(TAG,
-                    "Unable to create JsDialog. Has this WebView outlived the Activity it was created with?");
+                    "Unable to create JsDialog. Has this BisonView outlived the Activity it was created with?");
             return false;
         }
         return true;
@@ -145,13 +145,13 @@ public class BisonContentsClient {
 
     public void onGeolocationPermissionsShowPrompt(
             String origin, BisonGeolocationPermissions.Callback callback) {
-        
+
         TraceEvent.begin("WebViewContentsClientAdapter.onGeolocationPermissionsShowPrompt");
         if (mBisonWebChromeClient == null) {
             callback.invoke(origin, false, false);
             return;
         }
-        
+
         mBisonWebChromeClient.onGeolocationPermissionsShowPrompt(origin,
                 callback == null ? null : (callbackOrigin, allow, retain)
                         -> callback.invoke(callbackOrigin, allow, retain));
@@ -370,7 +370,7 @@ public class BisonContentsClient {
             mCallback.cancel();
         }
     }
-    
+
     public void onReceivedClientCertRequest(
             BisonContentsClientBridge.ClientCertificateRequestCallback callback, String[] keyTypes,
             Principal[] principals, String host, int port) {
@@ -401,6 +401,18 @@ public class BisonContentsClient {
     }
 
     public void onReceivedHttpError(BisonWebResourceRequest request, BisonWebResourceResponse response) {
+
+        String reasonPhrase = response.getReasonPhrase();
+        if (reasonPhrase == null || reasonPhrase.isEmpty()) {
+            reasonPhrase = "UNKNOWN";
+        }
+
+        mBisonViewClient.onReceivedHttpError(mBisonView,
+                new WebResourceRequest(request.url, request.isMainFrame,
+                        request.hasUserGesture, request.method ,request.requestHeaders),
+                new WebResourceResponse(response.getMimeType(), response.getCharset(),
+                        response.getStatusCode(), reasonPhrase,
+                        response.getResponseHeaders(), response.getData()));
     }
 
     public void doUpdateVisitedHistory(String url, boolean isReload) {
@@ -700,7 +712,7 @@ public class BisonContentsClient {
         mTitle = title;
         mCallbackHelper.postOnReceivedTitle(mTitle);
     }
-    
+
     private BisonRenderProcessClient mBisonRenderProcessClient;
 
     public void setBisonRenderProcessClient(BisonRenderProcessClient client){

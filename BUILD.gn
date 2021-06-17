@@ -18,6 +18,7 @@ import("//bison/build/aar.gni")
 group("bison") {
   deps = [
     ":bison_view_aar",
+    "apk:bison_apk_java",
   ]
 }
 
@@ -109,6 +110,7 @@ android_library("bison_java") {
     "java/src/im/shimo/bison/JsResult.java",
     "java/src/im/shimo/bison/JsPromptResult.java",
     "java/src/im/shimo/bison/WebResourceRequest.java",
+    "java/src/im/shimo/bison/WebResourceResponse.java",
     "java/src/im/shimo/bison/BisonWebContentsDelegate.java",
     "java/src/im/shimo/bison/JsDialogHelper.java",
     "java/src/im/shimo/bison/BisonWebContentsObserver.java",
