@@ -4,7 +4,6 @@ import android.app.Application;
 import android.content.Context;
 
 import org.chromium.base.ApplicationStatus;
-import org.chromium.base.BuildConfig;
 import org.chromium.base.CommandLine;
 import org.chromium.base.ContextUtils;
 import org.chromium.base.PathUtils;
@@ -19,6 +18,7 @@ public class App extends Application {
     public void onCreate() {
       super.onCreate();
       BisonInitializer.getInstance().init(this);
+      BisonInitializer.initCommandLine();
     }
 
 }

@@ -46,8 +46,10 @@ bison_view_apk_tmpl("bison_sample_apk") {
   apk_name = "BisonApk"
   android_manifest = bison_apk_manifest_xml
   android_manifest_dep = ":bison_apk_manifest"
-  min_sdk_version = 21 
+  min_sdk_version = 21
   target_sdk_version = android_sdk_version
+
+  command_line_flags_file = "bison-view-command-line"
 
   deps = [
     ":bison_apk_java",

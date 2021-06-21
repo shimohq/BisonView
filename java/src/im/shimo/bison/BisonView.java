@@ -43,7 +43,7 @@ public class BisonView extends FrameLayout {
         }
         mBisonContentsClient = new BisonContentsClient(this, context);
         mBisonContentsClientBridge = new BisonContentsClientBridge(context, mBisonContentsClient, getClientCertLookupTable());
-        mBisonContents = new BisonContents(context, this, BisonBrowserContext.getDefault(), mBisonContentsClientBridge, 
+        mBisonContents = new BisonContents(context, this, BisonBrowserContext.getDefault(), mBisonContentsClientBridge,
                 mBisonContentsClient);
         addView(mBisonContents);
     }
@@ -176,6 +176,14 @@ public class BisonView extends FrameLayout {
         return mBisonContents.getSettings();
     }
 
+    public void onResume(){
+      mBisonContents.onResume();
+    }
+
+    public void onPause(){
+      mBisonContents.onPause();
+    }
+
     public void destroy() {
         mBisonContents.destroy();
         removeAllViews();
@@ -227,7 +235,7 @@ public class BisonView extends FrameLayout {
      * Notify the host application that a file should be downloaded
      * @param url The full url to the content that should be downloaded
      * @param userAgent the user agent to be used for the download.
-     * @param contentDisposition Content-disposition http header, if 
+     * @param contentDisposition Content-disposition http header, if
      *                           present.
      * @param mimetype The mimetype of the content reported by the server
      * @param contentLength The file size reported by the server
