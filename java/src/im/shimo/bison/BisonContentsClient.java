@@ -1,9 +1,11 @@
 package im.shimo.bison;
 
+import android.annotation.SuppressLint;
 import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Picture;
+import android.net.http.SslError;
 import android.os.Looper;
 import android.os.Message;
 import android.provider.Browser;
@@ -57,6 +59,10 @@ public class BisonContentsClient {
         mBisonView = bisonView;
         mContext = context;
         mCallbackHelper = new BisonContentsClientCallbackHelper(Looper.myLooper(),this);
+    }
+
+    public BisonContentsClientCallbackHelper getCallbackHelper() {
+        return mCallbackHelper;
     }
 
     public boolean hasBisonViewClient() {
@@ -316,6 +322,27 @@ public class BisonContentsClient {
         }
     }
 
+    @SuppressWarnings("HandlerLeak")
+    public void onReceivedSslError(final Callback<Boolean> callback, SslError error) {
+        try {
+            TraceEvent.begin("BisonContentsClient.onReceivedSslError");
+            SslErrorHandler handler = new SslErrorHandler() {
+                @Override
+                public void proceed() {
+                    callback.onResult(true);
+                }
+                @Override
+                public void cancel() {
+                    callback.onResult(false);
+                }
+            };
+            if (TRACE) Log.i(TAG, "onReceivedSslError");
+            mBisonViewClient.onReceivedSslError(mBisonView, handler, error);
+        } finally {
+            TraceEvent.end("BisonContentsClient.onReceivedSslError");
+        }
+    }
+
     private static class ClientCertRequestImpl extends ClientCertRequest {
         private final BisonContentsClientBridge.ClientCertificateRequestCallback mCallback;
         private final String[] mKeyTypes;
@@ -421,9 +448,7 @@ public class BisonContentsClient {
     public void onFormResubmission(Message dontResend, Message resend) {
     }
 
-    public BisonContentsClientCallbackHelper getCallbackHelper() {
-        return mCallbackHelper;
-    }
+
 
 
     private static class JsPromptResultReceiverAdapter implements JsResult.ResultReceiver {

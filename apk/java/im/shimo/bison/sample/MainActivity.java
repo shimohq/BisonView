@@ -4,6 +4,8 @@ import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.net.http.SslError;
+import android.util.Log;
 
 import org.chromium.base.CommandLine;
 import org.chromium.content_public.browser.DeviceUtils;
@@ -11,6 +13,7 @@ import org.chromium.content_public.browser.DeviceUtils;
 import im.shimo.bison.BisonView;
 import im.shimo.bison.BisonViewClient;
 import im.shimo.bison.WebResourceRequest;
+import im.shimo.bison.SslErrorHandler;
 
 public class MainActivity extends Activity {
 
@@ -42,6 +45,14 @@ public class MainActivity extends Activity {
             @Override
             public boolean shouldOverrideUrlLoading(BisonView view, WebResourceRequest request) {
                 return false;
+            }
+
+            @Override
+            public void onReceivedSslError(BisonView view, SslErrorHandler handler,
+                                   SslError error) {
+                //super.onReceivedSslError(view, handler, error);
+                Log.w("MainActivity","onReceivedSslError");
+                handler.proceed();
             }
 
         });

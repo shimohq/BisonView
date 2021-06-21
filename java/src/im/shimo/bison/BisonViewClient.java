@@ -2,7 +2,6 @@ package im.shimo.bison;
 
 import android.graphics.Bitmap;
 import android.net.http.SslError;
-import android.webkit.SslErrorHandler;
 import android.webkit.WebResourceError;
 
 public class BisonViewClient {
@@ -52,7 +51,7 @@ public class BisonViewClient {
 
     public void onReceivedSslError(BisonView view, SslErrorHandler handler,
                                    SslError error) {
-        //handler.cancel();
+        handler.cancel();
     }
 
     public void onReceivedClientCertRequest(BisonView view, ClientCertRequest request) {

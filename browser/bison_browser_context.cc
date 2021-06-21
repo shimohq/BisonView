@@ -220,7 +220,6 @@ void BisonBrowserContext::CreateUserPrefService() {
   // }
 
   user_prefs::UserPrefs::Set(this, user_pref_service_.get());
-  VLOG(0) << "end CreateUserPrefService";
 }
 
 // static
@@ -279,7 +278,7 @@ ResourceContext* BisonBrowserContext::GetResourceContext() {
   return resource_context_.get();
 }
 
-DownloadManagerDelegate* 
+DownloadManagerDelegate*
 BisonBrowserContext::GetDownloadManagerDelegate() {
   if (!GetUserData(kDownloadManagerDelegateKey)) {
     SetUserData(kDownloadManagerDelegateKey,
@@ -366,8 +365,6 @@ void BisonBrowserContext::ConfigureNetworkContextParams(
     const base::FilePath& relative_partition_path,
     network::mojom::NetworkContextParams* context_params,
     network::mojom::CertVerifierCreationParams* cert_verifier_creation_params) {
-  VLOG(0) << "ConfigureNetworkContextParams";    
-  DCHECK(context_params);    
   context_params->user_agent = bison::GetUserAgent();
 
   // TODO(ntfschr): set this value to a proper value based on the user's
@@ -393,7 +390,7 @@ void BisonBrowserContext::ConfigureNetworkContextParams(
       GetCookieManager()->GetAllowFileSchemeCookies();
 
   context_params->cookie_manager_params->cookie_access_delegate_type =
-      network::mojom::CookieAccessDelegateType::ALWAYS_LEGACY;    
+      network::mojom::CookieAccessDelegateType::ALWAYS_LEGACY;
 
   context_params->initial_ssl_config = network::mojom::SSLConfig::New();
   // Allow SHA-1 to be used for locally-installed trust anchors, as WebView

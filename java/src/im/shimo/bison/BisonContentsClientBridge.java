@@ -146,12 +146,12 @@ class BisonContentsClientBridge {
                 -> PostTask.runOrPostTask(UiThreadTaskTraits.DEFAULT,
                         () -> proceedSslError(value.booleanValue(), id));
 
-        //new Handler().post(() -> mClient.onReceivedSslError(callback, sslError));
+        new Handler().post(() -> mClient.onReceivedSslError(callback, sslError));
 
         // Record UMA on ssl error
         // Use sparse histogram in case new values are added in future releases
         // RecordHistogram.recordSparseHistogram(
-        //         "Android.WebView.onReceivedSslError.ErrorCode", sslError.getPrimaryError());
+        //         "BisonView.onReceivedSslError.ErrorCode", sslError.getPrimaryError());
         return true;
     }
 
