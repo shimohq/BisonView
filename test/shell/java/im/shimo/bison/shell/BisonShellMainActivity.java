@@ -1,4 +1,4 @@
-package im.shimo.bison.sample;
+package im.shimo.bison.shell;
 
 import android.app.Activity;
 import android.content.Intent;
@@ -15,9 +15,9 @@ import im.shimo.bison.BisonViewClient;
 import im.shimo.bison.WebResourceRequest;
 import im.shimo.bison.SslErrorHandler;
 
-public class MainActivity extends Activity {
+public class BisonShellMainActivity extends Activity {
 
-    private static final String TAG = "MainActivity";
+    private static final String TAG = "BisonShellMainActivity";
 
     public static final String COMMAND_LINE_ARGS_KEY = "commandLineArgs";
 

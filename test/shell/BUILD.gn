@@ -8,10 +8,36 @@ import("//bison/build/aar.gni")
 bison_apk_manifest_xml =
     "$target_gen_dir/bison_apk_manifest/AndroidManifest.xml"
 
+group("shell") {
+  deps = [
+    ":bison_shell_apk"
+  ]
+}
+
+
+bison_view_apk_tmpl("bison_shell_apk") {
+
+  apk_name = "BisonApk"
+  android_manifest = bison_apk_manifest_xml
+  android_manifest_dep = ":bison_apk_manifest"
+  min_sdk_version = 21
+  target_sdk_version = android_sdk_version
+
+  command_line_flags_file = "bison-view-command-line"
+
+  deps = [
+    ":bison_apk_java",
+    "//bison:bison_assets",
+    "//bison:bison_icu_assets",
+    "//bison:bison_v8_snapshot_assets",
+  ]
+  shared_libraries = [ "//bison:libbison_view" ]
+}
+
 android_library("bison_apk_java") {
   sources = [
-    "java/im/shimo/bison/sample/App.java",
-    "java/im/shimo/bison/sample/MainActivity.java",
+    "java/im/shimo/bison/shell/BisonShellApp.java",
+    "java/im/shimo/bison/shell/BisonShellMainActivity.java",
   ]
 
   deps = [
@@ -40,27 +66,6 @@ android_resources("bison_apk_resources") {
   android_manifest = bison_apk_manifest_xml
   android_manifest_dep = ":bison_apk_manifest"
 }
-
-
-bison_view_apk_tmpl("bison_sample_apk") {
-  apk_name = "BisonApk"
-  android_manifest = bison_apk_manifest_xml
-  android_manifest_dep = ":bison_apk_manifest"
-  min_sdk_version = 21
-  target_sdk_version = android_sdk_version
-
-  command_line_flags_file = "bison-view-command-line"
-
-  deps = [
-    ":bison_apk_java",
-    "//bison:bison_assets",
-    "//bison:bison_icu_assets",
-    "//bison:bison_v8_snapshot_assets",
-  ]
-  shared_libraries = [ "//bison:libbison_view" ]
-}
-
-
 
 
 

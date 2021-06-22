@@ -1,4 +1,4 @@
-package im.shimo.bison.sample;
+package im.shimo.bison.shell;
 
 import android.app.Application;
 import android.content.Context;
@@ -12,7 +12,7 @@ import org.chromium.ui.base.ResourceBundle;
 
 import im.shimo.bison.BisonInitializer;
 
-public class App extends Application {
+public class BisonShellApp extends Application {
 
     @Override
     public void onCreate() {

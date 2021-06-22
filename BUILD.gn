@@ -18,7 +18,7 @@ import("//bison/build/aar.gni")
 group("bison") {
   deps = [
     ":bison_view_aar",
-    "apk:bison_apk_java",
+    "test",
   ]
 }
 
