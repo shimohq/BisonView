@@ -476,9 +476,9 @@ bool BisonContentBrowserClient::CanCreateWindow(
   // We unconditionally allow popup windows at this stage and will give
   // the embedder the opporunity to handle displaying of the popup in
   // WebContentsDelegate::AddContents (via the
-  // AwContentsClient.onCreateWindow callback).
+  // BisonContentsClient.onCreateWindow callback).
   // Note that if the embedder has blocked support for creating popup
-  // windows through AwSettings, then we won't get to this point as
+  // windows through BisonSettings, then we won't get to this point as
   // the popup creation will have been blocked at the WebKit level.
   if (no_javascript_access) {
     *no_javascript_access = false;

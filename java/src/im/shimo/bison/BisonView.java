@@ -6,6 +6,7 @@ import android.util.AttributeSet;
 import android.widget.FrameLayout;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
+import android.os.StrictMode;
 
 import androidx.annotation.Nullable;
 
@@ -36,10 +37,15 @@ public class BisonView extends FrameLayout {
 
     private void init(Context context) {
         if (!loaded){
-            LibraryLoader.getInstance().setLibraryProcessType(LibraryProcessType.PROCESS_WEBVIEW);
-            LibraryLoader.getInstance().loadNow();
-            BrowserStartupController.getInstance().startBrowserProcessesSync(LibraryProcessType.PROCESS_WEBVIEW,false);
-            loaded = true;
+            StrictMode.ThreadPolicy oldPolicy = StrictMode.allowThreadDiskReads();
+            try {
+                LibraryLoader.getInstance().setLibraryProcessType(LibraryProcessType.PROCESS_WEBVIEW);
+                LibraryLoader.getInstance().loadNow();
+                BrowserStartupController.getInstance().startBrowserProcessesSync(LibraryProcessType.PROCESS_WEBVIEW,false);
+                loaded = true;
+            } finally {
+                StrictMode.setThreadPolicy(oldPolicy);
+            }
         }
         mBisonContentsClient = new BisonContentsClient(this, context);
         mBisonContentsClientBridge = new BisonContentsClientBridge(context, mBisonContentsClient, getClientCertLookupTable());

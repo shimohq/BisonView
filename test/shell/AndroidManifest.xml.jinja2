@@ -17,25 +17,19 @@
             android:icon="@mipmap/app_icon"
             android:debuggable="true"
             android:label="BisonShell"
+            android:hardwareAccelerated="true"
             tools:ignore="HardcodedDebugMode">
         <activity android:name="BisonShellMainActivity"
                   android:launchMode="singleTask"
                   android:theme="@android:style/Theme.Holo.Light.NoActionBar"
-                  android:configChanges="orientation|keyboardHidden|keyboard|screenSize"
-                  android:windowSoftInputMode="adjustResize"
-                  android:hardwareAccelerated="true">
+                  android:configChanges="orientation|keyboardHidden|keyboard|screenSize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="http" />
-                <data android:scheme="https" />
-            </intent-filter>
         </activity>
+
         <!-- The following service entries exist in order to allow us to
              start more than one sandboxed process. -->
 

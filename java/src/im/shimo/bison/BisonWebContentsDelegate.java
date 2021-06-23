@@ -59,17 +59,14 @@ public class BisonWebContentsDelegate extends WebContentsDelegateAndroid {
     }
 
     @CalledByNative
-    public boolean addNewContents(boolean isDialog, boolean isUserGesture){
-        // jiang unimpl
-        /* return mContentsClient.onCreateWindow(isDialog, isUserGesture); */
-        return false;
+    public boolean addNewContents(boolean isDialog, boolean isUserGesture) {
+        return mContentsClient.onCreateWindow(isDialog, isUserGesture);
     }
 
     @Override
     @CalledByNative
     public void closeContents(){
-        // jiang unimpl
-        //mContentsClient.onCloseWindow();
+        mContentsClient.onCloseWindow();
     }
 
     @Override

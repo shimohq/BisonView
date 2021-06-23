@@ -123,6 +123,36 @@ public class BisonContentsClient {
 
     }
 
+
+    public boolean onCreateWindow(boolean isDialog, boolean isUserGesture) {
+        // jiang947
+        try {
+            TraceEvent.begin("BisonContentsClient.onCreateWindow");
+            boolean result;
+            if (mBisonWebChromeClient != null) {
+                if (TRACE) Log.i(TAG, "onCreateWindow");
+                result = mBisonWebChromeClient.onCreateWindow(mBisonView, isDialog, isUserGesture);
+            } else {
+                result = false;
+            }
+            return result;
+        } finally {
+            TraceEvent.end("BisonContentsClient.onCreateWindow");
+        }
+    }
+
+    public void onCloseWindow() {
+      try {
+          TraceEvent.begin("BisonContentsClient.onCloseWindow");
+          if (mBisonWebChromeClient != null) {
+              if (TRACE) Log.i(TAG, "onCloseWindow");
+              mBisonWebChromeClient.onCloseWindow(mBisonView);
+          }
+      } finally {
+          TraceEvent.end("BisonContentsClient.onCloseWindow");
+      }
+  }
+
     private boolean showDefaultJsDialog(JsPromptResult res, int jsDialogType, String defaultValue,
                                         String message, String url) {
         // Note we must unwrap the Context here due to JsDialogHelper only using instanceof to
