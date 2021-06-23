@@ -149,5 +149,6 @@ public class BisonQuotaManagerBridge {
                 long nativeBisonQuotaManagerBridge, BisonQuotaManagerBridge caller, int callbackId);
         void getUsageAndQuotaForOrigin(long nativeBisonQuotaManagerBridge, BisonQuotaManagerBridge caller,
                 String origin, int callbackId, boolean isQuota);
+
     }
 }

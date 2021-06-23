@@ -24,7 +24,9 @@ import org.chromium.content_public.browser.DeviceUtils;
 import im.shimo.bison.BisonView;
 import im.shimo.bison.BisonViewClient;
 import im.shimo.bison.WebResourceRequest;
+import im.shimo.bison.BisonWebChromeClient;
 import im.shimo.bison.SslErrorHandler;
+import im.shimo.bison.GeolocationPermissions;
 
 import java.net.MalformedURLException;
 import java.net.URI;
@@ -141,6 +143,24 @@ public class BisonShellMainActivity extends Activity {
                 Log.w(TAG,"onReceivedSslError");
                 handler.proceed();
             }
+
+        });
+
+        mBisonView.setBisonWebChromeClient(new BisonWebChromeClient() {
+
+            @Override
+            public void onReceivedTitle(BisonView view, String title) {
+                Log.w(TAG,"onReceivedTitle : title = ["+ title +"]");
+            }
+
+            @Override
+            public void onGeolocationPermissionsShowPrompt(String origin,
+                    GeolocationPermissions.Callback callback) {
+
+                Log.w(TAG,"onGeolocationPermissionsShowPrompt");
+
+            }
+
 
         });
 

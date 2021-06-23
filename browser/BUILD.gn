@@ -60,6 +60,8 @@ source_set("browser") {
     "bison_pdf_exporter.h",
     "bison_permission_manager.cc",
     "bison_permission_manager.h",
+    "bison_quota_permission_context.cc",
+    "bison_quota_permission_context.h",
     "bison_pref_names.cc",
     "bison_pref_names.h",
     "bison_print_manager.cc",

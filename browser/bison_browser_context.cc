@@ -100,10 +100,6 @@ BisonBrowserContext::~BisonBrowserContext() {
   DCHECK_EQ(this, g_browser_context);
   NotifyWillBeDestroyed(this);
   SimpleKeyMap::GetInstance()->Dissociate(this);
-  if (resource_context_) {
-    BrowserThread::DeleteSoon(BrowserThread::IO, FROM_HERE,
-                              resource_context_.release());
-  }
   ShutdownStoragePartitions();
 
   g_browser_context = NULL;
@@ -278,8 +274,7 @@ ResourceContext* BisonBrowserContext::GetResourceContext() {
   return resource_context_.get();
 }
 
-DownloadManagerDelegate*
-BisonBrowserContext::GetDownloadManagerDelegate() {
+DownloadManagerDelegate* BisonBrowserContext::GetDownloadManagerDelegate() {
   if (!GetUserData(kDownloadManagerDelegateKey)) {
     SetUserData(kDownloadManagerDelegateKey,
                 std::make_unique<BisonDownloadManagerDelegate>());
@@ -379,8 +374,8 @@ void BisonBrowserContext::ConfigureNetworkContextParams(
   context_params->http_cache_max_size = GetHttpCacheSize();
   context_params->http_cache_path = GetCacheDir();
 
-  // BisonView should persist and restore cookies between app sessions (including
-  // session cookies).
+  // BisonView should persist and restore cookies between app sessions
+  // (including session cookies).
   context_params->cookie_path = BisonBrowserContext::GetCookieStorePath();
   context_params->restore_old_session_cookies = true;
   context_params->persist_session_cookies = true;
