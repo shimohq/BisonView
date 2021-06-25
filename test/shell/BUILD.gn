@@ -21,7 +21,6 @@ bison_view_apk_tmpl("bison_shell_apk") {
     "java/im/shimo/bison/shell/BisonShellApp.java",
     "java/im/shimo/bison/shell/BisonShellMainActivity.java",
   ]
-  
 
   apk_name = "BisonApk"
   android_manifest = bison_apk_manifest_xml
@@ -43,15 +42,6 @@ bison_view_apk_tmpl("bison_shell_apk") {
   ]
   shared_libraries = [ "//bison:libbison_view" ]
 }
-
-# android_library("bison_apk_java") {
-
-#   deps = [
-#     "//net/android:net_java",
-#     "//ui/android:ui_java",
-#   ]
-
-# }
 
 android_resources("bison_apk_resources") {
   sources = [

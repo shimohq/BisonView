@@ -1,5 +1,9 @@
 package im.shimo.bison;
 
+/**
+ * same as android.webkit.WebChromeClient
+ *
+ */
 public class BisonWebChromeClient {
 
     /**
@@ -29,17 +33,17 @@ public class BisonWebChromeClient {
 
     public boolean onJsAlert(BisonView view, String url, String message,
         JsResult result) {
-    return false;
+        return false;
     }
 
     public boolean onJsConfirm(BisonView view, String url, String message,
         JsResult result) {
-    return false;
+        return false;
     }
 
     public boolean onJsPrompt(BisonView view, String url, String message,
                         String defaultValue, JsPromptResult result) {
-    return false;
+        return false;
     }
 
     public boolean onJsBeforeUnload(BisonView view, String url, String message,

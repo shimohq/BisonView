@@ -168,6 +168,7 @@ android_library("bison_java") {
   ]
 
   deps = bison_java_deps
+  deps +=[":bison_view_resources"]
 
   annotation_processor_deps = [ "//base/android/jni_generator:jni_processor" ]
 }
@@ -190,10 +191,20 @@ action("generate_sandboxed_service_srcjar") {
   ]
 }
 
-# android_resources("bison_java_resources") {
-#   sources = [ "java/res" ]
-#   custom_package = "im.shimo.bison"
-# }
+android_resources("bison_view_resources") {
+  sources = [
+    "java/res/layout/bison_js_prompt.xml",
+    "java/res/values/strings.xml",
+  ]
+
+  # custom_package = "im.shimo.bison"
+  android_manifest = bison_aar_manifest_xml
+  android_manifest_dep = ":bison_aar_manifest"
+}
+
+
+
+
 
 shared_library("libbison_view") {
   sources = [

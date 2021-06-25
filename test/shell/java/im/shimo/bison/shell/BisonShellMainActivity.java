@@ -122,7 +122,13 @@ public class BisonShellMainActivity extends Activity {
     private void initializeBisonView() {
         mBisonView = findViewById(R.id.bison_view);
         BisonView.setRemoteDebuggingEnabled(true);
+
         mBisonView.getSettings().setJavaScriptEnabled(true);
+        mBisonView.getSettings().setDomStorageEnabled(true);
+        mBisonView.getSettings().setAllowFileAccess(true);
+        mBisonView.getSettings().setDatabaseEnabled(true);
+
+
         mBisonView.setBisonViewClient(new BisonViewClient() {
 
             @Override
@@ -156,9 +162,7 @@ public class BisonShellMainActivity extends Activity {
             @Override
             public void onGeolocationPermissionsShowPrompt(String origin,
                     GeolocationPermissions.Callback callback) {
-
                 Log.w(TAG,"onGeolocationPermissionsShowPrompt");
-
             }
 
 
