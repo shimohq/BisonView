@@ -24,10 +24,12 @@ template("bison_repack_locales"){
     }
 
     source_patterns = [
+      "${root_gen_dir}/bison/components_strings_",
       "${root_gen_dir}/third_party/blink/public/strings/blink_strings_",
       "${root_gen_dir}/ui/strings/app_locale_settings_",
     ]
     deps += [
+      "//bison:generate_components_strings",
       "//third_party/blink/public/strings",
       "//ui/strings:app_locale_settings",
     ]

@@ -7,15 +7,6 @@ template("build_aar_impl") {
   _deps = []
   if (defined(invoker.deps)) {
     _deps += invoker.deps
-
-    foreach(_d ,_deps){
-      _target_name = get_label_info(_d,"name")
-      print("deps target_name:",_target_name)
-      _dep_target_gen_dir = get_label_info(_d,"target_gen_dir")
-      _module_config = "$_dep_target_gen_dir/$_target_name.build_config"
-      print("deps _dep_target_gen_dir:",_dep_target_gen_dir)
-      
-    }
   }
 
   _direct_deps_only =

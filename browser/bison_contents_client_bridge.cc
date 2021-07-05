@@ -340,8 +340,6 @@ void BisonContentsClientBridge::RunBeforeUnloadDialog(
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
   JNIEnv* env = AttachCurrentThread();
 
-  VLOG(0) << "RunBeforeUnloadDialog";
-
   ScopedJavaLocalRef<jobject> obj = java_ref_.get(env);
   if (obj.is_null()) {
     std::move(callback).Run(false, base::string16());
