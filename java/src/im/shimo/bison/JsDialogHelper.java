@@ -56,9 +56,8 @@ class JsDialogHelper {
                 return client.onJsAlert(bisonView, mUrl, mMessage, mResult);
             case CONFIRM:
                 return client.onJsConfirm(bisonView, mUrl, mMessage, mResult);
-            // jiang :
-//            case UNLOAD:
-//                return client.onJsBeforeUnload(bisonView, mUrl, mMessage, mResult);
+           case UNLOAD:
+               return client.onJsBeforeUnload(bisonView, mUrl, mMessage, mResult);
             case PROMPT:
                 return client.onJsPrompt(bisonView, mUrl, mMessage, mDefaultValue, mResult);
             default:

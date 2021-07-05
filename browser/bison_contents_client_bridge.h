@@ -49,6 +49,8 @@ class BisonContentsClientBridge {
 
   static void Associate(content::WebContents* web_contents,
                         BisonContentsClientBridge* handler);
+  // Removes any handlers associated to the UserData registry.
+  static void Dissociate(content::WebContents* web_contents);
   static BisonContentsClientBridge* FromWebContents(
       content::WebContents* web_contents);
   static BisonContentsClientBridge* FromWebContentsGetter(
@@ -82,12 +84,6 @@ class BisonContentsClientBridge {
                        jboolean proceed,
                        jint id);
 
-  void ConfirmJsResult(JNIEnv*,
-                       const base::android::JavaRef<jobject>&,
-                       int id,
-                       const base::android::JavaRef<jstring>& prompt);
-  void CancelJsResult(JNIEnv*, const base::android::JavaRef<jobject>&, int id);
-
   bool ShouldOverrideUrlLoading(const base::string16& url,
                                 bool has_user_gesture,
                                 bool is_redirect,
@@ -107,6 +103,11 @@ class BisonContentsClientBridge {
       jint request_id,
       const base::android::JavaRef<jobjectArray>& encoded_chain_ref,
       const base::android::JavaRef<jobject>& private_key_ref);
+  void ConfirmJsResult(JNIEnv*,
+                       const base::android::JavaRef<jobject>&,
+                       int id,
+                       const base::android::JavaRef<jstring>& prompt);
+  void CancelJsResult(JNIEnv*, const base::android::JavaRef<jobject>&, int id);
 
   void OnReceivedHttpError(const BisonWebResourceRequest& request,
                            std::unique_ptr<HttpErrorInfo> error_info);

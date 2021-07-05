@@ -33,7 +33,7 @@ import java.util.Map;
 import java.util.WeakHashMap;
 
 public class BisonContentsClient {
-    private static final boolean TRACE = false;
+    private static final boolean TRACE = true;
 
     private static final String TAG = "BisonContentsClient";
 
@@ -100,27 +100,60 @@ public class BisonContentsClient {
         if (mBisonWebChromeClient != null) {
             final JsPromptResult res =
                     new JsPromptResultReceiverAdapter(receiver).getPromptResult();
+            if (TRACE) Log.i(TAG, "handleJsAlert");
             if (!mBisonWebChromeClient.onJsAlert(mBisonView, url, message, res)) {
-                // showDefaultJsDialog
+                if (!showDefaultJsDialog(res, JsDialogHelper.ALERT, null, message, url)) {
+                    receiver.cancel();
+                }
             }
+        } else {
+            receiver.cancel();
         }
     }
 
-    protected void handleJsBeforeUnload(String url, String message,
-                                        JsResultReceiver receiver) {
-
+    protected void handleJsBeforeUnload(String url, String message, JsResultReceiver receiver) {
+        if (mBisonWebChromeClient != null) {
+            final JsPromptResult res =
+                    new JsPromptResultReceiverAdapter(receiver).getPromptResult();
+            if (TRACE) Log.i(TAG, "handleJsBeforeUnload");
+            if (!mBisonWebChromeClient.onJsBeforeUnload(mBisonView, url, message, res)) {
+                if (!showDefaultJsDialog(res, JsDialogHelper.UNLOAD, null, message, url)) {
+                    receiver.cancel();
+                }
+            }
+        } else {
+            receiver.cancel();
+        }
     }
 
     protected void handleJsConfirm(String url, String message, JsResultReceiver receiver) {
-        final JsPromptResult res =
-                new JsPromptResultReceiverAdapter(receiver).getPromptResult();
-        mBisonWebChromeClient.onJsConfirm(mBisonView, url, message, res);
+        if (mBisonWebChromeClient != null) {
+            final JsPromptResult res =
+                    new JsPromptResultReceiverAdapter(receiver).getPromptResult();
+            if (!mBisonWebChromeClient.onJsConfirm(mBisonView, url, message, res)) {
+                if (!showDefaultJsDialog(res, JsDialogHelper.CONFIRM, null, message, url)) {
+                    receiver.cancel();
+                }
+            }
+        } else {
+            receiver.cancel();
+        }
     }
 
-    protected void handleJsPrompt(String url, String message, String defaultValue,
-                                  JsPromptResultReceiver receiver) {
-
-
+    protected void handleJsPrompt(String url, String message, String defaultValue, JsPromptResultReceiver receiver) {
+        if (mBisonWebChromeClient != null) {
+            final JsPromptResult res =
+                    new JsPromptResultReceiverAdapter(receiver).getPromptResult();
+            if (TRACE) Log.i(TAG, "onJsPrompt");
+            if (!mBisonWebChromeClient.onJsPrompt(mBisonView, url, message, defaultValue, res)) {
+                if (!showDefaultJsDialog(
+                        res, JsDialogHelper.PROMPT, defaultValue, message, url)) {
+                    receiver.cancel();
+                }
+            }
+        } else {
+            receiver.cancel();
+        }
     }
 
 

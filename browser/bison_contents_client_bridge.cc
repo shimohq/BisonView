@@ -6,6 +6,7 @@
 
 #include "bison/bison_jni_headers/BisonContentsClientBridge_jni.h"
 #include "bison/common/devtools_instrumentation.h"
+#include "bison/grit/components_strings.h"
 
 #include "base/android/jni_android.h"
 #include "base/android/jni_array.h"
@@ -76,6 +77,11 @@ void BisonContentsClientBridge::Associate(WebContents* web_contents,
                                           BisonContentsClientBridge* handler) {
   web_contents->SetUserData(kBisonContentsClientBridge,
                             std::make_unique<UserData>(handler));
+}
+
+// static
+void BisonContentsClientBridge::Dissociate(WebContents* web_contents) {
+  web_contents->RemoveUserData(kBisonContentsClientBridge);
 }
 
 BisonContentsClientBridge* BisonContentsClientBridge::FromWebContents(
@@ -170,7 +176,8 @@ void BisonContentsClientBridge::ProceedSslError(JNIEnv* env,
 }
 
 // This method is inspired by SelectClientCertificate() in
-// chrome/browser/ui/android/ssl_client_certificate_request.cc
+// components/browser_ui/client_certificate/android/
+// ssl_client_certificate_request.cc
 void BisonContentsClientBridge::SelectClientCertificate(
     net::SSLCertRequestInfo* cert_request_info,
     std::unique_ptr<content::ClientCertificateDelegate> delegate) {
@@ -327,7 +334,35 @@ void BisonContentsClientBridge::RunJavaScriptDialog(
   }
 }
 
-// jiang RunBeforeUnloadDialog
+void BisonContentsClientBridge::RunBeforeUnloadDialog(
+    const GURL& origin_url,
+    content::JavaScriptDialogManager::DialogClosedCallback callback) {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  JNIEnv* env = AttachCurrentThread();
+
+  VLOG(0) << "RunBeforeUnloadDialog";
+
+  ScopedJavaLocalRef<jobject> obj = java_ref_.get(env);
+  if (obj.is_null()) {
+    std::move(callback).Run(false, base::string16());
+    return;
+  }
+
+  const base::string16 message_text =
+      l10n_util::GetStringUTF16(IDS_BEFOREUNLOAD_MESSAGEBOX_MESSAGE);
+
+  int callback_id = pending_js_dialog_callbacks_.Add(
+      std::make_unique<content::JavaScriptDialogManager::DialogClosedCallback>(
+          std::move(callback)));
+  ScopedJavaLocalRef<jstring> jurl(
+      ConvertUTF8ToJavaString(env, origin_url.spec()));
+  ScopedJavaLocalRef<jstring> jmessage(
+      ConvertUTF16ToJavaString(env, message_text));
+
+  devtools_instrumentation::ScopedEmbedderCallbackTask("onJsBeforeUnload");
+  Java_BisonContentsClientBridge_handleJsBeforeUnload(env, obj, jurl, jmessage,
+                                                      callback_id);
+}
 
 bool BisonContentsClientBridge::ShouldOverrideUrlLoading(
     const base::string16& url,
@@ -346,9 +381,9 @@ bool BisonContentsClientBridge::ShouldOverrideUrlLoading(
   *ignore_navigation = Java_BisonContentsClientBridge_shouldOverrideUrlLoading(
       env, obj, jurl, has_user_gesture, is_redirect, is_main_frame);
   if (HasException(env)) {
-    // Tell the chromium message loop to not perform any tasks after the current
-    // one - we want to make sure we return to Java cleanly without first making
-    // any new JNI calls.
+    // Tell the chromium message loop to not perform any tasks after the
+    // current one - we want to make sure we return to Java cleanly without
+    // first making any new JNI calls.
     base::MessageLoopCurrentForUI::Get()->Abort();
     // If we crashed we don't want to continue the navigation.
     *ignore_navigation = true;

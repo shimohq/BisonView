@@ -35,7 +35,16 @@ void BisonJavaScriptDialogManager::RunBeforeUnloadDialog(
     WebContents* web_contents,
     RenderFrameHost* render_frame_host,
     bool is_reload,
-    DialogClosedCallback callback) {}
+    DialogClosedCallback callback) {
+  BisonContentsClientBridge* bridge =
+      BisonContentsClientBridge::FromWebContents(web_contents);
+  if (!bridge) {
+    std::move(callback).Run(false, base::string16());
+    return;
+  }
+
+  bridge->RunBeforeUnloadDialog(web_contents->GetURL(), std::move(callback));
+}
 
 void BisonJavaScriptDialogManager::CancelDialogs(WebContents* web_contents,
                                                  bool reset_state) {}

@@ -34,7 +34,8 @@ public class BisonInitializer {
 
     public void init(Context context) {
         ContextUtils.initApplicationContext(context);
-        ResourceBundle.setNoAvailableLocalePaks();
+        ResourceBundle.setAvailablePakLocales(
+            new String[] {}, BisonLocaleConfig.getWebViewSupportedPakLocales());
         final boolean isExternalService = false;
         final boolean bindToCaller = true;
         final boolean ignoreVisibilityForImportance = true;

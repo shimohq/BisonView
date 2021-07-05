@@ -1,4 +1,6 @@
 import("//build/config/android/config.gni")
+import("//build/config/android/rules.gni")
+import("//build/config/locales.gni")
 import("//build/config/features.gni")
 import("//build/config/sanitizers/sanitizers.gni")
 import("//build/config/ui.gni")
@@ -11,7 +13,9 @@ import("//tools/v8_context_snapshot/v8_context_snapshot.gni")
 import("//components/spellcheck/spellcheck_build_features.gni")
 import("//components/gwp_asan/buildflags/buildflags.gni")
 import("//third_party/icu/config.gni")
+
 import("config.gni")
+# import("//bison/build/locales.gni")
 import("//bison/build/aar.gni")
 
 
@@ -33,7 +37,8 @@ android_aar("bison_view_aar") {
   deps = [
     ":bison_aar_manifest",
     ":bison_java",
-    ":bison_assets",
+    ":pak_file_assets",
+    ":locale_pak_assets",
     ":bison_icu_assets",
     ":bison_v8_snapshot_assets",
   ]
@@ -168,7 +173,10 @@ android_library("bison_java") {
   ]
 
   deps = bison_java_deps
-  deps +=[":bison_view_resources"]
+  deps += [
+    ":bison_view_resources",
+    ":bison_view_product_config_java"
+  ]
 
   annotation_processor_deps = [ "//base/android/jni_generator:jni_processor" ]
 }
@@ -196,15 +204,9 @@ android_resources("bison_view_resources") {
     "java/res/layout/bison_js_prompt.xml",
     "java/res/values/strings.xml",
   ]
-
-  # custom_package = "im.shimo.bison"
   android_manifest = bison_aar_manifest_xml
   android_manifest_dep = ":bison_aar_manifest"
 }
-
-
-
-
 
 shared_library("libbison_view") {
   sources = [
@@ -231,7 +233,6 @@ shared_library("libbison_view") {
 
 source_set("bison_lib") {
   deps = [
-    ":pak",
     "browser",
     "common",
     "gpu",
@@ -271,48 +272,79 @@ group("resources") {
   ]
 }
 
-repack("pak") {
+repack("repack_100_percent"){
+  sources = [
+    "$root_gen_dir/content/app/resources/content_resources_100_percent.pak",
+    "$root_gen_dir/third_party/blink/public/resources/blink_scaled_resources_100_percent.pak",
+    "$root_gen_dir/ui/resources/ui_resources_100_percent.pak",
+  ]
+  deps = [
+    "//content/app/resources",
+    "//third_party/blink/public:scaled_resources_100_percent",
+    "//ui/resources",
+  ]
+  output = "$root_out_dir/chrome_100_percent.pak"
+
+}
+
+generate_product_config_srcjar("bison_view_product_config") {
+  java_package = "im.shimo.bison"
+}
+
+android_library("bison_view_product_config_java") {
+  sources = [ "java/src/im/shimo/bison/BisonLocaleConfig.java" ]
+  srcjar_deps = [ ":bison_view_product_config" ]
+  jar_excluded_patterns = [ "*/ProductConfig.class" ]
+}
+
+bison_repack_locales("repack_locales") {
+  input_locales = locales
+  output_locales = locales
+}
+
+android_assets("locale_pak_assets") {
+  disable_compression = true
+  renaming_sources = []
+  renaming_destinations = []
+  foreach(_locale, locales) {
+    renaming_sources += [ "$root_out_dir/bison/locales/$_locale.pak" ]
+    renaming_destinations += [ "stored-locales/$_locale.pak" ]
+  }
+  treat_as_locale_paks = true
+  deps = [ ":repack_locales" ]
+}
+
+repack("repack_pack") {
   sources = [
     "$root_gen_dir/bison/bison_resources.pak",
-    "$root_gen_dir/content/app/resources/content_resources_100_percent.pak",
-    "$root_gen_dir/content/browser/tracing/tracing_resources.pak",
     "$root_gen_dir/content/content_resources.pak",
-    "$root_gen_dir/mojo/public/js/mojo_bindings_resources.pak",
     "$root_gen_dir/net/net_resources.pak",
     "$root_gen_dir/third_party/blink/public/resources/blink_resources.pak",
-    "$root_gen_dir/third_party/blink/public/resources/blink_scaled_resources_100_percent.pak",
-    "$root_gen_dir/third_party/blink/public/strings/blink_strings_en-US.pak",
-    "$root_gen_dir/ui/resources/ui_resources_100_percent.pak",
-    "$root_gen_dir/ui/resources/webui_resources.pak",
-    "$root_gen_dir/ui/strings/app_locale_settings_en-US.pak",
-    "$root_gen_dir/ui/strings/ui_strings_en-US.pak",
+    # "$target_gen_dir/components_resources.pak",
+    # "$root_gen_dir/mojo/public/js/mojo_bindings_resources.pak",
+    # "$target_gen_dir/webui_resources.pak",
   ]
 
   deps = [
     ":resources",
     "//content:content_resources",
-    "//content/app/resources",
-    "//content/browser/tracing:resources",
-    "//mojo/public/js:resources",
     "//net:net_resources",
     "//third_party/blink/public:resources",
-    "//third_party/blink/public:scaled_resources_100_percent",
-    "//third_party/blink/public/strings",
-    "//ui/resources",
-    "//ui/strings",
   ]
 
   output = "$root_out_dir/bison.pak"
 }
 
 
-android_assets("bison_assets") {
+android_assets("pak_file_assets") {
   sources = [
+    "$root_out_dir/chrome_100_percent.pak",
     "$root_out_dir/bison.pak",
   ]
   disable_compression = true
   deps = [
-    "//bison:pak",
+    "//bison:repack_100_percent",
+    "//bison:repack_pack",
   ]
 }
 
@@ -362,4 +394,30 @@ android_assets("bison_v8_snapshot_assets") {
 
     deps = [ "//v8:v8_external_startup_data_assets" ]
   }
+}
+
+
+grit("generate_components_strings") {
+  source = "../components/components_strings.grd"
+
+  # components_strings contains strings from all components. WebView
+  # will never display most of them, so we try to limit the included
+  # strings. This allowlist trims about 50% more than the compile-based
+  # allowlist generated by :system_webview_pak_whitelist.
+  _allowlist = rebase_path("ui/grit_strings_allowlist.txt", root_build_dir)
+  inputs = [ "//bison/ui/grit_strings_allowlist.txt" ]
+  grit_flags = [
+    "-w",
+    _allowlist,
+  ]
+  outputs =
+      [
+        "grit/components_strings.h",
+        "java/res/values/components_strings.xml",
+      ] +
+      process_file_template(
+          android_bundle_locales_as_resources,
+          [ "java/res/values-{{source_name_part}}/components_strings.xml" ]) +
+      process_file_template(locales_with_fake_bidi,
+                            [ "components_strings_{{source_name_part}}.pak" ])
 }

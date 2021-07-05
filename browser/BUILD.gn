@@ -142,6 +142,7 @@ source_set("browser") {
   deps = [
     # "metrics",
     "//bison:bison_jni_headers",
+    "//bison:generate_components_strings",
     "//bison/common",
     "//bison/common:common_mojom",
 

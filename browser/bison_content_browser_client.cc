@@ -527,11 +527,16 @@ void BisonContentBrowserClient::GetAdditionalMappedFilesForChildProcess(
     const base::CommandLine& command_line,
     int child_process_id,
     content::PosixFileDescriptorInfo* mappings) {
-  VLOG(0) << "GetAdditionalMappedFilesForChildProcess";
-  mappings->ShareWithRegion(
-      kBisonPakDescriptor,
-      base::GlobalDescriptors::GetInstance()->Get(kBisonPakDescriptor),
-      base::GlobalDescriptors::GetInstance()->GetRegion(kBisonPakDescriptor));
+  base::MemoryMappedFile::Region region;
+
+  int fd = ui::GetMainAndroidPackFd(&region);
+  mappings->ShareWithRegion(kBisonViewMainPakDescriptor,fd,region);
+
+  fd = ui::GetCommonResourcesPackFd(&region);
+  mappings->ShareWithRegion(kBisonView100PercentPakDescriptor, fd, region);
+
+  fd = ui::GetLocalePackFd(&region);
+  mappings->ShareWithRegion(kBisonViewLocalePakDescriptor, fd, region);
 
   int crash_signal_fd =
       crashpad::CrashHandlerHost::Get()->GetDeathSignalSocket();

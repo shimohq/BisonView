@@ -22,39 +22,40 @@ void InitIcuAndResourceBundleBrowserSide() {
   TRACE_EVENT0("startup", "InitIcuAndResourceBundleBrowserSide");
   VLOG(0) << "base::android::GetDefaultLocaleString()"
           << base::android::GetDefaultLocaleString();
-  // ui::SetLocalePaksStoredInApk(true);
-  // std::string locale = ui::ResourceBundle::InitSharedInstanceWithLocale(
-  //     base::android::GetDefaultLocaleString(), NULL,
-  //     ui::ResourceBundle::DO_NOT_LOAD_COMMON_RESOURCES);
-
-  auto* global_descriptors = base::GlobalDescriptors::GetInstance();
-  int pak_fd = global_descriptors->MaybeGet(kBisonPakDescriptor);
-  base::MemoryMappedFile::Region pak_region;
-  if (pak_fd >= 0) {
-    pak_region = global_descriptors->GetRegion(kBisonPakDescriptor);
-  } else {
-    pak_fd = base::android::OpenApkAsset("assets/bison.pak", &pak_region);
+  ui::SetLocalePaksStoredInApk(true);
+  std::string locale = ui::ResourceBundle::InitSharedInstanceWithLocale(
+      base::android::GetDefaultLocaleString(), NULL,
+      ui::ResourceBundle::LOAD_COMMON_RESOURCES);
+  if (locale.empty()) {
+    LOG(WARNING) << "Failed to load locale .pak from apk.";
   }
-  global_descriptors->Set(kBisonPakDescriptor, pak_fd, pak_region);
+  base::i18n::SetICUDefaultLocale(locale);
+  
+  base::FilePath pak_file_path;
+  base::PathService::Get(ui::DIR_RESOURCE_PAKS_ANDROID, &pak_file_path);
+  pak_file_path = pak_file_path.AppendASCII("bison.pak");
+  ui::LoadMainAndroidPackFile("assets/bison.pak", pak_file_path);
 }
 
 void InitResourceBundleRendererSide() {
   auto* global_descriptors = base::GlobalDescriptors::GetInstance();
-  int pak_fd = global_descriptors->Get(kBisonPakDescriptor);
+  int pak_fd = global_descriptors->Get(kBisonViewLocalePakDescriptor);
   base::MemoryMappedFile::Region pak_region =
-      global_descriptors->GetRegion(kBisonPakDescriptor);
+      global_descriptors->GetRegion(kBisonViewLocalePakDescriptor);
   ui::ResourceBundle::InitSharedInstanceWithPakFileRegion(base::File(pak_fd),
                                                           pak_region);
-  ui::ResourceBundle::GetSharedInstance().AddDataPackFromFileRegion(
-      base::File(pak_fd), pak_region, ui::SCALE_FACTOR_100P);
-  // std::pair<int, ui::ScaleFactor> extra_paks[] = {{ui::SCALE_FACTOR_100P}};
+  
 
-  // for (const auto& pak_info : extra_paks) {
-  //   pak_fd = global_descriptors->Get(pak_info.first);
-  //   pak_region = global_descriptors->GetRegion(pak_info.first);
-  //   ui::ResourceBundle::GetSharedInstance().AddDataPackFromFileRegion(
-  //       base::File(pak_fd), pak_region, pak_info.second);
-  // }
+  std::pair<int, ui::ScaleFactor> extra_paks[] = {
+      {kBisonViewMainPakDescriptor, ui::SCALE_FACTOR_NONE},
+      {kBisonView100PercentPakDescriptor, ui::SCALE_FACTOR_100P}};
+
+  for (const auto& pak_info : extra_paks) {
+    pak_fd = global_descriptors->Get(pak_info.first);
+    pak_region = global_descriptors->GetRegion(pak_info.first);
+    ui::ResourceBundle::GetSharedInstance().AddDataPackFromFileRegion(
+        base::File(pak_fd), pak_region, pak_info.second);
+  }
 }
 
 }  // namespace bison

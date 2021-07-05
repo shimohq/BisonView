@@ -3,6 +3,7 @@ import("//build/config/android/rules.gni")
 import("//build/util/version.gni")
 import("//bison/build/bison_aar_impl.gni")
 import("//tools/v8_context_snapshot/v8_context_snapshot.gni")
+import("//tools/grit/repack.gni")
 
 template("repackage_jars") {
   dist_jar(target_name) {
@@ -14,16 +15,33 @@ template("repackage_jars") {
   }
 }
 
+template("bison_repack_locales"){
+
+  repack_locales(target_name) {
+    forward_variables_from(invoker, "*")
+    if (!defined(deps)) {
+      deps = []
+    }
+
+    source_patterns = [
+      "${root_gen_dir}/third_party/blink/public/strings/blink_strings_",
+      "${root_gen_dir}/ui/strings/app_locale_settings_",
+    ]
+    deps += [
+      "//third_party/blink/public/strings",
+      "//ui/strings:app_locale_settings",
+    ]
+    # source_patterns += webview_repack_locales_source_patterns
+    # deps += webview_repack_locales_deps
+    output_dir = "$root_out_dir/bison/locales"
+  }
+}
+
 template("bison_view_apk_tmpl") {
   
   _native_lib_file =
           rebase_path("$root_gen_dir/CHROME_VERSION.json", root_out_dir)
   _native_lib_version_arg = "@FileArg($_native_lib_file:full-quoted)"
-  # _native_lib_version_rule = "//build/util:chrome_version_json"
-  # _deps = []
-  # if (defined(invoker.deps)){
-  #   _deps += invoker.deps
-  # }
 
   android_apk(target_name) {
     forward_variables_from(invoker, "*")
@@ -36,15 +54,40 @@ template("bison_view_apk_tmpl") {
 # _jni_registration_header = "$target_gen_dir/bison_jni_registration.h"
 template("android_aar") {
   assert(defined(invoker.shared_libraries))
+  _deps = []
   # assert(defined(invoker.jni_registration_header))
   # _build_config = "$target_gen_dir/$target_name.build_config"
-  # print("_build_config path:", _build_config)
 
   _template_name = target_name
+
+  _locales = string_join("\",\"",invoker.locales)
+  _locales = "{\"${_locales}\"}"
+  
+  java_cpp_template("${_template_name}__product_config_srcjar") {
+    defines = []
+    defines += [ "USE_FINAL" ]
+    
+    package_path = string_replace("im.shimo.bison", ".", "/")
+    sources = [ "//build/android/java/templates/ProductConfig.template" ]
+    defines += [ "PACKAGE=im.shimo.bison" ]
+    defines += [
+      "USE_CHROMIUM_LINKER_VALUE=false",
+      "USE_MODERN_LINKER_VALUE=false",
+      "IS_BUNDLE_VALUE=false",
+      "UNCOMPRESSED_LOCALE_LIST=${_locales}"
+    ]
+  }
+
+  android_library("${_template_name}__generate_product_config_java"){
+    srcjar_deps = [":${_template_name}__product_config_srcjar"]
+  }
+
+  _deps += [":${_template_name}__generate_product_config_java"]
 
   _shared_library_list_file =
       "$target_gen_dir/${_template_name}.native_libs"
   generated_file("${_template_name}__shared_library_list") {
+
     deps = invoker.shared_libraries
     outputs = [
       _shared_library_list_file,
@@ -71,7 +114,7 @@ template("android_aar") {
   android_library("${_template_name}__native_libraries_java"){
     srcjar_deps = [":${_template_name}__native_libraries"]
   }
-  _deps = []
+  
   _deps += [":${_template_name}__native_libraries_java"]
   _generate_jni_targets = []
   if (defined(invoker.deps)) {
@@ -107,7 +150,7 @@ template("android_aar") {
   }
 
   # print("_native_libraries",_native_libraries)
-
+  
   build_aar_impl(target_name) {
     forward_variables_from(invoker, [
       "android_manifest",
