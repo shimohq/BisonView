@@ -18,12 +18,14 @@ public class BisonView extends FrameLayout {
 
     private static ClientCertLookupTable sClientCertLookupTable;
 
+    private static BisonDevToolsServer gBisonDevToolsServer;
+    private static boolean loaded ;
+
     private BisonContentsClient mBisonContentsClient;
     private BisonContents mBisonContents;
     private BisonContentsClientBridge mBisonContentsClientBridge;
+    private BisonWebStorage mBisonWebStorage;
 
-    private static BisonDevToolsServer gBisonDevToolsServer;
-    private static boolean loaded ;
 
     public BisonView(Context context) {
         super(context);
@@ -49,7 +51,9 @@ public class BisonView extends FrameLayout {
         }
         mBisonContentsClient = new BisonContentsClient(this, context);
         mBisonContentsClientBridge = new BisonContentsClientBridge(context, mBisonContentsClient, getClientCertLookupTable());
-        mBisonContents = new BisonContents(context, this, BisonBrowserContext.getDefault(), mBisonContentsClientBridge,
+        BisonBrowserContext bisonBrowserContext = BisonBrowserContext.getDefault();
+        mBisonWebStorage = new BisonWebStorage(bisonBrowserContext.getQuotaManagerBridge());
+        mBisonContents = new BisonContents(context, this, bisonBrowserContext, mBisonContentsClientBridge,
                 mBisonContentsClient);
         addView(mBisonContents);
     }
@@ -206,6 +210,10 @@ public class BisonView extends FrameLayout {
         return mBisonContents.onCreateInputConnection(outAttrs);
     }
 
+    public BisonWebStorage getBisonWebStorage() {
+        return mBisonWebStorage;
+    }
+
     public static void setRemoteDebuggingEnabled(boolean enable) {
         if (gBisonDevToolsServer == null) {
             if (!enable) return;
@@ -217,7 +225,6 @@ public class BisonView extends FrameLayout {
             gBisonDevToolsServer = null;
         }
     }
-
 
     private static ClientCertLookupTable getClientCertLookupTable() {
         if (sClientCertLookupTable == null) {

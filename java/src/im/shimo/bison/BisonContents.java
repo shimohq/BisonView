@@ -376,7 +376,6 @@ class BisonContents extends FrameLayout {
         updateDefaultLocale();
 
         mBrowserContext = bisonBrowserContext;
-        BisonQuotaManagerBridge bisonQuotaManagerBridge = bisonBrowserContext.getQuotaManagerBridge();
         mNativeBisonContents = BisonContentsJni.get().init(this, mBrowserContext.getNativePointer());
         mWebContents = BisonContentsJni.get().getWebContents(mNativeBisonContents);
         mContainerView = containerView;

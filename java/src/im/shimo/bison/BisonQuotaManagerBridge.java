@@ -13,12 +13,12 @@ import org.chromium.base.annotations.NativeMethods;
  * BisonBrowserContext and the native side is owned by the native BisonBrowserContext.
  */
 @JNINamespace("bison")
-public class BisonQuotaManagerBridge {
+class BisonQuotaManagerBridge {
     /**
      * This class represent the callback value of android.webview.WebStorage.getOrigins. The values
      * are optimized for JNI convenience and need to be converted.
      */
-    public static class Origins {
+    static class Origins {
         // Origin, usage, and quota data in parallel arrays of same length.
         public final String[] mOrigins;
         public final long[] mUsages;

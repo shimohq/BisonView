@@ -165,6 +165,7 @@ android_library("bison_java") {
     "java/src/im/shimo/bison/BisonRenderProcessClient.java",
     "java/src/im/shimo/bison/BisonRenderProcessGoneDetail.java",
     "java/src/im/shimo/bison/SslErrorHandler.java",
+    "java/src/im/shimo/bison/BisonWebStorage.java",
   ]
 
   srcjar_deps = [
