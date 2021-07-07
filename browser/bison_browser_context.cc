@@ -162,8 +162,8 @@ void BisonBrowserContext::RegisterPrefs(PrefRegistrySimple* registry) {
   // the retention policy ran. By setting it to a low default value, we're
   // making sure it runs now (as it only runs once per major version).
 
-  // registry->RegisterIntegerPref(
-  //     autofill::prefs::kAutocompleteLastVersionRetentionPolicy, 0);
+  registry->RegisterIntegerPref(
+      autofill::prefs::kAutocompleteLastVersionRetentionPolicy, 0);
 
   // We only use the autocomplete feature of Autofill, which is controlled via
   // the manager_delegate. We don't use the rest of Autofill, which is why it is
@@ -171,10 +171,10 @@ void BisonBrowserContext::RegisterPrefs(PrefRegistrySimple* registry) {
   // TODO(crbug.com/873740): The following also disables autocomplete.
   // Investigate what the intended behavior is.
 
-  // registry->RegisterBooleanPref(autofill::prefs::kAutofillProfileEnabled,
-  //                               false);
-  // registry->RegisterBooleanPref(autofill::prefs::kAutofillCreditCardEnabled,
-  //                               false);
+  registry->RegisterBooleanPref(autofill::prefs::kAutofillProfileEnabled,
+                                false);
+  registry->RegisterBooleanPref(autofill::prefs::kAutofillCreditCardEnabled,
+                                false);
 
 #if BUILDFLAG(ENABLE_MOJO_CDM)
   cdm::MediaDrmStorageImpl::RegisterProfilePrefs(registry);

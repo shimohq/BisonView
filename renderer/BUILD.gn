@@ -19,9 +19,10 @@ source_set("renderer") {
   ]
 
   deps = [
-    "//base",
     "//bison/common",
     "//bison/common:common_mojom",
+    
+    "//base",
     "//components/autofill/content/renderer",
     "//components/cdm/renderer",
     "//components/content_capture/common",

@@ -424,6 +424,7 @@ class BisonContents extends FrameLayout {
 
         BisonContentsJni.get().setJavaPeers(mNativeBisonContents, mWebContentsDelegate,
                 mBisonContentsClientBridge, mIoThreadClient, mInterceptNavigationDelegate, mAutofillProvider);
+        if (mAutofillProvider != null) mAutofillProvider.setWebContents(mWebContents);
         installWebContentsObserver();
         mSettings.setWebContents(mWebContents);
 

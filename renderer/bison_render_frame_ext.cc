@@ -152,10 +152,10 @@ BisonRenderFrameExt::BisonRenderFrameExt(content::RenderFrame* render_frame)
   // TODO(sgurun) do not create a password autofill agent (change
   // autofill agent to store a weakptr).
 
-  // autofill::PasswordAutofillAgent* password_autofill_agent =
-  //     new autofill::PasswordAutofillAgent(render_frame, &registry_);
-  // new autofill::AutofillAgent(render_frame, password_autofill_agent, nullptr,
-  //                             &registry_);
+  autofill::PasswordAutofillAgent* password_autofill_agent =
+      new autofill::PasswordAutofillAgent(render_frame, &registry_);
+  new autofill::AutofillAgent(render_frame, password_autofill_agent, nullptr,
+                              nullptr, &registry_);
   // if (content_capture::features::IsContentCaptureEnabled())
   //   new content_capture::ContentCaptureSender(render_frame, &registry_);
 

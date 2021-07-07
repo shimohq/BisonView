@@ -1,17 +1,20 @@
 package im.shimo.bison;
 
+import android.annotation.TargetApi;
 import android.content.Context;
 import android.graphics.Picture;
 import android.graphics.Bitmap;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Message;
 import android.util.AttributeSet;
 import android.widget.FrameLayout;
 import android.view.autofill.AutofillValue;
+import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
 import android.os.StrictMode;
-
+import android.util.SparseArray;
 import android.webkit.WebView.VisualStateCallback;
 import android.webkit.WebBackForwardList;
 
@@ -203,10 +206,12 @@ public class BisonView extends FrameLayout {
 
     public Picture capturePicture() {
         // jiang
+        return null;
     }
 
     public float getScale() {
         // jiang
+        return 0;
     }
 
     public void setInitialScale(final int scaleInPercent) {
@@ -243,7 +248,6 @@ public class BisonView extends FrameLayout {
         return null;
     }
 
-    @Override
     public String getTouchIconUrl() {
         // Intentional no-op: hidden method on WebView.
         return null;
@@ -319,7 +323,7 @@ public class BisonView extends FrameLayout {
     }
 
     public void findNext(final boolean forwards) {
-        mBisonContents.findNext(forward);
+        mBisonContents.findNext(forwards);
     }
 
     public int findAll(final String searchString) {
@@ -416,9 +420,9 @@ public class BisonView extends FrameLayout {
         return null;
     }
 
+    @Override
     public void autofill(final SparseArray<AutofillValue> values) {
         // jiang
-        mBisonContents.autofill(values);
     }
 
     @Override
