@@ -1,24 +1,23 @@
 import("//build/config/android/config.gni")
 import("//build/config/android/rules.gni")
-import("//build/config/locales.gni")
 import("//build/config/features.gni")
+import("//build/config/locales.gni")
 import("//build/config/sanitizers/sanitizers.gni")
 import("//build/config/ui.gni")
+import("//components/gwp_asan/buildflags/buildflags.gni")
+import("//components/spellcheck/spellcheck_build_features.gni")
 import("//gpu/vulkan/features.gni")
 import("//media/media_options.gni")
 import("//mojo/public/tools/bindings/mojom.gni")
+import("//third_party/icu/config.gni")
 import("//tools/grit/grit_rule.gni")
 import("//tools/grit/repack.gni")
 import("//tools/v8_context_snapshot/v8_context_snapshot.gni")
-import("//components/spellcheck/spellcheck_build_features.gni")
-import("//components/gwp_asan/buildflags/buildflags.gni")
-import("//third_party/icu/config.gni")
 
 import("config.gni")
+
 # import("//bison/build/locales.gni")
 import("//bison/build/aar.gni")
-
-
 group("bison") {
   deps = [
     ":bison_view_aar",
@@ -36,11 +35,11 @@ android_aar("bison_view_aar") {
 
   deps = [
     ":bison_aar_manifest",
-    ":bison_java",
-    ":pak_file_assets",
-    ":locale_pak_assets",
     ":bison_icu_assets",
+    ":bison_java",
     ":bison_v8_snapshot_assets",
+    ":locale_pak_assets",
+    ":pak_file_assets",
   ]
 
   shared_libraries = [ ":libbison_view" ]
@@ -101,71 +100,73 @@ generate_jni("bison_jni_headers") {
 
 android_library("bison_java") {
   sources = [
+    "java/src/im/shimo/bison/AndroidProtocolHandler.java",
+    "java/src/im/shimo/bison/AutofillActionModeCallback.java",
+    "java/src/im/shimo/bison/BisonActionModeCallback.java",
+    "java/src/im/shimo/bison/BisonAutofillClient.java",
+    "java/src/im/shimo/bison/BisonBrowserContext.java",
     "java/src/im/shimo/bison/BisonContents.java",
-    "java/src/im/shimo/bison/BisonWebChromeClient.java",
+    "java/src/im/shimo/bison/BisonContentsBackgroundThreadClient.java",
+    "java/src/im/shimo/bison/BisonContentsClient.java",
+    "java/src/im/shimo/bison/BisonContentsClientBridge.java",
+    "java/src/im/shimo/bison/BisonContentsClientCallbackHelper.java",
+    "java/src/im/shimo/bison/BisonContentsIoThreadClient.java",
+    "java/src/im/shimo/bison/BisonContentsLifecycleNotifier.java",
+    "java/src/im/shimo/bison/BisonCookieManager.java",
+    "java/src/im/shimo/bison/BisonDevToolsServer.java",
+    "java/src/im/shimo/bison/BisonFormDatabase.java",
+    "java/src/im/shimo/bison/BisonGeolocationCallback.java",
+    "java/src/im/shimo/bison/BisonGeolocationPermissions.java",
+    "java/src/im/shimo/bison/BisonInitializer.java",
+    "java/src/im/shimo/bison/BisonLayoutSizer.java",
+    "java/src/im/shimo/bison/BisonMetricsServiceClient.java",
+    "java/src/im/shimo/bison/BisonPdfExporter.java",
+    "java/src/im/shimo/bison/BisonPermissionRequest.java",
+    "java/src/im/shimo/bison/BisonQuotaManagerBridge.java",
+    "java/src/im/shimo/bison/BisonRenderProcess.java",
+    "java/src/im/shimo/bison/BisonRenderProcessClient.java",
+    "java/src/im/shimo/bison/BisonRenderProcessGoneDetail.java",
+    "java/src/im/shimo/bison/BisonResources.java",
+    "java/src/im/shimo/bison/BisonSafeBrowsingResponse.java",
+    "java/src/im/shimo/bison/BisonSettings.java",
+    "java/src/im/shimo/bison/BisonSupportLibIsomorphic.java",
+    "java/src/im/shimo/bison/BisonVariationsSeedBridge.java",
     "java/src/im/shimo/bison/BisonView.java",
     "java/src/im/shimo/bison/BisonViewAndroidDelegate.java",
     "java/src/im/shimo/bison/BisonViewClient.java",
+    "java/src/im/shimo/bison/BisonWebChromeClient.java",
+    "java/src/im/shimo/bison/BisonWebContentsDelegate.java",
+    "java/src/im/shimo/bison/BisonWebContentsObserver.java",
+    "java/src/im/shimo/bison/BisonWebResourceInterceptResponse.java",
+    "java/src/im/shimo/bison/BisonWebResourceResponse.java",
+    "java/src/im/shimo/bison/BisonWebStorage.java",
     "java/src/im/shimo/bison/CallbackConverter.java",
-    "java/src/im/shimo/bison/BisonContentsClientBridge.java",
+    "java/src/im/shimo/bison/CleanupReference.java",
+    "java/src/im/shimo/bison/ClientCertLookupTable.java",
+    "java/src/im/shimo/bison/ClientCertRequest.java",
+    "java/src/im/shimo/bison/ContentView.java",
+    "java/src/im/shimo/bison/ContentViewRenderView.java",
+    "java/src/im/shimo/bison/GeolocationPermissions.java",
+    "java/src/im/shimo/bison/InputStreamUtil.java",
+    "java/src/im/shimo/bison/JsDialogHelper.java",
+    "java/src/im/shimo/bison/JsPromptResult.java",
     "java/src/im/shimo/bison/JsPromptResultReceiver.java",
+    "java/src/im/shimo/bison/JsResult.java",
     "java/src/im/shimo/bison/JsResultHandler.java",
     "java/src/im/shimo/bison/JsResultReceiver.java",
-    "java/src/im/shimo/bison/BisonContentsClient.java",
-    "java/src/im/shimo/bison/JsResult.java",
-    "java/src/im/shimo/bison/JsPromptResult.java",
-    "java/src/im/shimo/bison/WebResourceRequest.java",
-    "java/src/im/shimo/bison/WebResourceResponse.java",
-    "java/src/im/shimo/bison/BisonWebContentsDelegate.java",
-    "java/src/im/shimo/bison/JsDialogHelper.java",
-    "java/src/im/shimo/bison/BisonWebContentsObserver.java",
-    "java/src/im/shimo/bison/BisonResources.java",
-    "java/src/im/shimo/bison/AndroidProtocolHandler.java",
-    "java/src/im/shimo/bison/BisonWebResourceResponse.java",
-    "java/src/im/shimo/bison/BisonWebResourceInterceptResponse.java",
-    "java/src/im/shimo/bison/BisonContentsBackgroundThreadClient.java",
-    "java/src/im/shimo/bison/BisonContentsIoThreadClient.java",
-    "java/src/im/shimo/bison/BisonSettings.java",
-    "java/src/im/shimo/bison/InputStreamUtil.java",
-    "java/src/im/shimo/bison/CleanupReference.java",
-    "java/src/im/shimo/bison/BisonContentsClientCallbackHelper.java",
-    "java/src/im/shimo/bison/BisonSafeBrowsingResponse.java",
-    "java/src/im/shimo/bison/BisonContentsLifecycleNotifier.java",
-    "java/src/im/shimo/bison/BisonGeolocationPermissions.java",
-    "java/src/im/shimo/bison/SslUtil.java",
-    "java/src/im/shimo/bison/BisonQuotaManagerBridge.java",
-    "java/src/im/shimo/bison/BisonDevToolsServer.java",
-    "java/src/im/shimo/bison/BisonCookieManager.java",
-    "java/src/im/shimo/bison/BisonBrowserContext.java",
+    "java/src/im/shimo/bison/PermissionRequest.java",
     "java/src/im/shimo/bison/PrivilegedProcessService.java",
     "java/src/im/shimo/bison/PrivilegedProcessService0.java",
     "java/src/im/shimo/bison/PrivilegedProcessService1.java",
     "java/src/im/shimo/bison/PrivilegedProcessService2.java",
     "java/src/im/shimo/bison/SandboxedProcessService.java",
-    "java/src/im/shimo/bison/BisonPermissionRequest.java",
-    "java/src/im/shimo/bison/PermissionRequest.java",
-    "java/src/im/shimo/bison/BisonGeolocationCallback.java",
-    "java/src/im/shimo/bison/GeolocationPermissions.java",
-    "java/src/im/shimo/bison/ValueCallback.java",
-    "java/src/im/shimo/bison/ClientCertLookupTable.java",
-    "java/src/im/shimo/bison/BisonVariationsSeedBridge.java",
-    "java/src/im/shimo/bison/ClientCertRequest.java",
-    "java/src/im/shimo/bison/BisonMetricsServiceClient.java",
-    "java/src/im/shimo/bison/BisonAutofillClient.java",
-    "java/src/im/shimo/bison/BisonFormDatabase.java",
-    "java/src/im/shimo/bison/ContentViewRenderView.java",
-    "java/src/im/shimo/bison/ContentView.java",
-    "java/src/im/shimo/bison/BisonLayoutSizer.java",
-    "java/src/im/shimo/bison/BisonRenderProcess.java",
-    "java/src/im/shimo/bison/BisonSupportLibIsomorphic.java",
-    "java/src/im/shimo/bison/BisonActionModeCallback.java",
-    "java/src/im/shimo/bison/AutofillActionModeCallback.java",
-    "java/src/im/shimo/bison/BisonPdfExporter.java",
-    "java/src/im/shimo/bison/BisonInitializer.java",
-    "java/src/im/shimo/bison/BisonRenderProcessClient.java",
-    "java/src/im/shimo/bison/BisonRenderProcessGoneDetail.java",
     "java/src/im/shimo/bison/SslErrorHandler.java",
-    "java/src/im/shimo/bison/BisonWebStorage.java",
+    "java/src/im/shimo/bison/SslUtil.java",
+    "java/src/im/shimo/bison/ValueCallback.java",
+    "java/src/im/shimo/bison/WebResourceRequest.java",
+    "java/src/im/shimo/bison/WebResourceResponse.java",
+    "java/src/im/shimo/bison/BisonViewDatabase.java",
+    "java/src/im/shimo/bison/HttpAuthDatabase.java",
   ]
 
   srcjar_deps = [
@@ -175,8 +176,8 @@ android_library("bison_java") {
 
   deps = bison_java_deps
   deps += [
+    ":bison_view_product_config_java",
     ":bison_view_resources",
-    ":bison_view_product_config_java"
   ]
 
   annotation_processor_deps = [ "//base/android/jni_generator:jni_processor" ]
@@ -195,9 +196,7 @@ action("generate_sandboxed_service_srcjar") {
     "40",
     _rebased_srcjar_path,
   ]
-  outputs = [
-    _srcjar_path,
-  ]
+  outputs = [ _srcjar_path ]
 }
 
 android_resources("bison_view_resources") {
@@ -219,8 +218,9 @@ shared_library("libbison_view") {
   deps = [
     ":bison_lib",
     "//base",
-    "//components/crash/core/app",
+    "//components/autofill/core/common",
     "//components/crash/content/browser",
+    "//components/crash/core/app",
     "//components/keyed_service/content",
     "//content/public/app",
     "//content/public/browser",
@@ -255,25 +255,17 @@ grit("bison_resources_grit") {
 }
 
 copy("copy_bison_resources") {
-  sources = [
-    "$target_gen_dir/bison_resources.pak",
-  ]
-  outputs = [
-    "$root_out_dir/bison_resources.pak",
-  ]
+  sources = [ "$target_gen_dir/bison_resources.pak" ]
+  outputs = [ "$root_out_dir/bison_resources.pak" ]
 
-  public_deps = [
-    ":bison_resources_grit",
-  ]
+  public_deps = [ ":bison_resources_grit" ]
 }
 
 group("resources") {
-  public_deps = [
-    ":copy_bison_resources",
-  ]
+  public_deps = [ ":copy_bison_resources" ]
 }
 
-repack("repack_100_percent"){
+repack("repack_100_percent") {
   sources = [
     "$root_gen_dir/content/app/resources/content_resources_100_percent.pak",
     "$root_gen_dir/third_party/blink/public/resources/blink_scaled_resources_100_percent.pak",
@@ -285,7 +277,6 @@ repack("repack_100_percent"){
     "//ui/resources",
   ]
   output = "$root_out_dir/chrome_100_percent.pak"
-
 }
 
 generate_product_config_srcjar("bison_view_product_config") {
@@ -321,6 +312,7 @@ repack("repack_pack") {
     "$root_gen_dir/content/content_resources.pak",
     "$root_gen_dir/net/net_resources.pak",
     "$root_gen_dir/third_party/blink/public/resources/blink_resources.pak",
+
     # "$target_gen_dir/components_resources.pak",
     # "$root_gen_dir/mojo/public/js/mojo_bindings_resources.pak",
     # "$target_gen_dir/webui_resources.pak",
@@ -336,11 +328,10 @@ repack("repack_pack") {
   output = "$root_out_dir/bison.pak"
 }
 
-
 android_assets("pak_file_assets") {
   sources = [
-    "$root_out_dir/chrome_100_percent.pak",
     "$root_out_dir/bison.pak",
+    "$root_out_dir/chrome_100_percent.pak",
   ]
   disable_compression = true
   deps = [
@@ -350,19 +341,15 @@ android_assets("pak_file_assets") {
 }
 
 android_assets("bison_icu_assets") {
-  renaming_sources = ["$root_out_dir/icudtl.dat"]
+  renaming_sources = [ "$root_out_dir/icudtl.dat" ]
   renaming_destinations = [ "bison/icudtl.dat" ]
   disable_compression = true
-  deps = [
-    "//third_party/icu:icu_assets",
-  ]
+  deps = [ "//third_party/icu:icu_assets" ]
 }
 
 android_assets("bison_v8_snapshot_assets") {
-
   disable_compression = true
-  if (current_cpu == "arm" || current_cpu == "x86" ||
-        current_cpu == "mipsel") {
+  if (current_cpu == "arm" || current_cpu == "x86" || current_cpu == "mipsel") {
     arch_suffix = "32"
   } else {
     arch_suffix = "64"
@@ -376,27 +363,18 @@ android_assets("bison_v8_snapshot_assets") {
   if (use_v8_context_snapshot) {
     deps = [ "//tools/v8_context_snapshot:v8_context_snapshot_assets" ]
 
-    renaming_sources = [
-      "$root_out_dir/v8_context_snapshot.bin"
-    ]
+    renaming_sources = [ "$root_out_dir/v8_context_snapshot.bin" ]
 
-    renaming_destinations = [
-      "bison/$abi/v8_context_snapshot_$arch_suffix.bin"
-    ]
+    renaming_destinations =
+        [ "bison/$abi/v8_context_snapshot_$arch_suffix.bin" ]
   } else {
+    renaming_sources = [ "$root_out_dir/snapshot_blob.bin" ]
 
-    renaming_sources = [
-      "$root_out_dir/snapshot_blob.bin"
-    ]
-
-    renaming_destinations = [
-      "bison/$abi/snapshot_blob_$arch_suffix.bin"
-    ]
+    renaming_destinations = [ "bison/$abi/snapshot_blob_$arch_suffix.bin" ]
 
     deps = [ "//v8:v8_external_startup_data_assets" ]
   }
 }
-
 
 grit("generate_components_strings") {
   source = "../components/components_strings.grd"

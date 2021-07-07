@@ -191,8 +191,14 @@ bool BisonMainDelegate::BasicStartupComplete(int* exit_code) {
   {
     ScopedAddFeatureFlags features(cl);
 
-    features.EnableIfNotSet(
-        autofill::features::kAutofillSkipComparingInferredLabels);
+    if (base::android::BuildInfo::GetInstance()->sdk_int() >=
+        base::android::SDK_VERSION_OREO) {
+      features.EnableIfNotSet(autofill::features::kAutofillExtractAllDatalists);
+      features.EnableIfNotSet(
+          autofill::features::kAutofillSkipComparingInferredLabels);
+      features.DisableIfNotSet(
+          autofill::features::kAutofillRestrictUnownedFieldsToFormlessCheckout);
+    }
 
     // 外面加开关？
     features.EnableIfNotSet(::features::kLogJsConsoleMessages);
@@ -201,11 +207,10 @@ bool BisonMainDelegate::BasicStartupComplete(int* exit_code) {
 
     features.DisableIfNotSet(::features::kWebAuth);
 
-    // FATAL:compositor_impl_android.cc(299)] Check failed:
-    // features::IsVizDisplayCompositorEnabled().
-    // features.DisableIfNotSet(::features::kVizDisplayCompositor);
     features.EnableIfNotSet(media::kDisableSurfaceLayerForVideo);
 
+    // BisonView does not support overlay fullscreen yet for video overlays.
+    features.DisableIfNotSet(media::kOverlayFullscreenVideo);
     features.DisableIfNotSet(media::kMediaDrmPersistentLicense);
 
     features.DisableIfNotSet(media::kPictureInPictureAPI);

@@ -37,11 +37,14 @@ import org.chromium.content_public.browser.ImeAdapter;
 import org.chromium.content_public.browser.JavaScriptCallback;
 import org.chromium.content_public.browser.JavascriptInjector;
 import org.chromium.content_public.browser.LoadUrlParams;
+import org.chromium.content_public.browser.MessagePort;
 import org.chromium.content_public.browser.NavigationController;
 import org.chromium.content_public.browser.NavigationHistory;
+import org.chromium.content_public.browser.RenderFrameHost;
 import org.chromium.content_public.browser.SelectionPopupController;
 import org.chromium.content_public.browser.UiThreadTaskTraits;
 import org.chromium.content_public.browser.WebContents;
+import org.chromium.content_public.browser.WebContentsAccessibility;
 import org.chromium.content_public.browser.WebContentsInternals;
 import org.chromium.content_public.browser.navigation_controller.LoadURLType;
 import org.chromium.content_public.browser.navigation_controller.UserAgentOverrideOption;
@@ -404,7 +407,11 @@ class BisonContents extends FrameLayout {
 
 
         mBisonContentsClientBridge = bisonContentsClientBridge;
-        //mAutofillProvider
+        //WwbViewChromiumFactoryProvider.java L630
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            mAutofillProvider = new AutofillProvider(context,containerView, "BisonView");
+        }
+
         mContentsClient = bisonContentsClient;
         mBackgroundThreadClient = new BackgroundThreadClientImpl();
         mIoThreadClient = new IoThreadClientImpl();
@@ -1023,6 +1030,47 @@ class BisonContents extends FrameLayout {
         mWebContents.evaluateJavaScript(script, jsCallback);
     }
 
+    public void evaluateJavaScriptForTests(String script, final Callback<String> callback) {
+        //jiang
+
+    }
+
+    /**
+     * Send a MessageEvent to main frame.
+     *
+     * @param message      The String message for the JavaScript MessageEvent.
+     * @param targetOrigin The expected target frame's origin.
+     * @param sentPorts    ports for the JavaScript MessageEvent.
+     */
+    public void postMessageToMainFrame(
+            String message, String targetOrigin, MessagePort[] sentPorts) {
+        if (isDestroyed(WARN)) return;
+
+        RenderFrameHost mainFrame = mWebContents.getMainFrame();
+        // If the RenderFrameHost or the RenderFrame doesn't exist we couldn't post the message.
+        if (mainFrame == null || !mainFrame.isRenderFrameCreated()) return;
+
+        mWebContents.postMessageToMainFrame(message, null, targetOrigin, sentPorts);
+    }
+
+    /**
+     * Creates a message channel and returns the ports for each end of the channel.
+     */
+    public MessagePort[] createMessageChannel() {
+        if (TRACE) Log.i(TAG, "%s createMessageChannel", this);
+        if (isDestroyed(WARN)) return null;
+        return MessagePort.createPair();
+    }
+
+    public boolean hasAccessedInitialDocument() {
+        if (isDestroyed(NO_WARN)) return false;
+        return mWebContents.hasAccessedInitialDocument();
+    }
+
+    private WebContentsAccessibility getWebContentsAccessibility() {
+        return WebContentsAccessibility.fromWebContents(mWebContents);
+    }
+
     void startActivityForResult(Intent intent, int requestCode) {
         // Even in fullscreen mode, startActivityForResult will still use the
         // initial internal access delegate because it has access to
@@ -1344,6 +1392,7 @@ class BisonContents extends FrameLayout {
         boolean viewVisible = getVisibility() == View.VISIBLE;
         setViewVisibilityInternal(viewVisible);
     }
+    // Return true if the GeolocationPermissionAPI should be used.
     @CalledByNative
     private boolean useLegacyGeolocationPermissionAPI() {
         // Always return true since we are not ready to swap the geolocation yet.
@@ -1392,8 +1441,8 @@ class BisonContents extends FrameLayout {
         void preauthorizePermission(
                 long nativeBisonContents, BisonContents caller, String origin, long resources);
         void grantFileSchemeAccesstoChildProcess(long nativeBisonContents);
+
         String getProductVersion();
         void logCommandLineForDebugging();
     }
-
 }

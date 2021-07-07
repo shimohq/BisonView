@@ -1,22 +1,18 @@
+import("//bison/build/aar.gni")
+import("//bison/config.gni")
 import("//build/config/android/config.gni")
 import("//build/config/android/rules.gni")
 import("//third_party/icu/config.gni")
 import("//tools/v8_context_snapshot/v8_context_snapshot.gni")
-import("//bison/config.gni")
-import("//bison/build/aar.gni")
 
 bison_apk_manifest_xml =
     "$target_gen_dir/bison_apk_manifest/AndroidManifest.xml"
 
 group("shell") {
-  deps = [
-    ":bison_shell_apk"
-  ]
+  deps = [ ":bison_shell_apk" ]
 }
 
-
 bison_view_apk_tmpl("bison_shell_apk") {
-
   sources = [
     "java/im/shimo/bison/shell/BisonShellApp.java",
     "java/im/shimo/bison/shell/BisonShellMainActivity.java",
@@ -27,7 +23,7 @@ bison_view_apk_tmpl("bison_shell_apk") {
   android_manifest_dep = ":bison_apk_manifest"
   min_sdk_version = 21
   target_sdk_version = android_sdk_version
-  product_config_java_packages = ["im.shimo.bison"]
+  product_config_java_packages = [ "im.shimo.bison" ]
 
   command_line_flags_file = "bison-view-command-line"
 
@@ -35,11 +31,11 @@ bison_view_apk_tmpl("bison_shell_apk") {
     ":bison_apk_manifest",
     ":bison_apk_resources",
     "//base:base_java",
+    "//bison:bison_icu_assets",
     "//bison:bison_java",
+    "//bison:bison_v8_snapshot_assets",
     "//bison:locale_pak_assets",
     "//bison:pak_file_assets",
-    "//bison:bison_icu_assets",
-    "//bison:bison_v8_snapshot_assets",
     "//content/public/android:content_java",
   ]
   shared_libraries = [ "//bison:libbison_view" ]
@@ -59,7 +55,6 @@ android_resources("bison_apk_resources") {
   android_manifest = bison_apk_manifest_xml
   android_manifest_dep = ":bison_apk_manifest"
 }
-
 
 jinja_template("bison_apk_manifest") {
   input = "AndroidManifest.xml.jinja2"
