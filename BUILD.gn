@@ -14,14 +14,15 @@ import("//tools/grit/grit_rule.gni")
 import("//tools/grit/repack.gni")
 import("//tools/v8_context_snapshot/v8_context_snapshot.gni")
 
-import("config.gni")
+import("variables.gni")
 
 # import("//bison/build/locales.gni")
 import("//bison/build/aar.gni")
 group("bison") {
   deps = [
     ":bison_view_aar",
-    "test",
+    "shell",
+    "test"
   ]
 }
 
@@ -242,6 +243,11 @@ source_set("bison_lib") {
     "//content/public/gpu",
     "//ui/gfx",
   ]
+
+  all_dependent_configs = [
+    ":bison_config"
+  ]
+
 }
 
 grit("bison_resources_grit") {
@@ -400,3 +406,10 @@ grit("generate_components_strings") {
       process_file_template(locales_with_fake_bidi,
                             [ "components_strings_{{source_name_part}}.pak" ])
 }
+
+config("bison_config") {
+  defines = [
+    "BISON",
+  ]
+}
+

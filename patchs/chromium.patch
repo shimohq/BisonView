@@ -11,15 +11,18 @@ index 16ad01eac88d..eda611b4ae7d 100644
      deps -= [
        "//net:net_perftests",
 diff --git a/base/i18n/icu_util.cc b/base/i18n/icu_util.cc
-index 82022d5f490e..bfcaaaf72435 100644
+index 82022d5f490e..1a4dc2f49381 100644
 --- a/base/i18n/icu_util.cc
 +++ b/base/i18n/icu_util.cc
-@@ -81,7 +81,7 @@ wchar_t g_debug_icu_pf_filename[_MAX_PATH];
+@@ -81,7 +81,11 @@ wchar_t g_debug_icu_pf_filename[_MAX_PATH];
  // No need to change the filename in multiple places (gyp files, windows
  // build pkg configurations, etc). 'l' stands for Little Endian.
  // This variable is exported through the header file.
--const char kIcuDataFileName[] = "icudtl.dat";
++#if defined(BISON)
 +const char kIcuDataFileName[] = "bison/icudtl.dat";
++#else
+ const char kIcuDataFileName[] = "icudtl.dat";
++#endif
  const char kIcuExtraDataFileName[] = "icudtl_extra.dat";
  
  // Time zone data loading.
@@ -73,29 +76,49 @@ index 31f563dd4d59..79d3f84669ba 100644
    X("audio")                                                             \
    X("base")                                                              \
 diff --git a/content/browser/v8_snapshot_files.cc b/content/browser/v8_snapshot_files.cc
-index a09a551e6af4..af7ac2f83634 100644
+index a09a551e6af4..ca2cd0bac030 100644
 --- a/content/browser/v8_snapshot_files.cc
 +++ b/content/browser/v8_snapshot_files.cc
-@@ -26,10 +26,17 @@ std::map<std::string, base::FilePath> GetV8SnapshotFilesToPreload() {
-       {kV8Snapshot32DataDescriptor,
-        base::FilePath(FILE_PATH_LITERAL("assets/v8_context_snapshot_32.bin"))}};
- #else
+@@ -19,6 +19,31 @@ std::map<std::string, base::FilePath> GetV8SnapshotFilesToPreload() {
+            base::FilePath(FILE_PATH_LITERAL("snapshot_blob.bin"))}};
+ #endif
+ #elif defined(OS_ANDROID)
++#if defined(BISON)
++#if defined(USE_V8_CONTEXT_SNAPSHOT)
++  return {
++      {kV8Snapshot64DataDescriptor,
++       base::FilePath(FILE_PATH_LITERAL("assets/v8_context_snapshot_64.bin"))},
++      {kV8Snapshot32DataDescriptor,
++       base::FilePath(FILE_PATH_LITERAL("assets/v8_context_snapshot_32.bin"))}};
++#else
 +#if defined(ARCH_CPU_ARM_FAMILY)
-   return {{kV8Snapshot64DataDescriptor,
--           base::FilePath(FILE_PATH_LITERAL("assets/snapshot_blob_64.bin"))},
-+           base::FilePath(FILE_PATH_LITERAL("assets/bison/arm/snapshot_blob_64.bin"))},
-           {kV8Snapshot32DataDescriptor,
--           base::FilePath(FILE_PATH_LITERAL("assets/snapshot_blob_32.bin"))}};
-+           base::FilePath(FILE_PATH_LITERAL("assets/bison/arm/snapshot_blob_32.bin"))}};
++  return {{kV8Snapshot64DataDescriptor,
++           base::FilePath(
++               FILE_PATH_LITERAL("assets/bison/arm/snapshot_blob_64.bin"))},
++          {kV8Snapshot32DataDescriptor,
++           base::FilePath(
++               FILE_PATH_LITERAL("assets/bison/arm/snapshot_blob_32.bin"))}};
 +#else   // ARCH_CPU_X86_FAMILY
 +  return {{kV8Snapshot64DataDescriptor,
-+           base::FilePath(FILE_PATH_LITERAL("assets/bison/x86/snapshot_blob_64.bin"))},
++           base::FilePath(
++               FILE_PATH_LITERAL("assets/bison/x86/snapshot_blob_64.bin"))},
 +          {kV8Snapshot32DataDescriptor,
-+           base::FilePath(FILE_PATH_LITERAL("assets/bison/x86/snapshot_blob_32.bin"))}};
++           base::FilePath(
++               FILE_PATH_LITERAL("assets/bison/x86/snapshot_blob_32.bin"))}};
 +#endif  // defined(ARCH_CPU_ARM_FAMILY)
++#endif
++#else
+ #if defined(USE_V8_CONTEXT_SNAPSHOT)
+   return {
+       {kV8Snapshot64DataDescriptor,
+@@ -31,6 +56,7 @@ std::map<std::string, base::FilePath> GetV8SnapshotFilesToPreload() {
+           {kV8Snapshot32DataDescriptor,
+            base::FilePath(FILE_PATH_LITERAL("assets/snapshot_blob_32.bin"))}};
  #endif
++#endif
  #else
    return {};
+ #endif
 diff --git a/ipc/ipc_message_start.h b/ipc/ipc_message_start.h
 index 4464f1e4bb3b..93b9e33d724a 100644
 --- a/ipc/ipc_message_start.h
@@ -108,45 +131,10 @@ index 4464f1e4bb3b..93b9e33d724a 100644
    LastIPCMsgStart  // Must come last.
  };
  
-diff --git a/third_party/blink/renderer/bindings/core/v8/v8_context_snapshot.cc b/third_party/blink/renderer/bindings/core/v8/v8_context_snapshot.cc
-index 589db83c2462..0ddc97da8b53 100644
---- a/third_party/blink/renderer/bindings/core/v8/v8_context_snapshot.cc
-+++ b/third_party/blink/renderer/bindings/core/v8/v8_context_snapshot.cc
-@@ -21,6 +21,7 @@
- #include "third_party/blink/renderer/platform/bindings/v8_private_property.h"
- #include "third_party/blink/renderer/platform/instrumentation/tracing/trace_event.h"
- #include "v8/include/v8.h"
-+#include "base/debug/stack_trace.h"
- 
- namespace blink {
- 
-@@ -127,10 +128,12 @@ v8::Local<v8::Context> V8ContextSnapshot::CreateContextFromSnapshot(
-     v8::ExtensionConfiguration* extension_configuration,
-     v8::Local<v8::Object> global_proxy,
-     Document* document) {
-+  VLOG(0) << "CreateContextFromSnapshot";
-   if (!CanCreateContextFromSnapshot(isolate, world, document)) {
-+    VLOG(0) << "can not CreateContextFromSnapshot";
-     return v8::Local<v8::Context>();
-   }
--
-+  
-   const int index = GetSnapshotIndexForWorld(world);
-   DataForDeserializer data(document);
-   v8::DeserializeInternalFieldsCallback callback =
 diff --git a/tools/gritsettings/resource_ids.spec b/tools/gritsettings/resource_ids.spec
-index fa2306ead7d2..3accd22f2312 100644
+index fa2306ead7d2..eb3d1e80ef63 100644
 --- a/tools/gritsettings/resource_ids.spec
 +++ b/tools/gritsettings/resource_ids.spec
-@@ -504,7 +504,7 @@
-   "android_webview/ui/aw_strings.grd": {
-     "messages": [3020],
-   },
--
-+  
-   "ash/app_list/resources/app_list_resources.grd": {
-     "structures": [3040],
-   },
 @@ -648,7 +648,9 @@
      "META": {"sizes": {"includes": [50],}},
      "includes": [3880],
@@ -158,3 +146,15 @@ index fa2306ead7d2..3accd22f2312 100644
    # END "everything else" section.
    # Everything but chrome/, components/, content/, and ios/
  
+diff --git a/tools/gritsettings/translation_expectations.pyl b/tools/gritsettings/translation_expectations.pyl
+index b2598b2b057e..4014c2917a13 100644
+--- a/tools/gritsettings/translation_expectations.pyl
++++ b/tools/gritsettings/translation_expectations.pyl
+@@ -24,6 +24,7 @@
+     "files": [
+       "android_webview/java/strings/android_webview_strings.grd",
+       "android_webview/ui/aw_strings.grd",
++      # "bison/",
+       "ash/ash_strings.grd",
+       "ash/shortcut_viewer/shortcut_viewer_strings.grd",
+       "chrome/android/features/vr/java/strings/android_chrome_vr_strings.grd",

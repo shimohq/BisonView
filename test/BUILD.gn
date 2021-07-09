@@ -1,3 +1,19 @@
+import("//build/config/android/rules.gni")
+import("//testing/test.gni")
+
 group("test") {
-  deps = [ "shell" ]
 }
+
+instrumentation_test_apk("bison_shell_instrumentation_test_apk") {
+  apk_name = "BisonShellInstrumentationTest"
+  apk_under_test = "//bison/shell:bison_shell_apk"
+  android_manifest = "../javatests/AndroidManifest.xml"
+  min_sdk_version = 21
+
+  sources = [
+
+  ]
+
+
+}
+
