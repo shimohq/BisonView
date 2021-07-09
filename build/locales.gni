@@ -1,0 +1,16 @@
+
+locales = [
+  "en-US",
+  "zh-CN",
+]
+
+locales_with_fake_bidi = locales + [ "fake-bidi" ]
+
+android_bundle_locales_as_resources = []
+foreach(_locale, locales) {
+  android_bundle_locales_as_resources +=
+      [ string_replace(_locale, "-", "-r") ]
+}
+android_bundle_locales_as_resources -= [
+  "en-rUS",
+]

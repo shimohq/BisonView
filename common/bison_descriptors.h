@@ -8,7 +8,8 @@
 // This is a list of global descriptor keys to be used with the
 // base::GlobalDescriptors object (see base/posix/global_descriptors.h)
 enum {
-  kBisonPakDescriptor = kContentIPCDescriptorMax + 1,
+  kBisonViewLocalePakDescriptor = kContentIPCDescriptorMax + 1,
+  kBisonViewMainPakDescriptor,
   kBisonView100PercentPakDescriptor,
   kAndroidMinidumpDescriptor,
 };

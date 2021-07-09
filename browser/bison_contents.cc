@@ -6,17 +6,17 @@
 #include <string>
 #include <utility>
 
-#include "bison/bison_jni_headers/BisonContents_jni.h" // jiang jni.h
+#include "bison/bison_jni_headers/BisonContents_jni.h"  // jiang jni.h
 #include "bison/browser/bison_autofill_client.h"
 #include "bison/browser/bison_browser_main_parts.h"
 #include "bison/browser/bison_content_browser_client.h"
 #include "bison/browser/bison_contents_client_bridge.h"
 #include "bison/browser/bison_contents_io_thread_client.h"
 #include "bison/browser/bison_contents_lifecycle_notifier.h"
-#include "bison/browser/bison_pdf_exporter.h"
 #include "bison/browser/bison_javascript_dialog_manager.h"
-#include "bison/browser/bison_renderer_priority.h"
+#include "bison/browser/bison_pdf_exporter.h"
 #include "bison/browser/bison_render_process.h"
+#include "bison/browser/bison_renderer_priority.h"
 #include "bison/browser/bison_settings.h"
 #include "bison/browser/bison_web_contents_delegate.h"
 #include "bison/browser/permission/bison_permission_request.h"
@@ -93,73 +93,77 @@ namespace bison {
 
 namespace {
 
-std::string *g_locale() {
+std::string* g_locale() {
   static base::NoDestructor<std::string> locale;
   return locale.get();
 }
 
-std::string *g_locale_list() {
+std::string* g_locale_list() {
   static base::NoDestructor<std::string> locale_list;
   return locale_list.get();
 }
 
-const void *const kBisonContentsUserDataKey = &kBisonContentsUserDataKey;
+const void* const kBisonContentsUserDataKey = &kBisonContentsUserDataKey;
 
 class BisonContentsUserData : public base::SupportsUserData::Data {
-public:
-  explicit BisonContentsUserData(BisonContents *ptr) : contents_(ptr) {}
+ public:
+  explicit BisonContentsUserData(BisonContents* ptr) : contents_(ptr) {}
 
-  static BisonContents *GetContents(WebContents *web_contents) {
+  static BisonContents* GetContents(WebContents* web_contents) {
     if (!web_contents)
       return NULL;
-    BisonContentsUserData *data = static_cast<BisonContentsUserData *>(
+    BisonContentsUserData* data = static_cast<BisonContentsUserData*>(
         web_contents->GetUserData(kBisonContentsUserDataKey));
     return data ? data->contents_ : NULL;
   }
 
-private:
-  BisonContents *contents_;
+ private:
+  BisonContents* contents_;
 };
 
 base::subtle::Atomic32 g_instance_count = 0;
 
-
-} // namespace
+}  // namespace
 
 class ScopedAllowInitGLBindings {
-public:
+ public:
   ScopedAllowInitGLBindings() {}
 
   ~ScopedAllowInitGLBindings() {}
 
-private:
+ private:
   base::ScopedAllowBlocking allow_blocking_;
 };
 
 // static
-BisonContents *BisonContents::FromWebContents(WebContents* web_contents) {
+BisonContents* BisonContents::FromWebContents(WebContents* web_contents) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
   return BisonContentsUserData::GetContents(web_contents);
 }
 
 void JNI_BisonContents_UpdateDefaultLocale(
-    JNIEnv *env, const JavaParamRef<jstring> &locale,
-    const JavaParamRef<jstring> &locale_list) {
+    JNIEnv* env,
+    const JavaParamRef<jstring>& locale,
+    const JavaParamRef<jstring>& locale_list) {
   *g_locale() = ConvertJavaStringToUTF8(env, locale);
   *g_locale_list() = ConvertJavaStringToUTF8(env, locale_list);
 }
 
 // static
-std::string BisonContents::GetLocale() { return *g_locale(); }
+std::string BisonContents::GetLocale() {
+  return *g_locale();
+}
 
 // static
-std::string BisonContents::GetLocaleList() { return *g_locale_list(); }
+std::string BisonContents::GetLocaleList() {
+  return *g_locale_list();
+}
 
 // static
-BisonBrowserPermissionRequestDelegate *
+BisonBrowserPermissionRequestDelegate*
 BisonBrowserPermissionRequestDelegate::FromID(int render_process_id,
                                               int render_frame_id) {
-  BisonContents *contents =
+  BisonContents* contents =
       BisonContents::FromWebContents(content::WebContents::FromRenderFrameHost(
           content::RenderFrameHost::FromID(render_process_id,
                                            render_frame_id)));
@@ -187,7 +191,7 @@ BisonContents::BisonContents(std::unique_ptr<WebContents> web_contents)
   permission_request_handler_.reset(
       new PermissionRequestHandler(this, web_contents_.get()));
 
-  BisonAutofillClient *autofill_manager_delegate =
+  BisonAutofillClient* autofill_manager_delegate =
       BisonAutofillClient::FromWebContents(web_contents_.get());
   if (autofill_manager_delegate)
     InitAutofillIfNecessary(autofill_manager_delegate->GetSaveFormData());
@@ -195,7 +199,7 @@ BisonContents::BisonContents(std::unique_ptr<WebContents> web_contents)
 }
 
 void BisonContents::SetJavaPeers(
-    JNIEnv* env, 
+    JNIEnv* env,
     const JavaParamRef<jobject>& web_contents_delegate,
     const JavaParamRef<jobject>& contents_client_bridge,
     const JavaParamRef<jobject>& io_thread_client,
@@ -235,13 +239,13 @@ void BisonContents::SetSaveFormData(bool enabled) {
 
 void BisonContents::InitAutofillIfNecessary(bool autocomplete_enabled) {
   // Check if the autofill driver factory already exists.
-  content::WebContents *web_contents = web_contents_.get();
+  content::WebContents* web_contents = web_contents_.get();
   if (ContentAutofillDriverFactory::FromWebContents(web_contents))
     return;
 
   // Check if AutofillProvider is available.
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
-  JNIEnv *env = AttachCurrentThread();
+  JNIEnv* env = AttachCurrentThread();
   ScopedJavaLocalRef<jobject> obj = java_ref_.get(env);
   if (obj.is_null())
     return;
@@ -258,9 +262,9 @@ void BisonContents::InitAutofillIfNecessary(bool autocomplete_enabled) {
       autofill_provider_.get());
 }
 
-void BisonContents::SetAutofillClient(const JavaRef<jobject> &client) {
+void BisonContents::SetAutofillClient(const JavaRef<jobject>& client) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
-  JNIEnv *env = AttachCurrentThread();
+  JNIEnv* env = AttachCurrentThread();
   ScopedJavaLocalRef<jobject> obj = java_ref_.get(env);
   if (obj.is_null())
     return;
@@ -270,7 +274,8 @@ void BisonContents::SetAutofillClient(const JavaRef<jobject> &client) {
 BisonContents::~BisonContents() {
   DCHECK_EQ(this, BisonContents::FromWebContents(web_contents_.get()));
   web_contents_->RemoveUserData(kBisonContentsUserDataKey);
-  JNIEnv *env = AttachCurrentThread();
+  BisonContentsClientBridge::Dissociate(web_contents_.get());
+  JNIEnv* env = AttachCurrentThread();
   ScopedJavaLocalRef<jobject> obj = java_ref_.get(env);
   if (obj.is_null())
     return;
@@ -288,48 +293,47 @@ BisonContents::~BisonContents() {
   BisonContentsLifecycleNotifier::OnWebViewDestroyed();
 }
 
-ScopedJavaLocalRef<jobject> BisonContents::GetWebContents(JNIEnv *env) {
+ScopedJavaLocalRef<jobject> BisonContents::GetWebContents(JNIEnv* env) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
   return web_contents_.get()->GetJavaWebContents();
 }
 
-BisonContents *
-BisonContents::CreateBisonContents(BrowserContext *browser_context) {
+BisonContents* BisonContents::CreateBisonContents(
+    BrowserContext* browser_context) {
   WebContents::CreateParams create_params(browser_context, nullptr);
   std::unique_ptr<WebContents> web_contents =
       WebContents::Create(create_params);
   // WebContents* raw_web_contents = web_contents.get();
-  BisonContents *bison_contents = new BisonContents(std::move(web_contents));
+  BisonContents* bison_contents = new BisonContents(std::move(web_contents));
 
   return bison_contents;
 }
 
-
-
-void BisonContents::Destroy(JNIEnv *env) {
+void BisonContents::Destroy(JNIEnv* env) {
   java_ref_.reset();
   delete this;
 }
 
-jlong JNI_BisonContents_Init(JNIEnv *env, const JavaParamRef<jobject> &obj,
+jlong JNI_BisonContents_Init(JNIEnv* env,
+                             const JavaParamRef<jobject>& obj,
                              jlong bison_browser_context) {
-  BisonBrowserContext *browserContext =
-      reinterpret_cast<BisonBrowserContext *>(bison_browser_context);
-  BisonContents *bison_contents =
+  BisonBrowserContext* browserContext =
+      reinterpret_cast<BisonBrowserContext*>(bison_browser_context);
+  BisonContents* bison_contents =
       BisonContents::CreateBisonContents(browserContext);
   bison_contents->java_ref_ = JavaObjectWeakGlobalRef(env, obj);
   return reinterpret_cast<intptr_t>(bison_contents);
 }
 
 void BisonContents::DidFinishNavigation(
-    content::NavigationHandle *navigation_handle) {
+    content::NavigationHandle* navigation_handle) {
   net::Error error_code = navigation_handle->GetNetErrorCode();
   if (error_code != net::ERR_BLOCKED_BY_CLIENT &&
       error_code != net::ERR_BLOCKED_BY_ADMINISTRATOR &&
       error_code != net::ERR_ABORTED) {
     return;
   }
-  BisonContentsClientBridge *client =
+  BisonContentsClientBridge* client =
       BisonContentsClientBridge::FromWebContents(web_contents_.get());
   if (!client)
     return;
@@ -343,24 +347,21 @@ void BisonContents::DidFinishNavigation(
   client->OnReceivedError(request, error_code);
 }
 
-
 // static
 jint JNI_BisonContents_GetNativeInstanceCount(JNIEnv* env) {
   return base::subtle::NoBarrier_Load(&g_instance_count);
 }
 
-
-
 namespace {
 void DocumentHasImagesCallback(const ScopedJavaGlobalRef<jobject>& message,
                                bool has_images) {
-  Java_BisonContents_onDocumentHasImagesResponse(AttachCurrentThread(), has_images,
-                                              message);
+  Java_BisonContents_onDocumentHasImagesResponse(AttachCurrentThread(),
+                                                 has_images, message);
 }
 }  // namespace
 
 void BisonContents::DocumentHasImages(JNIEnv* env,
-                                   const JavaParamRef<jobject>& message) {
+                                      const JavaParamRef<jobject>& message) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
   ScopedJavaGlobalRef<jobject> j_message;
   j_message.Reset(env, message);
@@ -380,8 +381,8 @@ void GenerateMHTMLCallback(const JavaRef<jobject>& callback,
 }  // namespace
 
 void BisonContents::GenerateMHTML(JNIEnv* env,
-                               const JavaParamRef<jstring>& jpath,
-                               const JavaParamRef<jobject>& callback) {
+                                  const JavaParamRef<jstring>& jpath,
+                                  const JavaParamRef<jobject>& callback) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
   base::FilePath target_path(ConvertJavaStringToUTF8(env, jpath));
   web_contents_->GenerateMHTML(
@@ -390,11 +391,12 @@ void BisonContents::GenerateMHTML(JNIEnv* env,
                      ScopedJavaGlobalRef<jobject>(env, callback), target_path));
 }
 
-void BisonContents::CreatePdfExporter(JNIEnv* env,
-                                   const JavaParamRef<jobject>& pdfExporter) {
-  pdf_exporter_.reset(new BisonPdfExporter(env, pdfExporter, web_contents_.get()));
+void BisonContents::CreatePdfExporter(
+    JNIEnv* env,
+    const JavaParamRef<jobject>& pdfExporter) {
+  pdf_exporter_.reset(
+      new BisonPdfExporter(env, pdfExporter, web_contents_.get()));
 }
-
 
 void BisonContents::SetOffscreenPreRaster(bool enabled) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
@@ -403,10 +405,9 @@ void BisonContents::SetOffscreenPreRaster(bool enabled) {
 
 namespace {
 
-
-void ShowGeolocationPromptHelperTask(const JavaObjectWeakGlobalRef &java_ref,
-                                     const GURL &origin) {
-  JNIEnv *env = AttachCurrentThread();
+void ShowGeolocationPromptHelperTask(const JavaObjectWeakGlobalRef& java_ref,
+                                     const GURL& origin) {
+  JNIEnv* env = AttachCurrentThread();
   ScopedJavaLocalRef<jobject> j_ref = java_ref.get(env);
   if (j_ref.obj()) {
     ScopedJavaLocalRef<jstring> j_origin(
@@ -417,9 +418,9 @@ void ShowGeolocationPromptHelperTask(const JavaObjectWeakGlobalRef &java_ref,
   }
 }
 
-void ShowGeolocationPromptHelper(const JavaObjectWeakGlobalRef &java_ref,
-                                 const GURL &origin) {
-  JNIEnv *env = AttachCurrentThread();
+void ShowGeolocationPromptHelper(const JavaObjectWeakGlobalRef& java_ref,
+                                 const GURL& origin) {
+  JNIEnv* env = AttachCurrentThread();
   if (java_ref.get(env).obj()) {
     base::PostTask(
         FROM_HERE, {content::BrowserThread::UI},
@@ -427,10 +428,11 @@ void ShowGeolocationPromptHelper(const JavaObjectWeakGlobalRef &java_ref,
   }
 }
 
-} // namespace
+}  // namespace
 
 void BisonContents::ShowGeolocationPrompt(
-    const GURL &requesting_frame, base::OnceCallback<void(bool)> callback) {
+    const GURL& requesting_frame,
+    base::OnceCallback<void(bool)> callback) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
 
   GURL origin = requesting_frame.GetOrigin();
@@ -443,8 +445,9 @@ void BisonContents::ShowGeolocationPrompt(
 
 // Invoked from Java
 void BisonContents::InvokeGeolocationCallback(
-    JNIEnv *env, 
-    jboolean value, const JavaParamRef<jstring> &origin) {
+    JNIEnv* env,
+    jboolean value,
+    const JavaParamRef<jstring>& origin) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
   if (pending_geolocation_prompts_.empty())
     return;
@@ -461,7 +464,7 @@ void BisonContents::InvokeGeolocationCallback(
   }
 }
 
-void BisonContents::HideGeolocationPrompt(const GURL &origin) {
+void BisonContents::HideGeolocationPrompt(const GURL& origin) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
   bool removed_current_outstanding_callback = false;
   std::list<OriginCallback>::iterator it = pending_geolocation_prompts_.begin();
@@ -477,7 +480,7 @@ void BisonContents::HideGeolocationPrompt(const GURL &origin) {
   }
 
   if (removed_current_outstanding_callback) {
-    JNIEnv *env = AttachCurrentThread();
+    JNIEnv* env = AttachCurrentThread();
     ScopedJavaLocalRef<jobject> j_ref = java_ref_.get(env);
     if (j_ref.obj()) {
       devtools_instrumentation::ScopedEmbedderCallbackTask embedder_callback(
@@ -493,11 +496,11 @@ void BisonContents::HideGeolocationPrompt(const GURL &origin) {
 
 void BisonContents::OnPermissionRequest(
     base::android::ScopedJavaLocalRef<jobject> j_request,
-    BisonPermissionRequest *request) {
+    BisonPermissionRequest* request) {
   DCHECK(!j_request.is_null());
   DCHECK(request);
 
-  JNIEnv *env = AttachCurrentThread();
+  JNIEnv* env = AttachCurrentThread();
   ScopedJavaLocalRef<jobject> j_ref = java_ref_.get(env);
   if (j_ref.is_null()) {
     permission_request_handler_->CancelRequest(request->GetOrigin(),
@@ -509,8 +512,8 @@ void BisonContents::OnPermissionRequest(
 }
 
 void BisonContents::OnPermissionRequestCanceled(
-    BisonPermissionRequest *request) {
-  JNIEnv *env = AttachCurrentThread();
+    BisonPermissionRequest* request) {
+  JNIEnv* env = AttachCurrentThread();
   ScopedJavaLocalRef<jobject> j_request = request->GetJavaObject();
   ScopedJavaLocalRef<jobject> j_ref = java_ref_.get(env);
   if (j_request.is_null() || j_ref.is_null())
@@ -520,15 +523,16 @@ void BisonContents::OnPermissionRequestCanceled(
 }
 
 void BisonContents::PreauthorizePermission(JNIEnv* env,
-                                        const JavaParamRef<jobject>& obj,
-                                        const JavaParamRef<jstring>& origin,
-                                        jlong resources) {
+                                           const JavaParamRef<jobject>& obj,
+                                           const JavaParamRef<jstring>& origin,
+                                           jlong resources) {
   permission_request_handler_->PreauthorizePermission(
       GURL(base::android::ConvertJavaStringToUTF8(env, origin)), resources);
 }
 
 void BisonContents::RequestProtectedMediaIdentifierPermission(
-    const GURL &origin, base::OnceCallback<void(bool)> callback) {
+    const GURL& origin,
+    base::OnceCallback<void(bool)> callback) {
   permission_request_handler_->SendRequest(
       std::make_unique<SimplePermissionRequest>(
           origin, BisonPermissionRequest::ProtectedMediaId,
@@ -536,14 +540,15 @@ void BisonContents::RequestProtectedMediaIdentifierPermission(
 }
 
 void BisonContents::CancelProtectedMediaIdentifierPermissionRequests(
-    const GURL &origin) {
+    const GURL& origin) {
   permission_request_handler_->CancelRequest(
       origin, BisonPermissionRequest::ProtectedMediaId);
 }
 
 void BisonContents::RequestGeolocationPermission(
-    const GURL &origin, base::OnceCallback<void(bool)> callback) {
-  JNIEnv *env = AttachCurrentThread();
+    const GURL& origin,
+    base::OnceCallback<void(bool)> callback) {
+  JNIEnv* env = AttachCurrentThread();
   ScopedJavaLocalRef<jobject> obj = java_ref_.get(env);
   if (obj.is_null())
     return;
@@ -557,8 +562,8 @@ void BisonContents::RequestGeolocationPermission(
           origin, BisonPermissionRequest::Geolocation, std::move(callback)));
 }
 
-void BisonContents::CancelGeolocationPermissionRequests(const GURL &origin) {
-  JNIEnv *env = AttachCurrentThread();
+void BisonContents::CancelGeolocationPermissionRequests(const GURL& origin) {
+  JNIEnv* env = AttachCurrentThread();
   ScopedJavaLocalRef<jobject> obj = java_ref_.get(env);
   if (obj.is_null())
     return;
@@ -572,36 +577,36 @@ void BisonContents::CancelGeolocationPermissionRequests(const GURL &origin) {
 }
 
 void BisonContents::RequestMIDISysexPermission(
-    const GURL &origin, base::OnceCallback<void(bool)> callback) {
+    const GURL& origin,
+    base::OnceCallback<void(bool)> callback) {
   permission_request_handler_->SendRequest(
       std::make_unique<SimplePermissionRequest>(
           origin, BisonPermissionRequest::MIDISysex, std::move(callback)));
 }
 
-void BisonContents::CancelMIDISysexPermissionRequests(const GURL &origin) {
+void BisonContents::CancelMIDISysexPermissionRequests(const GURL& origin) {
   permission_request_handler_->CancelRequest(
       origin, BisonPermissionRequest::BisonPermissionRequest::MIDISysex);
 }
 
 void BisonContents::FindAllAsync(JNIEnv* env,
-                              const JavaParamRef<jstring>& search_string) {
+                                 const JavaParamRef<jstring>& search_string) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
   GetFindHelper()->FindAllAsync(ConvertJavaStringToUTF16(env, search_string));
 }
 
-void BisonContents::FindNext(JNIEnv* env,
-                          jboolean forward) {
+void BisonContents::FindNext(JNIEnv* env, jboolean forward) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
   GetFindHelper()->FindNext(forward);
 }
 
-void BisonContents::ClearMatches(JNIEnv* env, const JavaParamRef<jobject>& obj) {
+void BisonContents::ClearMatches(JNIEnv* env,
+                                 const JavaParamRef<jobject>& obj) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
   GetFindHelper()->ClearMatches();
 }
 
-void BisonContents::ClearCache(JNIEnv* env,
-                            jboolean include_disk_files) {
+void BisonContents::ClearCache(JNIEnv* env, jboolean include_disk_files) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
   render_view_host_ext_->ClearCache();
 
@@ -618,7 +623,7 @@ void BisonContents::ClearCache(JNIEnv* env,
 }
 
 void BisonContents::KillRenderProcess(JNIEnv* env,
-                                   const JavaParamRef<jobject>& obj) {
+                                      const JavaParamRef<jobject>& obj) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
   render_view_host_ext_->KillRenderProcess();
 }
@@ -632,10 +637,9 @@ FindHelper* BisonContents::GetFindHelper() {
   return find_helper_.get();
 }
 
-
 void BisonContents::OnFindResultReceived(int active_ordinal,
-                                      int match_count,
-                                      bool finished) {
+                                         int match_count,
+                                         bool finished) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
   JNIEnv* env = AttachCurrentThread();
   ScopedJavaLocalRef<jobject> obj = java_ref_.get(env);
@@ -643,62 +647,32 @@ void BisonContents::OnFindResultReceived(int active_ordinal,
     return;
 
   Java_BisonContents_onFindResultReceived(env, obj, active_ordinal, match_count,
-                                       finished);
+                                          finished);
 }
-
-
-
-
-
-
 
 bool BisonContents::AllowThirdPartyCookies() {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
-  BisonSettings *settings = BisonSettings::FromWebContents(web_contents_.get());
+  BisonSettings* settings = BisonSettings::FromWebContents(web_contents_.get());
   return settings->GetAllowThirdPartyCookies();
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 void BisonContents::ZoomBy(JNIEnv* env,
-                        const base::android::JavaParamRef<jobject>& obj,
-                        jfloat delta) {
+                           const base::android::JavaParamRef<jobject>& obj,
+                           jfloat delta) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
   // browser_view_renderer_.ZoomBy(delta);
 }
 
-void BisonContents::SetDipScale(JNIEnv *env, const JavaParamRef<jobject> &obj,
+void BisonContents::SetDipScale(JNIEnv* env,
+                                const JavaParamRef<jobject>& obj,
                                 jfloat dip_scale) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
   // SetDipScaleInternal(dip_scale);
 }
 
-
-
-
-
-
-
 void BisonContents::OnWebLayoutPageScaleFactorChanged(float page_scale_factor) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
-  JNIEnv *env = AttachCurrentThread();
+  JNIEnv* env = AttachCurrentThread();
   ScopedJavaLocalRef<jobject> obj = java_ref_.get(env);
   if (obj.is_null())
     return;
@@ -707,9 +681,9 @@ void BisonContents::OnWebLayoutPageScaleFactorChanged(float page_scale_factor) {
 }
 
 void BisonContents::OnWebLayoutContentsSizeChanged(
-    const gfx::Size &contents_size) {
+    const gfx::Size& contents_size) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
-  JNIEnv *env = AttachCurrentThread();
+  JNIEnv* env = AttachCurrentThread();
   ScopedJavaLocalRef<jobject> obj = java_ref_.get(env);
   if (obj.is_null())
     return;
@@ -738,28 +712,24 @@ jint BisonContents::GetEffectivePriority(
   return 0;
 }
 
-
-
-
-
 void BisonContents::SetExtraHeadersForUrl(
-    JNIEnv *env, const JavaParamRef<jstring> &url,
-    const JavaParamRef<jstring> &jextra_headers) {
+    JNIEnv* env,
+    const JavaParamRef<jstring>& url,
+    const JavaParamRef<jstring>& jextra_headers) {
   std::string extra_headers;
   if (jextra_headers)
     extra_headers = ConvertJavaStringToUTF8(env, jextra_headers);
-  BisonResourceContext *resource_context = static_cast<BisonResourceContext *>(
+  BisonResourceContext* resource_context = static_cast<BisonResourceContext*>(
       BisonBrowserContext::FromWebContents(web_contents_.get())
           ->GetResourceContext());
   resource_context->SetExtraHeaders(GURL(ConvertJavaStringToUTF8(env, url)),
                                     extra_headers);
 }
 
-void BisonContents::GrantFileSchemeAccesstoChildProcess(JNIEnv *env) {
+void BisonContents::GrantFileSchemeAccesstoChildProcess(JNIEnv* env) {
   content::ChildProcessSecurityPolicy::GetInstance()->GrantRequestScheme(
       web_contents_->GetMainFrame()->GetProcess()->GetID(), url::kFileScheme);
 }
-
 
 jlong BisonContents::GetAutofillProvider(
     JNIEnv* env,
@@ -767,30 +737,29 @@ jlong BisonContents::GetAutofillProvider(
   return reinterpret_cast<jlong>(autofill_provider_.get());
 }
 
-
 void BisonContents::RendererUnresponsive(
-    content::RenderProcessHost *render_process_host) {
+    content::RenderProcessHost* render_process_host) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
-  JNIEnv *env = AttachCurrentThread();
+  JNIEnv* env = AttachCurrentThread();
   ScopedJavaLocalRef<jobject> obj = java_ref_.get(env);
   if (obj.is_null())
     return;
 
-  BisonRenderProcess *render_process =
+  BisonRenderProcess* render_process =
       BisonRenderProcess::GetInstanceForRenderProcessHost(render_process_host);
   Java_BisonContents_onRendererUnresponsive(env, obj,
                                             render_process->GetJavaObject());
 }
 
 void BisonContents::RendererResponsive(
-    content::RenderProcessHost *render_process_host) {
+    content::RenderProcessHost* render_process_host) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
-  JNIEnv *env = AttachCurrentThread();
+  JNIEnv* env = AttachCurrentThread();
   ScopedJavaLocalRef<jobject> obj = java_ref_.get(env);
   if (obj.is_null())
     return;
 
-  BisonRenderProcess *render_process =
+  BisonRenderProcess* render_process =
       BisonRenderProcess::GetInstanceForRenderProcessHost(render_process_host);
   Java_BisonContents_onRendererResponsive(env, obj,
                                           render_process->GetJavaObject());
@@ -806,8 +775,8 @@ BisonContents::RenderProcessGoneResult BisonContents::OnRenderProcessGone(
     return RenderProcessGoneResult::kHandled;
 
   VLOG(0) << "OnRenderProcessGone";
-  bool result =
-      Java_BisonContents_onRenderProcessGone(env, obj, child_process_id, crashed);
+  bool result = Java_BisonContents_onRenderProcessGone(
+      env, obj, child_process_id, crashed);
 
   if (HasException(env))
     return RenderProcessGoneResult::kException;
@@ -817,13 +786,13 @@ BisonContents::RenderProcessGoneResult BisonContents::OnRenderProcessGone(
 }
 
 // static
-ScopedJavaLocalRef<jstring> JNI_BisonContents_GetProductVersion(JNIEnv *env) {
+ScopedJavaLocalRef<jstring> JNI_BisonContents_GetProductVersion(JNIEnv* env) {
   return base::android::ConvertUTF8ToJavaString(
       env, version_info::GetVersionNumber());
 }
 
-//static
-void JNI_BisonContents_LogCommandLineForDebugging(JNIEnv *env) {
+// static
+void JNI_BisonContents_LogCommandLineForDebugging(JNIEnv* env) {
   const base::CommandLine& command_line =
       *base::CommandLine::ForCurrentProcess();
   for (const auto& pair : command_line.GetSwitches()) {
@@ -833,7 +802,4 @@ void JNI_BisonContents_LogCommandLineForDebugging(JNIEnv *env) {
   }
 }
 
-
-
-
-} // namespace bison
+}  // namespace bison

@@ -98,7 +98,6 @@ def main(args):
       options.jar_included_globs)
   options.resource_included_globs = build_utils.ParseGnList(
       options.resource_included_globs)
-
   options.deps_configs= build_utils.ParseGnList(options.deps_configs)
 
   with tempfile.NamedTemporaryFile(delete=False) as staging_file:

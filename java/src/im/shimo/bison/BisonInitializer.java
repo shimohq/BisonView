@@ -34,20 +34,20 @@ public class BisonInitializer {
 
     public void init(Context context) {
         ContextUtils.initApplicationContext(context);
-        ResourceBundle.setNoAvailableLocalePaks();
+        ResourceBundle.setAvailablePakLocales(
+            new String[] {}, BisonLocaleConfig.getWebViewSupportedPakLocales());
         final boolean isExternalService = false;
         final boolean bindToCaller = true;
         final boolean ignoreVisibilityForImportance = true;
         ChildProcessCreationParams.set(context.getPackageName(),  "im.shimo.bison.PrivilegedProcessService",
                 context.getPackageName(), "im.shimo.bison.SandboxedProcessService", isExternalService,
                 LibraryProcessType.PROCESS_WEBVIEW_CHILD, bindToCaller,
-                ignoreVisibilityForImportance);   
+                ignoreVisibilityForImportance);
         if (isBrowserProcess()) {
             PathUtils.setPrivateDataDirectorySuffix(PRIVATE_DATA_DIRECTORY_SUFFIX);
             ApplicationStatus.initialize((Application) context.getApplicationContext());
             BisonResources.resetIds(context);
         }
-        initCommandLine();
     }
 
     public static boolean isBrowserProcess() {
@@ -69,14 +69,13 @@ public class BisonInitializer {
 
 
 
-    static void initCommandLine() {
-        if (BuildInfo.isDebugAndroid()) {
-            StrictMode.ThreadPolicy oldPolicy = StrictMode.allowThreadDiskReads();
-            CommandLine.initFromFile("/data/local/tmp/bison-view-command-line");
-            StrictMode.setThreadPolicy(oldPolicy);
-        } else {
-            CommandLine.init(null);
-        }
+    public static void initCommandLine() {
+        StrictMode.ThreadPolicy oldPolicy = StrictMode.allowThreadDiskReads();
+        CommandLine.initFromFile("/data/local/tmp/bison-view-command-line");
+        StrictMode.setThreadPolicy(oldPolicy);
+
+        // or release
+        // CommandLine.init(null);
     }
 
 

@@ -7,8 +7,6 @@
   <version>{{ version }}</version>
   <packaging>aar</packaging>
 
-  <name>bisonview Android library</name>
-
   {% if deps %}
   <dependencies>
   
@@ -20,4 +18,10 @@
     </dependency>
   </dependencies>
   {% endif %}
+
+  <name>bisonview Android library</name>
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <project.build.args>{{ args }}</project.build.args>
+  </properties>
 </project>

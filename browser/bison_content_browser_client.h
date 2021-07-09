@@ -83,8 +83,8 @@ class BisonContentBrowserClient : public content::ContentBrowserClient {
                      const GURL& site_for_cookies,
                      const base::Optional<url::Origin>& top_frame_origin,
                      content::BrowserContext* context) override;
-//   scoped_refptr<content::QuotaPermissionContext> CreateQuotaPermissionContext()
-//       override;
+  scoped_refptr<content::QuotaPermissionContext> CreateQuotaPermissionContext()
+      override;
   GeneratedCodeCacheSettings GetGeneratedCodeCacheSettings(
       content::BrowserContext* context) override;
   void AllowCertificateError(

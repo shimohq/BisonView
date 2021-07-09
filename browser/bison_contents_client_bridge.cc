@@ -6,6 +6,7 @@
 
 #include "bison/bison_jni_headers/BisonContentsClientBridge_jni.h"
 #include "bison/common/devtools_instrumentation.h"
+#include "bison/grit/components_strings.h"
 
 #include "base/android/jni_android.h"
 #include "base/android/jni_array.h"
@@ -76,6 +77,11 @@ void BisonContentsClientBridge::Associate(WebContents* web_contents,
                                           BisonContentsClientBridge* handler) {
   web_contents->SetUserData(kBisonContentsClientBridge,
                             std::make_unique<UserData>(handler));
+}
+
+// static
+void BisonContentsClientBridge::Dissociate(WebContents* web_contents) {
+  web_contents->RemoveUserData(kBisonContentsClientBridge);
 }
 
 BisonContentsClientBridge* BisonContentsClientBridge::FromWebContents(
@@ -170,7 +176,8 @@ void BisonContentsClientBridge::ProceedSslError(JNIEnv* env,
 }
 
 // This method is inspired by SelectClientCertificate() in
-// chrome/browser/ui/android/ssl_client_certificate_request.cc
+// components/browser_ui/client_certificate/android/
+// ssl_client_certificate_request.cc
 void BisonContentsClientBridge::SelectClientCertificate(
     net::SSLCertRequestInfo* cert_request_info,
     std::unique_ptr<content::ClientCertificateDelegate> delegate) {
@@ -327,7 +334,33 @@ void BisonContentsClientBridge::RunJavaScriptDialog(
   }
 }
 
-// jiang RunBeforeUnloadDialog
+void BisonContentsClientBridge::RunBeforeUnloadDialog(
+    const GURL& origin_url,
+    content::JavaScriptDialogManager::DialogClosedCallback callback) {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  JNIEnv* env = AttachCurrentThread();
+
+  ScopedJavaLocalRef<jobject> obj = java_ref_.get(env);
+  if (obj.is_null()) {
+    std::move(callback).Run(false, base::string16());
+    return;
+  }
+
+  const base::string16 message_text =
+      l10n_util::GetStringUTF16(IDS_BEFOREUNLOAD_MESSAGEBOX_MESSAGE);
+
+  int callback_id = pending_js_dialog_callbacks_.Add(
+      std::make_unique<content::JavaScriptDialogManager::DialogClosedCallback>(
+          std::move(callback)));
+  ScopedJavaLocalRef<jstring> jurl(
+      ConvertUTF8ToJavaString(env, origin_url.spec()));
+  ScopedJavaLocalRef<jstring> jmessage(
+      ConvertUTF16ToJavaString(env, message_text));
+
+  devtools_instrumentation::ScopedEmbedderCallbackTask("onJsBeforeUnload");
+  Java_BisonContentsClientBridge_handleJsBeforeUnload(env, obj, jurl, jmessage,
+                                                      callback_id);
+}
 
 bool BisonContentsClientBridge::ShouldOverrideUrlLoading(
     const base::string16& url,
@@ -346,9 +379,9 @@ bool BisonContentsClientBridge::ShouldOverrideUrlLoading(
   *ignore_navigation = Java_BisonContentsClientBridge_shouldOverrideUrlLoading(
       env, obj, jurl, has_user_gesture, is_redirect, is_main_frame);
   if (HasException(env)) {
-    // Tell the chromium message loop to not perform any tasks after the current
-    // one - we want to make sure we return to Java cleanly without first making
-    // any new JNI calls.
+    // Tell the chromium message loop to not perform any tasks after the
+    // current one - we want to make sure we return to Java cleanly without
+    // first making any new JNI calls.
     base::MessageLoopCurrentForUI::Get()->Abort();
     // If we crashed we don't want to continue the navigation.
     *ignore_navigation = true;
@@ -418,34 +451,34 @@ void BisonContentsClientBridge::OnReceivedHttpError(
     std::unique_ptr<HttpErrorInfo> http_error_info) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
   VLOG(0) << "OnReceivedHttpError";
-  // JNIEnv* env = AttachCurrentThread();
-  // ScopedJavaLocalRef<jobject> obj = java_ref_.get(env);
-  // if (obj.is_null())
-  //   return;
+  JNIEnv* env = AttachCurrentThread();
+  ScopedJavaLocalRef<jobject> obj = java_ref_.get(env);
+  if (obj.is_null())
+    return;
 
-  // AwWebResourceRequest::AwJavaWebResourceRequest java_web_resource_request;
-  // AwWebResourceRequest::ConvertToJava(env, request,
-  // &java_web_resource_request);
+  BisonWebResourceRequest::BisonJavaWebResourceRequest
+      java_web_resource_request;
+  BisonWebResourceRequest::ConvertToJava(env, request,
+                                         &java_web_resource_request);
 
-  // ScopedJavaLocalRef<jstring> jstring_mime_type =
-  //     ConvertUTF8ToJavaString(env, http_error_info->mime_type);
-  // ScopedJavaLocalRef<jstring> jstring_encoding =
-  //     ConvertUTF8ToJavaString(env, http_error_info->encoding);
-  // ScopedJavaLocalRef<jstring> jstring_reason =
-  //     ConvertUTF8ToJavaString(env, http_error_info->status_text);
-  // ScopedJavaLocalRef<jobjectArray> jstringArray_response_header_names =
-  //     ToJavaArrayOfStrings(env, http_error_info->response_header_names);
-  // ScopedJavaLocalRef<jobjectArray> jstringArray_response_header_values =
-  //     ToJavaArrayOfStrings(env, http_error_info->response_header_values);
+  ScopedJavaLocalRef<jstring> jstring_mime_type =
+      ConvertUTF8ToJavaString(env, http_error_info->mime_type);
+  ScopedJavaLocalRef<jstring> jstring_encoding =
+      ConvertUTF8ToJavaString(env, http_error_info->encoding);
+  ScopedJavaLocalRef<jstring> jstring_reason =
+      ConvertUTF8ToJavaString(env, http_error_info->status_text);
+  ScopedJavaLocalRef<jobjectArray> jstringArray_response_header_names =
+      ToJavaArrayOfStrings(env, http_error_info->response_header_names);
+  ScopedJavaLocalRef<jobjectArray> jstringArray_response_header_values =
+      ToJavaArrayOfStrings(env, http_error_info->response_header_values);
 
-  // Java_AwContentsClientBridge_onReceivedHttpError(
-  //     env, obj, java_web_resource_request.jurl, request.is_main_frame,
-  //     request.has_user_gesture, java_web_resource_request.jmethod,
-  //     java_web_resource_request.jheader_names,
-  //     java_web_resource_request.jheader_values, jstring_mime_type,
-  //     jstring_encoding, http_error_info->status_code, jstring_reason,
-  //     jstringArray_response_header_names,
-  //     jstringArray_response_header_values);
+  Java_BisonContentsClientBridge_onReceivedHttpError(
+      env, obj, java_web_resource_request.jurl, request.is_main_frame,
+      request.has_user_gesture, java_web_resource_request.jmethod,
+      java_web_resource_request.jheader_names,
+      java_web_resource_request.jheader_values, jstring_mime_type,
+      jstring_encoding, http_error_info->status_code, jstring_reason,
+      jstringArray_response_header_names, jstringArray_response_header_values);
 }
 
 std::unique_ptr<BisonContentsClientBridge::HttpErrorInfo>

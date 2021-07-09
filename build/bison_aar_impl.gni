@@ -15,15 +15,18 @@ template("build_aar_impl") {
   _build_config = "$target_gen_dir/$target_name.build_config"
   _build_config_target_name = "$target_name$build_config_target_suffix"
 
-  print ("_build_config_target_name",_build_config_target_name)
+  # print ("_build_config_target_name",_build_config_target_name)
 
   write_build_config(_build_config_target_name) {
     type = "dist_aar"
-    forward_variables_from(invoker, [ "proguard_configs" ])
+    # type = "android_apk"
+    forward_variables_from(invoker, [ "proguard_configs"])
     possible_config_deps = _deps
     supports_android = true
     requires_android = true
     build_config = _build_config
+    # unprocessed_jar_path = invoker.unprocessed_jar_path
+    # interface_jar_path = "ww"
   }
 
   _deps += [ ":$_build_config_target_name" ]
@@ -99,5 +102,5 @@ template("build_aar_impl") {
       ]
     }
   }
-  
+
 }

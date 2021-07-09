@@ -14,7 +14,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
- * This class is used to manage permissions for the WebView's Geolocation JavaScript API.
+ * This class is used to manage permissions for the BisonView's Geolocation JavaScript API.
  *
  * Callbacks are posted on the UI thread.
  */

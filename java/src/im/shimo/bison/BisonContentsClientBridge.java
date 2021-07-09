@@ -30,12 +30,14 @@ class BisonContentsClientBridge {
 
     private BisonContentsClient mClient;
     private Context mContext;
+    // The native peer of this object.
     private long mNativeContentsClientBridge;
-    private final ClientCertLookupTable mLookupTable;
-    
-    
 
-    public BisonContentsClientBridge(Context context, BisonContentsClient client, 
+    private final ClientCertLookupTable mLookupTable;
+
+
+
+    public BisonContentsClientBridge(Context context, BisonContentsClient client,
             ClientCertLookupTable table) {
         assert client != null;
         mContext = context;
@@ -124,7 +126,7 @@ class BisonContentsClientBridge {
         }
     }
 
-    
+
 
     @CalledByNative
     private void setNativeContentsClientBridge(long nativeContentsClientBridge) {
@@ -136,20 +138,20 @@ class BisonContentsClientBridge {
             final int id) {
         final SslCertificate cert = SslUtil.getCertificateFromDerBytes(derBytes);
         if (cert == null) {
-            // if the certificate or the client is null, cancel the request    
+            // if the certificate or the client is null, cancel the request
             return false;
         }
         final SslError sslError = SslUtil.sslErrorFromNetErrorCode(certError, cert, url);
         final Callback<Boolean> callback = value
                 -> PostTask.runOrPostTask(UiThreadTaskTraits.DEFAULT,
                         () -> proceedSslError(value.booleanValue(), id));
-        
-        //new Handler().post(() -> mClient.onReceivedSslError(callback, sslError));
+
+        new Handler().post(() -> mClient.onReceivedSslError(callback, sslError));
 
         // Record UMA on ssl error
         // Use sparse histogram in case new values are added in future releases
         // RecordHistogram.recordSparseHistogram(
-        //         "Android.WebView.onReceivedSslError.ErrorCode", sslError.getPrimaryError());
+        //         "BisonView.onReceivedSslError.ErrorCode", sslError.getPrimaryError());
         return true;
     }
 
@@ -228,6 +230,17 @@ class BisonContentsClientBridge {
         });
     }
 
+    @CalledByNative
+    private void handleJsBeforeUnload(final String url, final String message, final int id) {
+        // Post the application callback back to the current thread to ensure the application
+        // callback is executed without any native code on the stack. This so that any exception
+        // thrown by the application callback won't have to be propagated through a native call
+        // stack.
+        new Handler().post(() -> {
+            JsResultHandler handler = new JsResultHandler(this, id);
+            mClient.handleJsBeforeUnload(url, message, handler);
+        });
+    }
 
     @CalledByNative
     private void newDownload(String url, String userAgent, String contentDisposition,
@@ -245,17 +258,17 @@ class BisonContentsClientBridge {
             // WebResourceRequest
             String url, boolean isMainFrame, boolean hasUserGesture, boolean isRendererInitiated,
             String method, String[] requestHeaderNames, String[] requestHeaderValues,
+            // WebResourceError
             @NetError int errorCode, String description) {
-        // jiang 
         // BisonContentsClient.BisonWebResourceRequest request = new BisonContentsClient.BisonWebResourceRequest(
         //         url, isMainFrame, hasUserGesture, method, requestHeaderNames, requestHeaderValues);
         // BisonContentsClient.BisonWebResourceError error = new BisonContentsClient.BisonWebResourceError();
         // error.errorCode = errorCode;
         // error.description = description;
 
-        // String unreachableWebDataUrl = AwContentsStatics.getUnreachableWebDataUrl();
-        // boolean isErrorUrl =
-        //         unreachableWebDataUrl != null && unreachableWebDataUrl.equals(request.url);
+        // // String unreachableWebDataUrl = AwContentsStatics.getUnreachableWebDataUrl();
+        // // boolean isErrorUrl =
+        // //         unreachableWebDataUrl != null && unreachableWebDataUrl.equals(request.url);
 
         // if (!isErrorUrl && error.errorCode != NetError.ERR_ABORTED) {
         //     // NetError.ERR_ABORTED error code is generated for the following reasons:
@@ -263,8 +276,8 @@ class BisonContentsClientBridge {
         //     // - the navigation is intercepted by the embedder via shouldOverrideUrlLoading;
         //     // - server returned 204 status (no content).
         //     //
-        //     // Android WebView does not notify the embedder of these situations using
-        //     // this error code with the WebViewClient.onReceivedError callback.
+        //     // BisonView does not notify the embedder of these situations using
+        //     // this error code with the BisonViewClient.onReceivedError callback.
         //     error.errorCode = ErrorCodeConversionHelper.convertErrorCode(error.errorCode);
         //     if (request.isMainFrame
         //             && AwFeatureList.pageStartedOnCommitEnabled(isRendererInitiated)) {
@@ -272,17 +285,55 @@ class BisonContentsClientBridge {
         //     }
         //     mClient.getCallbackHelper().postOnReceivedError(request, error);
         //     if (request.isMainFrame) {
-        //         // Need to call onPageFinished after onReceivedError for backwards compatibility
-        //         // with the classic webview. See also AwWebContentsObserver.didFailLoad which is
-        //         // used when we want to send onPageFinished alone.
         //         mClient.getCallbackHelper().postOnPageFinished(request.url);
         //     }
         // }
     }
 
 
+    @CalledByNative
+    private void onReceivedHttpError(
+            // WebResourceRequest
+            String url, boolean isMainFrame, boolean hasUserGesture, String method,
+            String[] requestHeaderNames, String[] requestHeaderValues,
+            // WebResourceResponse
+            String mimeType, String encoding, int statusCode, String reasonPhrase,
+            String[] responseHeaderNames, String[] responseHeaderValues) {
+        BisonContentsClient.BisonWebResourceRequest request = new BisonContentsClient.BisonWebResourceRequest(
+                url, isMainFrame, hasUserGesture, method, requestHeaderNames, requestHeaderValues);
+        Map<String, String> responseHeaders =
+                new HashMap<String, String>(responseHeaderNames.length);
+        // Note that we receive un-coalesced response header lines, thus we need to combine
+        // values for the same header.
+        for (int i = 0; i < responseHeaderNames.length; ++i) {
+            if (!responseHeaders.containsKey(responseHeaderNames[i])) {
+                responseHeaders.put(responseHeaderNames[i], responseHeaderValues[i]);
+            } else if (!responseHeaderValues[i].isEmpty()) {
+                String currentValue = responseHeaders.get(responseHeaderNames[i]);
+                if (!currentValue.isEmpty()) {
+                    currentValue += ", ";
+                }
+                responseHeaders.put(responseHeaderNames[i], currentValue + responseHeaderValues[i]);
+            }
+        }
+        BisonWebResourceResponse response = new BisonWebResourceResponse(
+                mimeType, encoding, null, statusCode, reasonPhrase, responseHeaders);
+        mClient.getCallbackHelper().postOnReceivedHttpError(request, response);
 
-    void confirmJsResult(int id, String prompt) {
+        // Record UMA on http response status.
+        // RecordHistogram.recordSparseHistogram(
+        //         "Android.WebView.onReceivedHttpError.StatusCode", statusCode);
+    }
+
+
+    @CalledByNativeUnchecked
+    private boolean shouldOverrideUrlLoading(String url, boolean hasUserGesture,
+                                             boolean isRedirect, boolean isMainFrame) {
+        return mClient.shouldIgnoreNavigation(
+                mContext, url, isMainFrame, hasUserGesture, isRedirect);
+    }
+
+  void confirmJsResult(int id, String prompt) {
         if (mNativeContentsClientBridge == 0) return;
         BisonContentsClientBridgeJni.get().confirmJsResult(
                 mNativeContentsClientBridge, this, id, prompt);
@@ -294,27 +345,16 @@ class BisonContentsClientBridge {
                 mNativeContentsClientBridge, this, id);
     }
 
-    @CalledByNativeUnchecked
-    private boolean shouldOverrideUrlLoading(String url, boolean hasUserGesture,
-                                             boolean isRedirect, boolean isMainFrame) {
-        return mClient.shouldIgnoreNavigation(
-                mContext, url, isMainFrame, hasUserGesture, isRedirect);
-    }
-
-
     @NativeMethods
     interface Natives {
 
         void confirmJsResult(long nativeBisonContentsClientBridge, BisonContentsClientBridge caller, int id, String prompt);
         void cancelJsResult(long nativeBisonContentsClientBridge, BisonContentsClientBridge caller, int id);
-
-        // void takeSafeBrowsingAction(long nativeBisonContentsClientBridge,
-        //        BisonContentsClientBridge caller, int action, boolean reporting, int requestId);
-        void proceedSslError(long nativeBisonContentsClientBridge, BisonContentsClientBridge caller, boolean proceed, int id);        
+        void proceedSslError(long nativeBisonContentsClientBridge, BisonContentsClientBridge caller, boolean proceed, int id);
         void provideClientCertificateResponse(long nativeBisonContentsClientBridge,
                 BisonContentsClientBridge caller, int id, byte[][] certChain, PrivateKey androidKey);
-        
-        
+
+
     }
 
 

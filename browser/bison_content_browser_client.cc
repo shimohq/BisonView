@@ -1,7 +1,5 @@
 #include "bison/browser/bison_content_browser_client.h"
 
-#include <stddef.h>
-
 #include <memory>
 #include <string>
 #include <utility>
@@ -17,6 +15,7 @@
 #include "bison/browser/bison_cookie_access_policy.h"
 #include "bison/browser/bison_devtools_manager_delegate.h"
 #include "bison/browser/bison_feature_list_creator.h"
+#include "bison/browser/bison_quota_permission_context.h"
 #include "bison/browser/bison_settings.h"
 #include "bison/browser/cookie_manager.h"
 #include "bison/browser/network_service/bison_proxying_restricted_cookie_manager.h"
@@ -197,11 +196,6 @@ void BisonContentsMessageFilter::OnSubFrameCreated(int parent_render_frame_id,
       process_id_, parent_render_frame_id, child_render_frame_id);
 }
 
-
-
-
-
-
 }  // namespace
 
 std::string GetProduct() {
@@ -261,7 +255,6 @@ void BisonContentBrowserClient::OnNetworkServiceCreated(
   content::GetNetworkService()->SetUpHttpAuth(std::move(auth_static_params));
 }
 
-
 void BisonContentBrowserClient::ConfigureNetworkContextParams(
     content::BrowserContext* context,
     bool in_memory,
@@ -273,11 +266,12 @@ void BisonContentBrowserClient::ConfigureNetworkContextParams(
   content::GetNetworkService()->ConfigureHttpAuthPrefs(
       BisonBrowserProcess::GetInstance()->CreateHttpAuthDynamicParams());
 
-  BisonBrowserContext* bison_context = static_cast<BisonBrowserContext*>(context);
-  bison_context->ConfigureNetworkContextParams(in_memory, relative_partition_path,
-                                            network_context_params,
-                                            cert_verifier_creation_params);
-  
+  BisonBrowserContext* bison_context =
+      static_cast<BisonBrowserContext*>(context);
+  bison_context->ConfigureNetworkContextParams(
+      in_memory, relative_partition_path, network_context_params,
+      cert_verifier_creation_params);
+
   mojo::PendingRemote<network::mojom::CookieManager> cookie_manager_remote;
   network_context_params->cookie_manager =
       cookie_manager_remote.InitWithNewPipeAndPassReceiver();
@@ -288,7 +282,7 @@ void BisonContentBrowserClient::ConfigureNetworkContextParams(
 
   bison_context->GetCookieManager()->SetMojoCookieManager(
       std::move(cookie_manager_remote));
-  VLOG(0) << "ConfigureNetworkContextParams";    
+  VLOG(0) << "ConfigureNetworkContextParams";
 }
 
 BisonBrowserContext* BisonContentBrowserClient::InitBrowserContext() {
@@ -370,8 +364,8 @@ void BisonContentBrowserClient::AppendExtraCommandLineSwitches(
   command_line->AppendSwitch(switches::kAppCacheForceEnabled);
 
   // if (!command_line->HasSwitch(switches::kSingleProcess)) {
-  //   // The only kind of a child process WebView can have is renderer or utility.
-  //   std::string process_type =
+  //   // The only kind of a child process WebView can have is renderer or
+  //   utility. std::string process_type =
   //       command_line->GetSwitchValueASCII(switches::kProcessType);
   //   DCHECK(process_type == switches::kRendererProcess ||
   //          process_type == switches::kUtilityProcess)
@@ -397,7 +391,6 @@ std::string BisonContentBrowserClient::GetAcceptLangs(
   return GetAcceptLangsImpl();
 }
 
-
 bool BisonContentBrowserClient::AllowAppCache(
     const GURL& manifest_url,
     const GURL& site_for_cookies,
@@ -406,11 +399,10 @@ bool BisonContentBrowserClient::AllowAppCache(
   return true;
 }
 
-// scoped_refptr<content::QuotaPermissionContext>
-// BisonContentBrowserClient::CreateQuotaPermissionContext() {
-//   return new ShellQuotaPermissionContext();
-// }
-
+scoped_refptr<content::QuotaPermissionContext>
+BisonContentBrowserClient::CreateQuotaPermissionContext() {
+  return new BisonQuotaPermissionContext();
+}
 
 GeneratedCodeCacheSettings
 BisonContentBrowserClient::GetGeneratedCodeCacheSettings(
@@ -476,9 +468,9 @@ bool BisonContentBrowserClient::CanCreateWindow(
   // We unconditionally allow popup windows at this stage and will give
   // the embedder the opporunity to handle displaying of the popup in
   // WebContentsDelegate::AddContents (via the
-  // AwContentsClient.onCreateWindow callback).
+  // BisonContentsClient.onCreateWindow callback).
   // Note that if the embedder has blocked support for creating popup
-  // windows through AwSettings, then we won't get to this point as
+  // windows through BisonSettings, then we won't get to this point as
   // the popup creation will have been blocked at the WebKit level.
   if (no_javascript_access) {
     *no_javascript_access = false;
@@ -535,11 +527,16 @@ void BisonContentBrowserClient::GetAdditionalMappedFilesForChildProcess(
     const base::CommandLine& command_line,
     int child_process_id,
     content::PosixFileDescriptorInfo* mappings) {
-  VLOG(0) << "GetAdditionalMappedFilesForChildProcess";    
-  mappings->ShareWithRegion(
-      kBisonPakDescriptor,
-      base::GlobalDescriptors::GetInstance()->Get(kBisonPakDescriptor),
-      base::GlobalDescriptors::GetInstance()->GetRegion(kBisonPakDescriptor));
+  base::MemoryMappedFile::Region region;
+
+  int fd = ui::GetMainAndroidPackFd(&region);
+  mappings->ShareWithRegion(kBisonViewMainPakDescriptor,fd,region);
+
+  fd = ui::GetCommonResourcesPackFd(&region);
+  mappings->ShareWithRegion(kBisonView100PercentPakDescriptor, fd, region);
+
+  fd = ui::GetLocalePackFd(&region);
+  mappings->ShareWithRegion(kBisonViewLocalePakDescriptor, fd, region);
 
   int crash_signal_fd =
       crashpad::CrashHandlerHost::Get()->GetDeathSignalSocket();
@@ -564,7 +561,7 @@ BisonContentBrowserClient::CreateThrottlesForNavigation(
   VLOG(0) << "CreateThrottlesForNavigation";
   std::vector<std::unique_ptr<content::NavigationThrottle>> throttles;
   if (navigation_handle->IsInMainFrame()) {
-    //jiang 这个好像可以不加
+    // jiang 这个好像可以不加
     throttles.push_back(page_load_metrics::MetricsNavigationThrottle::Create(
         navigation_handle));
     throttles.push_back(
@@ -601,7 +598,8 @@ bool BisonContentBrowserClient::BindAssociatedReceiverFromFrame(
         render_frame_host);
     return true;
   }
-  // if (interface_name == content_capture::mojom::ContentCaptureReceiver::Name_) {
+  // if (interface_name ==
+  // content_capture::mojom::ContentCaptureReceiver::Name_) {
   //   content_capture::ContentCaptureReceiverManager::BindContentCaptureReceiver(
   //       mojo::PendingAssociatedReceiver<
   //           content_capture::mojom::ContentCaptureReceiver>(std::move(*handle)),
@@ -616,7 +614,6 @@ void BisonContentBrowserClient::ExposeInterfacesToRenderer(
     service_manager::BinderRegistry* registry,
     blink::AssociatedInterfaceRegistry* associated_registry,
     content::RenderProcessHost* render_process_host) {
-
 #if BUILDFLAG(ENABLE_SPELLCHECK)
   auto create_spellcheck_host =
       [](mojo::PendingReceiver<spellcheck::mojom::SpellCheckHost> receiver) {
@@ -658,7 +655,6 @@ BisonContentBrowserClient::CreateURLLoaderThrottles(
   return result;
 }
 
-
 bool BisonContentBrowserClient::ShouldOverrideUrlLoading(
     int frame_tree_node_id,
     bool browser_initiated,
@@ -669,7 +665,7 @@ bool BisonContentBrowserClient::ShouldOverrideUrlLoading(
     bool is_main_frame,
     ui::PageTransition transition,
     bool* ignore_navigation) {
-  *ignore_navigation = false;    
+  *ignore_navigation = false;
 
   if (request_method != "GET")
     return true;
@@ -812,10 +808,10 @@ bool BisonContentBrowserClient::WillCreateURLLoaderFactory(
 
   // BisonView has one non off-the-record browser context.
   content::GetIOThreadTaskRunner({})->PostTask(
-        FROM_HERE, base::BindOnce(&BisonProxyingURLLoaderFactory::CreateProxy,
+      FROM_HERE, base::BindOnce(&BisonProxyingURLLoaderFactory::CreateProxy,
                                 process_id, std::move(proxied_receiver),
                                 std::move(target_factory_info),
-                                  base::nullopt /* security_options */));
+                                base::nullopt /* security_options */));
   return true;
 }
 

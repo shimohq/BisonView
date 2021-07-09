@@ -100,10 +100,6 @@ BisonBrowserContext::~BisonBrowserContext() {
   DCHECK_EQ(this, g_browser_context);
   NotifyWillBeDestroyed(this);
   SimpleKeyMap::GetInstance()->Dissociate(this);
-  if (resource_context_) {
-    BrowserThread::DeleteSoon(BrowserThread::IO, FROM_HERE,
-                              resource_context_.release());
-  }
   ShutdownStoragePartitions();
 
   g_browser_context = NULL;
@@ -166,8 +162,8 @@ void BisonBrowserContext::RegisterPrefs(PrefRegistrySimple* registry) {
   // the retention policy ran. By setting it to a low default value, we're
   // making sure it runs now (as it only runs once per major version).
 
-  // registry->RegisterIntegerPref(
-  //     autofill::prefs::kAutocompleteLastVersionRetentionPolicy, 0);
+  registry->RegisterIntegerPref(
+      autofill::prefs::kAutocompleteLastVersionRetentionPolicy, 0);
 
   // We only use the autocomplete feature of Autofill, which is controlled via
   // the manager_delegate. We don't use the rest of Autofill, which is why it is
@@ -175,10 +171,10 @@ void BisonBrowserContext::RegisterPrefs(PrefRegistrySimple* registry) {
   // TODO(crbug.com/873740): The following also disables autocomplete.
   // Investigate what the intended behavior is.
 
-  // registry->RegisterBooleanPref(autofill::prefs::kAutofillProfileEnabled,
-  //                               false);
-  // registry->RegisterBooleanPref(autofill::prefs::kAutofillCreditCardEnabled,
-  //                               false);
+  registry->RegisterBooleanPref(autofill::prefs::kAutofillProfileEnabled,
+                                false);
+  registry->RegisterBooleanPref(autofill::prefs::kAutofillCreditCardEnabled,
+                                false);
 
 #if BUILDFLAG(ENABLE_MOJO_CDM)
   cdm::MediaDrmStorageImpl::RegisterProfilePrefs(registry);
@@ -220,7 +216,6 @@ void BisonBrowserContext::CreateUserPrefService() {
   // }
 
   user_prefs::UserPrefs::Set(this, user_pref_service_.get());
-  VLOG(0) << "end CreateUserPrefService";
 }
 
 // static
@@ -279,8 +274,7 @@ ResourceContext* BisonBrowserContext::GetResourceContext() {
   return resource_context_.get();
 }
 
-DownloadManagerDelegate* 
-BisonBrowserContext::GetDownloadManagerDelegate() {
+DownloadManagerDelegate* BisonBrowserContext::GetDownloadManagerDelegate() {
   if (!GetUserData(kDownloadManagerDelegateKey)) {
     SetUserData(kDownloadManagerDelegateKey,
                 std::make_unique<BisonDownloadManagerDelegate>());
@@ -366,8 +360,6 @@ void BisonBrowserContext::ConfigureNetworkContextParams(
     const base::FilePath& relative_partition_path,
     network::mojom::NetworkContextParams* context_params,
     network::mojom::CertVerifierCreationParams* cert_verifier_creation_params) {
-  VLOG(0) << "ConfigureNetworkContextParams";    
-  DCHECK(context_params);    
   context_params->user_agent = bison::GetUserAgent();
 
   // TODO(ntfschr): set this value to a proper value based on the user's
@@ -382,8 +374,8 @@ void BisonBrowserContext::ConfigureNetworkContextParams(
   context_params->http_cache_max_size = GetHttpCacheSize();
   context_params->http_cache_path = GetCacheDir();
 
-  // BisonView should persist and restore cookies between app sessions (including
-  // session cookies).
+  // BisonView should persist and restore cookies between app sessions
+  // (including session cookies).
   context_params->cookie_path = BisonBrowserContext::GetCookieStorePath();
   context_params->restore_old_session_cookies = true;
   context_params->persist_session_cookies = true;
@@ -393,7 +385,7 @@ void BisonBrowserContext::ConfigureNetworkContextParams(
       GetCookieManager()->GetAllowFileSchemeCookies();
 
   context_params->cookie_manager_params->cookie_access_delegate_type =
-      network::mojom::CookieAccessDelegateType::ALWAYS_LEGACY;    
+      network::mojom::CookieAccessDelegateType::ALWAYS_LEGACY;
 
   context_params->initial_ssl_config = network::mojom::SSLConfig::New();
   // Allow SHA-1 to be used for locally-installed trust anchors, as WebView

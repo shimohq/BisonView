@@ -1,9 +1,11 @@
 package im.shimo.bison;
 
+import android.annotation.SuppressLint;
 import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Picture;
+import android.net.http.SslError;
 import android.os.Looper;
 import android.os.Message;
 import android.provider.Browser;
@@ -31,7 +33,7 @@ import java.util.Map;
 import java.util.WeakHashMap;
 
 public class BisonContentsClient {
-    private static final boolean TRACE = false;
+    private static final boolean TRACE = true;
 
     private static final String TAG = "BisonContentsClient";
 
@@ -57,6 +59,10 @@ public class BisonContentsClient {
         mBisonView = bisonView;
         mContext = context;
         mCallbackHelper = new BisonContentsClientCallbackHelper(Looper.myLooper(),this);
+    }
+
+    public BisonContentsClientCallbackHelper getCallbackHelper() {
+        return mCallbackHelper;
     }
 
     public boolean hasBisonViewClient() {
@@ -94,28 +100,91 @@ public class BisonContentsClient {
         if (mBisonWebChromeClient != null) {
             final JsPromptResult res =
                     new JsPromptResultReceiverAdapter(receiver).getPromptResult();
+            if (TRACE) Log.i(TAG, "handleJsAlert");
             if (!mBisonWebChromeClient.onJsAlert(mBisonView, url, message, res)) {
-                // showDefaultJsDialog
+                if (!showDefaultJsDialog(res, JsDialogHelper.ALERT, null, message, url)) {
+                    receiver.cancel();
+                }
             }
+        } else {
+            receiver.cancel();
         }
     }
 
-    protected void handleJsBeforeUnload(String url, String message,
-                                        JsResultReceiver receiver) {
-
+    protected void handleJsBeforeUnload(String url, String message, JsResultReceiver receiver) {
+        if (mBisonWebChromeClient != null) {
+            final JsPromptResult res =
+                    new JsPromptResultReceiverAdapter(receiver).getPromptResult();
+            if (TRACE) Log.i(TAG, "handleJsBeforeUnload");
+            if (!mBisonWebChromeClient.onJsBeforeUnload(mBisonView, url, message, res)) {
+                if (!showDefaultJsDialog(res, JsDialogHelper.UNLOAD, null, message, url)) {
+                    receiver.cancel();
+                }
+            }
+        } else {
+            receiver.cancel();
+        }
     }
 
     protected void handleJsConfirm(String url, String message, JsResultReceiver receiver) {
-        final JsPromptResult res =
-                new JsPromptResultReceiverAdapter(receiver).getPromptResult();
-        mBisonWebChromeClient.onJsConfirm(mBisonView, url, message, res);
+        if (mBisonWebChromeClient != null) {
+            final JsPromptResult res =
+                    new JsPromptResultReceiverAdapter(receiver).getPromptResult();
+            if (!mBisonWebChromeClient.onJsConfirm(mBisonView, url, message, res)) {
+                if (!showDefaultJsDialog(res, JsDialogHelper.CONFIRM, null, message, url)) {
+                    receiver.cancel();
+                }
+            }
+        } else {
+            receiver.cancel();
+        }
     }
 
-    protected void handleJsPrompt(String url, String message, String defaultValue,
-                                  JsPromptResultReceiver receiver) {
-
-
+    protected void handleJsPrompt(String url, String message, String defaultValue, JsPromptResultReceiver receiver) {
+        if (mBisonWebChromeClient != null) {
+            final JsPromptResult res =
+                    new JsPromptResultReceiverAdapter(receiver).getPromptResult();
+            if (TRACE) Log.i(TAG, "onJsPrompt");
+            if (!mBisonWebChromeClient.onJsPrompt(mBisonView, url, message, defaultValue, res)) {
+                if (!showDefaultJsDialog(
+                        res, JsDialogHelper.PROMPT, defaultValue, message, url)) {
+                    receiver.cancel();
+                }
+            }
+        } else {
+            receiver.cancel();
+        }
     }
+
+
+    public boolean onCreateWindow(boolean isDialog, boolean isUserGesture) {
+        // jiang947
+        try {
+            TraceEvent.begin("BisonContentsClient.onCreateWindow");
+            boolean result;
+            if (mBisonWebChromeClient != null) {
+                if (TRACE) Log.i(TAG, "onCreateWindow");
+                result = mBisonWebChromeClient.onCreateWindow(mBisonView, isDialog, isUserGesture);
+            } else {
+                result = false;
+            }
+            return result;
+        } finally {
+            TraceEvent.end("BisonContentsClient.onCreateWindow");
+        }
+    }
+
+    public void onCloseWindow() {
+      try {
+          TraceEvent.begin("BisonContentsClient.onCloseWindow");
+          if (mBisonWebChromeClient != null) {
+              if (TRACE) Log.i(TAG, "onCloseWindow");
+              mBisonWebChromeClient.onCloseWindow(mBisonView);
+          }
+      } finally {
+          TraceEvent.end("BisonContentsClient.onCloseWindow");
+      }
+  }
 
     private boolean showDefaultJsDialog(JsPromptResult res, int jsDialogType, String defaultValue,
                                         String message, String url) {
@@ -131,7 +200,7 @@ public class BisonContentsClient {
                     .showDialog(activityContext);
         } catch (WindowManager.BadTokenException e) {
             Log.w(TAG,
-                    "Unable to create JsDialog. Has this WebView outlived the Activity it was created with?");
+                    "Unable to create JsDialog. Has this BisonView outlived the Activity it was created with?");
             return false;
         }
         return true;
@@ -145,13 +214,13 @@ public class BisonContentsClient {
 
     public void onGeolocationPermissionsShowPrompt(
             String origin, BisonGeolocationPermissions.Callback callback) {
-        
+
         TraceEvent.begin("WebViewContentsClientAdapter.onGeolocationPermissionsShowPrompt");
         if (mBisonWebChromeClient == null) {
             callback.invoke(origin, false, false);
             return;
         }
-        
+
         mBisonWebChromeClient.onGeolocationPermissionsShowPrompt(origin,
                 callback == null ? null : (callbackOrigin, allow, retain)
                         -> callback.invoke(callbackOrigin, allow, retain));
@@ -316,6 +385,27 @@ public class BisonContentsClient {
         }
     }
 
+    @SuppressWarnings("HandlerLeak")
+    public void onReceivedSslError(final Callback<Boolean> callback, SslError error) {
+        try {
+            TraceEvent.begin("BisonContentsClient.onReceivedSslError");
+            SslErrorHandler handler = new SslErrorHandler() {
+                @Override
+                public void proceed() {
+                    callback.onResult(true);
+                }
+                @Override
+                public void cancel() {
+                    callback.onResult(false);
+                }
+            };
+            if (TRACE) Log.i(TAG, "onReceivedSslError");
+            mBisonViewClient.onReceivedSslError(mBisonView, handler, error);
+        } finally {
+            TraceEvent.end("BisonContentsClient.onReceivedSslError");
+        }
+    }
+
     private static class ClientCertRequestImpl extends ClientCertRequest {
         private final BisonContentsClientBridge.ClientCertificateRequestCallback mCallback;
         private final String[] mKeyTypes;
@@ -370,7 +460,7 @@ public class BisonContentsClient {
             mCallback.cancel();
         }
     }
-    
+
     public void onReceivedClientCertRequest(
             BisonContentsClientBridge.ClientCertificateRequestCallback callback, String[] keyTypes,
             Principal[] principals, String host, int port) {
@@ -401,6 +491,18 @@ public class BisonContentsClient {
     }
 
     public void onReceivedHttpError(BisonWebResourceRequest request, BisonWebResourceResponse response) {
+
+        String reasonPhrase = response.getReasonPhrase();
+        if (reasonPhrase == null || reasonPhrase.isEmpty()) {
+            reasonPhrase = "UNKNOWN";
+        }
+
+        mBisonViewClient.onReceivedHttpError(mBisonView,
+                new WebResourceRequest(request.url, request.isMainFrame,
+                        request.hasUserGesture, request.method ,request.requestHeaders),
+                new WebResourceResponse(response.getMimeType(), response.getCharset(),
+                        response.getStatusCode(), reasonPhrase,
+                        response.getResponseHeaders(), response.getData()));
     }
 
     public void doUpdateVisitedHistory(String url, boolean isReload) {
@@ -409,9 +511,7 @@ public class BisonContentsClient {
     public void onFormResubmission(Message dontResend, Message resend) {
     }
 
-    public BisonContentsClientCallbackHelper getCallbackHelper() {
-        return mCallbackHelper;
-    }
+
 
 
     private static class JsPromptResultReceiverAdapter implements JsResult.ResultReceiver {
@@ -700,7 +800,7 @@ public class BisonContentsClient {
         mTitle = title;
         mCallbackHelper.postOnReceivedTitle(mTitle);
     }
-    
+
     private BisonRenderProcessClient mBisonRenderProcessClient;
 
     public void setBisonRenderProcessClient(BisonRenderProcessClient client){

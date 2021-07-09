@@ -16,15 +16,13 @@ source_set("renderer") {
     "bison_render_view_ext.h",
     "browser_exposed_renderer_interfaces.cc",
     "browser_exposed_renderer_interfaces.h",
-    
   ]
 
   deps = [
     "//bison/common",
     "//bison/common:common_mojom",
-
-    "//base",
     
+    "//base",
     "//components/autofill/content/renderer",
     "//components/cdm/renderer",
     "//components/content_capture/common",
