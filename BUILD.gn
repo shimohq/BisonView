@@ -54,6 +54,7 @@ android_aar("bison_view_aar") {
   jar_excluded_patterns = [
     "im/shimo/bison/R\$*.class",
     "im/shimo/bison/R.class",
+    "*/gen/_bison/*",
 
     "javax/*",
     "android/*",
@@ -165,6 +166,7 @@ android_library("bison_java") {
     "java/src/im/shimo/bison/SslUtil.java",
     "java/src/im/shimo/bison/ValueCallback.java",
     "java/src/im/shimo/bison/WebResourceRequest.java",
+    "java/src/im/shimo/bison/WebResourceRequestAdapter.java",
     "java/src/im/shimo/bison/WebResourceResponse.java",
     "java/src/im/shimo/bison/BisonViewDatabase.java",
     "java/src/im/shimo/bison/HttpAuthDatabase.java",

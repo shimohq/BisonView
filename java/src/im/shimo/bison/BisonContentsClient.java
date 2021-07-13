@@ -296,8 +296,8 @@ public class BisonContentsClient {
 
         if (hasBisonViewClient()) {
             // Note: only GET requests can be overridden, so we hardcode the method.
-            WebResourceRequest request =
-                    new WebResourceRequest(url, isMainFrame, hasUserGesture, "GET", null);
+            BisonWebResourceRequest request =
+                    new BisonWebResourceRequest(url, isMainFrame, hasUserGesture, "GET", null);
             request.isRedirect = isRedirect;
             return shouldOverrideUrlLoading(request);
         } else {
@@ -305,13 +305,25 @@ public class BisonContentsClient {
         }
     }
 
-    public final boolean shouldOverrideUrlLoading(WebResourceRequest request) {
-        return mBisonViewClient.shouldOverrideUrlLoading(mBisonView, request);
+    public final boolean shouldOverrideUrlLoading(BisonWebResourceRequest request) {
+        return mBisonViewClient.shouldOverrideUrlLoading(mBisonView, new WebResourceRequestAdapter(request));
     }
 
     public BisonWebResourceResponse shouldInterceptRequest(BisonWebResourceRequest request) {
-        //mBisonViewClient.shouldOverrideUrlLoading(mBisonView,request)
-        return null;
+        WebResourceResponse response = mBisonViewClient.shouldInterceptRequest(
+            mBisonView,new WebResourceRequestAdapter(request));
+        if (response == null) return null;
+            
+        Map<String, String> responseHeaders = response.getResponseHeaders();
+        if (responseHeaders == null) responseHeaders = new HashMap<String, String>();
+
+        return new BisonWebResourceResponse(
+                    response.getMimeType(),
+                    response.getEncoding(),
+                    response.getData(),
+                    response.getStatusCode(),
+                    response.getReasonPhrase(),
+                    responseHeaders);
     }
 
 
@@ -481,6 +493,7 @@ public class BisonContentsClient {
     public void onReceivedError(BisonWebResourceRequest request, BisonWebResourceError error) {
     }
 
+    // jiang 不实现
     public void onSafeBrowsingHit(BisonWebResourceRequest request, int threatType, Callback<BisonSafeBrowsingResponse> callback) {
     }
 
@@ -498,8 +511,7 @@ public class BisonContentsClient {
         }
 
         mBisonViewClient.onReceivedHttpError(mBisonView,
-                new WebResourceRequest(request.url, request.isMainFrame,
-                        request.hasUserGesture, request.method ,request.requestHeaders),
+                new WebResourceRequestAdapter(request),
                 new WebResourceResponse(response.getMimeType(), response.getCharset(),
                         response.getStatusCode(), reasonPhrase,
                         response.getResponseHeaders(), response.getData()));

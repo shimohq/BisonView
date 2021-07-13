@@ -48,8 +48,9 @@ MANIFEST_FILE = 'gen/bison/bison_aar_manifest/AndroidManifest.xml'
 AAR_CONFIG_FILE = os.path.join('gen',TARGET.replace(':','/'))+ ".build_config"
 
 jar_excluded_patterns = [
-  "im/shimo/bison/R\$*.class",
+  "im/shimo/bison/R$*.class",
   "im/shimo/bison/R.class",
+  "gen/_bison/*",
 
   "android/support/*",
   "*/third_party/android_deps/*",
@@ -199,7 +200,6 @@ def MergeZips(output, input_zips, path_transform=None, compress=None):
 
   try:
     for in_file in input_zips:
-      # print ('input',in_file)
       with zipfile.ZipFile(in_file, 'r') as in_zip:
         # ijar creates zips with null CRCs.
         in_zip._expected_crc = None
@@ -210,6 +210,8 @@ def MergeZips(output, input_zips, path_transform=None, compress=None):
           dst_name = path_transform(info.filename)
           if not dst_name:
             continue
+          # if "bison" in dst_name:
+          #   print ('dst_name',dst_name,"in_file",in_file)
           already_added = dst_name in added_names
           # TODO  jiang gen_jni filter for bison
           if "GEN_JNI" in dst_name and not already_added:

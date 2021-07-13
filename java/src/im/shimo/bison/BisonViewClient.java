@@ -31,9 +31,7 @@ public class BisonViewClient {
     }
 
     public void onReceivedError(BisonView view, WebResourceRequest request, WebResourceError error) {
-        if (request.isMainFrame()) {
-
-        }
+        
     }
 
     public void onReceivedHttpError(

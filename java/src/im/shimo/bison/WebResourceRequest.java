@@ -1,69 +1,55 @@
 package im.shimo.bison;
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
+import android.net.Uri;
 
-import java.util.HashMap;
+import java.util.Map;
 
-public class WebResourceRequest {
+public interface WebResourceRequest {
 
-    // Url of the request.
-    String url;
+     /**
+     * Gets the URL for which the resource request was made.
+     *
+     * @return the URL for which the resource request was made.
+     */
+    Uri getUrl();
 
-    boolean isMainFrame;
+    /**
+     * Gets whether the request was made in order to fetch the main frame's document.
+     *
+     * @return whether the request was made for the main frame document. Will be
+     *         {@code false} for subresources or iframes, for example.
+     */
+    boolean isForMainFrame();
 
-    boolean hasUserGesture;
+    /**
+     * Gets whether the request was a result of a server-side redirect.
+     *
+     * @return whether the request was a result of a server-side redirect.
+     */
+    boolean isRedirect();
 
-    boolean isRedirect;
-    // (GET/POST/OPTIONS)
-    String method;
+    /**
+     * Gets whether a gesture (such as a click) was associated with the request.
+     * For security reasons in certain situations this method may return {@code false} even though
+     * the sequence of events which caused the request to be created was initiated by a user
+     * gesture.
+     *
+     * @return whether a gesture was associated with the request.
+     */
+    boolean hasGesture();
 
-    HashMap<String, String> requestHeaders;
+    /**
+     * Gets the method associated with the request, for example "GET".
+     *
+     * @return the method associated with the request.
+     */
+    String getMethod();
 
-    public WebResourceRequest() {}
-
-    public WebResourceRequest(String url, boolean isMainFrame, boolean hasUserGesture,
-                              String method, @Nullable HashMap<String, String> requestHeaders) {
-        this.url = url;
-        this.isMainFrame = isMainFrame;
-        this.hasUserGesture = hasUserGesture;
-        this.method = method;
-        this.requestHeaders = requestHeaders;
-    }
-
-
-    public WebResourceRequest(String url, boolean isMainFrame, boolean hasUserGesture,
-                              String method, @NonNull String[] requestHeaderNames,
-                              @NonNull String[] requestHeaderValues) {
-        this(url, isMainFrame, hasUserGesture, method,
-                new HashMap<String, String>(requestHeaderValues.length));
-        for (int i = 0; i < requestHeaderNames.length; ++i) {
-            this.requestHeaders.put(requestHeaderNames[i], requestHeaderValues[i]);
-        }
-    }
-
-
-    public String getUrl() {
-        return url;
-    }
-
-    public boolean isMainFrame() {
-        return isMainFrame;
-    }
-
-    public boolean isHasUserGesture() {
-        return hasUserGesture;
-    }
-
-    public boolean isRedirect() {
-        return isRedirect;
-    }
-
-    public String getMethod() {
-        return method;
-    }
-
-    public HashMap<String, String> getRequestHeaders() {
-        return requestHeaders;
-    }
+    /**
+     * Gets the headers associated with the request. These are represented as a mapping of header
+     * name to header value.
+     *
+     * @return the headers associated with the request.
+     */
+    Map<String, String> getRequestHeaders();
 }

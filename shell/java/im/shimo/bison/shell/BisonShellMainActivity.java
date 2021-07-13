@@ -150,6 +150,11 @@ public class BisonShellMainActivity extends Activity {
                 handler.proceed();
             }
 
+            public WebResourceResponse shouldInterceptRequest(BisonView view, WebResourceRequest request) {
+                Log.w(TAG,"shouldInterceptRequest");
+                return null;
+            }
+
         });
 
         mBisonView.setBisonWebChromeClient(new BisonWebChromeClient() {

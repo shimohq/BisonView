@@ -100,6 +100,8 @@ def main(args):
       options.resource_included_globs)
   options.deps_configs= build_utils.ParseGnList(options.deps_configs)
 
+  print (options.jar_excluded_globs)
+
   with tempfile.NamedTemporaryFile(delete=False) as staging_file:
     try:
       with zipfile.ZipFile(staging_file.name, 'w') as z:
