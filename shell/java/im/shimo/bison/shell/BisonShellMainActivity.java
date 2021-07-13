@@ -27,6 +27,7 @@ import im.shimo.bison.WebResourceRequest;
 import im.shimo.bison.BisonWebChromeClient;
 import im.shimo.bison.SslErrorHandler;
 import im.shimo.bison.GeolocationPermissions;
+import im.shimo.bison.WebResourceResponse;
 
 import java.net.MalformedURLException;
 import java.net.URI;
@@ -149,7 +150,8 @@ public class BisonShellMainActivity extends Activity {
                 Log.w(TAG,"onReceivedSslError");
                 handler.proceed();
             }
-
+            
+            @Override
             public WebResourceResponse shouldInterceptRequest(BisonView view, WebResourceRequest request) {
                 Log.w(TAG,"shouldInterceptRequest");
                 return null;

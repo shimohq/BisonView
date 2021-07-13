@@ -246,10 +246,6 @@ source_set("bison_lib") {
     "//ui/gfx",
   ]
 
-  all_dependent_configs = [
-    ":bison_config"
-  ]
-
 }
 
 grit("bison_resources_grit") {
@@ -408,10 +404,3 @@ grit("generate_components_strings") {
       process_file_template(locales_with_fake_bidi,
                             [ "components_strings_{{source_name_part}}.pak" ])
 }
-
-config("bison_config") {
-  defines = [
-    "BISON",
-  ]
-}
-
