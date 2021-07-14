@@ -30,6 +30,10 @@ public class BisonViewClient {
         return null;
     }
 
+    public void shouldOverriteRequest(BisonView view, WebResourceRequest request) {
+        
+    }
+
     public void onReceivedError(BisonView view, WebResourceRequest request, WebResourceError error) {
         
     }

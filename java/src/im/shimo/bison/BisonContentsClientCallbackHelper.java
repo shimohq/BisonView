@@ -54,10 +54,10 @@ class BisonContentsClientCallbackHelper {
     }
 
     private static class OnReceivedErrorInfo {
-        final BisonContentsClient.BisonWebResourceRequest mRequest;
+        final BisonWebResourceRequest mRequest;
         final BisonContentsClient.BisonWebResourceError mError;
 
-        OnReceivedErrorInfo(BisonContentsClient.BisonWebResourceRequest request,
+        OnReceivedErrorInfo(BisonWebResourceRequest request,
                             BisonContentsClient.BisonWebResourceError error) {
             mRequest = request;
             mError = error;
@@ -65,11 +65,11 @@ class BisonContentsClientCallbackHelper {
     }
 
     private static class OnSafeBrowsingHitInfo {
-        final BisonContentsClient.BisonWebResourceRequest mRequest;
+        final BisonWebResourceRequest mRequest;
         final int mThreatType;
         final Callback<BisonSafeBrowsingResponse> mCallback;
 
-        OnSafeBrowsingHitInfo(BisonContentsClient.BisonWebResourceRequest request, int threatType,
+        OnSafeBrowsingHitInfo(BisonWebResourceRequest request, int threatType,
                               Callback<BisonSafeBrowsingResponse> callback) {
             mRequest = request;
             mThreatType = threatType;
@@ -78,11 +78,11 @@ class BisonContentsClientCallbackHelper {
     }
 
     private static class OnReceivedHttpErrorInfo {
-        final BisonContentsClient.BisonWebResourceRequest mRequest;
+        final BisonWebResourceRequest mRequest;
         final BisonWebResourceResponse mResponse;
 
         OnReceivedHttpErrorInfo(
-                BisonContentsClient.BisonWebResourceRequest request, BisonWebResourceResponse response) {
+                BisonWebResourceRequest request, BisonWebResourceResponse response) {
             mRequest = request;
             mResponse = response;
         }
@@ -278,13 +278,13 @@ class BisonContentsClientCallbackHelper {
         mHandler.sendMessage(mHandler.obtainMessage(MSG_ON_RECEIVED_LOGIN_REQUEST, info));
     }
 
-    public void postOnReceivedError(BisonContentsClient.BisonWebResourceRequest request,
+    public void postOnReceivedError(BisonWebResourceRequest request,
                                     BisonContentsClient.BisonWebResourceError error) {
         OnReceivedErrorInfo info = new OnReceivedErrorInfo(request, error);
         mHandler.sendMessage(mHandler.obtainMessage(MSG_ON_RECEIVED_ERROR, info));
     }
 
-    public void postOnSafeBrowsingHit(BisonContentsClient.BisonWebResourceRequest request, int threatType,
+    public void postOnSafeBrowsingHit(BisonWebResourceRequest request, int threatType,
                                       Callback<BisonSafeBrowsingResponse> callback) {
         OnSafeBrowsingHitInfo info = new OnSafeBrowsingHitInfo(request, threatType, callback);
         mHandler.sendMessage(mHandler.obtainMessage(MSG_ON_SAFE_BROWSING_HIT, info));
@@ -308,7 +308,7 @@ class BisonContentsClientCallbackHelper {
                     Float.floatToIntBits(oldScale), Float.floatToIntBits(newScale)));
     }
 
-    public void postOnReceivedHttpError(BisonContentsClient.BisonWebResourceRequest request,
+    public void postOnReceivedHttpError(BisonWebResourceRequest request,
                                         BisonWebResourceResponse response) {
         OnReceivedHttpErrorInfo info =
                 new OnReceivedHttpErrorInfo(request, response);

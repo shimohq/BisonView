@@ -260,9 +260,9 @@ class BisonContentsClientBridge {
             String method, String[] requestHeaderNames, String[] requestHeaderValues,
             // WebResourceError
             @NetError int errorCode, String description) {
-        // BisonContentsClient.BisonWebResourceRequest request = new BisonContentsClient.BisonWebResourceRequest(
+        // BisonWebResourceRequest request = new BisonWebResourceRequest(
         //         url, isMainFrame, hasUserGesture, method, requestHeaderNames, requestHeaderValues);
-        // BisonContentsClient.BisonWebResourceError error = new BisonContentsClient.BisonWebResourceError();
+        // BisonWebResourceError error = new BisonWebResourceError();
         // error.errorCode = errorCode;
         // error.description = description;
 
@@ -299,7 +299,7 @@ class BisonContentsClientBridge {
             // WebResourceResponse
             String mimeType, String encoding, int statusCode, String reasonPhrase,
             String[] responseHeaderNames, String[] responseHeaderValues) {
-        BisonContentsClient.BisonWebResourceRequest request = new BisonContentsClient.BisonWebResourceRequest(
+        BisonWebResourceRequest request = new BisonWebResourceRequest(
                 url, isMainFrame, hasUserGesture, method, requestHeaderNames, requestHeaderValues);
         Map<String, String> responseHeaders =
                 new HashMap<String, String>(responseHeaderNames.length);

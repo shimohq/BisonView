@@ -94,6 +94,7 @@ generate_jni("bison_jni_headers") {
     "java/src/im/shimo/bison/BisonVariationsSeedBridge.java",
     "java/src/im/shimo/bison/BisonWebContentsDelegate.java",
     "java/src/im/shimo/bison/BisonWebResourceInterceptResponse.java",
+    "java/src/im/shimo/bison/BisonWebResourceOverriteRequest.java",
     "java/src/im/shimo/bison/BisonWebResourceResponse.java",
     "java/src/im/shimo/bison/ContentViewRenderView.java",
     "java/src/im/shimo/bison/InputStreamUtil.java",
@@ -142,6 +143,7 @@ android_library("bison_java") {
     "java/src/im/shimo/bison/BisonWebResourceInterceptResponse.java",
     "java/src/im/shimo/bison/BisonWebResourceResponse.java",
     "java/src/im/shimo/bison/BisonWebStorage.java",
+    "java/src/im/shimo/bison/BisonWebResourceRequest.java",
     "java/src/im/shimo/bison/CallbackConverter.java",
     "java/src/im/shimo/bison/CleanupReference.java",
     "java/src/im/shimo/bison/ClientCertLookupTable.java",
@@ -170,6 +172,7 @@ android_library("bison_java") {
     "java/src/im/shimo/bison/WebResourceResponse.java",
     "java/src/im/shimo/bison/BisonViewDatabase.java",
     "java/src/im/shimo/bison/HttpAuthDatabase.java",
+    "java/src/im/shimo/bison/BisonWebResourceOverriteRequest.java",
   ]
 
   srcjar_deps = [

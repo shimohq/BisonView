@@ -11,7 +11,7 @@ abstract class BisonContentsBackgroundThreadClient {
     private static final String TAG = "BisonContentsBackground";
 
     public abstract BisonWebResourceResponse shouldInterceptRequest(
-            BisonContentsClient.BisonWebResourceRequest request);
+        BisonWebResourceRequest request);
 
 
     @CalledByNative
@@ -23,7 +23,7 @@ abstract class BisonContentsBackgroundThreadClient {
                                                                                String[] requestHeaderValues) {
         try {
             return new BisonWebResourceInterceptResponse(
-                    shouldInterceptRequest(new BisonContentsClient.BisonWebResourceRequest(url,
+                    shouldInterceptRequest(new BisonWebResourceRequest(url,
                             isMainFrame, hasUserGesture, method, requestHeaderNames,
                             requestHeaderValues)), false);
         } catch (Exception e) {
@@ -37,6 +37,34 @@ abstract class BisonContentsBackgroundThreadClient {
             return new BisonWebResourceInterceptResponse(null, true);
         }
     }
+
+
+    @CalledByNative
+    private BisonWebResourceOverriteRequest shouldOverriteRequestFromNative(String url,
+                                                                    boolean isMainFrame,
+                                                                    boolean hasUserGesture,
+                                                                    String method,
+                                                                    String[] requestHeaderNames,
+                                                                    String[] requestHeaderValues){
+        try {
+            BisonWebResourceRequest request = new BisonWebResourceRequest(url,
+                    isMainFrame, hasUserGesture, method, requestHeaderNames,
+                    requestHeaderValues);
+            shouldOverriteRequest(request);
+            return new BisonWebResourceOverriteRequest(request,false);
+        } catch (Exception e) {
+            Log.e(TAG,
+                    "Client raised exception in shouldOverriteRequest. Re-throwing on UI thread.");
+            ThreadUtils.getUiThreadHandler().post(() -> {
+                Log.e(TAG, "The following exception was raised by shouldOverriteRequest:");
+                throw e;
+            });
+
+            return new BisonWebResourceOverriteRequest(null,true);
+        }
+    }
+
+    public abstract void shouldOverriteRequest(BisonWebResourceRequest request);
 
 
 }

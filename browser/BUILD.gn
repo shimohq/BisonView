@@ -116,6 +116,8 @@ source_set("browser") {
     "network_service/bison_url_loader_throttle.h",
     "network_service/bison_web_resource_intercept_response.cc",
     "network_service/bison_web_resource_intercept_response.h",
+    "network_service/bison_web_resource_overrite_resquest.cc",
+    "network_service/bison_web_resource_overrite_resquest.h",
     "network_service/bison_web_resource_request.cc",
     "network_service/bison_web_resource_request.h",
     "network_service/bison_web_resource_response.cc",

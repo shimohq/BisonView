@@ -26,6 +26,7 @@ class URLRequest;
 namespace bison {
 
 class BisonWebResourceInterceptResponse;
+class BisonWebResourceOverriteRequest;
 struct BisonWebResourceRequest;
 
 // This class provides a means of calling Java methods on an instance that has
@@ -111,9 +112,15 @@ class BisonContentsIoThreadClient {
   // This method is called on the IO thread only.
   using ShouldInterceptRequestResponseCallback = base::OnceCallback<void(
       std::unique_ptr<BisonWebResourceInterceptResponse>)>;
+  using ShouldOverriteRequestRequestCallback = base::OnceCallback<void(
+      std::unique_ptr<BisonWebResourceOverriteRequest>)>;
   void ShouldInterceptRequestAsync(
       BisonWebResourceRequest request,
       ShouldInterceptRequestResponseCallback callback);
+
+  void ShouldOverriteRequestHeaderAsync(
+      BisonWebResourceRequest request,
+      ShouldOverriteRequestRequestCallback callback);    
 
   // Retrieve the AllowContentAccess setting value of this BisonContents.
   // This method is called on the IO thread only.

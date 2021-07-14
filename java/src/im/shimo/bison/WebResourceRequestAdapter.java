@@ -2,11 +2,9 @@ package im.shimo.bison;
 
 import android.net.Uri;
 
-import im.shimo.bison.BisonContentsClient.BisonWebResourceRequest;;
-
 import java.util.Map;
 
-public class WebResourceRequestAdapter implements WebResourceRequest {
+class WebResourceRequestAdapter implements WebResourceRequest {
 
     private final BisonWebResourceRequest mRequest;
 

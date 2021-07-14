@@ -9,6 +9,7 @@
 #include "bison/browser/input_stream.h"
 #include "bison/browser/network_service/android_stream_reader_url_loader.h"
 #include "bison/browser/network_service/bison_web_resource_intercept_response.h"
+#include "bison/browser/network_service/bison_web_resource_overrite_resquest.h"
 #include "bison/browser/network_service/bison_web_resource_request.h"
 #include "bison/browser/network_service/bison_web_resource_response.h"
 #include "bison/browser/network_service/net_helpers.h"
@@ -90,8 +91,10 @@ class InterceptedRequest : public network::mojom::URLLoader,
   void ContinueAfterInterceptWithOverride(
       std::unique_ptr<BisonWebResourceResponse> response);
 
+  void OverriteRequestHeader(
+      std::unique_ptr<BisonWebResourceOverriteRequest> overrite_request);
   void InterceptResponseReceived(
-      std::unique_ptr<BisonWebResourceInterceptResponse> intercept_response);
+      std::unique_ptr<BisonWebResourceInterceptResponse> intercept_response);    
 
   // Returns true if the request was restarted or completed.
   bool InputStreamFailed(bool restart_needed);
@@ -308,19 +311,14 @@ void InterceptedRequest::Restart() {
     // equivalent to no interception
     InterceptResponseReceived(nullptr);
   } else {
-    if (request_.referrer.is_valid()) {
-      // intentionally override if referrer header already exists
-      request_.headers.SetHeader(net::HttpRequestHeaders::kReferer,
-                                 request_.referrer.spec());
-    }
+    
 
-    // TODO: verify the case when WebContents::RenderFrameDeleted is called
-    // before network request is intercepted (i.e. if that's possible and
-    // whether it can result in any issues).
-    io_thread_client->ShouldInterceptRequestAsync(
+    io_thread_client->ShouldOverriteRequestHeaderAsync(
         BisonWebResourceRequest(request_),
-        base::BindOnce(&InterceptedRequest::InterceptResponseReceived,
-                       weak_factory_.GetWeakPtr()));
+        base::BindOnce(&InterceptedRequest::OverriteRequestHeader,
+                       weak_factory_.GetWeakPtr())
+    );
+    
   }
 }
 
@@ -336,6 +334,41 @@ bool InterceptedRequest::ShouldNotInterceptRequest() {
   return !input_stream_previously_failed_ &&
          (request_.url.SchemeIs(url::kContentScheme) ||
           bison::IsAndroidSpecialFileUrl(request_.url));
+}
+
+void InterceptedRequest::OverriteRequestHeader(
+    std::unique_ptr<BisonWebResourceOverriteRequest> overrite_request) {
+  
+  JNIEnv* env = base::android::AttachCurrentThread();
+  if (overrite_request && overrite_request->RaisedException(env)){
+    SendErrorAndCompleteImmediately(net::ERR_UNEXPECTED);
+    return;
+  }
+
+  if(overrite_request && overrite_request->HasRequest(env)) {
+    std::string url = overrite_request->GetRequestUrl(env);
+    
+    overrite_request->GetRequestHeaders(env, &request_.headers);
+  }
+
+  std::unique_ptr<BisonContentsIoThreadClient> io_thread_client =
+      GetIoThreadClient();
+  if (io_thread_client) {
+    if (request_.referrer.is_valid()) {
+      // intentionally override if referrer header already exists
+      request_.headers.SetHeader(net::HttpRequestHeaders::kReferer,
+                                 request_.referrer.spec());
+    }
+    // TODO: verify the case when WebContents::RenderFrameDeleted is called
+    // before network request is intercepted (i.e. if that's possible and
+    // whether it can result in any issues).
+    io_thread_client->ShouldInterceptRequestAsync(
+        BisonWebResourceRequest(request_),
+        base::BindOnce(&InterceptedRequest::InterceptResponseReceived,
+                       weak_factory_.GetWeakPtr()));
+  }    
+
+
 }
 
 void InterceptedRequest::InterceptResponseReceived(

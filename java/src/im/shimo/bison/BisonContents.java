@@ -259,7 +259,7 @@ class BisonContents extends FrameLayout {
         // All methods are called on the background thread.
 
         @Override
-        public BisonWebResourceResponse shouldInterceptRequest(BisonContentsClient.BisonWebResourceRequest request) {
+        public BisonWebResourceResponse shouldInterceptRequest(BisonWebResourceRequest request) {
             String url = request.url;
             BisonWebResourceResponse webResourceResponse;
             // Return the response directly if the url is default video poster url.
@@ -291,6 +291,12 @@ class BisonContents extends FrameLayout {
             }
             return webResourceResponse;
         }
+
+        @Override
+        public void shouldOverriteRequest(BisonWebResourceRequest request) {
+            mContentsClient.shouldOverriteRequest(request);
+        }
+
     }
 
 

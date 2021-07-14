@@ -153,8 +153,15 @@ public class BisonShellMainActivity extends Activity {
             
             @Override
             public WebResourceResponse shouldInterceptRequest(BisonView view, WebResourceRequest request) {
-                Log.w(TAG,"shouldInterceptRequest");
+                Log.w(TAG,"shouldInterceptRequest" );
+             
                 return null;
+            }
+            
+            @Override
+            public void shouldOverriteRequest(BisonView view, WebResourceRequest request) {
+                Log.w(TAG,"shouldOverriteRequest headers:" + request.getRequestHeaders());
+                request.getRequestHeaders().put("testKey","testValue");
             }
 
         });

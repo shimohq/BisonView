@@ -8,6 +8,7 @@
 #include "bison/bison_jni_headers/BisonContentsIoThreadClient_jni.h"
 #include "bison/browser/input_stream.h"
 #include "bison/browser/network_service/bison_web_resource_intercept_response.h"
+#include "bison/browser/network_service/bison_web_resource_overrite_resquest.h"
 #include "bison/browser/network_service/bison_web_resource_request.h"
 #include "bison/browser/network_service/bison_web_resource_response.h"
 #include "bison/common/devtools_instrumentation.h"
@@ -453,6 +454,43 @@ std::unique_ptr<BisonWebResourceInterceptResponse> RunShouldInterceptRequest(
   return response;
 }
 
+std::unique_ptr<BisonWebResourceOverriteRequest> NoOverriteRequest() {
+  return nullptr;
+}
+
+std::unique_ptr<BisonWebResourceOverriteRequest> RunShouldOverriteRequest(
+    BisonWebResourceRequest request,
+    JavaObjectWeakGlobalRef ref) {
+  base::ScopedBlockingCall scoped_blocking_call(FROM_HERE,
+                                                base::BlockingType::MAY_BLOCK);
+
+  JNIEnv* env = AttachCurrentThread();
+  base::android::ScopedJavaLocalRef<jobject> obj = ref.get(env);
+  if (obj.is_null()) {
+    return NoOverriteRequest();
+  }
+
+  BisonWebResourceRequest::BisonJavaWebResourceRequest
+      java_web_resource_request;
+  BisonWebResourceRequest::ConvertToJava(env, request,
+                                         &java_web_resource_request);
+
+  devtools_instrumentation::ScopedEmbedderCallbackTask embedder_callback(
+      "shouldOverriteRequest");
+  ScopedJavaLocalRef<jobject> ret =
+      Java_BisonContentsBackgroundThreadClient_shouldOverriteRequestFromNative(
+          env, obj, java_web_resource_request.jurl, request.is_main_frame,
+          request.has_user_gesture, java_web_resource_request.jmethod,
+          java_web_resource_request.jheader_names,
+          java_web_resource_request.jheader_values);
+
+  //RecordInterceptedScheme(ret.is_null(), request.url);
+    if (ret.is_null())
+      return NoOverriteRequest();
+    
+    return std::make_unique<BisonWebResourceOverriteRequest>(ret);
+}
+
 }  // namespace
 
 void BisonContentsIoThreadClient::ShouldInterceptRequestAsync(
@@ -475,6 +513,30 @@ void BisonContentsIoThreadClient::ShouldInterceptRequestAsync(
   base::PostTaskAndReplyWithResult(sequenced_task_runner_.get(), FROM_HERE,
                                    std::move(get_response),
                                    std::move(callback));
+}
+
+void BisonContentsIoThreadClient::ShouldOverriteRequestHeaderAsync(
+    BisonWebResourceRequest request,
+    ShouldOverriteRequestRequestCallback callback) {
+  DCHECK_CURRENTLY_ON(BrowserThread::IO);
+  base::OnceCallback<std::unique_ptr<BisonWebResourceOverriteRequest>()>
+      get_request = base::BindOnce(&NoOverriteRequest);
+  JNIEnv* env = AttachCurrentThread();
+  if (bg_thread_client_object_.is_null() && !java_object_.is_null()) {
+    bg_thread_client_object_.Reset(
+        Java_BisonContentsIoThreadClient_getBackgroundThreadClient(
+            env, java_object_));
+  }
+  if (!bg_thread_client_object_.is_null()) {
+    get_request = base::BindOnce(
+        &RunShouldOverriteRequest, std::move(request),
+        JavaObjectWeakGlobalRef(env, bg_thread_client_object_.obj()));
+  }
+  sequenced_task_runner_.get()->PostTaskAndReplyWithResult(
+    FROM_HERE,
+    std::move(get_request),
+    std::move(callback));
+
 }
 
 bool BisonContentsIoThreadClient::ShouldBlockContentUrls() const {
