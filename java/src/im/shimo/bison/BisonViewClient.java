@@ -30,7 +30,7 @@ public class BisonViewClient {
         return null;
     }
 
-    public void shouldOverriteRequest(BisonView view, WebResourceRequest request) {
+    public void overriteRequest(BisonView view, WebResourceRequest request) {
         
     }
 

@@ -309,8 +309,8 @@ public class BisonContentsClient {
         return mBisonViewClient.shouldOverrideUrlLoading(mBisonView, new WebResourceRequestAdapter(request));
     }
 
-    public final void shouldOverriteRequest(BisonWebResourceRequest request){
-        mBisonViewClient.shouldOverriteRequest(mBisonView, new WebResourceRequestAdapter(request));
+    public final void overriteRequest(BisonWebResourceRequest request){
+        mBisonViewClient.overriteRequest(mBisonView, new WebResourceRequestAdapter(request));
     }
 
     public BisonWebResourceResponse shouldInterceptRequest(BisonWebResourceRequest request) {

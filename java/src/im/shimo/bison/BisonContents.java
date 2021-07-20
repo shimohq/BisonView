@@ -293,8 +293,8 @@ class BisonContents extends FrameLayout {
         }
 
         @Override
-        public void shouldOverriteRequest(BisonWebResourceRequest request) {
-            mContentsClient.shouldOverriteRequest(request);
+        public void overriteRequest(BisonWebResourceRequest request) {
+            mContentsClient.overriteRequest(request);
         }
 
     }

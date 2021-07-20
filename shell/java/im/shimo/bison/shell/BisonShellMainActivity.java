@@ -128,6 +128,7 @@ public class BisonShellMainActivity extends Activity {
         mBisonView.getSettings().setDomStorageEnabled(true);
         mBisonView.getSettings().setAllowFileAccess(true);
         mBisonView.getSettings().setDatabaseEnabled(true);
+        mBisonView.getSettings().setAllowUniversalAccessFromFileURLs(true);;
 
 
         mBisonView.setBisonViewClient(new BisonViewClient() {
@@ -150,18 +151,18 @@ public class BisonShellMainActivity extends Activity {
                 Log.w(TAG,"onReceivedSslError");
                 handler.proceed();
             }
-            
+
             @Override
             public WebResourceResponse shouldInterceptRequest(BisonView view, WebResourceRequest request) {
-                Log.w(TAG,"shouldInterceptRequest" );
-             
+                Log.w(TAG,"shouldInterceptRequest :" + request.getRequestHeaders());
+
                 return null;
             }
-            
+
             @Override
-            public void shouldOverriteRequest(BisonView view, WebResourceRequest request) {
-                Log.w(TAG,"shouldOverriteRequest headers:" + request.getRequestHeaders());
-                request.getRequestHeaders().put("testKey","testValue");
+            public void overriteRequest(BisonView view, WebResourceRequest request) {
+                Log.w(TAG,"overriteRequest headers:" + request.getRequestHeaders());
+                request.getRequestHeaders().put("Referer","https://shimo.im");
             }
 
         });

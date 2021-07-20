@@ -112,15 +112,15 @@ class BisonContentsIoThreadClient {
   // This method is called on the IO thread only.
   using ShouldInterceptRequestResponseCallback = base::OnceCallback<void(
       std::unique_ptr<BisonWebResourceInterceptResponse>)>;
-  using ShouldOverriteRequestRequestCallback = base::OnceCallback<void(
+  using OverriteRequestRequestCallback = base::OnceCallback<void(
       std::unique_ptr<BisonWebResourceOverriteRequest>)>;
   void ShouldInterceptRequestAsync(
       BisonWebResourceRequest request,
       ShouldInterceptRequestResponseCallback callback);
 
-  void ShouldOverriteRequestHeaderAsync(
+  void OverriteRequestHeaderAsync(
       BisonWebResourceRequest request,
-      ShouldOverriteRequestRequestCallback callback);    
+      OverriteRequestRequestCallback callback);    
 
   // Retrieve the AllowContentAccess setting value of this BisonContents.
   // This method is called on the IO thread only.

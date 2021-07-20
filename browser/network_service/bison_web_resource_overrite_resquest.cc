@@ -32,7 +32,6 @@ bool BisonWebResourceOverriteRequest::RaisedException(JNIEnv* env) const {
 bool BisonWebResourceOverriteRequest::HasRequest(JNIEnv* env) const {
   return !Java_BisonWebResourceOverriteRequest_getRequest(env, java_object_)
               .is_null();
-  ;
 }
 
 std::string BisonWebResourceOverriteRequest::GetRequestUrl(JNIEnv* env) const {

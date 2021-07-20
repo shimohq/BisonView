@@ -40,7 +40,7 @@ abstract class BisonContentsBackgroundThreadClient {
 
 
     @CalledByNative
-    private BisonWebResourceOverriteRequest shouldOverriteRequestFromNative(String url,
+    private BisonWebResourceOverriteRequest overriteRequestFromNative(String url,
                                                                     boolean isMainFrame,
                                                                     boolean hasUserGesture,
                                                                     String method,
@@ -50,13 +50,13 @@ abstract class BisonContentsBackgroundThreadClient {
             BisonWebResourceRequest request = new BisonWebResourceRequest(url,
                     isMainFrame, hasUserGesture, method, requestHeaderNames,
                     requestHeaderValues);
-            shouldOverriteRequest(request);
+            overriteRequest(request);
             return new BisonWebResourceOverriteRequest(request,false);
         } catch (Exception e) {
             Log.e(TAG,
-                    "Client raised exception in shouldOverriteRequest. Re-throwing on UI thread.");
+                    "Client raised exception in overriteRequest. Re-throwing on UI thread.");
             ThreadUtils.getUiThreadHandler().post(() -> {
-                Log.e(TAG, "The following exception was raised by shouldOverriteRequest:");
+                Log.e(TAG, "The following exception was raised by overriteRequest:");
                 throw e;
             });
 
@@ -64,7 +64,7 @@ abstract class BisonContentsBackgroundThreadClient {
         }
     }
 
-    public abstract void shouldOverriteRequest(BisonWebResourceRequest request);
+    public abstract void overriteRequest(BisonWebResourceRequest request);
 
 
 }

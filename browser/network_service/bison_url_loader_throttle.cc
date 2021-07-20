@@ -25,13 +25,14 @@ void RecordExtraHeadersUMA(ExtraHeaders value) {
 
 }  // namespace
 
-BisonURLLoaderThrottle::BisonURLLoaderThrottle(BisonResourceContext* aw_resource_context)
+BisonURLLoaderThrottle::BisonURLLoaderThrottle(
+    BisonResourceContext* aw_resource_context)
     : aw_resource_context_(aw_resource_context) {}
 
 BisonURLLoaderThrottle::~BisonURLLoaderThrottle() = default;
 
 void BisonURLLoaderThrottle::WillStartRequest(network::ResourceRequest* request,
-                                           bool* defer) {
+                                              bool* defer) {
   AddExtraHeadersIfNeeded(request->url, &request->headers);
   if (!added_headers_.empty()) {
     original_origin_ = url::Origin::Create(request->url);
@@ -69,7 +70,8 @@ void BisonURLLoaderThrottle::WillRedirectRequest(
   }
 
   // if (!same_origin_only) {
-  //   AddExtraHeadersIfNeeded(redirect_info->new_url, modified_request_headers);
+  //   AddExtraHeadersIfNeeded(redirect_info->new_url,
+  //   modified_request_headers);
   // }
   AddExtraHeadersIfNeeded(redirect_info->new_url, modified_request_headers);
 }

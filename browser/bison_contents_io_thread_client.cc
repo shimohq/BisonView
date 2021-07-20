@@ -458,7 +458,7 @@ std::unique_ptr<BisonWebResourceOverriteRequest> NoOverriteRequest() {
   return nullptr;
 }
 
-std::unique_ptr<BisonWebResourceOverriteRequest> RunShouldOverriteRequest(
+std::unique_ptr<BisonWebResourceOverriteRequest> RunOverriteRequest(
     BisonWebResourceRequest request,
     JavaObjectWeakGlobalRef ref) {
   base::ScopedBlockingCall scoped_blocking_call(FROM_HERE,
@@ -476,9 +476,9 @@ std::unique_ptr<BisonWebResourceOverriteRequest> RunShouldOverriteRequest(
                                          &java_web_resource_request);
 
   devtools_instrumentation::ScopedEmbedderCallbackTask embedder_callback(
-      "shouldOverriteRequest");
+      "overriteRequest");
   ScopedJavaLocalRef<jobject> ret =
-      Java_BisonContentsBackgroundThreadClient_shouldOverriteRequestFromNative(
+      Java_BisonContentsBackgroundThreadClient_overriteRequestFromNative(
           env, obj, java_web_resource_request.jurl, request.is_main_frame,
           request.has_user_gesture, java_web_resource_request.jmethod,
           java_web_resource_request.jheader_names,
@@ -515,9 +515,9 @@ void BisonContentsIoThreadClient::ShouldInterceptRequestAsync(
                                    std::move(callback));
 }
 
-void BisonContentsIoThreadClient::ShouldOverriteRequestHeaderAsync(
+void BisonContentsIoThreadClient::OverriteRequestHeaderAsync(
     BisonWebResourceRequest request,
-    ShouldOverriteRequestRequestCallback callback) {
+    OverriteRequestRequestCallback callback) {
   DCHECK_CURRENTLY_ON(BrowserThread::IO);
   base::OnceCallback<std::unique_ptr<BisonWebResourceOverriteRequest>()>
       get_request = base::BindOnce(&NoOverriteRequest);
@@ -529,7 +529,7 @@ void BisonContentsIoThreadClient::ShouldOverriteRequestHeaderAsync(
   }
   if (!bg_thread_client_object_.is_null()) {
     get_request = base::BindOnce(
-        &RunShouldOverriteRequest, std::move(request),
+        &RunOverriteRequest, std::move(request),
         JavaObjectWeakGlobalRef(env, bg_thread_client_object_.obj()));
   }
   sequenced_task_runner_.get()->PostTaskAndReplyWithResult(

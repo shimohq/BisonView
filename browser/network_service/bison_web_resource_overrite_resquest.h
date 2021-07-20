@@ -30,7 +30,7 @@ class BisonWebResourceOverriteRequest {
       const base::android::JavaRef<jobject>& obj);
   ~BisonWebResourceOverriteRequest();
 
-    // True if the call to shouldOverriteRequest raised an exception.
+    // True if the call to overriteRequest raised an exception.
   bool RaisedException(JNIEnv* env) const;
 
   // True if this object contains a request.
