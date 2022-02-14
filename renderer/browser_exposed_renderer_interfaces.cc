@@ -2,9 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "android_webview/renderer/browser_exposed_renderer_interfaces.h"
+#include "bison/renderer/browser_exposed_renderer_interfaces.h"
 
-#include "bison/renderer/bison_content_renderer_client.h"
+#include "bison/renderer/bv_content_renderer_client.h"
 
 #include "base/threading/thread_task_runner_handle.h"
 #include "components/visitedlink/renderer/visitedlink_reader.h"
@@ -12,7 +12,7 @@
 
 namespace bison {
 
-void ExposeRendererInterfacesToBrowser(BisonContentRendererClient* client,
+void ExposeRendererInterfacesToBrowser(BvContentRendererClient* client,
                                        mojo::BinderMap* binders) {
   binders->Add(client->visited_link_reader()->GetBindCallback(),
                base::ThreadTaskRunnerHandle::Get());

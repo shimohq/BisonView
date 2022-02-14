@@ -20,7 +20,7 @@ class WebView;
 
 namespace bison {
 
-// Render process side of BisonRenderViewHostExt, this provides cross-process
+// Render process side of BvRenderViewHostExt, this provides cross-process
 // implementation of miscellaneous WebView functions that we need to poke
 // WebKit directly to implement (and that aren't needed in the chrome app).
 class BisonRenderFrameExt : public content::RenderFrameObserver {

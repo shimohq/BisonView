@@ -3,13 +3,13 @@
 #include <utility>
 
 #include "bison/browser/android_protocol_handler.h"
-#include "bison/browser/bison_contents_client_bridge.h"
-#include "bison/browser/bison_contents_io_thread_client.h"
-#include "bison/browser/bison_cookie_access_policy.h"
+#include "bison/browser/bv_contents_client_bridge.h"
+#include "bison/browser/bv_contents_io_thread_client.h"
+#include "bison/browser/bv_cookie_access_policy.h"
 #include "bison/browser/input_stream.h"
 #include "bison/browser/network_service/android_stream_reader_url_loader.h"
 #include "bison/browser/network_service/bison_web_resource_intercept_response.h"
-#include "bison/browser/network_service/bison_web_resource_overrite_resquest.h"
+#include "bison/browser/network_service/bison_web_resource_override_resquest.h"
 #include "bison/browser/network_service/bison_web_resource_request.h"
 #include "bison/browser/network_service/bison_web_resource_response.h"
 #include "bison/browser/network_service/net_helpers.h"
@@ -89,10 +89,10 @@ class InterceptedRequest : public network::mojom::URLLoader,
 
   void ContinueAfterIntercept();
   void ContinueAfterInterceptWithOverride(
-      std::unique_ptr<BisonWebResourceResponse> response);
+      std::unique_ptr<BvWebResourceResponse> response);
 
-  void OverriteRequestHeader(
-      std::unique_ptr<BisonWebResourceOverriteRequest> overrite_request);
+  void OverrideRequestHeader(
+      std::unique_ptr<BvWebResourceOverrideRequest> override_request);
   void InterceptResponseReceived(
       std::unique_ptr<BisonWebResourceInterceptResponse> intercept_response);
 
@@ -100,7 +100,7 @@ class InterceptedRequest : public network::mojom::URLLoader,
   bool InputStreamFailed(bool restart_needed);
 
  private:
-  std::unique_ptr<BisonContentsIoThreadClient> GetIoThreadClient();
+  std::unique_ptr<BvContentsIoThreadClient> GetIoThreadClient();
 
   // This is called when the original URLLoaderClient has a connection error.
   void OnURLLoaderClientError();
@@ -137,8 +137,7 @@ class InterceptedRequest : public network::mojom::URLLoader,
   // shouldInterceptRequest callback provided a non-null response.
   bool intercept_only_ = false;
 
-  base::Optional<BisonProxyingURLLoaderFactory::SecurityOptions>
-      security_options_;
+  base::Optional<BisonProxyingURLLoaderFactory::SecurityOptions> security_options_;
 
   // If the |target_loader_| called OnComplete with an error this stores it.
   // That way the destructor can send it to OnReceivedError if safe browsing
@@ -167,7 +166,7 @@ class InterceptResponseDelegate
     : public AndroidStreamReaderURLLoader::ResponseDelegate {
  public:
   explicit InterceptResponseDelegate(
-      std::unique_ptr<BisonWebResourceResponse> response,
+      std::unique_ptr<BvWebResourceResponse> response,
       base::WeakPtr<InterceptedRequest> request)
       : response_(std::move(response)), request_(request) {}
 
@@ -211,7 +210,7 @@ class InterceptResponseDelegate
   }
 
  private:
-  std::unique_ptr<BisonWebResourceResponse> response_;
+  std::unique_ptr<BvWebResourceResponse> response_;
   base::WeakPtr<InterceptedRequest> request_;
 };
 
@@ -298,7 +297,7 @@ InterceptedRequest::~InterceptedRequest() {
 }
 
 void InterceptedRequest::Restart() {
-  std::unique_ptr<BisonContentsIoThreadClient> io_thread_client =
+  std::unique_ptr<BvContentsIoThreadClient> io_thread_client =
       GetIoThreadClient();
 
   if (ShouldBlockURL(request_.url, io_thread_client.get())) {
@@ -318,9 +317,12 @@ void InterceptedRequest::Restart() {
                                  request_.referrer.spec());
     }
 
-    io_thread_client->OverriteRequestHeaderAsync(
+    // TODO: verify the case when WebContents::RenderFrameDeleted is called
+    // before network request is intercepted (i.e. if that's possible and
+    // whether it can result in any issues).
+    io_thread_client->OverrideRequestHeaderAsync(
         BisonWebResourceRequest(request_),
-        base::BindOnce(&InterceptedRequest::OverriteRequestHeader,
+        base::BindOnce(&InterceptedRequest::OverrideRequestHeader,
                        weak_factory_.GetWeakPtr()));
   }
 }
@@ -339,18 +341,18 @@ bool InterceptedRequest::ShouldNotInterceptRequest() {
           bison::IsAndroidSpecialFileUrl(request_.url));
 }
 
-void InterceptedRequest::OverriteRequestHeader(
-    std::unique_ptr<BisonWebResourceOverriteRequest> overrite_request) {
+void InterceptedRequest::OverrideRequestHeader(
+    std::unique_ptr<BvWebResourceOverrideRequest> override_request) {
   JNIEnv* env = base::android::AttachCurrentThread();
-  if (overrite_request && overrite_request->RaisedException(env)) {
+  if (override_request && override_request->RaisedException(env)) {
     SendErrorAndCompleteImmediately(net::ERR_UNEXPECTED);
     return;
   }
 
-  if (overrite_request && overrite_request->HasRequest(env)) {
-    std::string url = overrite_request->GetRequestUrl(env);
+  if (override_request && override_request->HasRequest(env)) {
+    std::string url = override_request->GetRequestUrl(env);
 
-    overrite_request->GetRequestHeaders(env, &request_.headers);
+    override_request->GetRequestHeaders(env, &request_.headers);
     net::HttpRequestHeaders::Iterator headers_iterator(request_.headers);
     while (headers_iterator.GetNext()) {
       if (base::EqualsCaseInsensitiveASCII(headers_iterator.name(),
@@ -362,7 +364,7 @@ void InterceptedRequest::OverriteRequestHeader(
     }
   }
 
-  std::unique_ptr<BisonContentsIoThreadClient> io_thread_client =
+  std::unique_ptr<BvContentsIoThreadClient> io_thread_client =
       GetIoThreadClient();
   if (io_thread_client) {
     // TODO: verify the case when WebContents::RenderFrameDeleted is called
@@ -472,7 +474,7 @@ void InterceptedRequest::ContinueAfterIntercept() {
 }
 
 void InterceptedRequest::ContinueAfterInterceptWithOverride(
-    std::unique_ptr<BisonWebResourceResponse> response) {
+    std::unique_ptr<BvWebResourceResponse> response) {
   AndroidStreamReaderURLLoader* loader = new AndroidStreamReaderURLLoader(
       request_, proxied_client_receiver_.BindNewPipeAndPassRemote(),
       traffic_annotation_,
@@ -485,7 +487,7 @@ void InterceptedRequest::ContinueAfterInterceptWithOverride(
 namespace {
 // TODO(timvolodine): consider factoring this out of this file.
 
-BisonContentsClientBridge* GetBisonContentsClientBridgeFromID(
+BvContentsClientBridge* GetBisonContentsClientBridgeFromID(
     int process_id,
     int render_frame_id) {
   content::WebContents* wc =
@@ -493,14 +495,14 @@ BisonContentsClientBridge* GetBisonContentsClientBridgeFromID(
           ? content::WebContents::FromRenderFrameHost(
                 content::RenderFrameHost::FromID(process_id, render_frame_id))
           : content::WebContents::FromFrameTreeNodeId(render_frame_id);
-  return BisonContentsClientBridge::FromWebContents(wc);
+  return BvContentsClientBridge::FromWebContents(wc);
 }
 
 void OnReceivedHttpErrorOnUiThread(
     int process_id,
     int render_frame_id,
     const BisonWebResourceRequest& request,
-    std::unique_ptr<BisonContentsClientBridge::HttpErrorInfo> http_error_info) {
+    std::unique_ptr<BvContentsClientBridge::HttpErrorInfo> http_error_info) {
   auto* client =
       GetBisonContentsClientBridgeFromID(process_id, render_frame_id);
   if (!client) {
@@ -523,7 +525,6 @@ void OnReceivedErrorOnUiThread(int process_id,
                   << request.url;
     return;
   }
-  VLOG(0) << "OnReceivedErrorOnUiThread error_code" << error_code;
   client->OnReceivedError(request, error_code);
 }
 
@@ -546,7 +547,7 @@ void OnReceivedErrorOnUiThread(int process_id,
 
 void InterceptedRequest::OnReceiveResponse(
     network::mojom::URLResponseHeadPtr head) {
-  // VLOG(0) << "OnReceiveResponse";
+  //VLOG(0) << "OnReceiveResponse";
   // intercept response headers here
   // pause/resume proxied_client_binding_ if necessary
 
@@ -554,8 +555,8 @@ void InterceptedRequest::OnReceiveResponse(
     // In Android BisonView the WebViewClient.onReceivedHttpError callback
     // is invoked for any resource (main page, iframe, image, etc.) with
     // status code >= 400.
-    std::unique_ptr<BisonContentsClientBridge::HttpErrorInfo> error_info =
-        BisonContentsClientBridge::ExtractHttpErrorInfo(head->headers.get());
+    std::unique_ptr<BvContentsClientBridge::HttpErrorInfo> error_info =
+        BvContentsClientBridge::ExtractHttpErrorInfo(head->headers.get());
 
     content::GetUIThreadTaskRunner({})->PostTask(
         FROM_HERE, base::BindOnce(&OnReceivedHttpErrorOnUiThread, process_id_,
@@ -640,6 +641,7 @@ void InterceptedRequest::FollowRedirect(
                                    modified_cors_exempt_headers, new_url);
   }
 
+
   // If |OnURLLoaderClientError| was called then we're just waiting for the
   // connection error handler of |proxied_loader_receiver_|. Don't restart the
   // job since that'll create another URLLoader
@@ -665,18 +667,18 @@ void InterceptedRequest::ResumeReadingBodyFromNet() {
     target_loader_->ResumeReadingBodyFromNet();
 }
 
-std::unique_ptr<BisonContentsIoThreadClient>
+std::unique_ptr<BvContentsIoThreadClient>
 InterceptedRequest::GetIoThreadClient() {
   if (request_.originated_from_service_worker) {
-    return BisonContentsIoThreadClient::GetServiceWorkerIoThreadClient();
+    return BvContentsIoThreadClient::GetServiceWorkerIoThreadClient();
   }
 
   // |process_id_| == 0 indicates this is a navigation, and so we should use the
   // frame_tree_node_id API (with request_.render_frame_id).
   return process_id_
-             ? BisonContentsIoThreadClient::FromID(process_id_,
+             ? BvContentsIoThreadClient::FromID(process_id_,
                                                    request_.render_frame_id)
-             : BisonContentsIoThreadClient::FromID(request_.render_frame_id);
+             : BvContentsIoThreadClient::FromID(request_.render_frame_id);
 }
 
 void InterceptedRequest::OnURLLoaderClientError() {
@@ -692,7 +694,8 @@ void InterceptedRequest::OnURLLoaderError(uint32_t custom_reason,
   if (custom_reason == network::mojom::URLLoader::kClientDisconnectReason) {
     // 不用 safe_browsing
     int parsed_error_code;
-    if (base::StringToInt(base::StringPiece(description), &parsed_error_code)) {
+    if (base::StringToInt(base::StringPiece(description),
+                          &parsed_error_code)) {
       SendErrorCallback(parsed_error_code, false);
     }
   }
@@ -751,10 +754,11 @@ void InterceptedRequest::SendErrorCallback(int error_code,
 
   sent_error_callback_ = true;
   content::GetUIThreadTaskRunner({})->PostTask(
-      FROM_HERE, base::BindOnce(&OnReceivedErrorOnUiThread, process_id_,
-                                request_.render_frame_id,
-                                BisonWebResourceRequest(request_), error_code,
-                                safebrowsing_hit));
+      FROM_HERE,
+      base::BindOnce(&OnReceivedErrorOnUiThread, process_id_,
+                    request_.render_frame_id,
+                    BisonWebResourceRequest(request_), error_code,
+                    safebrowsing_hit));
 }
 
 }  // namespace
@@ -798,8 +802,8 @@ void BisonProxyingURLLoaderFactory::CreateProxy(
 
   // will manage its own lifetime
   new BisonProxyingURLLoaderFactory(process_id, std::move(loader_receiver),
-                                    std::move(target_factory_remote), false,
-                                    security_options);
+                                 std::move(target_factory_remote), false,
+                                 security_options);
 }
 
 void BisonProxyingURLLoaderFactory::CreateLoaderAndStart(
@@ -820,14 +824,14 @@ void BisonProxyingURLLoaderFactory::CreateLoaderAndStart(
   }
 
   bool global_cookie_policy =
-      BisonCookieAccessPolicy::GetInstance()->GetShouldAcceptCookies();
+      BvCookieAccessPolicy::GetInstance()->GetShouldAcceptCookies();
   // process_id == 0 means the render_frame_id is actually a valid
   // frame_tree_node_id, otherwise use it as a valid render_frame_id.
   int frame_tree_node_id = process_id_
                                ? content::RenderFrameHost::kNoFrameTreeNodeId
                                : request.render_frame_id;
   bool third_party_cookie_policy =
-      BisonCookieAccessPolicy::GetInstance()->GetShouldAcceptThirdPartyCookies(
+      BvCookieAccessPolicy::GetInstance()->GetShouldAcceptThirdPartyCookies(
           process_id_, request.render_frame_id, frame_tree_node_id);
   if (!global_cookie_policy) {
     options |= network::mojom::kURLLoadOptionBlockAllCookies;

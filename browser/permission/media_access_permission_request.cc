@@ -2,7 +2,7 @@
 
 #include <utility>
 
-#include "bison/browser/permission/bison_permission_request.h"
+#include "bison/browser/permission/bv_permission_request.h"
 #include "content/public/browser/media_capture_devices.h"
 #include "third_party/blink/public/mojom/mediastream/media_stream.mojom-shared.h"
 
@@ -88,11 +88,11 @@ const GURL& MediaAccessPermissionRequest::GetOrigin() {
 int64_t MediaAccessPermissionRequest::GetResources() {
   return (request_.audio_type ==
                   blink::mojom::MediaStreamType::DEVICE_AUDIO_CAPTURE
-              ? BisonPermissionRequest::AudioCapture
+              ? BvPermissionRequest::AudioCapture
               : 0) |
          (request_.video_type ==
                   blink::mojom::MediaStreamType::DEVICE_VIDEO_CAPTURE
-              ? BisonPermissionRequest::VideoCapture
+              ? BvPermissionRequest::VideoCapture
               : 0);
 }
 

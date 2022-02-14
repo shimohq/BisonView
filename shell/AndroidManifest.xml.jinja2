@@ -41,6 +41,12 @@
 
         </activity>
 
+        <provider android:name="im.shimo.bison.internal.ContentHolder"
+            android:authorities="${applicationId}.bisonview.ContentHolder"
+            android:exported="false" />
+
+
+
         <!-- The following service entries exist in order to allow us to
              start more than one sandboxed process. -->
 

@@ -26,11 +26,11 @@ def AddAssets(aar_zip, deps_configs, arch_transform = None):
       outputs = config.get("deps_info").get("assets").get("outputs") or sources
       if arch_transform :
         sources = [arch_transform(v) for v in sources]
- 
-      for source , output in zip(sources,outputs) :
-        zip_path = os.path.join("assets",output)
+      
+      for source , output in zip(sources , outputs) :
+        zip_path = os.path.join( "assets" , output)
         if zip_path in aar_zip.namelist():
-          print (zip_path +" in namelist")
+          # print (zip_path +" in namelist")
           continue
         build_utils.AddToZipHermetic(
           aar_zip,os.path.join("assets",output),src_path=source)
@@ -58,7 +58,7 @@ def AddResources(aar_zip, resource_zips, include_globs):
 
         if not info.filename.startswith('res'):
           info.filename = posixpath.join('res', info.filename)
-        
+
         aar_zip.writestr(info, data)
 
 def MergeProguardConfigs(proguard_configs):

@@ -19,12 +19,12 @@ class InputStream;
 
 // This class represents the Java-side data that is to be used to complete a
 // particular URLRequest.
-class BisonWebResourceResponse {
+class BvWebResourceResponse {
  public:
   // It is expected that |obj| is an instance of the Java-side
-  // org.chromium.bison.BisonWebResourceResponse class.
-  BisonWebResourceResponse(const base::android::JavaRef<jobject>& obj);
-  ~BisonWebResourceResponse();
+  // org.chromium.bison.BvWebResourceResponse class.
+  BvWebResourceResponse(const base::android::JavaRef<jobject>& obj);
+  ~BvWebResourceResponse();
 
   bool HasInputStream(JNIEnv* env) const;
   std::unique_ptr<InputStream> GetInputStream(JNIEnv* env);
@@ -42,7 +42,7 @@ class BisonWebResourceResponse {
 
   bool input_stream_transferred_;
 
-  DISALLOW_COPY_AND_ASSIGN(BisonWebResourceResponse);
+  DISALLOW_COPY_AND_ASSIGN(BvWebResourceResponse);
 };
 
 }  // namespace bison

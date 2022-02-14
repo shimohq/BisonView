@@ -1,6 +1,8 @@
 package im.shimo.bison;
 
-public class JsPromptResult  extends JsResult {
+import androidx.annotation.RestrictTo;
+
+public class JsPromptResult extends JsResult {
 
     private String mStringResult;
 
@@ -14,7 +16,9 @@ public class JsPromptResult  extends JsResult {
         super(receiver);
     }
 
+    @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
     public String getStringResult() {
         return mStringResult;
     }
+    
 }

@@ -1,486 +1,886 @@
 package im.shimo.bison;
 
+import static androidx.annotation.RestrictTo.Scope.LIBRARY_GROUP;
+
 import android.annotation.TargetApi;
 import android.content.Context;
-import android.graphics.Picture;
+import android.content.Intent;
+import android.content.res.Configuration;
 import android.graphics.Bitmap;
+import android.graphics.Picture;
+import android.graphics.Rect;
+import android.net.http.SslCertificate;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Message;
+import android.print.PrintDocumentAdapter;
 import android.util.AttributeSet;
-import android.widget.FrameLayout;
-import android.view.autofill.AutofillValue;
+import android.view.DragEvent;
+import android.view.KeyEvent;
+import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
+import android.view.accessibility.AccessibilityNodeProvider;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
-import android.os.StrictMode;
-import android.util.SparseArray;
-import android.webkit.WebView.VisualStateCallback;
-import android.webkit.WebBackForwardList;
+import android.widget.FrameLayout;
 
-import androidx.annotation.Nullable;
+import im.shimo.bison.adapter.BisonViewProvider;
+import im.shimo.bison.internal.BvDevToolsServer;
 
-import org.chromium.base.library_loader.LibraryLoader;
-import org.chromium.base.library_loader.LibraryProcessType;
-import org.chromium.content_public.browser.BrowserStartupController;
-import java.io.BufferedWriter;
-import java.io.File;
 import java.util.Map;
+import java.util.concurrent.Executor;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.annotation.RestrictTo;
 
 public class BisonView extends FrameLayout {
 
-  private static final String HTTP_AUTH_DATABASE_FILE = "http_auth.db";
-  private static ClientCertLookupTable sClientCertLookupTable;
+    private static BvDevToolsServer gBvDevToolsServer;
 
-  private static BisonDevToolsServer gBisonDevToolsServer;
-  private static boolean loaded;
+    private boolean mAttachedContents;
 
-  private BisonContentsClient mBisonContentsClient;
-  private BisonContents mBisonContents;
-  private BisonContentsClientBridge mBisonContentsClientBridge;
-  private BisonWebStorage mBisonWebStorage;
-  private BisonViewDatabase mBisonViewDatabase;
+    // private GeolocationPermissions mGeolocationPermissions;
 
-  public BisonView(Context context) {
-    super(context);
-    init(context);
-  }
+    protected BisonViewProvider mProvider;
 
-  public BisonView(Context context, AttributeSet attrs) {
-    super(context, attrs);
-    init(context);
-  }
-
-  private void init(Context context) {
-    if (!loaded) {
-      StrictMode.ThreadPolicy oldPolicy = StrictMode.allowThreadDiskReads();
-      try {
-        LibraryLoader.getInstance().setLibraryProcessType(LibraryProcessType.PROCESS_WEBVIEW);
-        LibraryLoader.getInstance().loadNow();
-        BrowserStartupController.getInstance().startBrowserProcessesSync(LibraryProcessType.PROCESS_WEBVIEW, false);
-        loaded = true;
-      } finally {
-        StrictMode.setThreadPolicy(oldPolicy);
-      }
+    public BisonView(Context context) {
+        super(context);
+        initialize(context);
     }
-    mBisonContentsClient = new BisonContentsClient(this, context);
-    mBisonContentsClientBridge = new BisonContentsClientBridge(context, mBisonContentsClient,
-        getClientCertLookupTable());
-    BisonBrowserContext bisonBrowserContext = BisonBrowserContext.getDefault();
-    mBisonWebStorage = new BisonWebStorage(bisonBrowserContext.getQuotaManagerBridge());
-    mBisonContents = new BisonContents(context, this, bisonBrowserContext, mBisonContentsClientBridge,
-        mBisonContentsClient);
-    addView(mBisonContents);
-  }
 
-  public boolean isDestroyed() {
-    return false;
-  }
-
-  public void setHttpAuthUsernamePassword(final String host, final String realm, final String username,
-      final String password) {
-    getBisonViewDatabase().setHttpAuthUsernamePassword(host, realm, username, password);
-  }
-
-  public String[] getHttpAuthUsernamePassword(final String host, final String realm) {
-    return getBisonViewDatabase().getHttpAuthUsernamePassword(host, realm);
-  }
-
-  public void destroy() {
-    setBisonWebChromeClient(null);
-    setBisonViewClient(null);
-    mBisonContents.destroy();
-    removeAllViews();
-  }
-
-  public void setNetworkAvailable(final boolean networkUp) {
-    // mBisonContents.setNetworkAvailable(networkUp);
-  }
-
-  public boolean savePicture(Bundle b, File dest) {
-    // Intentional no-op: hidden method on WebView.
-    return false;
-  }
-
-  public boolean restorePicture(Bundle b, File src) {
-    // Intentional no-op: hidden method on WebView.
-    return false;
-  }
-
-  public void loadUrl(final String url, final Map<String, String> additionalHttpHeaders) {
-    mBisonContents.loadUrl(url, additionalHttpHeaders);
-  }
-
-  public void loadUrl(final String url) {
-    mBisonContents.loadUrl(url);
-  }
-
-  public void postUrl(final String url, final byte[] postData) {
-    mBisonContents.postUrl(url, postData);
-  }
-
-  public void loadData(final String data, final String mimeType, final String encoding) {
-    mBisonContents.loadData(data, mimeType, encoding);
-  }
-
-  public void loadDataWithBaseURL(String baseUrl, String data, String mimeType, String encoding, String failUrl) {
-    mBisonContents.loadData(baseUrl, data, mimeType, encoding, failUrl);
-  }
-
-  public void evaluateJavascript(final String script, ValueCallback<String> resultCallback) {
-    mBisonContents.evaluateJavaScript(script, CallbackConverter.fromValueCallback(resultCallback));
-  }
-
-  public void saveWebArchive(String filename) {
-    saveWebArchive(filename, false, null);
-  }
-
-  public void saveWebArchive(final String basename, final boolean autoname, final ValueCallback<String> callback) {
-    mBisonContents.saveWebArchive(basename, autoname, CallbackConverter.fromValueCallback(callback));
-  }
-
-  public void stopLoading() {
-    mBisonContents.stopLoading();
-  }
-
-  public void reload() {
-    mBisonContents.reload();
-  }
-
-  public boolean canGoBack() {
-    return mBisonContents.canGoBack();
-  }
-
-  public void goBack() {
-    mBisonContents.goBack();
-  }
-
-  public boolean canGoForward() {
-    return mBisonContents.canGoForward();
-  }
-
-  public void goForward() {
-    mBisonContents.goForward();
-  }
-
-  public boolean canGoBackOrForward(int steps) {
-    return mBisonContents.canGoBackOrForward(steps);
-  }
-
-  public void goBackOrForward(int steps) {
-    mBisonContents.goBackOrForward(steps);
-  }
-
-  public boolean isPrivateBrowsingEnabled() {
-    // Not supported in this WebView implementation.
-    return false;
-  }
-
-  public boolean pageUp(final boolean top) {
-    // jiang 不好实现
-    return false;
-  }
-
-  public boolean pageDown(final boolean bottom) {
-    // jiang 不好实现
-    return false;
-  }
-
-  @TargetApi(Build.VERSION_CODES.M)
-  public void insertVisualStateCallback(final long requestId, final VisualStateCallback callback) {
-    // jiang
-  }
-
-  public void clearView() {
-    // jiang
-  }
-
-  public Picture capturePicture() {
-    // jiang
-    return null;
-  }
-
-  public float getScale() {
-    // jiang
-    return 0;
-  }
-
-  public void setInitialScale(final int scaleInPercent) {
-    // jiang
-  }
-
-  public void invokeZoomPicker() {
-    // jiang
-  }
-
-  public void requestFocusNodeHref(final Message hrefMsg) {
-    // jiang
-  }
-
-  public void requestImageRef(final Message msg) {
-    // jiang
-  }
-
-  public String getUrl() {
-    return mBisonContents.getUrl();
-  }
-
-  public String getOriginalUrl() {
-    return mBisonContents.getOriginalUrl();
-  }
-
-  public String getTitle() {
-    return mBisonContents.getTitle();
-  }
-
-  public Bitmap getFavicon() {
-    // jiang
-    return null;
-  }
-
-  public String getTouchIconUrl() {
-    // Intentional no-op: hidden method on WebView.
-    return null;
-  }
-
-  public int getProgress() {
-    if (mBisonContents == null)
-      return 100;
-    // No checkThread() because the value is cached java side (workaround for
-    // b/10533304).
-    // jiang
-    // return mBisonContents.getMostRecentProgress();
-    return 0;
-  }
-
-  public int getContentHeight() {
-    // jiang
-    return 0;
-  }
-
-  public int getContentWidth() {
-    // jiang
-    return 0;
-  }
-
-  public void pauseTimers() {
-    mBisonContents.pauseTimers();
-  }
-
-  public void resumeTimers() {
-    mBisonContents.resumeTimers();
-  }
-
-  public void onPause() {
-    mBisonContents.onPause();
-  }
-
-  public void onResume() {
-    mBisonContents.onResume();
-  }
-
-  public boolean isPaused() {
-    // jiang
-    return false;
-  }
-
-  public void freeMemory() {
-    // Intentional no-op. Memory is managed automatically by Chromium.
-  }
-
-  public void clearCache(final boolean includeDiskFiles) {
-    mBisonContents.clearCache(includeDiskFiles);
-  }
-
-  public void clearFormData() {
-    // jiang
-    // mBisonContents.hideAutofillPopup();
-  }
-
-  public void clearHistory() {
-    mBisonContents.clearHistory();
-  }
-
-  public void clearSslPreferences() {
-    mBisonContents.clearSslPreferences();
-  }
-
-  public WebBackForwardList copyBackForwardList() {
-    // jiang
-    return null;
-  }
-
-  public void setFindListener(FindListener listener) {
-    mBisonContentsClient.setFindListener(listener);
-  }
-
-  public void findNext(final boolean forwards) {
-    mBisonContents.findNext(forwards);
-  }
-
-  public int findAll(final String searchString) {
-    findAllAsync(searchString);
-    return 0;
-  }
-
-  public void findAllAsync(String find) {
-    mBisonContents.findAllAsync(find);
-  }
-
-  public void documentHasImages(final Message response) {
-    mBisonContents.documentHasImages(response);
-  }
-
-  public void setBisonViewClient(BisonViewClient client) {
-    mBisonContentsClient.setBisonViewClient(client);
-  }
-
-  public BisonRenderProcess getBisonRenderProcess() {
-    // jiang
-    return null;
-  }
-
-  public void setBisonRenderProcessClient(BisonRenderProcessClient client) {
-    mBisonContentsClient.setBisonRenderProcessClient(client);
-  }
-
-  public BisonRenderProcessClient getBisonRenderProcessClient() {
-    // jiang
-    return null;
-  }
-
-  public void setDownloadListener(DownloadListener listener) {
-    mBisonContentsClient.setDownloadListener(listener);
-  }
-
-  public void setBisonWebChromeClient(BisonWebChromeClient client) {
-    mBisonContentsClient.setBisonWebChromeClient(client);
-  }
-
-  public BisonWebChromeClient getBisonWebChromeClient() {
-    // jiang
-    return null;
-  }
-
-  private boolean doesSupportFullscreen(BisonWebChromeClient client) {
-    // jiang
-    return false;
-  }
-
-  // public void setPictureListener(final WebView.PictureListener listener) {
-  // //jiang
-  // }
-
-  public void addJavascriptInterface(Object obj, String interfaceName) {
-    mBisonContents.addJavascriptInterface(obj, interfaceName);
-  }
-
-  public void removeJavascriptInterface(final String interfaceName) {
-    mBisonContents.removeJavascriptInterface(interfaceName);
-  }
-
-  // public WebMessagePort[] createWebMessageChannel() {
-  // recordWebViewApiCall(ApiCall.CREATE_WEBMESSAGE_CHANNEL);
-  // return WebMessagePortAdapter.fromMessagePorts(
-  // mSharedWebViewChromium.createWebMessageChannel());
-  // }
-
-  // @TargetApi(Build.VERSION_CODES.M)
-  // public void postMessageToMainFrame(final WebMessage message, final Uri
-  // targetOrigin) {
-  // recordWebViewApiCall(ApiCall.POST_MESSAGE_TO_MAIN_FRAME);
-  // mSharedWebViewChromium.postMessageToMainFrame(message.getData(),
-  // targetOrigin.toString(),
-  // WebMessagePortAdapter.toMessagePorts(message.getPorts()));
-  // }
-
-  public BisonSettings getSettings() {
-    return mBisonContents.getSettings();
-  }
-
-  public void setMapTrackballToArrowKeys(boolean setMap) {
-    // This is a deprecated API: intentional no-op.
-  }
-
-  public void dumpViewHierarchyWithProperties(BufferedWriter out, int level) {
-    // Intentional no-op
-  }
-
-  public View findHierarchyView(String className, int hashCode) {
-    // Intentional no-op
-    return null;
-  }
-
-  @Override
-  public void autofill(final SparseArray<AutofillValue> values) {
-    // jiang
-  }
-
-  @Override
-  public void setBackgroundColor(int color) {
-    super.setBackgroundColor(color);
-    mBisonContents.setBackgroundColor(color);
-  }
-
-  @Override
-  public InputConnection onCreateInputConnection(EditorInfo outAttrs) {
-    return mBisonContents.onCreateInputConnection(outAttrs);
-  }
-
-  public BisonWebStorage getBisonWebStorage() {
-    return mBisonWebStorage;
-  }
-
-  public BisonViewDatabase getBisonViewDatabase() {
-    if (mBisonViewDatabase == null) {
-      mBisonViewDatabase = new BisonViewDatabase(HttpAuthDatabase.newInstance(getContext(), HTTP_AUTH_DATABASE_FILE));
+    public BisonView(Context context, AttributeSet attrs) {
+        super(context, attrs);
+        initialize(context);
     }
-    return mBisonViewDatabase;
-  }
 
-  public static void setRemoteDebuggingEnabled(boolean enable) {
-    if (gBisonDevToolsServer == null) {
-      if (!enable)
-        return;
-      gBisonDevToolsServer = new BisonDevToolsServer();
+    public BisonView(@NonNull Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
+        super(context, attrs, defStyleAttr);
+        initialize(context);
     }
-    gBisonDevToolsServer.setRemoteDebuggingEnabled(enable);
-    if (!enable) {
-      gBisonDevToolsServer.destroy();
-      gBisonDevToolsServer = null;
+
+    private void initialize(Context context) {
+        mProvider = new BisonViewProvider(this, new InternalAccess());
+        setOverScrollMode(View.OVER_SCROLL_ALWAYS);
+        setFocusable(true);
+        setFocusableInTouchMode(true);
     }
-  }
 
-  private static ClientCertLookupTable getClientCertLookupTable() {
-    if (sClientCertLookupTable == null) {
-      sClientCertLookupTable = new ClientCertLookupTable();
+    @Nullable
+    public SslCertificate getCertificate() {
+        return mProvider.getCertificate();
     }
-    return sClientCertLookupTable;
-  }
 
-  public void logCommandLineForDebugging() {
-    BisonContents.logCommandLineForDebugging();
-  }
+    // public void setHttpAuthUsernamePassword(final String host, final String
+    // realm, final String username,
+    // final String password) {
+    // getBisonViewDatabase().setHttpAuthUsernamePassword(host, realm, username,
+    // password);
+    // }
 
-  public interface FindListener {
-    void onFindResultReceived(int activeMatchOrdinal, int numberOfMatches, boolean isDoneCounting);
-  }
+    // public String[] getHttpAuthUsernamePassword(final String host, final String
+    // realm) {
+    // return getBisonViewDatabase().getHttpAuthUsernamePassword(host, realm);
+    // }
 
-  public interface DownloadListener {
+    public void destroy() {
+        mProvider.destroy();
+        removeAllViews();
+    }
+
+    public void setNetworkAvailable(boolean networkUp) {
+        mProvider.setNetworkAvailable(networkUp);
+    }
+
+    @Nullable
+    public WebBackForwardList saveState(Bundle outState) {
+        return mProvider.saveState(outState);
+    }
+
+    @Nullable
+    public WebBackForwardList restoreState(Bundle inState) {
+        return mProvider.restoreState(inState);
+    }
+
+
+    public void loadUrl(String url, Map<String, String> additionalHttpHeaders) {
+        mProvider.loadUrl(url, additionalHttpHeaders);
+    }
+
+    public void loadUrl(String url) {
+        mProvider.loadUrl(url);
+    }
+
+    public void postUrl(String url, byte[] postData) {
+        mProvider.postUrl(url, postData);
+    }
+
+    public void loadData(String data, String mimeType, String encoding) {
+        mProvider.loadData(data, mimeType, encoding);
+    }
+
+    public void loadDataWithBaseURL(String baseUrl, String data, String mimeType, String encoding, String failUrl) {
+        mProvider.loadDataWithBaseURL(baseUrl, data, mimeType, encoding, failUrl);
+    }
+
+    public void evaluateJavascript(String script, ValueCallback<String> resultCallback) {
+        mProvider.evaluateJavaScript(script, resultCallback);
+    }
 
     /**
-     * Notify the host application that a file should be downloaded
+     * Saves the current view as a web archive.
      *
-     * @param url                The full url to the content that should be
-     *                           downloaded
-     * @param userAgent          the user agent to be used for the download.
-     * @param contentDisposition Content-disposition http header, if present.
-     * @param mimetype           The mimetype of the content reported by the server
-     * @param contentLength      The file size reported by the server
+     * @param filename the filename where the archive should be placed
      */
-    public void onDownloadStart(String url, String userAgent, String contentDisposition, String mimetype,
-        long contentLength);
+    public void saveWebArchive(String filename) {
+        saveWebArchive(filename, false, null);
+    }
 
-  }
+    /**
+     * Saves the current view as a web archive.
+     *
+     * @param basename the filename where the archive should be placed
+     * @param autoname if {@code false}, takes basename to be a file. If
+     *                 {@code true}, basename is assumed to be a directory in which
+     *                 a filename will be chosen according to the URL of the current
+     *                 page.
+     * @param callback called after the web archive has been saved. The parameter
+     *                 for onReceiveValue will either be the filename under which
+     *                 the file was saved, or {@code null} if saving the file
+     *                 failed.
+     */
+    public void saveWebArchive(String basename, boolean autoname, @Nullable ValueCallback<String> callback) {
+        mProvider.saveWebArchive(basename, autoname, callback);
+    }
+
+    public void stopLoading() {
+        mProvider.stopLoading();
+    }
+
+    public void reload() {
+        mProvider.reload();
+    }
+
+    public boolean canGoBack() {
+        return mProvider.canGoBack();
+    }
+
+    public void goBack() {
+        mProvider.goBack();
+    }
+
+    public boolean canGoForward() {
+        return mProvider.canGoForward();
+    }
+
+    public void goForward() {
+        mProvider.goForward();
+    }
+
+    // jiang pageUp
+    /**
+     * Scrolls the contents of this BisonView up by half the view size.
+     *
+     * @param top {@code true} to jump to the top of the page
+     * @return {@code true} if the page was scrolled
+     */
+    // public boolean pageUp(boolean top) {
+    // return mBisonContents.pageUp(top);
+    // }
+
+    // jiang pageDown
+    // /**
+    // * Scrolls the contents of this BisonView down by half the page size.
+    // *
+    // * @param bottom {@code true} to jump to bottom of page
+    // * @return {@code true} if the page was scrolled
+    // */
+    // public boolean pageDown(boolean bottom) {
+    // return mBisonContents.pageDown(bottom);
+    // }
+
+    /**
+     * Gets whether the page can go back or forward the given number of steps.
+     *
+     * @param steps the negative or positive number of steps to move the history
+     */
+    public boolean canGoBackOrForward(int steps) {
+        return mProvider.canGoBackOrForward(steps);
+    }
+
+    public void postVisualStateCallback(long requestId, VisualStateCallback callback) {
+        mProvider.insertVisualStateCallback(requestId, callback);
+    }
+
+    /**
+     * Goes to the history item that is the number of steps away from the current
+     * item. Steps is negative if backward and positive if forward.
+     *
+     * @param steps the number of steps to take back or forward in the back forward
+     *              list
+     */
+    public void goBackOrForward(int steps) {
+        mProvider.goBackOrForward(steps);
+    }
+
+    // jiang public Picture capturePicture()
+
+    public PrintDocumentAdapter createPrintDocumentAdapter(String documentName) {
+        return mProvider.createPrintDocumentAdapter(documentName);
+    }
+
+    // jiang public float getScale()
+
+    public void setInitialScale(int scaleInPercent) {
+        // jiang need
+        // getSettings().getBvSettings().setInitialPageScale(scaleInPercent);
+    }
+
+    // jiang invokeZoomPicker()
+
+    public HitTestResult getHitTestResult() {
+        return mProvider.getHitTestResult();
+    }
+
+    /**
+     * Requests the anchor or image element URL at the last tapped point. If hrefMsg
+     * is {@code null}, this method returns immediately and does not dispatch
+     * hrefMsg to its target. If the tapped point hits an image, an anchor, or an
+     * image in an anchor, the message associates strings in named keys in its data.
+     * The value paired with the key may be an empty string.
+     *
+     * @param hrefMsg the message to be dispatched with the result of the request.
+     *                The message data contains three keys. "url" returns the
+     *                anchor's href attribute. "title" returns the anchor's text.
+     *                "src" returns the image's src attribute.
+     */
+    public void requestFocusNodeHref(@Nullable Message hrefMsg) {
+        mProvider.requestFocusNodeHref(hrefMsg);
+    }
+
+    /**
+     * Requests the URL of the image last touched by the user. msg will be sent to
+     * its target with a String representing the URL as its object.
+     *
+     * @param msg the message to be dispatched with the result of the request as the
+     *            data member with "url" as key. The result can be {@code null}.
+     */
+    public void requestImageRef(Message msg) {
+        mProvider.requestImageRef(msg);
+    }
+
+    public String getUrl() {
+        return mProvider.getUrl();
+    }
+
+    /**
+     * Gets the original URL for the current page. This is not always the same as
+     * the URL passed to BisonViewClient.onPageStarted because although the load for
+     * that URL has begun, the current page may not have changed. Also, there may
+     * have been redirects resulting in a different URL to that originally
+     * requested.
+     *
+     * @return the URL that was originally requested for the current page
+     */
+    public String getOriginalUrl() {
+        return mProvider.getOriginalUrl();
+    }
+
+    /**
+     * Gets the title for the current page. This is the title of the current page
+     * until BisonViewClient.onReceivedTitle is called.
+     *
+     * @return the title for the current page
+     */
+    public String getTitle() {
+        return mProvider.getTitle();
+    }
+
+    public Bitmap getFavicon() {
+        return mProvider.getFavicon();
+    }
+
+    /**
+     * Gets the progress for the current page.
+     *
+     * @return the progress for the current page between 0 and 100
+     */
+    public int getProgress() {
+        return mProvider.getProgress();
+    }
+
+    // jiang getContentHeight
+    // jiang getContentWidth
+
+    public void pauseTimers() {
+        mProvider.pauseTimers();
+    }
+
+    public void resumeTimers() {
+        mProvider.resumeTimers();
+    }
+
+    // jiang onPause
+    // jiang onResume
+    // jiang isPaused
+
+    /**
+     * Clears the resource cache. Note that the cache is per-application, so this
+     * will clear the cache for all BisonViews used.
+     *
+     * @param includeDiskFiles if {@code false}, only the RAM cache is cleared
+     */
+    public void clearCache(boolean includeDiskFiles) {
+        mProvider.clearCache(includeDiskFiles);
+    }
+
+    /**
+     * Removes the autocomplete popup from the currently focused form field, if
+     * present. Note this only affects the display of the autocomplete popup, it
+     * does not remove any saved form data from this BisonView's store. To do that,
+     * use {@link BisonViewDatabase#clearFormData}.
+     */
+    public void clearFormData() {
+        mProvider.clearFormData();
+    }
+
+    /**
+     * Tells this BisonView to clear its internal back/forward list.
+     */
+    public void clearHistory() {
+        mProvider.clearHistory();
+    }
+
+    /**
+     * Clears the SSL preferences table stored in response to proceeding with SSL
+     * certificate errors.
+     */
+    public void clearSslPreferences() {
+        mProvider.clearSslPreferences();
+    }
+
+    // jiang clearClientCertPreferences
+
+    public void setFindListener(FindListener listener) {
+        mProvider.setFindListener(listener);
+    }
+
+    public void findNext(boolean forward) {
+        mProvider.findNext(forward);
+    }
+
+    /**
+     * Finds all instances of find on the page and highlights them. Notifies any
+     * registered {@link FindListener}.
+     *
+     * @param find the string to find
+     * @return the number of occurrences of the String "find" that were found
+     * @deprecated {@link #findAllAsync} is preferred.
+     * @see #setFindListener
+     */
+    public int findAll(String searchString) {
+        findAllAsync(searchString);
+        return 0;
+    }
+
+    public void findAllAsync(String find) {
+        mProvider.findAllAsync(find);
+    }
+
+    /**
+     * Clears the highlighting surrounding text matches created by
+     * {@link #findAllAsync}.
+     */
+    public void clearMatches() {
+        mProvider.clearMatches();
+    }
+
+    public void documentHasImages(Message response) {
+        mProvider.documentHasImages(response);
+    }
+
+    /**
+     * Sets the BisonViewClient that will receive various notifications and
+     * requests. This will replace the current handler.
+     *
+     * @param client an implementation of BisonViewClient
+     * @see #getBisonViewClient
+     */
+    public void setBisonViewClient(BisonViewClient client) {
+        mProvider.setBisonViewClient(client);
+    }
+
+    /**
+     * Gets the BisonViewClient.
+     *
+     * @return the BisonViewClient, or a default client if not yet set
+     * @see #setBisonViewClient
+     */
+    public BisonViewClient getBisonViewClient() {
+        return mProvider.getBisonViewClient();
+    }
+
+    public BisonViewRenderProcess getBisonViewRenderProcess() {
+        return mProvider.getBisonViewRenderProcess();
+    }
+
+    public void setBisonViewRenderProcessClient(BisonViewRenderProcessClient client) {
+        setBisonViewRenderProcessClient(null, client);
+    }
+
+    public void setBisonViewRenderProcessClient(Executor executor, BisonViewRenderProcessClient client) {
+        mProvider.setBisonViewRenderProcessClient(executor, client);
+    }
+
+    public void setBisonWebChromeClient(BisonWebChromeClient client) {
+        mProvider.setBisonWebChromeClient(client);
+    }
+
+    public void setDownloadListener(DownloadListener listener) {
+        mProvider.setDownloadListener(listener);
+    }
+
+    public void addJavascriptInterface(Object obj, String interfaceName) {
+        mProvider.addJavascriptInterface(obj, interfaceName);
+    }
+
+    public void removeJavascriptInterface(@NonNull String name) {
+        mProvider.removeJavascriptInterface(name);
+    }
+
+    // jiang WebMessagePortAdapter
+    // public WebMessagePort[] createWebMessageChannel() {
+    // return
+    // WebMessagePortAdapter.fromMessagePorts(mProvider.createMessageChannel());
+    // }
+
+    public BisonViewSettings getSettings() {
+        // jiang getSettings 这里还有点问题
+        return mProvider.getSettings();
+    }
+
+    @Override
+    public void setBackgroundColor(int color) {
+        // jiang 尝试性的去掉这个
+        // super.setBackgroundColor(color);
+        mProvider.setBackgroundColor(color);
+    }
+
+    // findFocus
+    @Override
+    public boolean onCheckIsTextEditor() {
+        return mProvider.onCheckIsTextEditor();
+    }
+
+    @Override
+    protected void onConfigurationChanged(Configuration newConfig) {
+        mProvider.onConfigurationChanged(newConfig);
+    }
+
+    @Override
+    protected void onAttachedToWindow() {
+        assert !mAttachedContents;
+        super.onAttachedToWindow();
+        mProvider.onAttachedToWindow();
+        mAttachedContents = true;
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        assert mAttachedContents;
+        mProvider.onDetachedFromWindow();
+        mAttachedContents = false;
+        super.onDetachedFromWindow();
+    }
+
+    // @Override
+    // public void setLayoutParams(ViewGroup.LayoutParams params) {
+    // mProvider.setLayoutParams(params);
+    // }
+
+    @Override
+    public void setOverScrollMode(int mode) {
+        super.setOverScrollMode(mode);
+        if (mProvider != null) {
+            mProvider.setOverScrollMode(mode);
+        }
+    }
+
+    @Override
+    public void setScrollBarStyle(int style) {
+        mProvider.setScrollBarStyle(style);
+        super.setScrollBarStyle(style);
+    }
+
+    // setScrollBarStyle
+
+
+    @Override
+    public void scrollBy(int x, int y) {
+        mProvider.scrollBy(x,y);
+    }
+
+    @Override
+    public void scrollTo(int x, int y) {
+        mProvider.scrollTo(x,y);
+    }
+
+
+    @Override
+    protected int computeHorizontalScrollRange() {
+        return mProvider.computeHorizontalScrollRange();
+    }
+
+    @Override
+    protected int computeHorizontalScrollOffset() {
+        return mProvider.computeHorizontalScrollOffset();
+    }
+
+    @Override
+    protected int computeHorizontalScrollExtent() {
+        return mProvider.computeHorizontalScrollExtent();
+    }
+
+    @Override
+    protected int computeVerticalScrollRange() {
+        return mProvider.computeVerticalScrollRange();
+    }
+
+    @Override
+    protected int computeVerticalScrollOffset() {
+        return mProvider.computeVerticalScrollOffset();
+    }
+
+    @Override
+    protected int computeVerticalScrollExtent() {
+        return mProvider.computeVerticalScrollExtent();
+    }
+
+    // @Override
+    // public void computeScroll() {
+    //     mProvider.computeScroll();
+    // }
+
+    @Override
+    public boolean onHoverEvent(MotionEvent ev) {
+        return mProvider.onHoverEvent(ev);
+    }
+
+    @Override
+    public boolean onTouchEvent(MotionEvent ev) {
+        return mProvider.onTouchEvent(ev);
+    }
+
+    @Override
+    public boolean onGenericMotionEvent(MotionEvent ev) {
+        return mProvider.onGenericMotionEvent(ev);
+    }
+
+    // onTrackballEvent
+
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        return mProvider.onKeyDown(keyCode, event);
+    }
+
+    @Override
+    public boolean onKeyUp(int keyCode, KeyEvent event) {
+        return mProvider.onKeyUp(keyCode, event);
+    }
+
+    @Override
+    public boolean onKeyMultiple(int keyCode, int repeatCount, KeyEvent event) {
+        return mProvider.onKeyMultiple(keyCode, repeatCount, event);
+    }
+
+    @Override
+    public InputConnection onCreateInputConnection(EditorInfo outAttrs) {
+        return mProvider.onCreateInputConnection(outAttrs);
+    }
+
+
+    @Override
+    public void onWindowFocusChanged(boolean hasWindowFocus) {
+        mProvider.onWindowFocusChanged(hasWindowFocus);
+        super.onWindowFocusChanged(hasWindowFocus);
+    }
+
+
+    @Override
+    protected void onFocusChanged(boolean focused, int direction, Rect previouslyFocusedRect) {
+        super.onFocusChanged(focused, direction, previouslyFocusedRect);
+        mProvider.onFocusChanged(focused, direction, previouslyFocusedRect);
+    }
+
+    @Override
+    public boolean dispatchKeyEvent(KeyEvent event) {
+        return mProvider.dispatchKeyEvent(event);
+    }
+
+    @Override
+    public boolean requestFocus(int direction, Rect previouslyFocusedRect) {
+        return mProvider.requestFocus(direction, previouslyFocusedRect);
+    }
+
+    @Override
+    protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+        super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+        mProvider.onMeasure(widthMeasureSpec, heightMeasureSpec);
+    }
+
+    // @Override
+    // public void onSizeChanged(int w, int h, int ow, int oh) {
+    // super.onSizeChanged(w, h, ow, oh);
+    // mProvider.onSizeChanged(w, h, ow, oh);
+    // }
+
+    @Override
+    protected void onOverScrolled(int scrollX, int scrollY, boolean clampedX, boolean clampedY) {
+        mProvider.onOverScrolled(scrollX, scrollY, clampedX, clampedY);
+    }
+
+    @Override
+    protected void onScrollChanged(int l, int t, int oldl, int oldt) {
+        super.onScrollChanged(l, t, oldl, oldt);
+        // if (mProvider != null) {
+        //     mProvider.onScrollChanged(l, t, oldl, oldt);
+        // }
+    }
+
+    @Override
+    protected void onVisibilityChanged(View changedView, int visibility) {
+        super.onVisibilityChanged(changedView, visibility);
+        mProvider.onVisibilityChanged(changedView, visibility);
+    }
+
+    @Override
+    protected void onWindowVisibilityChanged(int visibility) {
+        super.onWindowVisibilityChanged(visibility);
+        mProvider.onWindowVisibilityChanged(visibility);
+    }
+
+
+    // @Override
+    // protected void onDraw(Canvas canvas) {
+    // super.onDraw(canvas);
+    // }
+
+    @Override
+    public AccessibilityNodeProvider getAccessibilityNodeProvider() {
+        AccessibilityNodeProvider provider = mProvider.getAccessibilityNodeProvider();
+        return provider == null ? super.getAccessibilityNodeProvider() : provider;
+    }
+
+    @Override
+    public boolean performAccessibilityAction(int action, Bundle arguments) {
+        return mProvider.performAccessibilityAction(action, arguments);
+    }
+
+    @Override
+    public boolean onDragEvent(DragEvent event) {
+        return mProvider.onDragEvent(event);
+    }
+
+    public static void setRemoteDebuggingEnabled(boolean enable) {
+        if (gBvDevToolsServer == null) {
+            if (!enable)
+                return;
+            gBvDevToolsServer = new BvDevToolsServer();
+        }
+        gBvDevToolsServer.setRemoteDebuggingEnabled(enable);
+        if (!enable) {
+            gBvDevToolsServer.destroy();
+            gBvDevToolsServer = null;
+        }
+    }
+
+    // public void logCommandLineForDebugging() {
+    // BvContents.logCommandLineForDebugging();
+    // }
+
+    public class InternalAccess {
+
+        public boolean super_onKeyUp(int keyCode, KeyEvent event) {
+            return BisonView.super.onKeyUp(keyCode, event);
+        }
+
+        public boolean super_dispatchKeyEvent(KeyEvent event) {
+            return BisonView.super.dispatchKeyEvent(event);
+        }
+
+        public boolean super_onGenericMotionEvent(MotionEvent event) {
+            return BisonView.super.onGenericMotionEvent(event);
+        }
+
+        public void super_onConfigurationChanged(Configuration newConfig) {
+            BisonView.super.onConfigurationChanged(newConfig);
+        }
+
+        public void super_scrollTo(int scrollX, int scrollY) {
+            // We're intentionally not calling super.scrollTo here to make testing easier.
+            BisonView.this.scrollTo(scrollX, scrollY);
+        }
+
+        public void overScrollBy(int deltaX, int deltaY, int scrollX, int scrollY, int scrollRangeX, int scrollRangeY,
+                int maxOverScrollX, int maxOverScrollY, boolean isTouchEvent) {
+            // We're intentionally not calling super.scrollTo here to make testing easier.
+            BisonView.this.overScrollBy(deltaX, deltaY, scrollX, scrollY, scrollRangeX, scrollRangeY, maxOverScrollX,
+                    maxOverScrollY, isTouchEvent);
+        }
+
+        public void onScrollChanged(int l, int t, int oldl, int oldt) {
+            BisonView.super.onScrollChanged(l, t, oldl, oldt);
+        }
+
+        public void setMeasuredDimension(int measuredWidth, int measuredHeight) {
+            BisonView.super.setMeasuredDimension(measuredWidth, measuredHeight);
+        }
+
+        public int super_getScrollBarStyle() {
+            return BisonView.super.getScrollBarStyle();
+        }
+
+        public void super_startActivityForResult(Intent intent, int requestCode) {
+        }
+
+        public boolean super_requestFocus(int direction, Rect previouslyFocusedRect) {
+            return BisonView.super.requestFocus(direction, previouslyFocusedRect);
+        }
+
+        public boolean super_performLongClick() {
+            return BisonView.super.performLongClick();
+        }
+
+        public void super_setLayoutParams(ViewGroup.LayoutParams params) {
+            BisonView.super.setLayoutParams(params);
+        }
+
+        public boolean super_performAccessibilityAction(int action, Bundle arguments) {
+            return BisonView.super.performAccessibilityAction(action, arguments);
+        }
+
+    }
+
+    public interface FindListener {
+        void onFindResultReceived(int activeMatchOrdinal, int numberOfMatches, boolean isDoneCounting);
+    }
+
+    public static abstract class VisualStateCallback {
+        /**
+         * Invoked when the visual state is ready to be drawn in the next
+         * {@link #onDraw}.
+         *
+         * @param requestId The identifier passed to {@link #postVisualStateCallback}
+         *                  when this callback was posted.
+         */
+        public abstract void onComplete(long requestId);
+    }
+
+    public static class HitTestResult {
+        /**
+         * Default HitTestResult, where the target is unknown.
+         */
+        public static final int UNKNOWN_TYPE = 0;
+        /**
+         * @deprecated This type is no longer used.
+         */
+        @Deprecated
+        public static final int ANCHOR_TYPE = 1;
+        /**
+         * HitTestResult for hitting a phone number.
+         */
+        public static final int PHONE_TYPE = 2;
+        /**
+         * HitTestResult for hitting a map address.
+         */
+        public static final int GEO_TYPE = 3;
+        /**
+         * HitTestResult for hitting an email address.
+         */
+        public static final int EMAIL_TYPE = 4;
+        /**
+         * HitTestResult for hitting an HTML::img tag.
+         */
+        public static final int IMAGE_TYPE = 5;
+        /**
+         * @deprecated This type is no longer used.
+         */
+        @Deprecated
+        public static final int IMAGE_ANCHOR_TYPE = 6;
+        /**
+         * HitTestResult for hitting a HTML::a tag with src=http.
+         */
+        public static final int SRC_ANCHOR_TYPE = 7;
+        /**
+         * HitTestResult for hitting a HTML::a tag with src=http + HTML::img.
+         */
+        public static final int SRC_IMAGE_ANCHOR_TYPE = 8;
+        /**
+         * HitTestResult for hitting an edit text area.
+         */
+        public static final int EDIT_TEXT_TYPE = 9;
+
+        private int mType;
+        private String mExtra;
+
+        @RestrictTo(LIBRARY_GROUP)
+        public HitTestResult() {
+            mType = UNKNOWN_TYPE;
+        }
+
+        @RestrictTo(LIBRARY_GROUP)
+        public void setType(int type) {
+            mType = type;
+        }
+
+        @RestrictTo(LIBRARY_GROUP)
+        public void setExtra(String extra) {
+            mExtra = extra;
+        }
+
+        /**
+         * Gets the type of the hit test result. See the XXX_TYPE constants defined in
+         * this class.
+         *
+         * @return the type of the hit test result
+         */
+        public int getType() {
+            return mType;
+        }
+
+        /**
+         * Gets additional type-dependant information about the result. See
+         * {@link BisonView#getHitTestResult()} for details. May either be {@code null}
+         * or contain extra information about this result.
+         *
+         * @return additional type-dependant information about the result
+         */
+        @Nullable
+        public String getExtra() {
+            return mExtra;
+        }
+    }
+
+    public interface DownloadListener {
+
+        /**
+         * Notify the host application that a file should be downloaded
+         *
+         * @param url                The full url to the content that should be
+         *                           downloaded
+         * @param userAgent          the user agent to be used for the download.
+         * @param contentDisposition Content-disposition http header, if present.
+         * @param mimetype           The mimetype of the content reported by the server
+         * @param contentLength      The file size reported by the server
+         */
+        public void onDownloadStart(String url, String userAgent, String contentDisposition, String mimetype,
+                long contentLength);
+
+    }
+
+    public interface PictureListener {
+        void onNewPicture(BisonView view, Picture picture);
+    }
 
 }

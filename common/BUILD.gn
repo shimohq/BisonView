@@ -2,7 +2,9 @@ import("//build/config/android/rules.gni")
 import("//mojo/public/tools/bindings/mojom.gni")
 
 mojom("common_mojom") {
-  sources = [ "js_java_interaction/interfaces.mojom" ]
+  sources = [
+    "js_java_interaction/interfaces.mojom",
+  ]
 
   public_deps = [
     "//mojo/public/mojom/base",
@@ -12,17 +14,13 @@ mojom("common_mojom") {
 
 source_set("common") {
   sources = [
-    "bison_content_client.cc",
-    "bison_content_client.h",
-    "bison_descriptors.h",
-    "bison_features.cc",
-    "bison_features.h",
-    "bison_hit_test_data.cc",
-    "bison_hit_test_data.h",
-    "bison_resource_bundle.cc",
-    "bison_resource_bundle.h",
-    "bison_switches.cc",
-    "bison_switches.h",
+    "bv_content_client.cc",
+    "bv_content_client.h",
+    "bv_descriptors.h",
+    "bv_features.cc",
+    "bv_features.h",
+    "bv_hit_test_data.cc",
+    "bv_hit_test_data.h",
     "bison_view_message_generator.cc",
     "bison_view_message_generator.h",
     "devtools_instrumentation.h",
@@ -30,6 +28,12 @@ source_set("common") {
     "render_view_messages.h",
     "url_constants.cc",
     "url_constants.h",
+    "bv_switches.cc",
+    "bv_switches.h",
+    "bv_resource_bundle.cc",
+    "bv_resource_bundle.h",
+    "bv_media_drm_bridge_client.cc",
+    "bv_media_drm_bridge_client.h",
   ]
 
   deps = [
@@ -37,5 +41,7 @@ source_set("common") {
     "//content/public/common",
     "//ipc",
     "//ui/base",
+
+    "//url",
   ]
 }

@@ -1,4 +1,4 @@
-// create by jiang947 
+// create by jiang947
 
 
 #ifndef BISON_BROWSER_NETWORK_SERVICE_BISON_NETWORK_CHANGE_NOTIFIER_H_
@@ -48,7 +48,7 @@ class BisonNetworkChangeNotifier
   void OnNetworkMadeDefault(NetworkHandle network) override;
 
  private:
-  friend class BisonNetworkChangeNotifierFactory;
+  friend class BvNetworkChangeNotifierFactory;
 
   BisonNetworkChangeNotifier(net::NetworkChangeNotifierDelegateAndroid* delegate);
 

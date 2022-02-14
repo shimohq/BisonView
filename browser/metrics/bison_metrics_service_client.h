@@ -1,4 +1,4 @@
-// create by jiang947 
+// create by jiang947
 
 #ifndef BISON_BROWSER_METRICS_BISON_METRICS_SERVICE_CLIENT_H_
 #define BISON_BROWSER_METRICS_BISON_METRICS_SERVICE_CLIENT_H_
@@ -32,7 +32,7 @@ enum class BackfillInstallDate {
   kMaxValue = kPersistedPackageManagerInstallDate,
 };
 
-// BisonMetricsServiceClient is a singleton which manages WebView metrics
+// BvMetricsServiceClient is a singleton which manages WebView metrics
 // collection.
 //
 // Metrics should be enabled iff all these conditions are met:
@@ -86,9 +86,9 @@ enum class BackfillInstallDate {
 // the client ID (generating a new ID if there was none). If this client is in
 // the sample, it then calls MetricsService::Start(). If consent was not
 // granted, MaybeStartMetrics() instead clears the client ID, if any.
-// jiang 
-class BisonMetricsServiceClient : public metrics::MetricsServiceClient {
-  friend class base::NoDestructor<BisonMetricsServiceClient>;
+// jiang
+class BvMetricsServiceClient : public metrics::MetricsServiceClient {
+  friend class base::NoDestructor<BvMetricsServiceClient>;
 
  public:
   // This interface define the tasks that depend on the
@@ -110,11 +110,11 @@ class BisonMetricsServiceClient : public metrics::MetricsServiceClient {
   //       WebViewAppStateObserver* observer) = 0;
   //   virtual bool HasContentsEverCreated() const = 0;
   // };
-  
-  static BisonMetricsServiceClient* GetInstance();
 
-  BisonMetricsServiceClient();
-  ~BisonMetricsServiceClient() override;
+  static BvMetricsServiceClient* GetInstance();
+
+  BvMetricsServiceClient();
+  ~BvMetricsServiceClient() override;
 
   // metrics::MetricsServiceClient
   int32_t GetProduct() override;
@@ -136,12 +136,12 @@ class BisonMetricsServiceClient : public metrics::MetricsServiceClient {
   bool app_consent_ = false;
   bool is_in_sample_ = false;
 
-  // BisonMetricsServiceClient may be created before the UI thread is promoted to
+  // BvMetricsServiceClient may be created before the UI thread is promoted to
   // BrowserThread::UI. Use |sequence_checker_| to enforce that the
-  // BisonMetricsServiceClient is used on a single thread.
+  // BvMetricsServiceClient is used on a single thread.
   base::SequenceChecker sequence_checker_;
 
-  DISALLOW_COPY_AND_ASSIGN(BisonMetricsServiceClient);
+  DISALLOW_COPY_AND_ASSIGN(BvMetricsServiceClient);
 };
 
 }  // namespace bison

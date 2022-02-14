@@ -1,4 +1,4 @@
-// create by jiang947 
+// create by jiang947
 
 
 #ifndef BISON_RENDERER_BROWSER_EXPOSED_RENDERER_INTERFACES_H_
@@ -11,9 +11,9 @@ class BinderMap;
 
 namespace bison {
 
-class BisonContentRendererClient;
+class BvContentRendererClient;
 
-void ExposeRendererInterfacesToBrowser(BisonContentRendererClient* client,
+void ExposeRendererInterfacesToBrowser(BvContentRendererClient* client,
                                        mojo::BinderMap* binders);
 
 }  // namespace bison

@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-#include "bison/bison_jni_headers/BisonVariationsSeedBridge_jni.h"
+#include "bison/bison_jni_headers/BvVariationsSeedBridge_jni.h"
 #include "base/android/jni_android.h"
 #include "base/android/jni_array.h"
 #include "base/android/jni_string.h"
@@ -16,19 +16,19 @@ namespace bison {
 
 std::unique_ptr<variations::SeedResponse> GetAndClearJavaSeed() {
   JNIEnv* env = base::android::AttachCurrentThread();
-  if (!Java_BisonVariationsSeedBridge_haveSeed(env))
+  if (!Java_BvVariationsSeedBridge_haveSeed(env))
     return nullptr;
 
   base::android::ScopedJavaLocalRef<jstring> j_signature =
-      Java_BisonVariationsSeedBridge_getSignature(env);
+      Java_BvVariationsSeedBridge_getSignature(env);
   base::android::ScopedJavaLocalRef<jstring> j_country =
-      Java_BisonVariationsSeedBridge_getCountry(env);
-  jlong j_date = Java_BisonVariationsSeedBridge_getDate(env);
+      Java_BvVariationsSeedBridge_getCountry(env);
+  jlong j_date = Java_BvVariationsSeedBridge_getDate(env);
   jboolean j_is_gzip_compressed =
-      Java_BisonVariationsSeedBridge_getIsGzipCompressed(env);
+      Java_BvVariationsSeedBridge_getIsGzipCompressed(env);
   base::android::ScopedJavaLocalRef<jbyteArray> j_data =
-      Java_BisonVariationsSeedBridge_getData(env);
-  Java_BisonVariationsSeedBridge_clearSeed(env);
+      Java_BvVariationsSeedBridge_getData(env);
+  Java_BvVariationsSeedBridge_clearSeed(env);
 
   auto java_seed = std::make_unique<variations::SeedResponse>();
   base::android::JavaByteArrayToString(env, j_data, &java_seed->data);
@@ -41,7 +41,7 @@ std::unique_ptr<variations::SeedResponse> GetAndClearJavaSeed() {
 
 bool IsSeedFresh() {
   JNIEnv* env = base::android::AttachCurrentThread();
-  return static_cast<bool>(Java_BisonVariationsSeedBridge_isLoadedSeedFresh(env));
+  return static_cast<bool>(Java_BvVariationsSeedBridge_isLoadedSeedFresh(env));
 }
 
 }  // namespace bison

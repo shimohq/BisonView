@@ -13,7 +13,7 @@
 
 namespace bison {
 
-class BisonWebResourceResponse;
+class BvWebResourceResponse;
 
 class BisonWebResourceInterceptResponse {
  public:
@@ -34,7 +34,7 @@ class BisonWebResourceInterceptResponse {
   // The response returned by the Java-side handler. Caller should first check
   // if an exception was caught via RaisedException() before calling
   // this method. A null value means do not intercept the response.
-  std::unique_ptr<BisonWebResourceResponse> GetResponse(JNIEnv* env) const;
+  std::unique_ptr<BvWebResourceResponse> GetResponse(JNIEnv* env) const;
 
  private:
   base::android::ScopedJavaGlobalRef<jobject> java_object_;

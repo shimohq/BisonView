@@ -6,7 +6,7 @@
 #include <memory>
 
 #include "bison/browser/metrics/bison_metrics_log_uploader.h"
-#include "bison/bison_jni_headers/BisonMetricsServiceClient_jni.h"
+#include "bison/bison_jni_headers/BvMetricsServiceClient_jni.h"
 
 #include "base/android/jni_android.h"
 #include "base/android/jni_array.h"
@@ -52,7 +52,7 @@ const double kBetaDevCanarySampledInRate = 0.02;
 
 // Callbacks for metrics::MetricsStateManager::Create. Store/LoadClientInfo
 // allow Windows Chrome to back up ClientInfo. They're no-ops for WebView.
-BisonMetricsServiceClient* g_bison_metrics_service_client = nullptr;
+BvMetricsServiceClient* g_bison_metrics_service_client = nullptr;
 
 void StoreClientInfo(const metrics::ClientInfo& client_info) {}
 
@@ -132,7 +132,7 @@ void PopulateSystemInstallDateIfNecessary(PrefService* prefs) {
 
   JNIEnv* env = base::android::AttachCurrentThread();
   int64_t system_install_date =
-      Java_BisonMetricsServiceClient_getAppInstallTime(env);
+      Java_BvMetricsServiceClient_getAppInstallTime(env);
   if (system_install_date < 0) {
     // Could not figure out install date from the system. Let the
     // MetricsStateManager set this pref to its best guess for a reasonable
@@ -153,38 +153,38 @@ void PopulateSystemInstallDateIfNecessary(PrefService* prefs) {
 
 
 
-BisonMetricsServiceClient::BisonMetricsServiceClient() {}
-BisonMetricsServiceClient::~BisonMetricsServiceClient() {}
+BvMetricsServiceClient::BvMetricsServiceClient() {}
+BvMetricsServiceClient::~BvMetricsServiceClient() {}
 
 
 
 // static
-BisonMetricsServiceClient* BisonMetricsServiceClient::GetInstance() {
+BvMetricsServiceClient* BvMetricsServiceClient::GetInstance() {
   DCHECK(g_bison_metrics_service_client);
   g_bison_metrics_service_client->EnsureOnValidSequence();
   return g_bison_metrics_service_client;
 }
 
-int32_t BisonMetricsServiceClient::GetProduct() {
+int32_t BvMetricsServiceClient::GetProduct() {
   return metrics::ChromeUserMetricsExtension::ANDROID_WEBVIEW;
 }
 
-std::string BisonMetricsServiceClient::GetAppPackageName() {
+std::string BvMetricsServiceClient::GetAppPackageName() {
   JNIEnv* env = base::android::AttachCurrentThread();
   base::android::ScopedJavaLocalRef<jstring> j_app_name =
-      Java_BisonMetricsServiceClient_getAppPackageName(env);
+      Java_BvMetricsServiceClient_getAppPackageName(env);
   if (j_app_name)
     return ConvertJavaStringToUTF8(env, j_app_name);
   return std::string();
 }
 
-bool BisonMetricsServiceClient::IsInSample() {
+bool BvMetricsServiceClient::IsInSample() {
   // Called in MaybeStartMetrics(), after metrics_service_ is created.
   return ::bison::IsInSample(metrics_service_->GetClientId());
 }
 
 // static
-void JNI_BisonMetricsServiceClient_SetHaveMetricsConsent(JNIEnv* env,
+void JNI_BvMetricsServiceClient_SetHaveMetricsConsent(JNIEnv* env,
                                                       jboolean user_consent,
                                                       jboolean app_consent) {
 }

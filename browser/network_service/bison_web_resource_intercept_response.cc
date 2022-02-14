@@ -28,13 +28,13 @@ bool BisonWebResourceInterceptResponse::HasResponse(JNIEnv* env) const {
               .is_null();
 }
 
-std::unique_ptr<BisonWebResourceResponse>
+std::unique_ptr<BvWebResourceResponse>
 BisonWebResourceInterceptResponse::GetResponse(JNIEnv* env) const {
   ScopedJavaLocalRef<jobject> j_response =
       Java_BisonWebResourceInterceptResponse_getResponse(env, java_object_);
   if (j_response.is_null())
     return nullptr;
-  return std::make_unique<BisonWebResourceResponse>(j_response);
+  return std::make_unique<BvWebResourceResponse>(j_response);
 }
 
 }  // namespace bison

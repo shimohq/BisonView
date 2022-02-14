@@ -2,7 +2,7 @@
 
 #include "bison/browser/network_service/bison_proxying_restricted_cookie_manager.h"
 
-#include "bison/browser/bison_cookie_access_policy.h"
+#include "bison/browser/bv_cookie_access_policy.h"
 #include "base/memory/ptr_util.h"
 #include "base/task/post_task.h"
 #include "content/public/browser/browser_task_traits.h"
@@ -52,7 +52,7 @@ void BisonProxyingRestrictedCookieManager::CreateAndBind(
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
 
   content::GetIOThreadTaskRunner({})->PostTask(
-      FROM_HERE, 
+      FROM_HERE,
       base::BindOnce(
           &BisonProxyingRestrictedCookieManager::CreateAndBindOnIoThread,
           std::move(underlying_rcm), is_service_worker, process_id, frame_id,
@@ -193,9 +193,9 @@ bool BisonProxyingRestrictedCookieManager::AllowCookies(
   if (is_service_worker_) {
     // Service worker cookies are always first-party, so only need to check
     // the global toggle.
-    return BisonCookieAccessPolicy::GetInstance()->GetShouldAcceptCookies();
+    return BvCookieAccessPolicy::GetInstance()->GetShouldAcceptCookies();
   } else {
-    return BisonCookieAccessPolicy::GetInstance()->AllowCookies(
+    return BvCookieAccessPolicy::GetInstance()->AllowCookies(
         url, site_for_cookies, process_id_, frame_id_);
   }
 }

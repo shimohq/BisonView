@@ -3,7 +3,7 @@
 #include <map>
 #include <memory>
 
-#include "bison/common/bison_hit_test_data.h"
+#include "bison/common/bv_hit_test_data.h"
 #include "bison/common/render_view_messages.h"
 
 #include "base/no_destructor.h"
@@ -88,18 +88,18 @@ bool RemovePrefixAndAssignIfMatches(const base::StringPiece& prefix,
   return false;
 }
 
-void DistinguishAndAssignSrcLinkType(const GURL& url, BisonHitTestData* data) {
+void DistinguishAndAssignSrcLinkType(const GURL& url, BvHitTestData* data) {
   if (RemovePrefixAndAssignIfMatches(kAddressPrefix, url,
                                      &data->extra_data_for_type)) {
-    data->type = BisonHitTestData::GEO_TYPE;
+    data->type = BvHitTestData::GEO_TYPE;
   } else if (RemovePrefixAndAssignIfMatches(kPhoneNumberPrefix, url,
                                             &data->extra_data_for_type)) {
-    data->type = BisonHitTestData::PHONE_TYPE;
+    data->type = BvHitTestData::PHONE_TYPE;
   } else if (RemovePrefixAndAssignIfMatches(kEmailPrefix, url,
                                             &data->extra_data_for_type)) {
-    data->type = BisonHitTestData::EMAIL_TYPE;
+    data->type = BvHitTestData::EMAIL_TYPE;
   } else {
-    data->type = BisonHitTestData::SRC_LINK_TYPE;
+    data->type = BvHitTestData::SRC_LINK_TYPE;
     data->extra_data_for_type = url.possibly_invalid_spec();
     if (!data->extra_data_for_type.empty())
       data->href = base::UTF8ToUTF16(data->extra_data_for_type);
@@ -109,7 +109,7 @@ void DistinguishAndAssignSrcLinkType(const GURL& url, BisonHitTestData* data) {
 void PopulateHitTestData(const GURL& absolute_link_url,
                          const GURL& absolute_image_url,
                          bool is_editable,
-                         BisonHitTestData* data) {
+                         BvHitTestData* data) {
   // Note: Using GURL::is_empty instead of GURL:is_valid due to the
   // WebViewClassic allowing any kind of protocol which GURL::is_valid
   // disallows. Similar reasons for using GURL::possibly_invalid_spec instead of
@@ -125,15 +125,15 @@ void PopulateHitTestData(const GURL& absolute_link_url,
   if (has_link_url && !has_image_url && !is_javascript_scheme) {
     DistinguishAndAssignSrcLinkType(absolute_link_url, data);
   } else if (has_link_url && has_image_url && !is_javascript_scheme) {
-    data->type = BisonHitTestData::SRC_IMAGE_LINK_TYPE;
+    data->type = BvHitTestData::SRC_IMAGE_LINK_TYPE;
     data->extra_data_for_type = data->img_src.possibly_invalid_spec();
     if (absolute_link_url.is_valid())
       data->href = base::UTF8ToUTF16(absolute_link_url.possibly_invalid_spec());
   } else if (!has_link_url && has_image_url) {
-    data->type = BisonHitTestData::IMAGE_TYPE;
+    data->type = BvHitTestData::IMAGE_TYPE;
     data->extra_data_for_type = data->img_src.possibly_invalid_spec();
   } else if (is_editable) {
-    data->type = BisonHitTestData::EDIT_TEXT_TYPE;
+    data->type = BvHitTestData::EDIT_TEXT_TYPE;
     DCHECK_EQ(0u, data->extra_data_for_type.length());
   }
 }
@@ -152,10 +152,10 @@ BisonRenderFrameExt::BisonRenderFrameExt(content::RenderFrame* render_frame)
   // TODO(sgurun) do not create a password autofill agent (change
   // autofill agent to store a weakptr).
 
-  autofill::PasswordAutofillAgent* password_autofill_agent =
-      new autofill::PasswordAutofillAgent(render_frame, &registry_);
-  new autofill::AutofillAgent(render_frame, password_autofill_agent, nullptr,
-                              nullptr, &registry_);
+  // autofill::PasswordAutofillAgent* password_autofill_agent =
+  //     new autofill::PasswordAutofillAgent(render_frame, &registry_);
+  // new autofill::AutofillAgent(render_frame, password_autofill_agent, nullptr,
+  //                             &registry_);
   // if (content_capture::features::IsContentCaptureEnabled())
   //   new content_capture::ContentCaptureSender(render_frame, &registry_);
 
@@ -254,7 +254,7 @@ void BisonRenderFrameExt::FocusedElementChanged(
   if (element.IsNull() || !render_frame() || !render_frame()->GetRenderView())
     return;
 
-  BisonHitTestData data;
+  BvHitTestData data;
 
   data.href = GetHref(element);
   data.anchor_text = element.TextContent().Utf16();
@@ -282,7 +282,7 @@ void BisonRenderFrameExt::OnDoHitTest(const gfx::PointF& touch_center,
   const blink::WebHitTestResult result = webview->HitTestResultForTap(
       gfx::Point(touch_center.x(), touch_center.y()),
       blink::WebSize(touch_area.width(), touch_area.height()));
-  BisonHitTestData data;
+  BvHitTestData data;
 
   GURL absolute_image_url = result.AbsoluteImageURL();
   if (!result.UrlElement().IsNull()) {

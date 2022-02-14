@@ -1,4 +1,4 @@
-// create by jiang947 
+// create by jiang947
 
 
 #ifndef BISON_BROWSER_PERMISSION_SIMPLE_PERMISSION_REQUEST_H_
@@ -6,7 +6,7 @@
 
 #include <stdint.h>
 
-#include "bison/browser/permission/bison_permission_request_delegate.h"
+#include "bison/browser/permission/bv_permission_request_delegate.h"
 #include "base/callback.h"
 #include "base/macros.h"
 
@@ -14,14 +14,14 @@ namespace bison {
 
 // The class is used to handle the simple permission request which just needs
 // a callback with bool parameter to indicate the permission granted or not.
-class SimplePermissionRequest : public BisonPermissionRequestDelegate {
+class SimplePermissionRequest : public BvPermissionRequestDelegate {
  public:
   SimplePermissionRequest(const GURL& origin,
                           int64_t resources,
                           base::OnceCallback<void(bool)> callback);
   ~SimplePermissionRequest() override;
 
-  // BisonPermissionRequestDelegate implementation.
+  // BvPermissionRequestDelegate implementation.
   const GURL& GetOrigin() override;
   int64_t GetResources() override;
   void NotifyRequestResult(bool allowed) override;

@@ -1,3 +1,7 @@
+// Copyright 2012 The Chromium Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
 package im.shimo.bison;
 
 import android.content.ContentValues;
@@ -7,7 +11,22 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteException;
 import android.util.Log;
 
-class HttpAuthDatabase {
+/**
+ * This database is used to support BisonView's setHttpAuthUsernamePassword and
+ * getHttpAuthUsernamePassword methods, and BisonViewDatabase's clearHttpAuthUsernamePassword and
+ * hasHttpAuthUsernamePassword methods.
+ *
+ * While this class is intended to be used as a singleton, this property is not enforced in this
+ * layer, primarily for ease of testing. To line up with the classic implementation and behavior,
+ * there is no specific handling and reporting when SQL errors occur.
+ *
+ * Note on thread-safety: As per the classic implementation, most API functions have thread safety
+ * provided by the underlying SQLiteDatabase instance. The exception is database opening: this
+ * is handled in the dedicated background thread, which also provides a performance gain
+ * if triggered early on (e.g. as a side effect of CookieSyncManager.createInstance() call),
+ * sufficiently in advance of the first blocking usage of the API.
+ */
+public class HttpAuthDatabase {
 
     private static final String LOGTAG = "HttpAuthDatabase";
 

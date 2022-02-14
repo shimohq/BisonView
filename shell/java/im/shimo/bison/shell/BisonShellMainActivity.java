@@ -21,13 +21,16 @@ import android.widget.LinearLayout;
 import org.chromium.base.CommandLine;
 import org.chromium.content_public.browser.DeviceUtils;
 
+import im.shimo.bison.BisonInitializer;
 import im.shimo.bison.BisonView;
 import im.shimo.bison.BisonViewClient;
+import im.shimo.bison.BisonViewSettings;
 import im.shimo.bison.WebResourceRequest;
 import im.shimo.bison.BisonWebChromeClient;
 import im.shimo.bison.SslErrorHandler;
 import im.shimo.bison.GeolocationPermissions;
 import im.shimo.bison.WebResourceResponse;
+import im.shimo.bison.internal.BvSettings;
 
 import java.net.MalformedURLException;
 import java.net.URI;
@@ -48,18 +51,18 @@ public class BisonShellMainActivity extends Activity {
     @Override
     protected void onCreate(final Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
+        BisonInitializer.getInstance().ensureStarted();
         String[] commandLineParams = getCommandLineParamsFromIntent(getIntent());
         if (commandLineParams != null) {
             CommandLine.getInstance().appendSwitchesAndArguments(commandLineParams);
         }
-
+        // TraceEvent.setATraceEnabled(true);
         DeviceUtils.addDeviceSpecificUserAgentSwitch();
         setContentView(R.layout.main_activity);
         initializeUrlField();
         initializeNavigationButtons();
         initializeBisonView();
-
+        BisonView.setRemoteDebuggingEnabled(true);
         String startupUrl = getUrlFromIntent(getIntent());
         if (TextUtils.isEmpty(startupUrl)) {
             startupUrl = INITIAL_URL;
@@ -71,9 +74,9 @@ public class BisonShellMainActivity extends Activity {
     private void initializeUrlField() {
         mUrlTextView = (EditText) findViewById(R.id.url);
         mUrlTextView.setOnEditorActionListener((v, actionId, event) -> {
-            if ((actionId != EditorInfo.IME_ACTION_GO) && (event == null
-                    || event.getKeyCode() != KeyEvent.KEYCODE_ENTER
-                    || event.getAction() != KeyEvent.ACTION_DOWN)) {
+            if ((actionId != EditorInfo.IME_ACTION_GO)
+                    && (event == null || event.getKeyCode() != KeyEvent.KEYCODE_ENTER
+                            || event.getAction() != KeyEvent.ACTION_DOWN)) {
                 return false;
             }
 
@@ -122,14 +125,12 @@ public class BisonShellMainActivity extends Activity {
 
     private void initializeBisonView() {
         mBisonView = findViewById(R.id.bison_view);
-        BisonView.setRemoteDebuggingEnabled(true);
-
-        mBisonView.getSettings().setJavaScriptEnabled(true);
-        mBisonView.getSettings().setDomStorageEnabled(true);
-        mBisonView.getSettings().setAllowFileAccess(true);
-        mBisonView.getSettings().setDatabaseEnabled(true);
-        mBisonView.getSettings().setAllowUniversalAccessFromFileURLs(true);;
-
+        BisonViewSettings settings = mBisonView.getSettings();
+        settings.setJavaScriptEnabled(true);
+        settings.setDomStorageEnabled(true);
+        settings.setAllowFileAccess(true);
+        settings.setDatabaseEnabled(true);
+        settings.setAllowUniversalAccessFromFileURLs(true);
 
         mBisonView.setBisonViewClient(new BisonViewClient() {
 
@@ -147,22 +148,21 @@ public class BisonShellMainActivity extends Activity {
 
             @Override
             public void onReceivedSslError(BisonView view, SslErrorHandler handler,
-                                   SslError error) {
-                Log.w(TAG,"onReceivedSslError");
+                    SslError error) {
+                Log.w(TAG, "onReceivedSslError");
                 handler.proceed();
             }
 
             @Override
-            public WebResourceResponse shouldInterceptRequest(BisonView view, WebResourceRequest request) {
-                Log.w(TAG,"shouldInterceptRequest :" + request.getRequestHeaders());
-
+            public WebResourceResponse shouldInterceptRequest(BisonView view,
+                    WebResourceRequest request) {
+                Log.w(TAG, "shouldInterceptRequest");
                 return null;
             }
 
             @Override
-            public void overriteRequest(BisonView view, WebResourceRequest request) {
-                Log.w(TAG,"overriteRequest headers:" + request.getRequestHeaders());
-                request.getRequestHeaders().put("Referer","https://shimo.im");
+            public void overrideRequest(BisonView view, WebResourceRequest request) {
+                request.getRequestHeaders().put("Referer", "https://www.baidu.com");
             }
 
         });
@@ -171,13 +171,13 @@ public class BisonShellMainActivity extends Activity {
 
             @Override
             public void onReceivedTitle(BisonView view, String title) {
-                Log.w(TAG,"onReceivedTitle : title = ["+ title +"]");
+                Log.w(TAG, "onReceivedTitle : title = [" + title + "]");
             }
 
             @Override
             public void onGeolocationPermissionsShowPrompt(String origin,
                     GeolocationPermissions.Callback callback) {
-                Log.w(TAG,"onGeolocationPermissionsShowPrompt");
+                Log.w(TAG, "onGeolocationPermissionsShowPrompt");
             }
 
 
@@ -186,8 +186,8 @@ public class BisonShellMainActivity extends Activity {
     }
 
     private void setKeyboardVisibilityForUrl(boolean visible) {
-        InputMethodManager imm = (InputMethodManager) getSystemService(
-                Context.INPUT_METHOD_SERVICE);
+        InputMethodManager imm =
+                (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
         if (visible) {
             imm.showSoftInput(mUrlTextView, InputMethodManager.SHOW_IMPLICIT);
         } else {

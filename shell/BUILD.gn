@@ -1,5 +1,5 @@
 import("//bison/build/aar.gni")
-import("//bison/variables.gni")
+import("//bison/config.gni")
 import("//build/config/android/config.gni")
 import("//build/config/android/rules.gni")
 import("//third_party/icu/config.gni")

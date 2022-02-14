@@ -6,7 +6,7 @@
 
 #include "bison/browser/input_stream.h"
 #include "bison/browser/network_service/input_stream_reader.h"
-#include "bison/common/bison_features.h"
+#include "bison/common/bv_features.h"
 
 #include "base/android/jni_android.h"
 #include "base/bind.h"

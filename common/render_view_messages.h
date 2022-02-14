@@ -1,6 +1,6 @@
 
 // Multiply-included file, no traditional include guard.
-#include "bison_hit_test_data.h"
+#include "bv_hit_test_data.h"
 #include "content/public/common/common_param_traits.h"
 #include "ipc/ipc_channel_handle.h"
 #include "ipc/ipc_message_macros.h"
@@ -23,7 +23,7 @@ namespace IPC {
 
 #endif  // BISON_COMMON_RENDER_VIEW_MESSAGES_H_
 
-IPC_STRUCT_TRAITS_BEGIN(bison::BisonHitTestData)
+IPC_STRUCT_TRAITS_BEGIN(bison::BvHitTestData)
   IPC_STRUCT_TRAITS_MEMBER(type)
   IPC_STRUCT_TRAITS_MEMBER(extra_data_for_type)
   IPC_STRUCT_TRAITS_MEMBER(href)
@@ -95,7 +95,7 @@ IPC_MESSAGE_ROUTED2(BisonViewHostMsg_DocumentHasImagesResponse,
                     bool /* has_images */)
 
 // Response to BisonViewMsg_DoHitTest.
-IPC_MESSAGE_ROUTED1(BisonViewHostMsg_UpdateHitTestData, bison::BisonHitTestData)
+IPC_MESSAGE_ROUTED1(BisonViewHostMsg_UpdateHitTestData, bison::BvHitTestData)
 
 // Sent whenever the contents size (as seen by RenderView) is changed.
 IPC_MESSAGE_ROUTED1(BisonViewHostMsg_OnContentsSizeChanged,

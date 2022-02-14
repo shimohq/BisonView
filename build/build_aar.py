@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# coding=utf-8 
+# coding=utf-8
 #
 # Author jiangshiqu
 #
@@ -78,10 +78,8 @@ def main(args):
   parser.add_argument(
       '--resource-included-globs',
       help='GN-list of globs for paths to include in R.txt and resources zips.')
-  
-  options = parser.parse_args(args)
 
-  
+  options = parser.parse_args(args)
 
   if options.native_libraries and not options.abi:
     parser.error('You must provide --abi if you have native libs')
@@ -98,9 +96,10 @@ def main(args):
       options.jar_included_globs)
   options.resource_included_globs = build_utils.ParseGnList(
       options.resource_included_globs)
-  options.deps_configs= build_utils.ParseGnList(options.deps_configs)
 
-  print (options.jar_excluded_globs)
+  #print("\n".join(options.jars))
+
+  options.deps_configs= build_utils.ParseGnList(options.deps_configs)
 
   with tempfile.NamedTemporaryFile(delete=False) as staging_file:
     try:
@@ -119,7 +118,7 @@ def main(args):
             z,
             'R.txt',
             data=MergeRTxt(options.r_text_files,
-                            options.resource_included_globs))           
+                            options.resource_included_globs))
         build_utils.AddToZipHermetic(z, 'public.txt', data='')
 
         if options.proguard_configs:
@@ -136,7 +135,7 @@ def main(args):
               z, os.path.join('jni', options.abi, libname),
               src_path=native_library)
           AddAssets(z, options.deps_configs)
-          
+
     except:
       os.unlink(staging_file.name)
       raise

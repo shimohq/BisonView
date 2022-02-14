@@ -1,4 +1,4 @@
-// create by jiang947 
+// create by jiang947
 
 
 #ifndef BISON_BROWSER_PERMISSION_MEDIA_ACCESS_PERMISSION_REQUEST_H_
@@ -6,7 +6,7 @@
 
 #include <stdint.h>
 
-#include "bison/browser/permission/bison_permission_request_delegate.h"
+#include "bison/browser/permission/bv_permission_request_delegate.h"
 #include "base/callback.h"
 #include "base/macros.h"
 #include "content/public/browser/media_stream_request.h"
@@ -14,15 +14,15 @@
 
 namespace bison {
 
-// The BisonPermissionRequestDelegate implementation for media access permission
+// The BvPermissionRequestDelegate implementation for media access permission
 // request.
-class MediaAccessPermissionRequest : public BisonPermissionRequestDelegate {
+class MediaAccessPermissionRequest : public BvPermissionRequestDelegate {
  public:
   MediaAccessPermissionRequest(const content::MediaStreamRequest& request,
                                content::MediaResponseCallback callback);
   ~MediaAccessPermissionRequest() override;
 
-  // BisonPermissionRequestDelegate implementation.
+  // BvPermissionRequestDelegate implementation.
   const GURL& GetOrigin() override;
   int64_t GetResources() override;
   void NotifyRequestResult(bool allowed) override;

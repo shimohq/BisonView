@@ -5,7 +5,7 @@
 #include "base/android/jni_android.h"
 #include "base/android/jni_array.h"
 #include "base/android/jni_string.h"
-#include "bison/bison_jni_headers/BisonWebResourceResponse_jni.h"
+#include "bison/bison_jni_headers/BvWebResourceResponse_jni.h"
 #include "bison/browser/input_stream.h"
 #include "net/http/http_response_headers.h"
 #include "net/url_request/url_request.h"
@@ -16,19 +16,19 @@ using base::android::ScopedJavaLocalRef;
 
 namespace bison {
 
-BisonWebResourceResponse::BisonWebResourceResponse(
+BvWebResourceResponse::BvWebResourceResponse(
     const base::android::JavaRef<jobject>& obj)
     : java_object_(obj), input_stream_transferred_(false) {}
 
-BisonWebResourceResponse::~BisonWebResourceResponse() {}
+BvWebResourceResponse::~BvWebResourceResponse() {}
 
-bool BisonWebResourceResponse::HasInputStream(JNIEnv* env) const {
+bool BvWebResourceResponse::HasInputStream(JNIEnv* env) const {
   ScopedJavaLocalRef<jobject> jstream =
-      Java_BisonWebResourceResponse_getData(env, java_object_);
+      Java_BvWebResourceResponse_getData(env, java_object_);
   return !jstream.is_null();
 }
 
-std::unique_ptr<InputStream> BisonWebResourceResponse::GetInputStream(
+std::unique_ptr<InputStream> BvWebResourceResponse::GetInputStream(
     JNIEnv* env) {
   // Only allow to call GetInputStream once per object, because this method
   // transfers ownership of the stream and once the unique_ptr<InputStream>
@@ -42,38 +42,38 @@ std::unique_ptr<InputStream> BisonWebResourceResponse::GetInputStream(
 
   input_stream_transferred_ = true;
   ScopedJavaLocalRef<jobject> jstream =
-      Java_BisonWebResourceResponse_getData(env, java_object_);
+      Java_BvWebResourceResponse_getData(env, java_object_);
   if (jstream.is_null())
     return nullptr;
   return std::make_unique<InputStream>(jstream);
 }
 
-bool BisonWebResourceResponse::GetMimeType(JNIEnv* env,
+bool BvWebResourceResponse::GetMimeType(JNIEnv* env,
                                            std::string* mime_type) const {
   ScopedJavaLocalRef<jstring> jstring_mime_type =
-      Java_BisonWebResourceResponse_getMimeType(env, java_object_);
+      Java_BvWebResourceResponse_getMimeType(env, java_object_);
   if (jstring_mime_type.is_null())
     return false;
   *mime_type = ConvertJavaStringToUTF8(jstring_mime_type);
   return true;
 }
 
-bool BisonWebResourceResponse::GetCharset(JNIEnv* env,
+bool BvWebResourceResponse::GetCharset(JNIEnv* env,
                                           std::string* charset) const {
   ScopedJavaLocalRef<jstring> jstring_charset =
-      Java_BisonWebResourceResponse_getCharset(env, java_object_);
+      Java_BvWebResourceResponse_getCharset(env, java_object_);
   if (jstring_charset.is_null())
     return false;
   *charset = ConvertJavaStringToUTF8(jstring_charset);
   return true;
 }
 
-bool BisonWebResourceResponse::GetStatusInfo(JNIEnv* env,
+bool BvWebResourceResponse::GetStatusInfo(JNIEnv* env,
                                              int* status_code,
                                              std::string* reason_phrase) const {
-  int status = Java_BisonWebResourceResponse_getStatusCode(env, java_object_);
+  int status = Java_BvWebResourceResponse_getStatusCode(env, java_object_);
   ScopedJavaLocalRef<jstring> jstring_reason_phrase =
-      Java_BisonWebResourceResponse_getReasonPhrase(env, java_object_);
+      Java_BvWebResourceResponse_getReasonPhrase(env, java_object_);
   if (status < 100 || status >= 600 || jstring_reason_phrase.is_null())
     return false;
   *status_code = status;
@@ -81,13 +81,13 @@ bool BisonWebResourceResponse::GetStatusInfo(JNIEnv* env,
   return true;
 }
 
-bool BisonWebResourceResponse::GetResponseHeaders(
+bool BvWebResourceResponse::GetResponseHeaders(
     JNIEnv* env,
     net::HttpResponseHeaders* headers) const {
   ScopedJavaLocalRef<jobjectArray> jstringArray_headerNames =
-      Java_BisonWebResourceResponse_getResponseHeaderNames(env, java_object_);
+      Java_BvWebResourceResponse_getResponseHeaderNames(env, java_object_);
   ScopedJavaLocalRef<jobjectArray> jstringArray_headerValues =
-      Java_BisonWebResourceResponse_getResponseHeaderValues(env, java_object_);
+      Java_BvWebResourceResponse_getResponseHeaderValues(env, java_object_);
   if (jstringArray_headerNames.is_null() || jstringArray_headerValues.is_null())
     return false;
   std::vector<std::string> header_names;

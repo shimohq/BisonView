@@ -1,0 +1,17 @@
+# Copyright 2020 The Chromium Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+source_set("lifecycle") {
+  sources = [
+    "bv_contents_lifecycle_notifier.cc",
+    "bv_contents_lifecycle_notifier.h",
+    "webview_app_state_observer.cc",
+    "webview_app_state_observer.h",
+  ]
+  deps = [
+    "//bison:bison_jni_headers",
+    "//base",
+    "//content/public/browser",
+  ]
+}

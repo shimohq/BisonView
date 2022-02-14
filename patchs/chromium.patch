@@ -1,17 +1,19 @@
 diff --git a/BUILD.gn b/BUILD.gn
-index 16ad01eac88d..eda611b4ae7d 100644
+index 16ad01eac88d3..bd56fd4d28dd7 100644
 --- a/BUILD.gn
 +++ b/BUILD.gn
-@@ -366,6 +366,7 @@ group("gn_all") {
+@@ -366,6 +366,9 @@ group("gn_all") {
        "//weblayer/public/java:client_aar",
        "//weblayer/shell/android:weblayer_shell_apk",
        "//weblayer/shell/android:weblayer_support_apk",
 +      "//bison",
++      "//bison/shell",
++      "//bison/test",
      ]
      deps -= [
        "//net:net_perftests",
 diff --git a/base/i18n/icu_util.cc b/base/i18n/icu_util.cc
-index 82022d5f490e..cb941a346a15 100644
+index 82022d5f490e8..cb941a346a156 100644
 --- a/base/i18n/icu_util.cc
 +++ b/base/i18n/icu_util.cc
 @@ -107,7 +107,7 @@ const char kIcuTimeZoneDataDir[] = "/config/data/tzdata/icu/44/le";
@@ -24,7 +26,7 @@ index 82022d5f490e..cb941a346a15 100644
  
  // File handle intentionally never closed. Not using File here because its
 diff --git a/base/threading/thread_restrictions.h b/base/threading/thread_restrictions.h
-index 29a68a6b15bf..7b6984aa3e74 100644
+index 29a68a6b15bf1..1fa05cbbafb4c 100644
 --- a/base/threading/thread_restrictions.h
 +++ b/base/threading/thread_restrictions.h
 @@ -108,6 +108,13 @@ class CookieManager;
@@ -33,7 +35,7 @@ index 29a68a6b15bf..7b6984aa3e74 100644
  }
 +
 +namespace bison {
-+class BisonFormDatabaseService;
++class BvFormDatabaseService;
 +class CookieManager;
 +class ScopedAllowInitGLBindings;
 +}
@@ -53,15 +55,15 @@ index 29a68a6b15bf..7b6984aa3e74 100644
        AwFormDatabaseService;  // http://crbug.com/904431
    friend class android_webview::CookieManager;
    friend class android_webview::VizCompositorThreadRunnerWebView;
-+  
-+  friend class bison::BisonFormDatabaseService;
++
++  friend class bison::BvFormDatabaseService;
 +  friend class bison::CookieManager;
 +
    friend class audio::OutputDevice;
    friend class base::sequence_manager::internal::TaskQueueImpl;
    friend class base::FileDescriptorWatcher;
 diff --git a/base/trace_event/builtin_categories.h b/base/trace_event/builtin_categories.h
-index 31f563dd4d59..79d3f84669ba 100644
+index 31f563dd4d59c..79d3f84669bad 100644
 --- a/base/trace_event/builtin_categories.h
 +++ b/base/trace_event/builtin_categories.h
 @@ -30,6 +30,7 @@
@@ -73,35 +75,31 @@ index 31f563dd4d59..79d3f84669ba 100644
    X("audio")                                                             \
    X("base")                                                              \
 diff --git a/content/browser/v8_snapshot_files.cc b/content/browser/v8_snapshot_files.cc
-index a09a551e6af4..91585f51a7b8 100644
+index a09a551e6af44..af7ac2f836341 100644
 --- a/content/browser/v8_snapshot_files.cc
 +++ b/content/browser/v8_snapshot_files.cc
-@@ -26,10 +26,21 @@ std::map<std::string, base::FilePath> GetV8SnapshotFilesToPreload() {
+@@ -26,10 +26,17 @@ std::map<std::string, base::FilePath> GetV8SnapshotFilesToPreload() {
        {kV8Snapshot32DataDescriptor,
         base::FilePath(FILE_PATH_LITERAL("assets/v8_context_snapshot_32.bin"))}};
  #else
 +#if defined(ARCH_CPU_ARM_FAMILY)
    return {{kV8Snapshot64DataDescriptor,
 -           base::FilePath(FILE_PATH_LITERAL("assets/snapshot_blob_64.bin"))},
-+           base::FilePath(
-+               FILE_PATH_LITERAL("assets/bison/arm/snapshot_blob_64.bin"))},
++           base::FilePath(FILE_PATH_LITERAL("assets/bison/arm/snapshot_blob_64.bin"))},
            {kV8Snapshot32DataDescriptor,
 -           base::FilePath(FILE_PATH_LITERAL("assets/snapshot_blob_32.bin"))}};
-+           base::FilePath(
-+               FILE_PATH_LITERAL("assets/bison/arm/snapshot_blob_32.bin"))}};
++           base::FilePath(FILE_PATH_LITERAL("assets/bison/arm/snapshot_blob_32.bin"))}};
 +#else   // ARCH_CPU_X86_FAMILY
 +  return {{kV8Snapshot64DataDescriptor,
-+           base::FilePath(
-+               FILE_PATH_LITERAL("assets/bison/x86/snapshot_blob_64.bin"))},
++           base::FilePath(FILE_PATH_LITERAL("assets/bison/x86/snapshot_blob_64.bin"))},
 +          {kV8Snapshot32DataDescriptor,
-+           base::FilePath(
-+               FILE_PATH_LITERAL("assets/bison/x86/snapshot_blob_32.bin"))}};
++           base::FilePath(FILE_PATH_LITERAL("assets/bison/x86/snapshot_blob_32.bin"))}};
 +#endif  // defined(ARCH_CPU_ARM_FAMILY)
  #endif
  #else
    return {};
 diff --git a/ipc/ipc_message_start.h b/ipc/ipc_message_start.h
-index 4464f1e4bb3b..93b9e33d724a 100644
+index 4464f1e4bb3b2..93b9e33d724a2 100644
 --- a/ipc/ipc_message_start.h
 +++ b/ipc/ipc_message_start.h
 @@ -44,6 +44,7 @@ enum IPCMessageStart {
@@ -113,9 +111,18 @@ index 4464f1e4bb3b..93b9e33d724a 100644
  };
  
 diff --git a/tools/gritsettings/resource_ids.spec b/tools/gritsettings/resource_ids.spec
-index fa2306ead7d2..eb3d1e80ef63 100644
+index fa2306ead7d2b..3accd22f23122 100644
 --- a/tools/gritsettings/resource_ids.spec
 +++ b/tools/gritsettings/resource_ids.spec
+@@ -504,7 +504,7 @@
+   "android_webview/ui/aw_strings.grd": {
+     "messages": [3020],
+   },
+-
++  
+   "ash/app_list/resources/app_list_resources.grd": {
+     "structures": [3040],
+   },
 @@ -648,7 +648,9 @@
      "META": {"sizes": {"includes": [50],}},
      "includes": [3880],
@@ -127,15 +134,24 @@ index fa2306ead7d2..eb3d1e80ef63 100644
    # END "everything else" section.
    # Everything but chrome/, components/, content/, and ios/
  
-diff --git a/tools/gritsettings/translation_expectations.pyl b/tools/gritsettings/translation_expectations.pyl
-index b2598b2b057e..4014c2917a13 100644
---- a/tools/gritsettings/translation_expectations.pyl
-+++ b/tools/gritsettings/translation_expectations.pyl
-@@ -24,6 +24,7 @@
-     "files": [
-       "android_webview/java/strings/android_webview_strings.grd",
-       "android_webview/ui/aw_strings.grd",
-+      # "bison/",
-       "ash/ash_strings.grd",
-       "ash/shortcut_viewer/shortcut_viewer_strings.grd",
-       "chrome/android/features/vr/java/strings/android_chrome_vr_strings.grd",
+diff --git a/ui/base/resource/resource_bundle_android.cc b/ui/base/resource/resource_bundle_android.cc
+index e8cf7b78c6632..bc9cf1d6f1ba4 100644
+--- a/ui/base/resource/resource_bundle_android.cc
++++ b/ui/base/resource/resource_bundle_android.cc
+@@ -88,7 +88,7 @@ void ResourceBundle::LoadCommonResources() {
+   base::PathService::Get(ui::DIR_RESOURCE_PAKS_ANDROID, &disk_path);
+   disk_path = disk_path.AppendASCII("chrome_100_percent.pak");
+   bool success =
+-      LoadFromApkOrFile("assets/chrome_100_percent.pak", &disk_path,
++      LoadFromApkOrFile("assets/bison/chrome_100_percent.pak", &disk_path,
+                         &g_chrome_100_percent_fd, &g_chrome_100_percent_region);
+   DCHECK(success);
+ 
+@@ -228,6 +228,7 @@ void SetLoadSecondaryLocalePaks(bool value) {
+ 
+ void LoadMainAndroidPackFile(const char* path_within_apk,
+                              const base::FilePath& disk_file_path) {
++  VLOG(0) << "path_within_apk:" << path_within_apk;
+   if (LoadFromApkOrFile(path_within_apk,
+                         &disk_file_path,
+                         &g_resources_pack_fd,

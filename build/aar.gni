@@ -1,8 +1,7 @@
+import("//bison/build/bison_aar_impl.gni")
 import("//build/config/android/config.gni")
 import("//build/config/android/rules.gni")
 import("//build/util/version.gni")
-import("//bison/build/bison_aar_impl.gni")
-import("//tools/v8_context_snapshot/v8_context_snapshot.gni")
 import("//tools/grit/repack.gni")
 
 template("repackage_jars") {
@@ -15,8 +14,19 @@ template("repackage_jars") {
   }
 }
 
-template("bison_repack_locales"){
+template("bison_view_apk_tmpl") {
+  _native_lib_file =
+      rebase_path("$root_gen_dir/CHROME_VERSION.json", root_out_dir)
+  _native_lib_version_arg = "@FileArg($_native_lib_file:full-quoted)"
 
+  android_apk(target_name) {
+    forward_variables_from(invoker, "*")
+    native_lib_version_arg = _native_lib_version_arg
+    native_lib_version_rule = "//build/util:chrome_version_json"
+  }
+}
+
+template("bison_repack_locales") {
   repack_locales(target_name) {
     forward_variables_from(invoker, "*")
     if (!defined(deps)) {
@@ -33,67 +43,45 @@ template("bison_repack_locales"){
       "//third_party/blink/public/strings",
       "//ui/strings:app_locale_settings",
     ]
+
     # source_patterns += webview_repack_locales_source_patterns
     # deps += webview_repack_locales_deps
     output_dir = "$root_out_dir/bison/locales"
   }
 }
 
-template("bison_view_apk_tmpl") {
-  
-  _native_lib_file =
-          rebase_path("$root_gen_dir/CHROME_VERSION.json", root_out_dir)
-  _native_lib_version_arg = "@FileArg($_native_lib_file:full-quoted)"
-
-  android_apk(target_name) {
-    forward_variables_from(invoker, "*")
-    native_lib_version_arg = _native_lib_version_arg
-    native_lib_version_rule = "//build/util:chrome_version_json"
-  }
-
-}
-
-# _jni_registration_header = "$target_gen_dir/bison_jni_registration.h"
 template("android_aar") {
   assert(defined(invoker.shared_libraries))
   _deps = []
-  # assert(defined(invoker.jni_registration_header))
-  # _build_config = "$target_gen_dir/$target_name.build_config"
-
   _template_name = target_name
 
-  _locales = string_join("\",\"",invoker.locales)
+  _locales = string_join("\",\"", invoker.locales)
   _locales = "{\"${_locales}\"}"
-  
+
+  _product_config_java_package = invoker.product_config_java_package
   java_cpp_template("${_template_name}__product_config_srcjar") {
     defines = []
     defines += [ "USE_FINAL" ]
-    
-    package_path = string_replace("im.shimo.bison", ".", "/")
+
+    package_path = string_replace(_product_config_java_package, ".", "/")
     sources = [ "//build/android/java/templates/ProductConfig.template" ]
-    defines += [ "PACKAGE=im.shimo.bison" ]
+    defines += [ "PACKAGE=${_product_config_java_package}" ]
     defines += [
       "USE_CHROMIUM_LINKER_VALUE=false",
       "USE_MODERN_LINKER_VALUE=false",
       "IS_BUNDLE_VALUE=false",
-      "UNCOMPRESSED_LOCALE_LIST=${_locales}"
+      "UNCOMPRESSED_LOCALE_LIST=${_locales}",
     ]
   }
-
-  android_library("${_template_name}__generate_product_config_java"){
-    srcjar_deps = [":${_template_name}__product_config_srcjar"]
+  android_library("${_template_name}__generate_product_config_java") {
+    srcjar_deps = [ ":${_template_name}__product_config_srcjar" ]
   }
+  _deps += [ ":${_template_name}__generate_product_config_java" ]
 
-  _deps += [":${_template_name}__generate_product_config_java"]
-
-  _shared_library_list_file =
-      "$target_gen_dir/${_template_name}.native_libs"
+  _shared_library_list_file = "$target_gen_dir/${_template_name}.native_libs"
   generated_file("${_template_name}__shared_library_list") {
-
     deps = invoker.shared_libraries
-    outputs = [
-      _shared_library_list_file,
-    ]
+    outputs = [ _shared_library_list_file ]
     data_keys = [ "shared_libraries" ]
     walk_keys = [ "shared_libraries_barrier" ]
     rebase = root_build_dir
@@ -104,7 +92,7 @@ template("android_aar") {
   write_native_libraries_java("${_template_name}__native_libraries") {
     deps = [
       ":${_template_name}__shared_library_list",
-      "//build/util:chrome_version_json"
+      "//build/util:chrome_version_json",
     ]
     _native_lib_file =
         rebase_path("$root_gen_dir/CHROME_VERSION.json", root_out_dir)
@@ -113,23 +101,28 @@ template("android_aar") {
     use_final_fields = true
   }
 
-  android_library("${_template_name}__native_libraries_java"){
-    srcjar_deps = [":${_template_name}__native_libraries"]
+  android_library("${_template_name}__native_libraries_java") {
+    srcjar_deps = [ ":${_template_name}__native_libraries" ]
   }
-  
-  _deps += [":${_template_name}__native_libraries_java"]
+
+  _deps += [ ":${_template_name}__native_libraries_java" ]
   _generate_jni_targets = []
   if (defined(invoker.deps)) {
-    _generate_jni_targets = filter_include(invoker.deps, ["*:*_java","*:*_javalib","*:java"])
+    _generate_jni_targets = filter_include(invoker.deps,
+                                           [
+                                             "*:*_java",
+                                             "*:*_javalib",
+                                             "*:java",
+                                           ])
   }
   if (_generate_jni_targets != []) {
     _jni_registration_header = "$target_gen_dir/bison_jni_registration.h"
     generate_jni_registration("${_template_name}__final_jni") {
       forward_variables_from(invoker,
-                                [
-                                  "enable_native_mocks",
-                                  "require_native_mocks",
-                                ])
+                             [
+                               "enable_native_mocks",
+                               "require_native_mocks",
+                             ])
       targets = _generate_jni_targets
       header_output = _jni_registration_header
     }
@@ -137,9 +130,8 @@ template("android_aar") {
     android_library("${_template_name}__final_jni_java") {
       srcjar_deps = [ ":${_template_name}__final_jni" ]
     }
-    _deps += [":${_template_name}__final_jni_java"]
+    _deps += [ ":${_template_name}__final_jni_java" ]
   }
-
 
   if (defined(invoker.deps)) {
     _deps += invoker.deps
@@ -148,18 +140,21 @@ template("android_aar") {
   _native_libraries = []
   _deps += invoker.shared_libraries
   foreach(d, invoker.shared_libraries) {
-    _native_libraries += [ "$root_build_dir/"+ get_label_info(d, "name" ) + ".so" ]
+    _native_libraries +=
+        [ "$root_build_dir/" + get_label_info(d, "name") + ".so" ]
   }
 
   # print("_native_libraries",_native_libraries)
-  
+
   build_aar_impl(target_name) {
-    forward_variables_from(invoker, [
-      "android_manifest",
-      "output",
-      "resource_included_patterns",
-      "jar_excluded_patterns",
-    ])
+    forward_variables_from(invoker,
+                           [
+                             "android_manifest",
+                             "output",
+                             "resource_included_patterns",
+                             "jar_included_patterns",
+                             "jar_excluded_patterns",
+                           ])
     deps = _deps
 
     native_libraries = _native_libraries

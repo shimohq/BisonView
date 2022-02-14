@@ -1,4 +1,4 @@
-// create by jiang947 
+// create by jiang947
 
 
 #ifndef BISON_BROWSER_PERMISSION_PERMISSION_REQUEST_HANDLER_H_
@@ -18,13 +18,13 @@
 
 namespace bison {
 
-class BisonPermissionRequest;
-class BisonPermissionRequestDelegate;
+class BvPermissionRequest;
+class BvPermissionRequestDelegate;
 class PermissionRequestHandlerClient;
 
 // This class is used to send the permission requests, or cancel ongoing
 // requests.
-// It is owned by BisonContents and has 1x1 mapping to BisonContents. All methods
+// It is owned by BvContents and has 1x1 mapping to BvContents. All methods
 // are running on UI thread.
 class PermissionRequestHandler : public content::WebContentsObserver {
  public:
@@ -33,7 +33,7 @@ class PermissionRequestHandler : public content::WebContentsObserver {
   ~PermissionRequestHandler() override;
 
   // Send the given |request| to PermissionRequestHandlerClient.
-  void SendRequest(std::unique_ptr<BisonPermissionRequestDelegate> request);
+  void SendRequest(std::unique_ptr<BvPermissionRequestDelegate> request);
 
   // Cancel the ongoing request initiated by |origin| for accessing |resources|.
   void CancelRequest(const GURL& origin, int64_t resources);
@@ -48,7 +48,7 @@ class PermissionRequestHandler : public content::WebContentsObserver {
  private:
   friend class TestPermissionRequestHandler;
 
-  typedef std::vector<base::WeakPtr<BisonPermissionRequest>>::iterator
+  typedef std::vector<base::WeakPtr<BvPermissionRequest>>::iterator
       RequestIterator;
 
   // Return the request initiated by |origin| for accessing |resources|.
@@ -68,7 +68,7 @@ class PermissionRequestHandler : public content::WebContentsObserver {
   PermissionRequestHandlerClient* client_;
 
   // A list of ongoing requests.
-  std::vector<base::WeakPtr<BisonPermissionRequest>> requests_;
+  std::vector<base::WeakPtr<BvPermissionRequest>> requests_;
 
   std::map<std::string, int64_t> preauthorized_permission_;
 

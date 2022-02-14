@@ -6,9 +6,9 @@
 #include <utility>
 #include <vector>
 
-#include "bison/browser/bison_browser_context.h"
-#include "bison/browser/bison_cookie_access_policy.h"
-#include "bison/bison_jni_headers/BisonCookieManager_jni.h"
+#include "bison/browser/bv_browser_context.h"
+#include "bison/browser/bv_cookie_access_policy.h"
+#include "bison/bison_jni_headers/BvCookieManager_jni.h"
 #include "base/android/build_info.h"
 #include "base/android/callback_android.h"
 #include "base/android/jni_string.h"
@@ -221,7 +221,7 @@ void CookieManager::MigrateCookieStorePath() {
   base::FilePath old_cookie_journal_path =
       GetPathInAppDirectory("Cookies-journal");
   base::FilePath new_cookie_journal_path =
-      GetPathInAppDirectory("Default/Cookies-journal");    
+      GetPathInAppDirectory("Default/Cookies-journal");
 
   if (base::PathExists(old_cookie_store_path)) {
     base::Move(old_cookie_store_path, cookie_store_path_);
@@ -423,13 +423,13 @@ void CookieManager::SetWorkaroundHttpSecureCookiesAsyncHelper(
 void CookieManager::SetShouldAcceptCookies(JNIEnv* env,
                                            const JavaParamRef<jobject>& obj,
                                            jboolean accept) {
-  BisonCookieAccessPolicy::GetInstance()->SetShouldAcceptCookies(accept);
+  BvCookieAccessPolicy::GetInstance()->SetShouldAcceptCookies(accept);
 }
 
 jboolean CookieManager::GetShouldAcceptCookies(
     JNIEnv* env,
     const JavaParamRef<jobject>& obj) {
-  return BisonCookieAccessPolicy::GetInstance()->GetShouldAcceptCookies();
+  return BvCookieAccessPolicy::GetInstance()->GetShouldAcceptCookies();
 }
 
 void CookieManager::SetCookie(JNIEnv* env,
@@ -730,7 +730,7 @@ void CookieManager::SetAllowFileSchemeCookiesCompleted(
   std::move(complete).Run();
 }
 
-static jlong JNI_BisonCookieManager_GetDefaultCookieManager(JNIEnv* env) {
+static jlong JNI_BvCookieManager_GetDefaultCookieManager(JNIEnv* env) {
   return reinterpret_cast<intptr_t>(CookieManager::GetInstance());
 }
 

@@ -1,11 +1,13 @@
 package im.shimo.bison;
 
+import androidx.annotation.RestrictTo;
+
 public class JsResult {
 
+    @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
     public interface ResultReceiver {
         void onJsResultComplete(JsResult result);
     }
-
 
     private final ResultReceiver mReceiver;
 
@@ -23,12 +25,13 @@ public class JsResult {
         wakeUp();
     }
 
-
+    @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
     JsResult(ResultReceiver receiver) {
         mReceiver = receiver;
     }
 
-
+    @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
+    public
     final boolean getResult() {
         return mResult;
     }
@@ -36,4 +39,5 @@ public class JsResult {
     private final void wakeUp() {
         mReceiver.onJsResultComplete(this);
     }
+
 }

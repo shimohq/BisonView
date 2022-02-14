@@ -13,11 +13,11 @@ class HttpRequestHeaders;
 }
 
 namespace bison {
-class BisonResourceContext;
+class BvResourceContext;
 
 class BisonURLLoaderThrottle : public blink::URLLoaderThrottle {
  public:
-  explicit BisonURLLoaderThrottle(BisonResourceContext* aw_resource_context);
+  explicit BisonURLLoaderThrottle(BvResourceContext* aw_resource_context);
   ~BisonURLLoaderThrottle() override;
 
   // blink::URLLoaderThrottle implementation:
@@ -35,7 +35,7 @@ class BisonURLLoaderThrottle : public blink::URLLoaderThrottle {
   void AddExtraHeadersIfNeeded(const GURL& url,
                                net::HttpRequestHeaders* headers);
 
-  BisonResourceContext* aw_resource_context_;
+  BvResourceContext* aw_resource_context_;
   std::vector<std::string> added_headers_;
   url::Origin original_origin_;
 

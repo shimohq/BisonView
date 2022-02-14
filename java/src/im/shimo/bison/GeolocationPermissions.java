@@ -2,6 +2,8 @@ package im.shimo.bison;
 
 import java.util.Set;
 
+import androidx.annotation.RestrictTo;
+
 public class GeolocationPermissions {
 
     public interface Callback {
@@ -18,29 +20,21 @@ public class GeolocationPermissions {
         void invoke(String origin, boolean allow, boolean retain);
     };
 
-    // public static GeolocationPermissions getInstance() {
-    //   return WebViewFactory.getProvider().getGeolocationPermissions();
-    // }
-
-    private GeolocationPermissions(){}
+    @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
+    public GeolocationPermissions(){}
 
     public void getOrigins(ValueCallback<Set<String> > callback) {
-        // Must be a no-op for backward compatibility: see the hidden constructor for reason.
     }
 
     public void getAllowed(String origin, ValueCallback<Boolean> callback) {
-        // Must be a no-op for backward compatibility: see the hidden constructor for reason.
     }
 
     public void clear(String origin) {
-        // Must be a no-op for backward compatibility: see the hidden constructor for reason.
     }
 
     public void allow(String origin) {
-        // Must be a no-op for backward compatibility: see the hidden constructor for reason.
     }
 
-
-
-
+    public void clearAll() {
+    }
 }

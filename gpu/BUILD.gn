@@ -1,7 +1,7 @@
 source_set("gpu") {
   sources = [
-    "bison_content_gpu_client.cc",
-    "bison_content_gpu_client.h",
+    "bv_content_gpu_client.cc",
+    "bv_content_gpu_client.h",
   ]
 
   deps = [

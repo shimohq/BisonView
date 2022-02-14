@@ -3,8 +3,8 @@
 
 #include <utility>
 
-#include "bison/browser/permission/bison_permission_request.h"
-#include "bison/browser/permission/bison_permission_request_delegate.h"
+#include "bison/browser/permission/bv_permission_request.h"
+#include "bison/browser/permission/bv_permission_request_delegate.h"
 #include "bison/browser/permission/permission_request_handler_client.h"
 #include "base/android/scoped_java_ref.h"
 #include "base/bind.h"
@@ -41,15 +41,15 @@ PermissionRequestHandler::~PermissionRequestHandler() {
 }
 
 void PermissionRequestHandler::SendRequest(
-    std::unique_ptr<BisonPermissionRequestDelegate> request) {
+    std::unique_ptr<BvPermissionRequestDelegate> request) {
   if (Preauthorized(request->GetOrigin(), request->GetResources())) {
     request->NotifyRequestResult(true);
     return;
   }
 
-  base::WeakPtr<BisonPermissionRequest> weak_request;
+  base::WeakPtr<BvPermissionRequest> weak_request;
   base::android::ScopedJavaLocalRef<jobject> java_peer =
-      BisonPermissionRequest::Create(std::move(request), &weak_request);
+      BvPermissionRequest::Create(std::move(request), &weak_request);
   requests_.push_back(weak_request);
   client_->OnPermissionRequest(java_peer, weak_request.get());
   PruneRequests();
@@ -106,7 +106,7 @@ PermissionRequestHandler::RequestIterator PermissionRequestHandler::FindRequest(
 }
 
 void PermissionRequestHandler::CancelRequestInternal(RequestIterator i) {
-  BisonPermissionRequest* request = i->get();
+  BvPermissionRequest* request = i->get();
   if (request) {
     client_->OnPermissionRequestCanceled(request);
     request->CancelAndDelete();

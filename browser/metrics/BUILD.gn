@@ -11,6 +11,9 @@ source_set("metrics") {
     "//base",
     "//bison:bison_jni_headers",
     "//bison/common",
+
+    "//base",
+
     "//components/metrics",
     "//components/prefs",
     "//components/version_info",
