@@ -493,34 +493,32 @@ public class BisonViewSettingsAdapter extends BisonViewSettings {
 
     @Override
     public void setForceDark(int forceDarkMode) {
-        // jiang
-        // switch (forceDarkMode) {
-        //     case BisonViewSettings.FORCE_DARK_OFF:
-        //         getBvSettings().setForceDarkMode(BvSettings.FORCE_DARK_OFF);
-        //         break;
-        //     case BisonViewSettings.FORCE_DARK_AUTO:
-        //         getBvSettings().setForceDarkMode(BvSettings.FORCE_DARK_AUTO);
-        //         break;
-        //     case BisonViewSettings.FORCE_DARK_ON:
-        //         getBvSettings().setForceDarkMode(BvSettings.FORCE_DARK_ON);
-        //         break;
-        //     default:
-        //         throw new IllegalArgumentException(
-        //                 "Force dark mode is not one of FORCE_DARK_(ON|OFF|AUTO)");
-        // }
+        switch (forceDarkMode) {
+            case BisonViewSettings.FORCE_DARK_OFF:
+                getBvSettings().setForceDarkMode(BvSettings.FORCE_DARK_OFF);
+                break;
+            case BisonViewSettings.FORCE_DARK_AUTO:
+                getBvSettings().setForceDarkMode(BvSettings.FORCE_DARK_AUTO);
+                break;
+            case BisonViewSettings.FORCE_DARK_ON:
+                getBvSettings().setForceDarkMode(BvSettings.FORCE_DARK_ON);
+                break;
+            default:
+                throw new IllegalArgumentException(
+                        "Force dark mode is not one of FORCE_DARK_(ON|OFF|AUTO)");
+        }
     }
 
     @Override
     public int getForceDark() {
-        // jiang
-        // switch (getBvSettings().getForceDarkMode()) {
-        //     case BvSettings.FORCE_DARK_OFF:
-        //         return BisonViewSettings.FORCE_DARK_OFF;
-        //     case BvSettings.FORCE_DARK_AUTO:
-        //         return BisonViewSettings.FORCE_DARK_AUTO;
-        //     case BvSettings.FORCE_DARK_ON:
-        //         return BisonViewSettings.FORCE_DARK_ON;
-        // }
+        switch (getBvSettings().getForceDarkMode()) {
+            case BvSettings.FORCE_DARK_OFF:
+                return BisonViewSettings.FORCE_DARK_OFF;
+            case BvSettings.FORCE_DARK_AUTO:
+                return BisonViewSettings.FORCE_DARK_AUTO;
+            case BvSettings.FORCE_DARK_ON:
+                return BisonViewSettings.FORCE_DARK_ON;
+        }
         return BisonViewSettings.FORCE_DARK_AUTO;
     }
 

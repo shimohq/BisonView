@@ -67,8 +67,8 @@ class BvSettingsUserData : public base::SupportsUserData::Data {
 };
 
 BvSettings::BvSettings(JNIEnv* env,
-                             jobject obj,
-                             content::WebContents* web_contents)
+                       jobject obj,
+                       content::WebContents* web_contents)
     : WebContentsObserver(web_contents),
       renderer_prefs_initialized_(false),
       javascript_can_open_windows_automatically_(false),
@@ -89,7 +89,7 @@ BvSettings::~BvSettings() {
   if (scoped_obj.is_null())
     return;
   Java_BvSettings_nativeBvSettingsGone(env, scoped_obj,
-                                             reinterpret_cast<intptr_t>(this));
+                                       reinterpret_cast<intptr_t>(this));
 }
 
 bool BvSettings::GetJavaScriptCanOpenWindowsAutomatically() {
@@ -104,8 +104,7 @@ void BvSettings::Destroy(JNIEnv* env, const JavaParamRef<jobject>& obj) {
   delete this;
 }
 
-BvSettings* BvSettings::FromWebContents(
-    content::WebContents* web_contents) {
+BvSettings* BvSettings::FromWebContents(content::WebContents* web_contents) {
   return BvSettingsUserData::GetSettings(web_contents);
 }
 
@@ -124,7 +123,7 @@ BvRenderViewHostExt* BvSettings::GetBisonRenderViewHostExt() {
 }
 
 void BvSettings::ResetScrollAndScaleState(JNIEnv* env,
-                                             const JavaParamRef<jobject>& obj) {
+                                          const JavaParamRef<jobject>& obj) {
   BvRenderViewHostExt* rvhe = GetBisonRenderViewHostExt();
   if (!rvhe)
     return;
@@ -142,7 +141,7 @@ void BvSettings::UpdateEverything() {
 }
 
 void BvSettings::UpdateEverythingLocked(JNIEnv* env,
-                                           const JavaParamRef<jobject>& obj) {
+                                        const JavaParamRef<jobject>& obj) {
   UpdateInitialPageScaleLocked(env, obj);
   UpdateWebkitPreferencesLocked(env, obj);
   UpdateUserAgentLocked(env, obj);
@@ -156,7 +155,7 @@ void BvSettings::UpdateEverythingLocked(JNIEnv* env,
 }
 
 void BvSettings::UpdateUserAgentLocked(JNIEnv* env,
-                                          const JavaParamRef<jobject>& obj) {
+                                       const JavaParamRef<jobject>& obj) {
   if (!web_contents())
     return;
 
@@ -263,8 +262,7 @@ void BvSettings::UpdateRendererPreferencesLocked(
         BvBrowserContext::FromWebContents(web_contents());
     // AndroidWebview does not use per-site storage partitions.
     content::StoragePartition* storage_partition =
-        content::BrowserContext::GetDefaultStoragePartition(
-            bv_browser_context);
+        content::BrowserContext::GetDefaultStoragePartition(bv_browser_context);
     std::string expanded_language_list =
         net::HttpUtil::ExpandLanguageList(prefs->accept_languages);
     storage_partition->GetNetworkContext()->SetAcceptLanguage(
@@ -273,7 +271,7 @@ void BvSettings::UpdateRendererPreferencesLocked(
 }
 
 void BvSettings::UpdateCookiePolicyLocked(JNIEnv* env,
-                                             const JavaParamRef<jobject>& obj) {
+                                          const JavaParamRef<jobject>& obj) {
   if (!web_contents())
     return;
 
@@ -292,9 +290,8 @@ void BvSettings::UpdateOffscreenPreRasterLocked(
   }
 }
 
-void BvSettings::UpdateAllowFileAccessLocked(
-    JNIEnv* env,
-    const JavaParamRef<jobject>& obj) {
+void BvSettings::UpdateAllowFileAccessLocked(JNIEnv* env,
+                                             const JavaParamRef<jobject>& obj) {
   if (!web_contents())
     return;
 
@@ -302,7 +299,7 @@ void BvSettings::UpdateAllowFileAccessLocked(
 }
 
 void BvSettings::RenderViewHostChanged(content::RenderViewHost* old_host,
-                                          content::RenderViewHost* new_host) {
+                                       content::RenderViewHost* new_host) {
   DCHECK_EQ(new_host, web_contents()->GetRenderViewHost());
 
   UpdateEverything();
@@ -320,13 +317,12 @@ void BvSettings::PopulateWebPreferences(WebPreferences* web_prefs) {
     return;
   // Grab the lock and call PopulateWebPreferencesLocked.
   Java_BvSettings_populateWebPreferences(env, scoped_obj,
-                                            reinterpret_cast<jlong>(web_prefs));
+                                         reinterpret_cast<jlong>(web_prefs));
 }
 
-void BvSettings::PopulateWebPreferencesLocked(
-    JNIEnv* env,
-    const JavaParamRef<jobject>& obj,
-    jlong web_prefs_ptr) {
+void BvSettings::PopulateWebPreferencesLocked(JNIEnv* env,
+                                              const JavaParamRef<jobject>& obj,
+                                              jlong web_prefs_ptr) {
   BvRenderViewHostExt* render_view_host_ext = GetBisonRenderViewHostExt();
   if (!render_view_host_ext)
     return;
@@ -405,8 +401,7 @@ void BvSettings::PopulateWebPreferencesLocked(
       Java_BvSettings_getAllowFileAccessFromFileURLsLocked(env, obj);
 
   javascript_can_open_windows_automatically_ =
-      Java_BvSettings_getJavaScriptCanOpenWindowsAutomaticallyLocked(env,
-                                                                        obj);
+      Java_BvSettings_getJavaScriptCanOpenWindowsAutomaticallyLocked(env, obj);
 
   web_prefs->supports_multiple_windows =
       Java_BvSettings_getSupportMultipleWindowsLocked(env, obj);
@@ -414,7 +409,8 @@ void BvSettings::PopulateWebPreferencesLocked(
   web_prefs->plugins_enabled = false;
 
   web_prefs->application_cache_enabled =
-      Java_BvSettings_getAppCacheEnabledLocked(env, obj);
+      Java_BvSettings_getAppCacheEnabledLocked(env, obj) &&
+      content::StoragePartition::IsAppCacheEnabled();
 
   web_prefs->local_storage_enabled =
       Java_BvSettings_getDomStorageEnabledLocked(env, obj);
@@ -430,8 +426,7 @@ void BvSettings::PopulateWebPreferencesLocked(
       Java_BvSettings_getForceZeroLayoutHeightLocked(env, obj);
 
   const bool zero_layout_height_disables_viewport_quirk =
-      Java_BvSettings_getZeroLayoutHeightDisablesViewportQuirkLocked(env,
-                                                                        obj);
+      Java_BvSettings_getZeroLayoutHeightDisablesViewportQuirkLocked(env, obj);
   web_prefs->viewport_enabled = !(zero_layout_height_disables_viewport_quirk &&
                                   web_prefs->force_zero_layout_height);
 
@@ -451,8 +446,7 @@ void BvSettings::PopulateWebPreferencesLocked(
   web_prefs->default_video_poster_url =
       url.obj() ? GURL(ConvertJavaStringToUTF8(url)) : GURL();
 
-  bool support_quirks =
-      Java_BvSettings_getSupportLegacyQuirksLocked(env, obj);
+  bool support_quirks = Java_BvSettings_getSupportLegacyQuirksLocked(env, obj);
   // Please see the corresponding Blink settings for bug references.
   web_prefs->support_deprecated_target_density_dpi = support_quirks;
   web_prefs->use_legacy_background_size_shorthand_behavior = support_quirks;
@@ -472,8 +466,8 @@ void BvSettings::PopulateWebPreferencesLocked(
       Java_BvSettings_getSpatialNavigationLocked(env, obj);
 
   bool enable_supported_hardware_accelerated_features =
-      Java_BvSettings_getEnableSupportedHardwareAcceleratedFeaturesLocked(
-          env, obj);
+      Java_BvSettings_getEnableSupportedHardwareAcceleratedFeaturesLocked(env,
+                                                                          obj);
   web_prefs->accelerated_2d_canvas_enabled =
       web_prefs->accelerated_2d_canvas_enabled &&
       enable_supported_hardware_accelerated_features;
@@ -502,8 +496,7 @@ void BvSettings::PopulateWebPreferencesLocked(
       Java_BvSettings_getAllowGeolocationOnInsecureOrigins(env, obj);
 
   web_prefs->do_not_update_selection_on_mutating_selection_range =
-      Java_BvSettings_getDoNotUpdateSelectionOnMutatingSelectionRange(env,
-                                                                         obj);
+      Java_BvSettings_getDoNotUpdateSelectionOnMutatingSelectionRange(env, obj);
 
   web_prefs->css_hex_alpha_color_enabled =
       Java_BvSettings_getCSSHexAlphaColorEnabledLocked(env, obj);
@@ -516,56 +509,54 @@ void BvSettings::PopulateWebPreferencesLocked(
   web_prefs->scroll_top_left_interop_enabled =
       Java_BvSettings_getScrollTopLeftInteropEnabledLocked(env, obj);
 
-  // jiang 暂时 注释 dark_mode 判断
-  // bool is_dark_mode;
-  // switch (Java_BvSettings_getForceDarkModeLocked(env, obj)) {
-  //   case ForceDarkMode::FORCE_DARK_OFF:
-  //     is_dark_mode = false;
-  //     break;
-  //   case ForceDarkMode::FORCE_DARK_ON:
-  //     is_dark_mode = true;
-  //     break;
-  //   case ForceDarkMode::FORCE_DARK_AUTO: {
-  //     BvContents* contents =
-  //     BvContents::FromWebContents(web_contents()); is_dark_mode = contents
-  //     && contents->GetViewTreeForceDarkState(); break;
-  //   }
-  // }
-  // web_prefs->preferred_color_scheme =
-  //     is_dark_mode ? blink::PreferredColorScheme::kDark
-  //                  : blink::PreferredColorScheme::kNoPreference;
-  // if (is_dark_mode) {
-  //   switch (Java_BvSettings_getForceDarkBehaviorLocked(env, obj)) {
-  //     case ForceDarkBehavior::FORCE_DARK_ONLY: {
-  //       web_prefs->preferred_color_scheme =
-  //           blink::PreferredColorScheme::kNoPreference;
-  //       web_prefs->force_dark_mode_enabled = true;
-  //       break;
-  //     }
-  //     case ForceDarkBehavior::MEDIA_QUERY_ONLY: {
-  //       web_prefs->preferred_color_scheme =
-  //       blink::PreferredColorScheme::kDark;
-  //       web_prefs->force_dark_mode_enabled = false;
-  //       break;
-  //     }
-  //     // Blink's behavior is that if the preferred color scheme matches the
-  //     // supported color scheme, then force dark will be disabled, otherwise
-  //     // the preferred color scheme will be reset to no preference. Therefore
-  //     // when enabling force dark, we also set the preferred color scheme to
-  //     // dark so that dark themed content will be preferred over force
-  //     // darkening.
-  //     case ForceDarkBehavior::PREFER_MEDIA_QUERY_OVER_FORCE_DARK: {
-  //       web_prefs->preferred_color_scheme =
-  //       blink::PreferredColorScheme::kDark;
-  //       web_prefs->force_dark_mode_enabled = true;
-  //       break;
-  //     }
-  //   }
-  // } else {
-  //   web_prefs->preferred_color_scheme =
-  //       blink::PreferredColorScheme::kNoPreference;
-  //   web_prefs->force_dark_mode_enabled = false;
-  // }
+  // getAllowMixedContentAutoupgradesLocked
+
+  bool is_dark_mode;
+  switch (Java_BvSettings_getForceDarkModeLocked(env, obj)) {
+    case ForceDarkMode::FORCE_DARK_OFF:
+      is_dark_mode = false;
+      break;
+    case ForceDarkMode::FORCE_DARK_ON:
+      is_dark_mode = true;
+      break;
+    case ForceDarkMode::FORCE_DARK_AUTO: {
+      // BvContents* contents = BvContents::FromWebContents(web_contents());
+      // is_dark_mode = contents && contents->GetViewTreeForceDarkState();
+      is_dark_mode = false;
+      break;
+    }
+  }
+  web_prefs->preferred_color_scheme = is_dark_mode
+                                          ? blink::PreferredColorScheme::kDark
+                                          : blink::PreferredColorScheme::kLight;
+  if (is_dark_mode) {
+    switch (Java_BvSettings_getForceDarkBehaviorLocked(env, obj)) {
+      case ForceDarkBehavior::FORCE_DARK_ONLY: {
+        web_prefs->preferred_color_scheme = blink::PreferredColorScheme::kLight;
+        web_prefs->force_dark_mode_enabled = true;
+        break;
+      }
+      case ForceDarkBehavior::MEDIA_QUERY_ONLY: {
+        web_prefs->preferred_color_scheme = blink::PreferredColorScheme::kDark;
+        web_prefs->force_dark_mode_enabled = false;
+        break;
+      }
+      // Blink's behavior is that if the preferred color scheme matches the
+      // supported color scheme, then force dark will be disabled, otherwise
+      // the preferred color scheme will be reset to 'light'. Therefore
+      // when enabling force dark, we also set the preferred color scheme to
+      // dark so that dark themed content will be preferred over force
+      // darkening.
+      case ForceDarkBehavior::PREFER_MEDIA_QUERY_OVER_FORCE_DARK: {
+        web_prefs->preferred_color_scheme = blink::PreferredColorScheme::kDark;
+        web_prefs->force_dark_mode_enabled = true;
+        break;
+      }
+    }
+  } else {
+    web_prefs->preferred_color_scheme = blink::PreferredColorScheme::kLight;
+    web_prefs->force_dark_mode_enabled = false;
+  }
 }
 
 bool BvSettings::GetAllowFileAccess() {
@@ -573,8 +564,8 @@ bool BvSettings::GetAllowFileAccess() {
 }
 
 static jlong JNI_BvSettings_Init(JNIEnv* env,
-                                    const JavaParamRef<jobject>& obj,
-                                    const JavaParamRef<jobject>& web_contents) {
+                                 const JavaParamRef<jobject>& obj,
+                                 const JavaParamRef<jobject>& web_contents) {
   content::WebContents* contents =
       content::WebContents::FromJavaWebContents(web_contents);
   BvSettings* settings = new BvSettings(env, obj, contents);

@@ -740,6 +740,12 @@ bool BvContents::AllowThirdPartyCookies() {
   return settings->GetAllowThirdPartyCookies();
 }
 
+void BvContents::OnViewTreeForceDarkStateChanged(
+    bool view_tree_force_dark_state) {
+  view_tree_force_dark_state_ = view_tree_force_dark_state;
+  web_contents_->NotifyPreferencesChanged();
+}
+
 base::android::ScopedJavaLocalRef<jbyteArray> BvContents::GetCertificate(
     JNIEnv* env,
     const JavaParamRef<jobject>& obj) {

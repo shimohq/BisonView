@@ -65,8 +65,6 @@ public class BvSettings {
    @ForceDarkBehavior
    private int mForceDarkBehavior = ForceDarkBehavior.PREFER_MEDIA_QUERY_OVER_FORCE_DARK;
 
-
-
     // This class must be created on the UI thread. Afterwards, it can be
     // used from any thread. Internally, the class uses a message queue
     // to call native code on the UI thread only.
@@ -1692,51 +1690,51 @@ public class BvSettings {
         }
     }
 
-//    @ForceDarkMode
-//    public int getForceDarkMode() {
-//        synchronized (mSettingsLock) {
-//            return getForceDarkModeLocked();
-//        }
-//    }
-//
-//    @CalledByNative
-//    @ForceDarkMode
-//    public int getForceDarkModeLocked() {
-//        assert Thread.holdsLock(mSettingsLock);
-//        return mForceDarkMode;
-//    }
-//
-//    public void setForceDarkMode(@ForceDarkMode int forceDarkMode) {
-//        synchronized (mSettingsLock) {
-//            if (mForceDarkMode != forceDarkMode) {
-//                mForceDarkMode = forceDarkMode;
-//                mEventHandler.updateWebkitPreferencesLocked();
-//            }
-//        }
-//    }
-//
-//    @ForceDarkBehavior
-//    public int getForceDarkBehavior() {
-//        synchronized (mSettingsLock) {
-//            return getForceDarkBehaviorLocked();
-//        }
-//    }
-//
-//    @CalledByNative
-//    @ForceDarkBehavior
-//    public int getForceDarkBehaviorLocked() {
-//        assert Thread.holdsLock(mSettingsLock);
-//        return mForceDarkBehavior;
-//    }
-//
-//    public void setForceDarkBehavior(@ForceDarkBehavior int forceDarkBehavior) {
-//        synchronized (mSettingsLock) {
-//            if (mForceDarkBehavior != forceDarkBehavior) {
-//                mForceDarkBehavior = forceDarkBehavior;
-//                mEventHandler.updateWebkitPreferencesLocked();
-//            }
-//        }
-//    }
+   @ForceDarkMode
+   public int getForceDarkMode() {
+       synchronized (mSettingsLock) {
+           return getForceDarkModeLocked();
+       }
+   }
+
+   @CalledByNative
+   @ForceDarkMode
+   public int getForceDarkModeLocked() {
+       assert Thread.holdsLock(mSettingsLock);
+       return mForceDarkMode;
+   }
+
+   public void setForceDarkMode(@ForceDarkMode int forceDarkMode) {
+       synchronized (mSettingsLock) {
+           if (mForceDarkMode != forceDarkMode) {
+               mForceDarkMode = forceDarkMode;
+               mEventHandler.updateWebkitPreferencesLocked();
+           }
+       }
+   }
+
+   @ForceDarkBehavior
+   public int getForceDarkBehavior() {
+       synchronized (mSettingsLock) {
+           return getForceDarkBehaviorLocked();
+       }
+   }
+
+   @CalledByNative
+   @ForceDarkBehavior
+   public int getForceDarkBehaviorLocked() {
+       assert Thread.holdsLock(mSettingsLock);
+       return mForceDarkBehavior;
+   }
+
+   public void setForceDarkBehavior(@ForceDarkBehavior int forceDarkBehavior) {
+       synchronized (mSettingsLock) {
+           if (mForceDarkBehavior != forceDarkBehavior) {
+               mForceDarkBehavior = forceDarkBehavior;
+               mEventHandler.updateWebkitPreferencesLocked();
+           }
+       }
+   }
 
     @CalledByNative
     private boolean getAllowRunningInsecureContentLocked() {

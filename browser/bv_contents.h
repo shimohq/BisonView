@@ -217,6 +217,9 @@ class BvContents : public FindHelper::Listener,
       const base::android::JavaParamRef<jobject>& obj,
       jint script_id);
 
+
+  bool GetViewTreeForceDarkState() { return view_tree_force_dark_state_; }
+
   // PermissionRequestHandlerClient implementation.
   void OnPermissionRequest(base::android::ScopedJavaLocalRef<jobject> j_request,
                            BvPermissionRequest* request) override;
@@ -274,6 +277,8 @@ class BvContents : public FindHelper::Listener,
   void OnWebLayoutContentsSizeChanged(const gfx::Size& contents_size) override;
 
   gfx::Point GetLocationOnScreen();
+  void OnViewTreeForceDarkStateChanged(
+      bool view_tree_force_dark_state);
 
   void ClearCache(JNIEnv* env,
                   jboolean include_disk_files);
@@ -325,6 +330,8 @@ class BvContents : public FindHelper::Listener,
   std::unique_ptr<PermissionRequestHandler> permission_request_handler_;
   std::unique_ptr<autofill::AutofillProvider> autofill_provider_;
   std::unique_ptr<js_injection::JsCommunicationHost> js_communication_host_;
+
+  bool view_tree_force_dark_state_ = false;
 
   // GURL is supplied by the content layer as requesting frame.
   // Callback is supplied by the content layer, and is invoked with the result
