@@ -26,7 +26,7 @@ android {
 ```
 
 ### 区分进程加载app模块
-BisonView在子进程中渲染网页,渲染进程是一个[isolatedProcess](https://developer.android.com/guide/topics/manifest/service-element),所以需要在Application中区分进程初始化模块:
+BisonView在子进程中渲染网页,渲染进程是一个[isolatedProcess](https://developer.android.com/guide/topics/manifest/service-element#isolated),所以需要在Application中区分进程初始化模块:
 ```
 if (BisonInitializer.isBrowserProcess()){
     // 初始化app需要的模块 例如:ARouter...
