@@ -417,7 +417,6 @@ void BvContentsClientBridge::OnReceivedHttpError(
     const BisonWebResourceRequest& request,
     std::unique_ptr<HttpErrorInfo> http_error_info) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
-  VLOG(0) << "OnReceivedHttpError";
   // JNIEnv* env = AttachCurrentThread();
   // ScopedJavaLocalRef<jobject> obj = java_ref_.get(env);
   // if (obj.is_null())

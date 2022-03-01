@@ -296,12 +296,28 @@ def BuildAar(archs, output_file, common_gn_args,
 
     if not isCommonArgsGetted :
       output_directory = _GetOutputDirectory(build_dir, arch)
-      with open(os.path.join(output_directory,AAR_CONFIG_FILE),'r') as f :
+      with open(os.path.join(output_directory , AAR_CONFIG_FILE),'r') as f :
         build_config = json.loads(f.read())
         jars = _ReadConfig(build_dir, arch , build_config,'deps_info', 'javac_full_classpath')
         dependencies_res_zips =_ReadConfig(build_dir, arch, build_config ,'deps_info', 'dependency_zips')
         r_text_files = _ReadConfig(build_dir, arch, build_config ,'deps_info', 'extra_r_text_files')
         proguard_configs = _ReadConfig(build_dir, arch, build_config ,'deps_info', 'proguard_all_configs')
+
+      print("=== R ===")
+      for rf in r_text_files:
+        if "android_deps" in rf:
+          print(rf)
+
+      print("=== Res ===")
+      for rf in dependencies_res_zips:
+        if "android_deps" in rf:
+          print(rf)
+
+      print("=== jar ===")
+      for rf in jars:
+        if "android_deps" in rf:
+          print(rf)
+
       isCommonArgsGetted = True
 
 
@@ -342,7 +358,17 @@ def BuildAar(archs, output_file, common_gn_args,
 def _GeneratePom(target_file, version,args):
   env = jinja2.Environment(loader=jinja2.PackageLoader('gen_aar'))
   template = env.get_template('pom.jinja')
-  pom = template.render(version=version,args=args)
+  deps = [
+    {
+      "groupId": "androidx.appcompat",
+      "artifactId": "appcompat",
+      "version" : "1.2.0",
+      "type" : "aar"
+    }
+  ]
+
+  pom = template.render(version=version,args=args ,deps = deps)
+  print (pom)
   with open(target_file, 'w') as fh:
     fh.write(pom)
 
@@ -350,7 +376,7 @@ def _GeneratePom(target_file, version,args):
 def publish(filename , verison , is_snapshot,common_gn_args):
   url = os.environ.get('SNAPSHOT_REPOSITORY_URL', None) if is_snapshot else os.environ.get('RELEASE_REPOSITORY_URL', None)
   pom_path = os.path.join(os.path.dirname(filename),os.path.splitext(os.path.basename(filename))[0]+'.pom')
-  _GeneratePom(pom_path,verison,common_gn_args)
+  _GeneratePom(pom_path, verison, common_gn_args)
   cmd = ['mvn']
   args = {
     "-DgroupId":GROUP_ID,
@@ -400,11 +426,12 @@ def main():
 
   base_name = ARTIFACT_ID + '-' + verison
 
-  output = os.path.join(args.build_dir,args.build_type, base_name+".aar")
+  output = os.path.join(args.build_dir, args.build_type, base_name+".aar")
   BuildAar(args.arch, output, common_gn_args,
            args.build_dir,args.build_type, args.extra_gn_switches, args.extra_ninja_switches)
   if args.publish:
-    publish(output, verison, args.snapshot,common_gn_args)
+    gn_args = common_gn_args if args.snapshot else None;
+    publish(output, verison, args.snapshot, common_gn_args)
 
 
 

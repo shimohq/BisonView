@@ -33,8 +33,7 @@ public class BisonResources {
                             resourceClass, GENERATED_RESOURCE_CLASS);
                     try {
                         generatedInnerClazz = appClassLoader.loadClass(generatedInnerClassName);
-                    } catch (ClassNotFoundException e) {
-                        Log.w(TAG, generatedInnerClassName + " is not found.");
+                    } catch (ClassNotFoundException ignore) {
                         continue;
                     }
                     Field[] fields = innerClazz.getFields();
@@ -44,15 +43,13 @@ public class BisonResources {
                         try {
                             int value = generatedInnerClazz.getField(field.getName()).getInt(null);
                             field.setInt(null, value);
-                            Log.d(TAG, "set " + innerClazz.getName() + " to " + generatedInnerClazz.getName() + "." + field.getName() + "=" + value);
                         } catch (IllegalAccessException | NoSuchFieldException | IllegalArgumentException ignore) {
 
                         }
                         if (Modifier.isFinal(field.getModifiers())) field.setAccessible(false);
                     }
                 }
-            } catch (ClassNotFoundException e) {
-                Log.w(TAG, resourceClass + " is not found.");
+            } catch (ClassNotFoundException ignore) {
             }
         }
     }

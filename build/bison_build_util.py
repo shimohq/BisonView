@@ -26,7 +26,7 @@ def AddAssets(aar_zip, deps_configs, arch_transform = None):
       outputs = config.get("deps_info").get("assets").get("outputs") or sources
       if arch_transform :
         sources = [arch_transform(v) for v in sources]
-      
+
       for source , output in zip(sources , outputs) :
         zip_path = os.path.join( "assets" , output)
         if zip_path in aar_zip.namelist():
@@ -79,6 +79,7 @@ def MergeRTxt(r_paths, include_globs):
       continue
     lines = []
     with open(r_path) as f:
+      print("will write r_path:" + r_path)
       for line in f.readlines():
          key = " ".join(line.split(' ')[:3])
          if key not in keys :

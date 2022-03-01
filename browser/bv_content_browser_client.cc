@@ -175,7 +175,6 @@ void BisonContentsMessageFilter::OnShouldOverrideUrlLoading(
     bool is_main_frame,
     bool* ignore_navigation) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
-  VLOG(0) << "OnShouldOverrideUrlLoading";
   *ignore_navigation = false;
   BvContentsClientBridge* client =
       BvContentsClientBridge::FromID(process_id_, render_frame_id);
@@ -289,7 +288,6 @@ void BvContentBrowserClient::ConfigureNetworkContextParams(
 
   bison_context->GetCookieManager()->SetMojoCookieManager(
       std::move(cookie_manager_remote));
-  VLOG(0) << "ConfigureNetworkContextParams";
 }
 
 BvBrowserContext* BvContentBrowserClient::InitBrowserContext() {
@@ -306,7 +304,6 @@ BvContentBrowserClient::CreateBrowserMainParts(
 WebContentsViewDelegate* BvContentBrowserClient::GetWebContentsViewDelegate(
     WebContents* web_contents) {
   // return CreateShellWebContentsViewDelegate(web_contents);
-  VLOG(0) << "GetWebContentsViewDelegate";
   return nullptr;
 }
 
@@ -539,16 +536,12 @@ void BvContentBrowserClient::GetAdditionalMappedFilesForChildProcess(
   base::MemoryMappedFile::Region region;
   int fd = ui::GetMainAndroidPackFd(&region);
   mappings->ShareWithRegion(kBisonViewMainPakDescriptor, fd, region);
-  VLOG(0) << "shared BisonViewMainPak " << fd;
 
   fd = ui::GetCommonResourcesPackFd(&region);
   mappings->ShareWithRegion(kBisonView100PercentPakDescriptor, fd, region);
-  VLOG(0) << "shared 100PercentPak " << fd;
 
   fd = ui::GetLocalePackFd(&region);
   mappings->ShareWithRegion(kBisonViewLocalePakDescriptor, fd, region);
-  VLOG(0) << "shared BisonViewLocalePak " << fd;
-
 }
 
 void BvContentBrowserClient::OverrideWebkitPrefs(
@@ -564,7 +557,6 @@ void BvContentBrowserClient::OverrideWebkitPrefs(
 std::vector<std::unique_ptr<content::NavigationThrottle>>
 BvContentBrowserClient::CreateThrottlesForNavigation(
     content::NavigationHandle* navigation_handle) {
-  VLOG(0) << "CreateThrottlesForNavigation";
   std::vector<std::unique_ptr<content::NavigationThrottle>> throttles;
   if (navigation_handle->IsInMainFrame()) {
     //jiang 这个好像可以不加

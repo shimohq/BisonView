@@ -2,7 +2,11 @@ package im.shimo.bison;
 
 import android.content.Context;
 
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+
 import androidx.annotation.Nullable;
+import androidx.annotation.IntDef;
 
 public abstract class BisonViewSettings {
     /**
@@ -1361,4 +1365,31 @@ public abstract class BisonViewSettings {
      * #setDisabledActionModeMenuItems}, these menu items will be disabled.
      */
     public static final int MENU_ITEM_PROCESS_TEXT = 1 << 2;
+
+
+
+    @Retention(RetentionPolicy.SOURCE)
+    @IntDef({DARK_STRATEGY_USER_AGENT_DARKENING_ONLY, DARK_STRATEGY_WEB_THEME_DARKENING_ONLY,DARK_STRATEGY_PREFER_WEB_THEME_OVER_USER_AGENT_DARKENING})
+    @interface ForceDarkBehavior {
+    }
+
+
+
+    /**
+     * implementation WebSettingsBoundaryInterface
+     */
+
+    public static final int DARK_STRATEGY_USER_AGENT_DARKENING_ONLY = 0;
+    public static final int DARK_STRATEGY_WEB_THEME_DARKENING_ONLY = 1;
+    public static final int DARK_STRATEGY_PREFER_WEB_THEME_OVER_USER_AGENT_DARKENING = 2;
+
+    public void setForceDarkBehavior(@ForceDarkBehavior int forceDarkBehavior){
+
+    }
+
+
+    @ForceDarkBehavior
+    public int getForceDarkBehavior(){
+        return DARK_STRATEGY_PREFER_WEB_THEME_OVER_USER_AGENT_DARKENING;
+    }
 }

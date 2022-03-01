@@ -55,7 +55,6 @@ void ContentViewRenderView::SetCurrentWebContents(
     JNIEnv* env,
     const JavaParamRef<jobject>& obj,
     const JavaParamRef<jobject>& jweb_contents) {
-  VLOG(0) << "setCurrentWebContents" ;
   InitCompositor();
   content::WebContents* web_contents =
       content::WebContents::FromJavaWebContents(jweb_contents);
@@ -73,14 +72,12 @@ void ContentViewRenderView::OnPhysicalBackingSizeChanged(
   content::WebContents* web_contents =
       content::WebContents::FromJavaWebContents(jweb_contents);
   gfx::Size size(width, height);
-  VLOG(0) << "OnPhysicalBackingSizeChanged width:" << size.width();
   web_contents->GetNativeView()->OnPhysicalBackingSizeChanged(size);
 }
 
 void ContentViewRenderView::SurfaceCreated(JNIEnv* env,
                                            const JavaParamRef<jobject>& obj) {
   current_surface_format_ = 0;
-  VLOG(0) << "OnSurfaceCreated -> InitCompostor()" ;
   InitCompositor();
 }
 
@@ -97,7 +94,6 @@ void ContentViewRenderView::SurfaceChanged(
     jint width,
     jint height,
     const JavaParamRef<jobject>& surface) {
-  VLOG(0) << "SurfaceChanged" ;
   if (current_surface_format_ != format) {
     current_surface_format_ = format;
     compositor_->SetSurface(surface, false /* backed_by_surface_texture */);
@@ -113,7 +109,6 @@ void ContentViewRenderView::SetOverlayVideoMode(
   compositor_->SetBackgroundColor(enabled ? SK_ColorTRANSPARENT
                                           : SK_ColorWHITE);
   compositor_->SetNeedsComposite();
-  VLOG(0) << "SetOverlayVideoMode" ;
 }
 
 void ContentViewRenderView::UpdateLayerTreeHost() {

@@ -295,8 +295,6 @@ int BvPermissionManager::RequestPermissions(
       continue;
 
     if (!delegate) {
-      DVLOG(0) << "Dropping permissions request for "
-               << static_cast<int>(permissions[i]);
       pending_request_raw->SetPermissionStatus(permissions[i],
                                                PermissionStatus::DENIED);
       continue;

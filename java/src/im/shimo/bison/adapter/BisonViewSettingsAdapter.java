@@ -522,7 +522,36 @@ public class BisonViewSettingsAdapter extends BisonViewSettings {
         return BisonViewSettings.FORCE_DARK_AUTO;
     }
 
+    @Override
+    public void setForceDarkBehavior(int forceDarkBehavior){
+        switch (forceDarkBehavior) {
+            case BisonViewSettings.DARK_STRATEGY_USER_AGENT_DARKENING_ONLY:
+                getBvSettings().setForceDarkBehavior(BvSettings.FORCE_DARK_ONLY);
+                break;
+            case BisonViewSettings.DARK_STRATEGY_WEB_THEME_DARKENING_ONLY:
+                getBvSettings().setForceDarkBehavior(BvSettings.MEDIA_QUERY_ONLY);
+                break;
+            case BisonViewSettings.DARK_STRATEGY_PREFER_WEB_THEME_OVER_USER_AGENT_DARKENING:
+                getBvSettings().setForceDarkBehavior(BvSettings.PREFER_MEDIA_QUERY_OVER_FORCE_DARK);
+                break;
+            default:
+                throw new IllegalArgumentException(
+                        "Force dark behavior is not one of FORCE_DARK_ONLY,MEDIA_QUERY_ONLY,PREFER_MEDIA_QUERY_OVER_FORCE_DARK");
+        }
+    }
 
+    @Override
+    public int getForceDarkBehavior(){
+        switch (getBvSettings().getForceDarkBehavior()) {
+            case BvSettings.FORCE_DARK_ONLY:
+                return BisonViewSettings.DARK_STRATEGY_USER_AGENT_DARKENING_ONLY;
+            case BvSettings.MEDIA_QUERY_ONLY:
+                return BisonViewSettings.DARK_STRATEGY_WEB_THEME_DARKENING_ONLY;
+            case BvSettings.PREFER_MEDIA_QUERY_OVER_FORCE_DARK:
+                return BisonViewSettings.DARK_STRATEGY_PREFER_WEB_THEME_OVER_USER_AGENT_DARKENING;
+        }
+        return BisonViewSettings.DARK_STRATEGY_PREFER_WEB_THEME_OVER_USER_AGENT_DARKENING;
+    }
 
 
 }

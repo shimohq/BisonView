@@ -186,7 +186,6 @@ void BvBrowserContext::RegisterPrefs(PrefRegistrySimple* registry) {
 }
 
 void BvBrowserContext::CreateUserPrefService() {
-  VLOG(0) << "CreateUserPrefService";
   auto pref_registry = base::MakeRefCounted<user_prefs::PrefRegistrySyncable>();
 
   RegisterPrefs(pref_registry.get());
@@ -220,7 +219,6 @@ void BvBrowserContext::CreateUserPrefService() {
   // }
 
   user_prefs::UserPrefs::Set(this, user_pref_service_.get());
-  VLOG(0) << "end CreateUserPrefService";
 }
 
 // static
@@ -363,7 +361,6 @@ void BvBrowserContext::ConfigureNetworkContextParams(
     const base::FilePath& relative_partition_path,
     network::mojom::NetworkContextParams* context_params,
     network::mojom::CertVerifierCreationParams* cert_verifier_creation_params) {
-  VLOG(0) << "ConfigureNetworkContextParams";
   DCHECK(context_params);
   context_params->user_agent = bison::GetUserAgent();
 

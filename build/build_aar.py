@@ -11,7 +11,7 @@
 #   * res/
 #   * R.txt
 #   * proguard.txt
-#   * assets/  暂时根据bison写的固定值
+#   * assets/
 # Does not yet support:
 #   * public.txt
 #   * annotations.zip
@@ -49,7 +49,6 @@ def main(args):
 
   build_utils.AddDepfileOption(parser)
   parser.add_argument('--output', required=True, help='Path to output aar.')
-  # parser.add_argument('--native-jars', required=True, help='GN list of jar inputs.')
   parser.add_argument('--jars', required=True, help='GN list of jar inputs.')
   parser.add_argument('--dependencies-res-zips', required=True,
                       help='GN list of resource zips')

@@ -304,7 +304,6 @@ BvContents::~BvContents() {
     base::MemoryPressureListener::NotifyMemoryPressure(
         base::MemoryPressureListener::MEMORY_PRESSURE_LEVEL_CRITICAL);
   }
-  VLOG(0) << "destroy native";
   Java_BvContents_onNativeDestroyed(env, obj);
   BvContentsLifecycleNotifier::GetInstance().OnWebViewDestroyed(this);
 }
