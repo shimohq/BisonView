@@ -5,6 +5,9 @@ import java.util.HashMap;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import org.chromium.base.annotations.JNINamespace;
+
+@JNINamespace("bison")
 public class BvWebResourceRequest {
     // Prefer using other constructors over this one.
     public BvWebResourceRequest() {
