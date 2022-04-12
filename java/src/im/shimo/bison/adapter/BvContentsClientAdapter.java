@@ -1,5 +1,6 @@
 package im.shimo.bison.adapter;
 
+import java.lang.ref.WeakReference;
 import java.lang.reflect.Method;
 import java.util.concurrent.Executor;
 
@@ -30,7 +31,7 @@ abstract class BvContentsClientAdapter extends BvContentsClient {
     protected final BisonView mBisonView;
     // The Context to use. This is different from mWebView.getContext(), which
     // should not be used.
-    protected final Context mContext;
+    protected final WeakReference<Context> mContextRef;
     // A reference to the current WebViewClient associated with this WebView.
     protected BisonViewClient mBisonViewClient = sNullBisonViewClient;
 
@@ -58,7 +59,7 @@ abstract class BvContentsClientAdapter extends BvContentsClient {
         }
 
         mBisonView = bisonView;
-        mContext = context;
+        mContextRef = new WeakReference<>(context);
     }
 
     public void setBisonViewClient(BisonViewClient client) {
@@ -127,8 +128,9 @@ abstract class BvContentsClientAdapter extends BvContentsClient {
     public final void onReceivedError(int errorCode, String description, String failingUrl) {
         try {
             TraceEvent.begin("WebViewContentsClientAdapter.onReceivedError");
+            if (mContextRef.get() == null) return;
             if (description == null || description.isEmpty()) {
-                description = getErrorString(mContext, errorCode);
+                description = getErrorString(mContextRef.get(), errorCode);
             }
             if (TRACE)
                 Log.i(TAG, "onReceivedError=" + failingUrl);
@@ -145,8 +147,9 @@ abstract class BvContentsClientAdapter extends BvContentsClient {
     public void onReceivedError2(BvWebResourceRequest request, BvWebResourceError error) {
         try {
             TraceEvent.begin("WebViewContentsClientAdapter.onReceivedError");
+            if (mContextRef.get() == null) return;
             if (error.description == null || error.description.isEmpty()) {
-                error.description = getErrorString(mContext, error.errorCode);
+                error.description = getErrorString(mContextRef.get(), error.errorCode);
             }
             mBisonViewClient.onReceivedError(mBisonView, new WebResourceRequestAdapter(request),
                     new WebResourceErrorAdapter(error));

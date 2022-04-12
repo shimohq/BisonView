@@ -523,7 +523,8 @@ public class BisonViewContentsClientAdapter extends BvContentsClientAdapter {
         // Note we must unwrap the Context here due to JsDialogHelper only using
         // instanceof to
         // check if a Context is an Activity.
-        Context activityContext = ContextUtils.activityFromContext(mContext);
+        if (mContextRef.get() == null) return false;
+        Context activityContext = ContextUtils.activityFromContext(mContextRef.get());
         if (activityContext == null) {
             Log.w(TAG, "Unable to create JsDialog without an Activity");
             return false;

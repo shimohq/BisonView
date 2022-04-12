@@ -63,9 +63,8 @@ public class BisonViewProvider {
 
     private BisonViewContentsClientAdapter mContentsClient;
     private BisonViewSettingsAdapter mSettings;
-    private BvContentsClientBridge mBvContentsClientBridge;
     private BvContents mBvContents;
-    private final InternalAccess mBisonViewInternalAccess;
+    private InternalAccess mBisonViewInternalAccess;
 
     private final HitTestResult mHitTestResult;
     private final BvRunQueue mFactory;
@@ -87,10 +86,10 @@ public class BisonViewProvider {
             bvSettings.setScrollTopLeftInteropEnabled(true);
         }
         mSettings = new BisonViewSettingsAdapter(bvSettings);
-        mBvContentsClientBridge = new BvContentsClientBridge(context, mContentsClient, new ClientCertLookupTable());
+        BvContentsClientBridge bvContentsClientBridge = new BvContentsClientBridge(context, mContentsClient, new ClientCertLookupTable());
 
         mBvContents = new BvContents(context, view, BisonInitializer.getInstance().getBrowserContext(),
-                new InternalAccessAdapter(), mBvContentsClientBridge, mContentsClient, bvSettings);
+                new InternalAccessAdapter(), bvContentsClientBridge, mContentsClient, bvSettings);
         BvContents.setShouldDownloadFavicons();
     }
 
@@ -171,6 +170,7 @@ public class BisonViewProvider {
         setDownloadListener(null);
         mBisonView = null;
         mBvContents.destroy();
+        mBisonViewInternalAccess = null;
         mContentsClient = null;
     }
 
@@ -1025,6 +1025,7 @@ public class BisonViewProvider {
     // onInitializeAccessibilityEvent
 
     public boolean performAccessibilityAction(final int action, final Bundle arguments) {
+        if (mBisonViewInternalAccess == null) return false;
         if (checkNeedsPost()) {
             boolean ret = mFactory.runOnUiThreadBlocking(new Callable<Boolean>() {
                 @Override
@@ -1100,6 +1101,7 @@ public class BisonViewProvider {
 
     public void setLayoutParams(final ViewGroup.LayoutParams layoutParams) {
         checkThread();
+        if (mBisonViewInternalAccess==null) return;
         mBisonViewInternalAccess.super_setLayoutParams(layoutParams);
         if (checkNeedsPost()) {
             mFactory.runVoidTaskOnUiThreadBlocking(new Runnable() {
@@ -1127,6 +1129,9 @@ public class BisonViewProvider {
     }
 
     public boolean performLongClick() {
+        if (mBisonView == null || mBisonViewInternalAccess == null ){
+            return false;
+        }
         return mBisonView.getParent() != null ? mBisonViewInternalAccess.super_performLongClick() : false;
     }
 
@@ -1291,7 +1296,8 @@ public class BisonViewProvider {
             });
             return;
         }
-        mBvContents.onContainerViewScrollChanged(l, t, oldl, oldt);
+
+        //mBvContents.onContainerViewScrollChanged(l, t, oldl, oldt);
     }
 
     public boolean dispatchKeyEvent(final KeyEvent event) {

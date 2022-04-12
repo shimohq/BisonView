@@ -10,12 +10,14 @@ import android.view.View;
 import android.widget.EdgeEffect;
 import androidx.annotation.RestrictTo;
 
+import java.lang.ref.WeakReference;
+
 /**
  * This class manages the edge glow effect when a BisonView is flung or pulled beyond the edges.
  */
 @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
 class OverScrollGlow {
-    private View mHostView;
+    private WeakReference<View> mHostViewRef;
 
     private EdgeEffect mEdgeGlowTop;
     private EdgeEffect mEdgeGlowBottom;
@@ -28,7 +30,7 @@ class OverScrollGlow {
     private boolean mShouldPull;
 
     public OverScrollGlow(Context context, View host) {
-        mHostView = host;
+        mHostViewRef = new WeakReference<>(host);
         mEdgeGlowTop = new EdgeEffect(context);
         mEdgeGlowBottom = new EdgeEffect(context);
         mEdgeGlowLeft = new EdgeEffect(context);
@@ -50,21 +52,21 @@ class OverScrollGlow {
      * @param maxY Maximum range for vertical scrolling
      */
     public void pullGlow(int x, int y, int oldX, int oldY, int maxX, int maxY) {
-        if (!mShouldPull) return;
+        if (!mShouldPull || mHostViewRef.get()==null) return;
         // Only show overscroll bars if there was no movement in any direction
         // as a result of scrolling.
-        if (oldX == mHostView.getScrollX() && oldY == mHostView.getScrollY()) {
+        if (oldX == mHostViewRef.get().getScrollX() && oldY == mHostViewRef.get().getScrollY()) {
             // Don't show left/right glows if we fit the whole content.
             // Also don't show if there was vertical movement.
             if (maxX > 0) {
                 final int pulledToX = oldX + mOverScrollDeltaX;
                 if (pulledToX < 0) {
-                    mEdgeGlowLeft.onPull((float) mOverScrollDeltaX / mHostView.getWidth());
+                    mEdgeGlowLeft.onPull((float) mOverScrollDeltaX / mHostViewRef.get().getWidth());
                     if (!mEdgeGlowRight.isFinished()) {
                         mEdgeGlowRight.onRelease();
                     }
                 } else if (pulledToX > maxX) {
-                    mEdgeGlowRight.onPull((float) mOverScrollDeltaX / mHostView.getWidth());
+                    mEdgeGlowRight.onPull((float) mOverScrollDeltaX / mHostViewRef.get().getWidth());
                     if (!mEdgeGlowLeft.isFinished()) {
                         mEdgeGlowLeft.onRelease();
                     }
@@ -72,15 +74,15 @@ class OverScrollGlow {
                 mOverScrollDeltaX = 0;
             }
 
-            if (maxY > 0 || mHostView.getOverScrollMode() == View.OVER_SCROLL_ALWAYS) {
+            if (maxY > 0 || mHostViewRef.get().getOverScrollMode() == View.OVER_SCROLL_ALWAYS) {
                 final int pulledToY = oldY + mOverScrollDeltaY;
                 if (pulledToY < 0) {
-                    mEdgeGlowTop.onPull((float) mOverScrollDeltaY / mHostView.getHeight());
+                    mEdgeGlowTop.onPull((float) mOverScrollDeltaY / mHostViewRef.get().getHeight());
                     if (!mEdgeGlowBottom.isFinished()) {
                         mEdgeGlowBottom.onRelease();
                     }
                 } else if (pulledToY > maxY) {
-                    mEdgeGlowBottom.onPull((float) mOverScrollDeltaY / mHostView.getHeight());
+                    mEdgeGlowBottom.onPull((float) mOverScrollDeltaY / mHostViewRef.get().getHeight());
                     if (!mEdgeGlowTop.isFinished()) {
                         mEdgeGlowTop.onRelease();
                     }
@@ -103,13 +105,13 @@ class OverScrollGlow {
      */
     public void absorbGlow(int x, int y, int oldX, int oldY, int rangeX, int rangeY,
             float currentFlingVelocity) {
-        if (mShouldPull) {
+        if (mShouldPull || mHostViewRef.get() ==null) {
             // Not absorb the glow because the user is pulling the glow now.
             // TODO(hush): crbug.com/501556. Do not use "mShouldPull" to switch
             // between absorbGlow and pullGlow. Use the velocity instead.
             return;
         }
-        if (rangeY > 0 || mHostView.getOverScrollMode() == View.OVER_SCROLL_ALWAYS) {
+        if (rangeY > 0 || mHostViewRef.get().getOverScrollMode() == View.OVER_SCROLL_ALWAYS) {
             if (y < 0 && oldY >= 0) {
                 mEdgeGlowTop.onAbsorb((int) currentFlingVelocity);
                 if (!mEdgeGlowBottom.isFinished()) {
@@ -158,10 +160,11 @@ class OverScrollGlow {
      * @return true if glow effects are still animating and the view should invalidate again.
      */
     public boolean drawEdgeGlows(Canvas canvas, int maxScrollX, int maxScrollY) {
-        final int scrollX = mHostView.getScrollX();
-        final int scrollY = mHostView.getScrollY();
-        final int width = mHostView.getWidth();
-        int height = mHostView.getHeight();
+        if (mHostViewRef.get() ==null ) return false;
+        final int scrollX = mHostViewRef.get().getScrollX();
+        final int scrollY = mHostViewRef.get().getScrollY();
+        final int width = mHostViewRef.get().getWidth();
+        int height = mHostViewRef.get().getHeight();
 
         boolean invalidateForGlow = false;
         if (!mEdgeGlowTop.isFinished()) {

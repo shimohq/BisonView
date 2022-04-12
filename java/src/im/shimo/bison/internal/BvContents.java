@@ -195,7 +195,7 @@ public class BvContents implements SmartClipProvider {
     private NavigationController mNavigationController;
     private BvContentsClient mContentsClient;
     private BvWebContentsObserver mWebContentsObserver;
-    private final BvContentsClientBridge mBisonContentsClientBridge;
+    private BvContentsClientBridge mBisonContentsClientBridge;
     private BvWebContentsDelegate mWebContentsDelegate;
     private final BvContentsBackgroundThreadClient mBackgroundThreadClient;
     private final BvContentsIoThreadClient mIoThreadClient;
@@ -748,6 +748,13 @@ public class BvContents implements SmartClipProvider {
         }
         if (mWebContentsDelegate != null){
             mWebContentsDelegate = null;
+        }
+        if (mBisonContentsClientBridge != null){
+            mBisonContentsClientBridge = null;
+        }
+        if (mViewAndroidDelegate != null ){
+            mViewAndroidDelegate.setContainerView(null);
+            mViewAndroidDelegate = null;
         }
 
         assert mWebContents == null;
