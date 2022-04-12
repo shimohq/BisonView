@@ -1,5 +1,6 @@
 package im.shimo.bison.internal;
 
+import java.lang.ref.WeakReference;
 import java.security.Principal;
 import java.security.PrivateKey;
 import java.security.cert.CertificateEncodingException;
@@ -29,7 +30,7 @@ public class BvContentsClientBridge {
     private static final String TAG = "BisonContentsClientBrid";
 
     private BvContentsClient mClient;
-    private Context mContext;
+    private WeakReference<Context> mContextRef;
     // The native peer of this object.
     private long mNativeContentsClientBridge;
 
@@ -43,7 +44,7 @@ public class BvContentsClientBridge {
     public BvContentsClientBridge(Context context, BvContentsClient client,
             ClientCertLookupTable table) {
         assert client != null;
-        mContext = context;
+        mContextRef = new WeakReference<>(context);
         mClient = client;
         mLookupTable = table;
     }
@@ -289,8 +290,9 @@ public class BvContentsClientBridge {
     @CalledByNativeUnchecked
     private boolean shouldOverrideUrlLoading(String url, boolean hasUserGesture,
                                              boolean isRedirect, boolean isMainFrame) {
+        if (mContextRef.get() == null) return false;
         return mClient.shouldIgnoreNavigation(
-                mContext, url, isMainFrame, hasUserGesture, isRedirect);
+            mContextRef.get(), url, isMainFrame, hasUserGesture, isRedirect);
     }
 
   void confirmJsResult(int id, String prompt) {

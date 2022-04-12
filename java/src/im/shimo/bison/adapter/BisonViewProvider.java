@@ -169,8 +169,9 @@ public class BisonViewProvider {
         setBisonViewClient(null);
         setFindListener(null);
         setDownloadListener(null);
-
+        mBisonView = null;
         mBvContents.destroy();
+        mContentsClient = null;
     }
 
     public void setNetworkAvailable(final boolean networkUp) {

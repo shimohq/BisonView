@@ -52,7 +52,7 @@ abstract class BvContentsClientAdapter extends BvContentsClient {
             throw new IllegalArgumentException("context can't be null.");
         }
         try {
-            mGetStringMethod = Class.forName("android.net.http.ErrorStrings").getMethod("getString", int.class,
+            mGetStringMethod = Class.forName("android.webkit.LegacyErrorStrings").getMethod("getString", int.class,
                     Context.class);
         } catch (Exception ignore) {
         }

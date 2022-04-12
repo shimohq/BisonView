@@ -186,14 +186,14 @@ public class BvContents implements SmartClipProvider {
     private long mNativeBvContents;
     private BvBrowserContext mBrowserContext;
     private ViewGroup mContainerView;
-    private final Context mContext;
+    private Context mContext;
     private BisonViewAndroidDelegate mViewAndroidDelegate;
     private WindowAndroidWrapper mWindowAndroid;
     private WebContents mWebContents;
     private ViewEventSink mViewEventSink;
     private WebContentsInternalsHolder mWebContentsInternalsHolder;
     private NavigationController mNavigationController;
-    private final BvContentsClient mContentsClient;
+    private BvContentsClient mContentsClient;
     private BvWebContentsObserver mWebContentsObserver;
     private final BvContentsClientBridge mBisonContentsClientBridge;
     private BvWebContentsDelegate mWebContentsDelegate;
@@ -258,7 +258,7 @@ public class BvContents implements SmartClipProvider {
         public void set(WebContentsInternals internals) {
             BvContents bvContents = mBisonContentsRef.get();
             if (bvContents == null) {
-                throw new IllegalStateException("AwContents should be available at this time");
+                throw new IllegalStateException("BvContents should be available at this time");
             }
             bvContents.mWebContentsInternals = internals;
         }
@@ -708,6 +708,10 @@ public class BvContents implements SmartClipProvider {
             mContentViewRenderView.destroy();
             mContentViewRenderView = null;
         }
+        mWebContents.setTopLevelNativeWindow(null);
+        if (mAutofillClient != null){
+            mAutofillClient =null;
+        }
 
         // Remove pending messages
         mContentsClient.getCallbackHelper().removeCallbacksAndMessages();
@@ -732,6 +736,18 @@ public class BvContents implements SmartClipProvider {
 
             mCleanupReference.cleanupNow();
             mCleanupReference = null;
+        }
+        if (mContentsClient != null){
+            mContentsClient = null;
+        }
+        if (mContext != null){
+            mContext = null;
+        }
+        if (mContainerView != null){
+            mContainerView = null;
+        }
+        if (mWebContentsDelegate != null){
+            mWebContentsDelegate = null;
         }
 
         assert mWebContents == null;
