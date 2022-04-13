@@ -28,11 +28,13 @@ namespace bison {
 ContentViewRenderView::ContentViewRenderView(JNIEnv* env,
                                              jobject obj,
                                              gfx::NativeWindow root_window)
-    : root_window_(root_window), current_surface_format_(0) {
+    : root_window_(root_window) {
   java_obj_.Reset(env, obj);
 }
 
-ContentViewRenderView::~ContentViewRenderView() {}
+ContentViewRenderView::~ContentViewRenderView() {
+
+}
 
 // static
 static jlong JNI_ContentViewRenderView_Init(
@@ -46,14 +48,12 @@ static jlong JNI_ContentViewRenderView_Init(
   return reinterpret_cast<intptr_t>(content_view_render_view);
 }
 
-void ContentViewRenderView::Destroy(JNIEnv* env,
-                                    const JavaParamRef<jobject>& obj) {
+void ContentViewRenderView::Destroy(JNIEnv* env) {
   delete this;
 }
 
 void ContentViewRenderView::SetCurrentWebContents(
     JNIEnv* env,
-    const JavaParamRef<jobject>& obj,
     const JavaParamRef<jobject>& jweb_contents) {
   InitCompositor();
   content::WebContents* web_contents =
@@ -65,7 +65,6 @@ void ContentViewRenderView::SetCurrentWebContents(
 
 void ContentViewRenderView::OnPhysicalBackingSizeChanged(
     JNIEnv* env,
-    const JavaParamRef<jobject>& obj,
     const JavaParamRef<jobject>& jweb_contents,
     jint width,
     jint height) {
@@ -75,40 +74,35 @@ void ContentViewRenderView::OnPhysicalBackingSizeChanged(
   web_contents->GetNativeView()->OnPhysicalBackingSizeChanged(size);
 }
 
-void ContentViewRenderView::SurfaceCreated(JNIEnv* env,
-                                           const JavaParamRef<jobject>& obj) {
-  current_surface_format_ = 0;
+void ContentViewRenderView::SurfaceCreated(JNIEnv* env) {
   InitCompositor();
+  current_surface_format_ = 0;
 }
 
 void ContentViewRenderView::SurfaceDestroyed(JNIEnv* env,
-                                             const JavaParamRef<jobject>& obj) {
+                                             jboolean cache_back_buffer) {
+  if (cache_back_buffer)
+    compositor_->CacheBackBufferForCurrentSurface();
   compositor_->SetSurface(nullptr, false);
   current_surface_format_ = 0;
 }
 
 void ContentViewRenderView::SurfaceChanged(
     JNIEnv* env,
-    const JavaParamRef<jobject>& obj,
+    jboolean can_be_used_with_surface_control,
     jint format,
     jint width,
     jint height,
     const JavaParamRef<jobject>& surface) {
   if (current_surface_format_ != format) {
     current_surface_format_ = format;
-    compositor_->SetSurface(surface, false /* backed_by_surface_texture */);
+    compositor_->SetSurface(surface, can_be_used_with_surface_control);
   }
   compositor_->SetWindowBounds(gfx::Size(width, height));
 }
 
-void ContentViewRenderView::SetOverlayVideoMode(
-    JNIEnv* env,
-    const JavaParamRef<jobject>& obj,
-    bool enabled) {
-  compositor_->SetRequiresAlphaChannel(enabled);
-  compositor_->SetBackgroundColor(enabled ? SK_ColorTRANSPARENT
-                                          : SK_ColorWHITE);
-  compositor_->SetNeedsComposite();
+void ContentViewRenderView::SetNeedsRedraw(JNIEnv* env) {
+  compositor_->SetNeedsRedraw();
 }
 
 void ContentViewRenderView::UpdateLayerTreeHost() {
@@ -118,7 +112,20 @@ void ContentViewRenderView::UpdateLayerTreeHost() {
 
 void ContentViewRenderView::DidSwapFrame(int pending_frames) {
   JNIEnv* env = base::android::AttachCurrentThread();
-  Java_ContentViewRenderView_didSwapFrame(env, java_obj_);
+  if (Java_ContentViewRenderView_didSwapFrame(env, java_obj_)) {
+    compositor_->SetNeedsRedraw();
+  }
+}
+
+void ContentViewRenderView::DidSwapBuffers(const gfx::Size& swap_size) {
+  JNIEnv* env = base::android::AttachCurrentThread();
+  bool matches_window_bounds = swap_size == compositor_->GetWindowBounds();
+  Java_ContentViewRenderView_didSwapBuffers(env, java_obj_,
+                                            matches_window_bounds);
+}
+
+void ContentViewRenderView::EvictCachedSurface(JNIEnv* env) {
+  compositor_->EvictCachedBackBuffer();
 }
 
 void ContentViewRenderView::InitCompositor() {

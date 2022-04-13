@@ -48,8 +48,9 @@ MANIFEST_FILE = 'gen/bison/bison_aar_manifest/AndroidManifest.xml'
 AAR_CONFIG_FILE = os.path.join('gen',TARGET.replace(':','/'))+ ".build_config"
 
 jar_excluded_patterns = [
-  "im/shimo/bison/R\$*.class",
+  "im/shimo/bison/R$*.class",
   "im/shimo/bison/R.class",
+  "gen/_bison/*",
 
   "android/support/*",
   "*/third_party/android_deps/*",
@@ -219,11 +220,9 @@ def MergeZips(output, input_zips, path_transform=None, compress=None):
 
           if "J/N.class" in dst_name and not already_added:
             already_added = not "bison" in in_file
-            # if not already_added:
-            #   print("already_added:",already_added,dst_name,in_file)
+          if not already_added and "R.class" in dst_name:
+            print("already_added:",already_added,dst_name,in_file)
 
-          # if "properties" in dst_name :
-          #   print("merge :" +dst_name)
           if not already_added:
             # print("merge :" +dst_name)
             if compress is not None:
@@ -305,7 +304,6 @@ def BuildAar(archs, output_file, common_gn_args,
 
       print("=== R ===")
       for rf in r_text_files:
-        if "android_deps" in rf:
           print(rf)
 
       print("=== Res ===")
@@ -316,6 +314,8 @@ def BuildAar(archs, output_file, common_gn_args,
       print("=== jar ===")
       for rf in jars:
         if "android_deps" in rf:
+          print(rf)
+        if "bison" in rf:
           print(rf)
 
       isCommonArgsGetted = True

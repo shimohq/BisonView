@@ -27,6 +27,16 @@ import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
 import android.view.textclassifier.TextClassifier;
 
+import org.chromium.base.ThreadUtils;
+import org.chromium.base.task.PostTask;
+import org.chromium.content_public.browser.NavigationHistory;
+import org.chromium.content_public.browser.UiThreadTaskTraits;
+import org.chromium.url.GURL;
+
+import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.Executor;
+
 import im.shimo.bison.BisonInitializer;
 import im.shimo.bison.BisonView;
 import im.shimo.bison.BisonView.HitTestResult;
@@ -49,16 +59,6 @@ import im.shimo.bison.internal.BvSettings;
 import im.shimo.bison.internal.ClientCertLookupTable;
 import im.shimo.bison.internal.ScriptReference;
 
-import org.chromium.base.ThreadUtils;
-import org.chromium.base.task.PostTask;
-import org.chromium.content_public.browser.NavigationHistory;
-import org.chromium.content_public.browser.UiThreadTaskTraits;
-import org.chromium.url.GURL;
-
-import java.util.Map;
-import java.util.concurrent.Callable;
-import java.util.concurrent.Executor;
-
 public class BisonViewProvider {
 
     private BisonViewContentsClientAdapter mContentsClient;
@@ -70,7 +70,7 @@ public class BisonViewProvider {
     private final BvRunQueue mFactory;
     private BisonView mBisonView;
 
-    public BisonViewProvider(BisonView view, InternalAccess internalAccess) {
+    public BisonViewProvider(BisonView view, int webContentsRenderView, InternalAccess internalAccess) {
         this.mBisonView = view;
         BisonInitializer.getInstance().ensureStarted();
         mFactory = BisonInitializer.getInstance().getRunQueue();
@@ -89,7 +89,7 @@ public class BisonViewProvider {
         BvContentsClientBridge bvContentsClientBridge = new BvContentsClientBridge(context, mContentsClient, new ClientCertLookupTable());
 
         mBvContents = new BvContents(context, view, BisonInitializer.getInstance().getBrowserContext(),
-                new InternalAccessAdapter(), bvContentsClientBridge, mContentsClient, bvSettings);
+                new InternalAccessAdapter(), bvContentsClientBridge, mContentsClient, bvSettings, webContentsRenderView);
         BvContents.setShouldDownloadFavicons();
     }
 
@@ -308,7 +308,7 @@ public class BisonViewProvider {
     }
 
     public void saveWebArchive(final String basename, final boolean autoname,
-            final ValueCallback<String> valueCallback) {
+                               final ValueCallback<String> valueCallback) {
         if (checkNeedsPost()) {
             mFactory.addTask(new Runnable() {
                 @Override
@@ -1038,7 +1038,7 @@ public class BisonViewProvider {
         if (mBvContents.supportsAccessibilityAction(action)) {
             return mBvContents.performAccessibilityAction(action, arguments);
         }
-        return mBisonViewInternalAccess.super_performAccessibilityAction(action,arguments);
+        return mBisonViewInternalAccess.super_performAccessibilityAction(action, arguments);
     }
 
     public void setOverScrollMode(final int mode) {
@@ -1101,7 +1101,7 @@ public class BisonViewProvider {
 
     public void setLayoutParams(final ViewGroup.LayoutParams layoutParams) {
         checkThread();
-        if (mBisonViewInternalAccess==null) return;
+        if (mBisonViewInternalAccess == null) return;
         mBisonViewInternalAccess.super_setLayoutParams(layoutParams);
         if (checkNeedsPost()) {
             mFactory.runVoidTaskOnUiThreadBlocking(new Runnable() {
@@ -1129,7 +1129,7 @@ public class BisonViewProvider {
     }
 
     public boolean performLongClick() {
-        if (mBisonView == null || mBisonViewInternalAccess == null ){
+        if (mBisonView == null || mBisonViewInternalAccess == null) {
             return false;
         }
         return mBisonView.getParent() != null ? mBisonViewInternalAccess.super_performLongClick() : false;
@@ -1441,11 +1441,11 @@ public class BisonViewProvider {
     }
 
     public void scrollBy(int x, int y) {
-        mBvContents.scrollBy(x,y);
+        mBvContents.scrollBy(x, y);
     }
 
     public void scrollTo(int x, int y) {
-        mBvContents.scrollTo(x , y);
+        mBvContents.scrollTo(x, y);
     }
 
     public int computeHorizontalScrollRange() {
@@ -1474,7 +1474,7 @@ public class BisonViewProvider {
         return mBvContents.computeHorizontalScrollOffset();
     }
 
-    public int computeHorizontalScrollExtent(){
+    public int computeHorizontalScrollExtent() {
         if (checkNeedsPost()) {
             int ret = mFactory.runOnUiThreadBlocking(new Callable<Integer>() {
                 @Override
@@ -1544,6 +1544,14 @@ public class BisonViewProvider {
         return new BisonViewPrintDocumentAdapter(mBvContents.getPdfExporter(), documentName);
     }
 
+    public void setWebContentsRenderView(int renderView) {
+        if (checkNeedsPost()) {
+            mFactory.runVoidTaskOnUiThreadBlocking(() -> setWebContentsRenderView(renderView));
+            return;
+        }
+        mBvContents.setWebContentsRenderView(renderView);
+    }
+
     private class InternalAccessAdapter implements BvContents.InternalAccessDelegate {
 
         @Override
@@ -1570,7 +1578,7 @@ public class BisonViewProvider {
 
         @Override
         public void overScrollBy(int deltaX, int deltaY, int scrollX, int scrollY, int scrollRangeX, int scrollRangeY,
-                int maxOverScrollX, int maxOverScrollY, boolean isTouchEvent) {
+                                 int maxOverScrollX, int maxOverScrollY, boolean isTouchEvent) {
             mBisonViewInternalAccess.overScrollBy(deltaX, deltaY, scrollX, scrollY, scrollRangeX, scrollRangeY,
                     maxOverScrollX, maxOverScrollY, isTouchEvent);
 

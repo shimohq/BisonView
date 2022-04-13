@@ -75,6 +75,15 @@ jinja_template("bison_aar_manifest") {
   output = bison_aar_manifest_xml
 }
 
+
+android_resources("bison_aar_resources") {
+  sources = [
+    "java/res/values/bison_view_attrs.xml",
+  ]
+  android_manifest = bison_aar_manifest_xml
+  android_manifest_dep = ":bison_aar_manifest"
+}
+
 generate_jni("bison_jni_headers") {
   sources = [
     "java/src/im/shimo/bison/ContentViewRenderView.java",
@@ -233,6 +242,7 @@ android_library("bison_java") {
   ]
 
   deps = [
+    ":bison_aar_resources",
     ":bison_view_product_config_java",
     "//base:base_java",
     "//base:jni_java",

@@ -2,15 +2,14 @@ package im.shimo.bison;
 
 import static androidx.annotation.RestrictTo.Scope.LIBRARY_GROUP;
 
-import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.Configuration;
+import android.content.res.TypedArray;
 import android.graphics.Bitmap;
 import android.graphics.Picture;
 import android.graphics.Rect;
 import android.net.http.SslCertificate;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Message;
 import android.print.PrintDocumentAdapter;
@@ -25,17 +24,29 @@ import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
 import android.widget.FrameLayout;
 
-import im.shimo.bison.adapter.BisonViewProvider;
-import im.shimo.bison.internal.BvDevToolsServer;
-
-import java.util.Map;
-import java.util.concurrent.Executor;
-
+import androidx.annotation.IntDef;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RestrictTo;
 
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.util.Map;
+import java.util.concurrent.Executor;
+
+import im.shimo.bison.adapter.BisonViewProvider;
+import im.shimo.bison.internal.BvDevToolsServer;
+import im.shimo.bison.R;
+
 public class BisonView extends FrameLayout {
+
+    @Retention(RetentionPolicy.SOURCE)
+    @IntDef({MODE_SURFACE_VIEW, MODE_SURFACE_VIEW})
+    public @interface WebContentsRenderView {
+    }
+
+    public static final int MODE_SURFACE_VIEW = 0;
+    public static final int MODE_TEXTURE_VIEW = 1;
 
     private static BvDevToolsServer gBvDevToolsServer;
 
@@ -45,23 +56,29 @@ public class BisonView extends FrameLayout {
 
     protected BisonViewProvider mProvider;
 
+    @WebContentsRenderView
+    private int mWebContentsRenderView;
+
     public BisonView(Context context) {
         super(context);
-        initialize(context);
+        initialize(context, null);
     }
 
-    public BisonView(Context context, AttributeSet attrs) {
+    public BisonView(Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
-        initialize(context);
+        initialize(context, attrs);
     }
 
     public BisonView(@NonNull Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
-        initialize(context);
+        initialize(context, attrs);
     }
 
-    private void initialize(Context context) {
-        mProvider = new BisonViewProvider(this, new InternalAccess());
+    private void initialize(Context context, @Nullable AttributeSet attrs) {
+        TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.BisonView);
+        mWebContentsRenderView = a.getInt(R.styleable.BisonView_webContentsRenderView, 0);
+        a.recycle();
+        mProvider = new BisonViewProvider(this, mWebContentsRenderView, new InternalAccess());
         setOverScrollMode(View.OVER_SCROLL_ALWAYS);
         setFocusable(true);
         setFocusableInTouchMode(true);
@@ -376,8 +393,8 @@ public class BisonView extends FrameLayout {
      *
      * @param find the string to find
      * @return the number of occurrences of the String "find" that were found
-     * @deprecated {@link #findAllAsync} is preferred.
      * @see #setFindListener
+     * @deprecated {@link #findAllAsync} is preferred.
      */
     public int findAll(String searchString) {
         findAllAsync(searchString);
@@ -467,6 +484,13 @@ public class BisonView extends FrameLayout {
         mProvider.setBackgroundColor(color);
     }
 
+    public void setWebContentsRenderView(@WebContentsRenderView int renderView) {
+        if (mWebContentsRenderView == renderView) return;
+        mWebContentsRenderView = renderView;
+        mProvider.setWebContentsRenderView(renderView);
+    }
+
+
     // findFocus
     @Override
     public boolean onCheckIsTextEditor() {
@@ -518,12 +542,12 @@ public class BisonView extends FrameLayout {
 
     @Override
     public void scrollBy(int x, int y) {
-        mProvider.scrollBy(x,y);
+        mProvider.scrollBy(x, y);
     }
 
     @Override
     public void scrollTo(int x, int y) {
-        mProvider.scrollTo(x,y);
+        mProvider.scrollTo(x, y);
     }
 
 
@@ -682,6 +706,7 @@ public class BisonView extends FrameLayout {
         return mProvider.onDragEvent(event);
     }
 
+
     public static void setRemoteDebuggingEnabled(boolean enable) {
         if (gBvDevToolsServer == null) {
             if (!enable)
@@ -723,7 +748,7 @@ public class BisonView extends FrameLayout {
         }
 
         public void overScrollBy(int deltaX, int deltaY, int scrollX, int scrollY, int scrollRangeX, int scrollRangeY,
-                int maxOverScrollX, int maxOverScrollY, boolean isTouchEvent) {
+                                 int maxOverScrollX, int maxOverScrollY, boolean isTouchEvent) {
             // We're intentionally not calling super.scrollTo here to make testing easier.
             BisonView.this.overScrollBy(deltaX, deltaY, scrollX, scrollY, scrollRangeX, scrollRangeY, maxOverScrollX,
                     maxOverScrollY, isTouchEvent);
@@ -875,7 +900,7 @@ public class BisonView extends FrameLayout {
          * @param contentLength      The file size reported by the server
          */
         public void onDownloadStart(String url, String userAgent, String contentDisposition, String mimetype,
-                long contentLength);
+                                    long contentLength);
 
     }
 

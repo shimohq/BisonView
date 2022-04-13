@@ -33,10 +33,9 @@ import android.view.inputmethod.InputConnection;
 import android.view.textclassifier.TextClassifier;
 import android.webkit.JavascriptInterface;
 
-import im.shimo.bison.BisonViewAndroidDelegate;
-import im.shimo.bison.BvGeolocationCallback;
-import im.shimo.bison.CleanupReference;
-import im.shimo.bison.ContentViewRenderView;
+import androidx.annotation.NonNull;
+import androidx.annotation.RestrictTo;
+import androidx.annotation.VisibleForTesting;
 
 import org.chromium.base.Callback;
 import org.chromium.base.ContextUtils;
@@ -74,8 +73,6 @@ import org.chromium.content_public.browser.navigation_controller.LoadURLType;
 import org.chromium.content_public.browser.navigation_controller.UserAgentOverrideOption;
 import org.chromium.content_public.common.ContentUrlConstants;
 import org.chromium.content_public.common.Referrer;
-import org.chromium.content_public.common.UseZoomForDSFPolicy;
-import org.chromium.device.gamepad.GamepadList;
 import org.chromium.net.NetworkChangeNotifier;
 import org.chromium.network.mojom.ReferrerPolicy;
 import org.chromium.ui.base.ActivityWindowAndroid;
@@ -97,9 +94,10 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Pattern;
 
-import androidx.annotation.NonNull;
-import androidx.annotation.RestrictTo;
-import androidx.annotation.VisibleForTesting;
+import im.shimo.bison.BisonViewAndroidDelegate;
+import im.shimo.bison.BvGeolocationCallback;
+import im.shimo.bison.CleanupReference;
+import im.shimo.bison.ContentViewRenderView;
 
 @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
 @JNINamespace("bison")
@@ -141,7 +139,7 @@ public class BvContents implements SmartClipProvider {
          * @see View#overScrollBy(int, int, int, int, int, int, int, int, boolean);
          */
         void overScrollBy(int deltaX, int deltaY, int scrollX, int scrollY, int scrollRangeX, int scrollRangeY,
-                int maxOverScrollX, int maxOverScrollY, boolean isTouchEvent);
+                          int maxOverScrollX, int maxOverScrollY, boolean isTouchEvent);
 
         /**
          * @see View#scrollTo(int, int)
@@ -171,7 +169,6 @@ public class BvContents implements SmartClipProvider {
 
     /**
      * Visual state callback, see {@link #insertVisualStateCallback} for details.
-     *
      */
     @VisibleForTesting
     public abstract static class VisualStateCallback {
@@ -215,7 +212,8 @@ public class BvContents implements SmartClipProvider {
     private boolean mIsUpdateVisibilityTaskPending;
     private Runnable mUpdateVisibilityRunnable;
 
-    private @RendererPriority int mRendererPriority;
+    private @RendererPriority
+    int mRendererPriority;
     private boolean mRendererPriorityWaivedWhenNotVisible;
 
     private Bitmap mFavicon;
@@ -418,7 +416,7 @@ public class BvContents implements SmartClipProvider {
     private class BvScrollOffsetManagerDelegate implements BvScrollOffsetManager.Delegate {
         @Override
         public void overScrollContainerViewBy(int deltaX, int deltaY, int scrollX, int scrollY, int scrollRangeX,
-                int scrollRangeY, boolean isTouchEvent) {
+                                              int scrollRangeY, boolean isTouchEvent) {
             mInternalAccessAdapter.overScrollBy(deltaX, deltaY, scrollX, scrollY, scrollRangeX, scrollRangeY, 0, 0,
                     isTouchEvent);
         }
@@ -476,7 +474,9 @@ public class BvContents implements SmartClipProvider {
         public void onConfigurationChanged(Configuration configuration) {
             updateDefaultLocale();
         }
-    };
+    }
+
+    ;
 
     // --------------------------------------------------------------------------------------------
     private class BisonDisplayAndroidObserver implements DisplayAndroidObserver {
@@ -497,8 +497,8 @@ public class BvContents implements SmartClipProvider {
 
     // --------------------------------------------------------------------------------------------
     public BvContents(Context context, ViewGroup containerView, BvBrowserContext bvBrowserContext,
-            InternalAccessDelegate internalAccessAdapter, BvContentsClientBridge bvContentsClientBridge,
-            BvContentsClient bvContentsClient, BvSettings settings) {
+                      InternalAccessDelegate internalAccessAdapter, BvContentsClientBridge bvContentsClientBridge,
+                      BvContentsClient bvContentsClient, BvSettings settings, int webContentsRenderView) {
         mRendererPriority = RendererPriority.HIGH;
         mSettings = settings;
         updateDefaultLocale();
@@ -526,7 +526,7 @@ public class BvContents implements SmartClipProvider {
         mWebContentsDelegate = new BvWebContentsDelegate(context, this, mContentsClient, mSettings, mContainerView);
         mDisplayObserver = new BisonDisplayAndroidObserver();
         initWebContents(mViewAndroidDelegate, mInternalAccessAdapter, mWebContents, mWindowAndroid.getWindowAndroid(),
-                mWebContentsInternalsHolder);
+                mWebContentsInternalsHolder, webContentsRenderView);
         BvContentsJni.get().setJavaPeers(mNativeBvContents, mWebContentsDelegate, mBisonContentsClientBridge,
                 mIoThreadClient, mInterceptNavigationDelegate, mAutofillProvider);
 
@@ -537,23 +537,24 @@ public class BvContents implements SmartClipProvider {
 
         mScrollOffsetManager = new BvScrollOffsetManager(new BvScrollOffsetManagerDelegate());
 
-        mUpdateVisibilityRunnable = () -> updateWebContentsVisibility();
+        mUpdateVisibilityRunnable = this::updateWebContentsVisibility;
         mCleanupReference = new CleanupReference(this,
                 new BisonContentsDestroyRunnable(mNativeBvContents, mWindowAndroid));
 
     }
 
     private void initWebContents(ViewAndroidDelegate viewDelegate, InternalAccessDelegate internalDispatcher,
-            WebContents webContents, WindowAndroid windowAndroid, WebContentsInternalsHolder internalsHolder) {
+                                 WebContents webContents, WindowAndroid windowAndroid,
+                                 WebContentsInternalsHolder internalsHolder, int webContentsRenderView) {
         mContentViewRenderView = new ContentViewRenderView(mContext);
-        mContentViewRenderView.onNativeLibraryLoaded(windowAndroid);
+        mContentViewRenderView.onNativeLibraryLoaded(windowAndroid, webContentsRenderView);
         // mWindowAndroid.getWindowAndroid().setAnimationPlaceholderView(mContentViewRenderView.getSurfaceView());
         mContainerView.addView(mContentViewRenderView);
         mWebContents.initialize(PRODUCT_VERSION, mViewAndroidDelegate, mInternalAccessAdapter,
                 mWindowAndroid.getWindowAndroid(), mWebContentsInternalsHolder);
         mNavigationController = mWebContents.getNavigationController();
         mWebContents.onShow();
-        mContentViewRenderView.setCurrentWebContents(mWebContents);
+        mContentViewRenderView.setWebContents(mWebContents);
         mViewEventSink = ViewEventSink.from(mWebContents);
         mViewEventSink.setHideKeyboardOnBlur(false);
         SelectionPopupController controller = SelectionPopupController.fromWebContents(webContents);
@@ -709,8 +710,8 @@ public class BvContents implements SmartClipProvider {
             mContentViewRenderView = null;
         }
         mWebContents.setTopLevelNativeWindow(null);
-        if (mAutofillClient != null){
-            mAutofillClient =null;
+        if (mAutofillClient != null) {
+            mAutofillClient = null;
         }
 
         // Remove pending messages
@@ -737,24 +738,27 @@ public class BvContents implements SmartClipProvider {
             mCleanupReference.cleanupNow();
             mCleanupReference = null;
         }
-        if (mContentsClient != null){
+        if (mContentsClient != null) {
             mContentsClient = null;
         }
-        if (mContext != null){
+        if (mContext != null) {
             mContext = null;
         }
-        if (mContainerView != null){
+        if (mContainerView != null) {
             mContainerView = null;
         }
-        if (mWebContentsDelegate != null){
+        if (mWebContentsDelegate != null) {
             mWebContentsDelegate = null;
         }
-        if (mBisonContentsClientBridge != null){
+        if (mBisonContentsClientBridge != null) {
             mBisonContentsClientBridge = null;
         }
-        if (mViewAndroidDelegate != null ){
+        if (mViewAndroidDelegate != null) {
             mViewAndroidDelegate.setContainerView(null);
             mViewAndroidDelegate = null;
+        }
+        if (mJavascriptInjector!=null){
+            mJavascriptInjector = null;
         }
 
         assert mWebContents == null;
@@ -983,7 +987,7 @@ public class BvContents implements SmartClipProvider {
 
     /*
 
-    */
+     */
     public void loadData(String data, String mimeType, String encoding) {
         if (TRACE)
             Log.i(TAG, "%s loadData", this);
@@ -1177,7 +1181,7 @@ public class BvContents implements SmartClipProvider {
      * Called by the embedder when the scroll offset of the containing view has
      * changed.
      *
-     * @see View#onScrollChanged(int,int)
+     * @see View#onScrollChanged(int, int)
      */
     public void onContainerViewScrollChanged(int l, int t, int oldl, int oldt) {
         mBvViewMethods.onContainerViewScrollChanged(l, t, oldl, oldt);
@@ -1187,7 +1191,7 @@ public class BvContents implements SmartClipProvider {
      * Called by the embedder when the containing view is to be scrolled or
      * overscrolled.
      *
-     * @see View#onOverScrolled(int,int,int,int)
+     * @see View#onOverScrolled(int, int, int, int)
      */
     public void onContainerViewOverScrolled(int scrollX, int scrollY, boolean clampedX, boolean clampedY) {
         mBvViewMethods.onContainerViewOverScrolled(scrollX, scrollY, clampedX, clampedY);
@@ -1195,7 +1199,7 @@ public class BvContents implements SmartClipProvider {
 
     /**
      * @see android.webkit.WebView#requestChildRectangleOnScreen(View, Rect,
-     *      boolean)
+     * boolean)
      */
     public boolean requestChildRectangleOnScreen(View child, Rect rect, boolean immediate) {
         if (isDestroyed(WARN))
@@ -1206,16 +1210,16 @@ public class BvContents implements SmartClipProvider {
 
     private RenderCoordinates getRenderCoordinates() {
         if (isDestroyed(NO_WARN))
-            return null ;
+            return null;
         return RenderCoordinates.fromWebContents(mWebContents);
     }
 
     public void scrollBy(int x, int y) {
-        mBvViewMethods.scrollBy(x,y);
+        mBvViewMethods.scrollBy(x, y);
     }
 
     public void scrollTo(int x, int y) {
-        mBvViewMethods.scrollTo(x , y);
+        mBvViewMethods.scrollTo(x, y);
     }
 
     /**
@@ -1481,7 +1485,7 @@ public class BvContents implements SmartClipProvider {
     public SslCertificate getCertificate() {
         return isDestroyed(WARN) ? null
                 : SslUtil.getCertificateFromDerBytes(
-                        BvContentsJni.get().getCertificate(mNativeBvContents, BvContents.this));
+                BvContentsJni.get().getCertificate(mNativeBvContents, BvContents.this));
     }
 
     public void clearSslPreferences() {
@@ -2009,7 +2013,7 @@ public class BvContents implements SmartClipProvider {
 
     /**
      * Inserts a {@link VisualStateCallback}.
-     *
+     * <p>
      * The {@link VisualStateCallback} will be inserted in Blink and will be invoked
      * when the contents of the DOM tree at the moment that the callback was
      * inserted (or later) are drawn into the screen. In other words, the following
@@ -2022,7 +2026,7 @@ public class BvContents implements SmartClipProvider {
      *                  allow callers to match requests with callbacks.
      * @param callback  the callback to be inserted
      * @throw IllegalStateException if this method is invoked after
-     *        {@link #destroy()} has been called.
+     * {@link #destroy()} has been called.
      */
     public void insertVisualStateCallback(long requestId, VisualStateCallback callback) {
         if (TRACE)
@@ -2070,7 +2074,7 @@ public class BvContents implements SmartClipProvider {
     }
 
     public void setRendererPriorityPolicy(@RendererPriority int rendererRequestedPriority,
-            boolean waivedWhenNotVisible) {
+                                          boolean waivedWhenNotVisible) {
         mRendererPriority = rendererRequestedPriority;
         mRendererPriorityWaivedWhenNotVisible = waivedWhenNotVisible;
         updateChildProcessImportance();
@@ -2624,6 +2628,13 @@ public class BvContents implements SmartClipProvider {
         return true;
     }
 
+    public void setWebContentsRenderView(int renderView) {
+
+        mContentViewRenderView.requestMode(renderView, result -> {
+
+        });
+    }
+
     public static void logCommandLineForDebugging() {
         BvContentsJni.get().logCommandLineForDebugging();
     }
@@ -2639,8 +2650,8 @@ public class BvContents implements SmartClipProvider {
         void updateDefaultLocale(String locale, String localeList);
 
         void setJavaPeers(long nativeBvContents, BvWebContentsDelegate webContentsDelegate,
-                BvContentsClientBridge bvContentsClientBridge, BvContentsIoThreadClient ioThreadClient,
-                InterceptNavigationDelegate navigationInterceptionDelegate, AutofillProvider autofillProvider);
+                          BvContentsClientBridge bvContentsClientBridge, BvContentsIoThreadClient ioThreadClient,
+                          InterceptNavigationDelegate navigationInterceptionDelegate, AutofillProvider autofillProvider);
 
         WebContents getWebContents(long nativeBvContents);
 
@@ -2687,7 +2698,7 @@ public class BvContents implements SmartClipProvider {
         void setBackgroundColor(long nativeBvContents, BvContents caller, int color);
 
         void insertVisualStateCallback(long nativeBvContents, BvContents caller, long requestId,
-                VisualStateCallback callback);
+                                       VisualStateCallback callback);
 
         void setExtraHeadersForUrl(long nativeBvContents, String url, String extraHeaders);
 
@@ -2706,7 +2717,7 @@ public class BvContents implements SmartClipProvider {
         BvRenderProcess getRenderProcess(long nativeBvContents, BvContents caller);
 
         int addDocumentStartJavaScript(long nativeBvContents, BvContents caller, String script,
-                String[] allowedOriginRules);
+                                       String[] allowedOriginRules);
 
         void removeDocumentStartJavaScript(long nativeBvContents, BvContents caller, int scriptId);
 
