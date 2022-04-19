@@ -392,6 +392,7 @@ public class BvContents implements SmartClipProvider {
     private class LayoutSizerDelegate implements BvLayoutSizer.Delegate {
         @Override
         public void requestLayout() {
+            if (mContainerView==null) return;
             mContainerView.requestLayout();
         }
 
@@ -402,7 +403,7 @@ public class BvContents implements SmartClipProvider {
 
         @Override
         public boolean isLayoutParamsHeightWrapContent() {
-            return mContainerView.getLayoutParams() != null
+            return mContainerView!=null && mContainerView.getLayoutParams() != null
                     && (mContainerView.getLayoutParams().height == ViewGroup.LayoutParams.WRAP_CONTENT);
         }
 
@@ -438,11 +439,15 @@ public class BvContents implements SmartClipProvider {
 
         @Override
         public int getContainerViewScrollX() {
+            if (mContainerView==null)
+                return 0;
             return mContainerView.getScrollX();
         }
 
         @Override
         public int getContainerViewScrollY() {
+            if (mContainerView==null)
+                return 0;
             return mContainerView.getScrollY();
         }
 
@@ -456,27 +461,6 @@ public class BvContents implements SmartClipProvider {
             mWebContents.getEventForwarder().cancelFling(SystemClock.uptimeMillis());
         }
     }
-
-    // --------------------------------------------------------------------------------------------
-    private class BvComponentCallbacks implements ComponentCallbacks2 {
-        @Override
-        public void onTrimMemory(final int level) {
-            boolean visibleRectEmpty = getGlobalVisibleRect().isEmpty();
-            final boolean visible = mIsViewVisible && mIsWindowVisible && !visibleRectEmpty;
-            // jiang
-        }
-
-        @Override
-        public void onLowMemory() {
-        }
-
-        @Override
-        public void onConfigurationChanged(Configuration configuration) {
-            updateDefaultLocale();
-        }
-    }
-
-    ;
 
     // --------------------------------------------------------------------------------------------
     private class BisonDisplayAndroidObserver implements DisplayAndroidObserver {
@@ -833,7 +817,7 @@ public class BvContents implements SmartClipProvider {
     private static final Rect sLocalGlobalVisibleRect = new Rect();
 
     private Rect getGlobalVisibleRect() {
-        if (!mContainerView.getGlobalVisibleRect(sLocalGlobalVisibleRect)) {
+        if (mContainerView==null || !mContainerView.getGlobalVisibleRect(sLocalGlobalVisibleRect)) {
             sLocalGlobalVisibleRect.setEmpty();
         }
         return sLocalGlobalVisibleRect;
@@ -1748,6 +1732,7 @@ public class BvContents implements SmartClipProvider {
         // on Android M, WebView is not able to replace the text with the processed
         // text.
         // So set the readonly flag for M.
+        if (mContext == null) return;
         if (Build.VERSION.SDK_INT == Build.VERSION_CODES.M) {
             intent.putExtra(Intent.EXTRA_PROCESS_TEXT_READONLY, true);
         }
@@ -2213,7 +2198,10 @@ public class BvContents implements SmartClipProvider {
     // jiang
     private int[] getLocationOnScreen() {
         int[] result = new int[2];
-        mContainerView.getLocationOnScreen(result);
+        if (mContainerView!=null){
+            mContainerView.getLocationOnScreen(result);
+        }
+
         return result;
     }
 
@@ -2320,7 +2308,7 @@ public class BvContents implements SmartClipProvider {
 
     private class BvViewMethodsImpl implements BvViewMethods {
         private int mLayerType = View.LAYER_TYPE_NONE;
-        private ComponentCallbacks2 mComponentCallbacks;
+        //private ComponentCallbacks2 mComponentCallbacks;
 
         // Only valid within software onDraw().
         private final Rect mClipBoundsTemporary = new Rect();
@@ -2332,7 +2320,7 @@ public class BvContents implements SmartClipProvider {
 
         @Override
         public void requestFocus() {
-            if (isDestroyed(NO_WARN))
+            if (isDestroyed(NO_WARN)|| mContainerView==null)
                 return;
             if (!mContainerView.isInTouchMode() && mSettings.shouldFocusFirstNode()) {
                 BvContentsJni.get().focusFirstNode(mNativeBvContents, BvContents.this);
@@ -2346,6 +2334,7 @@ public class BvContents implements SmartClipProvider {
         }
 
         private void updateHardwareAcceleratedFeaturesToggle() {
+            if (mContainerView==null) return;
             mSettings.setEnableSupportedHardwareAcceleratedFeatures(
                     mIsAttachedToWindow && mContainerView.isHardwareAccelerated()
                             && (mLayerType == View.LAYER_TYPE_NONE || mLayerType == View.LAYER_TYPE_HARDWARE));
@@ -2359,7 +2348,7 @@ public class BvContents implements SmartClipProvider {
 
         @Override
         public boolean onDragEvent(DragEvent event) {
-            return isDestroyed(NO_WARN) ? false : mWebContents.getEventForwarder().onDragEvent(event, mContainerView);
+            return isDestroyed(NO_WARN) || mContainerView==null ? false : mWebContents.getEventForwarder().onDragEvent(event, mContainerView);
         }
 
         @Override
@@ -2431,10 +2420,10 @@ public class BvContents implements SmartClipProvider {
 
             updateDefaultLocale();
 
-            if (mComponentCallbacks != null)
-                return;
-            mComponentCallbacks = new BvComponentCallbacks();
-            mContext.registerComponentCallbacks(mComponentCallbacks);
+            // if (mComponentCallbacks != null)
+            //     return;
+            // mComponentCallbacks = new BvComponentCallbacks();
+            // mContext.registerComponentCallbacks(mComponentCallbacks);
         }
 
         @Override
@@ -2455,10 +2444,10 @@ public class BvContents implements SmartClipProvider {
             updateHardwareAcceleratedFeaturesToggle();
             postUpdateWebContentsVisibility();
 
-            if (mComponentCallbacks != null) {
-                mContext.unregisterComponentCallbacks(mComponentCallbacks);
-                mComponentCallbacks = null;
-            }
+            // if (mComponentCallbacks != null) {
+            //     mContext.unregisterComponentCallbacks(mComponentCallbacks);
+            //     mComponentCallbacks = null;
+            // }
 
             // jiang
             // mScrollAccessibilityHelper.removePostedCallbacks();
@@ -2498,6 +2487,7 @@ public class BvContents implements SmartClipProvider {
         @Override
         public void onVisibilityChanged(View changedView, int visibility) {
             // jiang
+            if (mContainerView==null) return;
             boolean viewVisible = mContainerView.getVisibility() == View.VISIBLE;
             if (mIsViewVisible == viewVisible)
                 return;
@@ -2527,6 +2517,7 @@ public class BvContents implements SmartClipProvider {
 
         @Override
         public void onContainerViewOverScrolled(int scrollX, int scrollY, boolean clampedX, boolean clampedY) {
+            if (mContainerView==null) return;
             int oldX = mContainerView.getScrollX();
             int oldY = mContainerView.getScrollY();
 
