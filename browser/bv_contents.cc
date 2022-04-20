@@ -196,11 +196,15 @@ BvRenderProcessGoneDelegate* BvRenderProcessGoneDelegate::FromWebContents(
 BvContents::BvContents(std::unique_ptr<WebContents> web_contents)
     : WebContentsObserver(web_contents.get()),
       web_contents_(std::move(web_contents)) {
+  view_visible_ = false;
+  window_visible_ = false;
+  is_paused_ = false;
   base::subtle::NoBarrier_AtomicIncrement(&g_instance_count, 1);
   icon_helper_.reset(new IconHelper(web_contents_.get()));
   icon_helper_->SetListener(this);
   web_contents_->SetUserData(bison::kBisonContentsUserDataKey,
                              std::make_unique<BisonContentsUserData>(this));
+
 
   render_view_host_ext_.reset(
       new BvRenderViewHostExt(this, web_contents_.get()));
@@ -821,7 +825,7 @@ void BvContents::SetViewVisibility(JNIEnv* env,
                                       const JavaParamRef<jobject>& obj,
                                       bool visible) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
-  // jiang
+  view_visible_ = visible;
 }
 
 void BvContents::SetWindowVisibility(JNIEnv* env,
@@ -832,6 +836,15 @@ void BvContents::SetWindowVisibility(JNIEnv* env,
     BvContentsLifecycleNotifier::GetInstance().OnWebViewWindowBeVisible(this);
   else
     BvContentsLifecycleNotifier::GetInstance().OnWebViewWindowBeInvisible(this);
+  window_visible_ = visible;
+
+}
+
+void BvContents::SetIsPaused(JNIEnv* env,
+                             const JavaParamRef<jobject>& obj,
+                             bool paused) {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  is_paused_ = paused;
 }
 
 void BvContents::OnAttachedToWindow(JNIEnv* env,
@@ -848,6 +861,12 @@ void BvContents::OnDetachedFromWindow(JNIEnv* env,
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
   // browser_view_renderer_.OnDetachedFromWindow();
   BvContentsLifecycleNotifier::GetInstance().OnWebViewDetachedFromWindow(this);
+}
+
+bool BvContents::IsVisible(JNIEnv* env, const JavaParamRef<jobject>& obj) {
+  return is_paused_
+             ? false
+             : view_visible_ && window_visible_;
 }
 
 base::android::ScopedJavaLocalRef<jbyteArray> BvContents::GetOpaqueState(

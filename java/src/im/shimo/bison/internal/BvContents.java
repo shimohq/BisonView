@@ -1334,7 +1334,8 @@ public class BvContents implements SmartClipProvider {
         if (mIsPaused || isDestroyed(NO_WARN))
             return;
         mIsPaused = true;
-
+        BvContentsJni.get().setIsPaused(mNativeBvContents, this, mIsPaused);
+        updateWebContentsVisibility();
     }
 
     public void onResume() {
@@ -1343,7 +1344,7 @@ public class BvContents implements SmartClipProvider {
         if (!mIsPaused || isDestroyed(NO_WARN))
             return;
         mIsPaused = false;
-
+        BvContentsJni.get().setIsPaused(mNativeBvContents, this, mIsPaused);
         updateWebContentsVisibility();
     }
 
@@ -1872,14 +1873,14 @@ public class BvContents implements SmartClipProvider {
         mIsUpdateVisibilityTaskPending = false;
         if (isDestroyed(NO_WARN))
             return;
-        // boolean contentVisible = BvContentsJni.get().isVisible(mNativeBvContents,
-        // this);
+        boolean contentVisible = BvContentsJni.get().isVisible(mNativeBvContents,this);
 
-        if (!mIsContentVisible) {
+        if (contentVisible && !mIsContentVisible) {
             mWebContents.onShow();
         } else {
             mWebContents.onHide();
         }
+        mIsContentVisible = contentVisible;
         updateChildProcessImportance();
     }
 
@@ -2679,11 +2680,11 @@ public class BvContents implements SmartClipProvider {
         void setViewVisibility(long nativeBvContents, BvContents caller, boolean visible);
 
         void setWindowVisibility(long nativeBvContents, BvContents caller, boolean visible);
-
+        void setIsPaused(long nativeBvContents, BvContents caller, boolean paused);
         void onAttachedToWindow(long nativeBvContents, BvContents caller, int w, int h);
 
         void onDetachedFromWindow(long nativeBvContents, BvContents caller);
-
+        boolean isVisible(long nativeBvContents, BvContents caller);
         void focusFirstNode(long nativeBvContents, BvContents caller);
 
         void setBackgroundColor(long nativeBvContents, BvContents caller, int color);

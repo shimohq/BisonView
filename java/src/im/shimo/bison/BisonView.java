@@ -338,9 +338,17 @@ public class BisonView extends FrameLayout {
         mProvider.resumeTimers();
     }
 
-    // jiang onPause
-    // jiang onResume
-    // jiang isPaused
+    public void onPause() {
+        mProvider.onPause();
+    }
+
+    public void onResume(){
+        mProvider.onResume();
+    }
+
+    public boolean isPaused(){
+        return mProvider.isPaused();
+    }
 
     /**
      * Clears the resource cache. Note that the cache is per-application, so this

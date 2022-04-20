@@ -133,17 +133,16 @@ class BvContents : public FindHelper::Listener,
   void SetWindowVisibility(JNIEnv* env,
                            const base::android::JavaParamRef<jobject>& obj,
                            bool visible);
-  // void SetIsPaused(JNIEnv* env,
-  //                  const base::android::JavaParamRef<jobject>& obj,
-  //                  bool paused);
+  void SetIsPaused(JNIEnv* env,
+                   const base::android::JavaParamRef<jobject>& obj,
+                   bool paused);
   void OnAttachedToWindow(JNIEnv* env,
                           const base::android::JavaParamRef<jobject>& obj,
                           int w,
                           int h);
   void OnDetachedFromWindow(JNIEnv* env,
                             const base::android::JavaParamRef<jobject>& obj);
-  // bool IsVisible(JNIEnv* env, const base::android::JavaParamRef<jobject>&
-  // obj);
+  bool IsVisible(JNIEnv* env, const base::android::JavaParamRef<jobject>& obj);
   base::android::ScopedJavaLocalRef<jbyteArray> GetOpaqueState(
       JNIEnv* env,
       const base::android::JavaParamRef<jobject>& obj);
@@ -339,6 +338,13 @@ class BvContents : public FindHelper::Listener,
   typedef std::pair<const GURL, base::OnceCallback<void(bool)>> OriginCallback;
   // The first element in the list is always the currently pending request.
   std::list<OriginCallback> pending_geolocation_prompts_;
+
+
+  //
+  bool view_visible_;
+  bool window_visible_;
+  bool is_paused_;
+
 
   DISALLOW_COPY_AND_ASSIGN(BvContents);
 };
