@@ -5,6 +5,8 @@ import java.security.Principal;
 import java.security.PrivateKey;
 import java.security.cert.CertificateEncodingException;
 import java.security.cert.X509Certificate;
+import java.util.HashMap;
+import java.util.Map;
 
 import javax.security.auth.x500.X500Principal;
 
@@ -150,7 +152,7 @@ public class BvContentsClientBridge {
                 -> PostTask.runOrPostTask(UiThreadTaskTraits.DEFAULT,
                         () -> proceedSslError(value.booleanValue(), id));
 
-        //new Handler().post(() -> mClient.onReceivedSslError(callback, sslError));
+        new Handler().post(() -> mClient.onReceivedSslError(callback, sslError));
 
         // Record UMA on ssl error
         // Use sparse histogram in case new values are added in future releases
@@ -202,11 +204,9 @@ public class BvContentsClientBridge {
 
         final ClientCertificateRequestCallback callback =
                 new ClientCertificateRequestCallback(id, host, port);
-        //mClient.onReceivedClientCertRequest(callback, keyTypes, principals, host, port);
+        mClient.onReceivedClientCertRequest(callback, keyTypes, principals, host, port);
 
-        // Record UMA for onReceivedClientCertRequest.
-        // AwHistogramRecorder.recordCallbackInvocation(
-        //         AwHistogramRecorder.WebViewCallbackType.ON_RECEIVED_CLIENT_CERT_REQUEST);
+
     }
     @CalledByNative
     private void handleJsAlert(final String url, final String message, final int id) {
@@ -240,10 +240,6 @@ public class BvContentsClientBridge {
             String mimeType, long contentLength) {
         mClient.getCallbackHelper().postOnDownloadStart(
                 url, userAgent, contentDisposition, mimeType, contentLength);
-
-        // Record UMA for onDownloadStart.
-        // AwHistogramRecorder.recordCallbackInvocation(
-        //         AwHistogramRecorder.WebViewCallbackType.ON_DOWNLOAD_START);
     }
 
     @CalledByNative
@@ -253,37 +249,66 @@ public class BvContentsClientBridge {
             String method, String[] requestHeaderNames, String[] requestHeaderValues,
             // WebResourceError
             @NetError int errorCode, String description) {
-        // BvContentsClient.BisonWebResourceRequest request = new BvContentsClient.BisonWebResourceRequest(
-        //         url, isMainFrame, hasUserGesture, method, requestHeaderNames, requestHeaderValues);
-        // BvContentsClient.BisonWebResourceError error = new BvContentsClient.BisonWebResourceError();
-        // error.errorCode = errorCode;
-        // error.description = description;
+        BvWebResourceRequest request = new BvWebResourceRequest(
+        url, isMainFrame, hasUserGesture, method, requestHeaderNames, requestHeaderValues);
+        BvContentsClient.BvWebResourceError error = new BvContentsClient.BvWebResourceError();
+        error.errorCode = errorCode;
+        error.description = description;
 
-        // // String unreachableWebDataUrl = AwContentsStatics.getUnreachableWebDataUrl();
-        // // boolean isErrorUrl =
-        // //         unreachableWebDataUrl != null && unreachableWebDataUrl.equals(request.url);
+        // String unreachableWebDataUrl = AwContentsStatics.getUnreachableWebDataUrl();
+        // boolean isErrorUrl =
+        //         unreachableWebDataUrl != null && unreachableWebDataUrl.equals(request.url);
 
-        // if (!isErrorUrl && error.errorCode != NetError.ERR_ABORTED) {
-        //     // NetError.ERR_ABORTED error code is generated for the following reasons:
-        //     // - WebView.stopLoading is called;
-        //     // - the navigation is intercepted by the embedder via shouldOverrideUrlLoading;
-        //     // - server returned 204 status (no content).
-        //     //
-        //     // BisonView does not notify the embedder of these situations using
-        //     // this error code with the BisonViewClient.onReceivedError callback.
-        //     error.errorCode = ErrorCodeConversionHelper.convertErrorCode(error.errorCode);
-        //     if (request.isMainFrame
-        //             && AwFeatureList.pageStartedOnCommitEnabled(isRendererInitiated)) {
-        //         mClient.getCallbackHelper().postOnPageStarted(request.url);
-        //     }
-        //     mClient.getCallbackHelper().postOnReceivedError(request, error);
-        //     if (request.isMainFrame) {
-        //         mClient.getCallbackHelper().postOnPageFinished(request.url);
-        //     }
-        // }
+        if (error.errorCode != NetError.ERR_ABORTED) {
+            // NetError.ERR_ABORTED error code is generated for the following reasons:
+            // - WebView.stopLoading is called;
+            // - the navigation is intercepted by the embedder via shouldOverrideUrlLoading;
+            // - server returned 204 status (no content).
+            //
+            // BisonView does not notify the embedder of these situations using
+            // this error code with the BisonViewClient.onReceivedError callback.
+            error.errorCode = ErrorCodeConversionHelper.convertErrorCode(error.errorCode);
+            if (request.isMainFrame) {
+                mClient.getCallbackHelper().postOnPageStarted(request.url);
+            }
+            mClient.getCallbackHelper().postOnReceivedError(request, error);
+            if (request.isMainFrame) {
+                mClient.getCallbackHelper().postOnPageFinished(request.url);
+            }
+        }
     }
 
+    @CalledByNative
+    private void onReceivedHttpError(
+            // WebResourceRequest
+            String url, boolean isMainFrame, boolean hasUserGesture, String method,
+            String[] requestHeaderNames, String[] requestHeaderValues,
+            // WebResourceResponse
+            String mimeType, String encoding, int statusCode, String reasonPhrase,
+            String[] responseHeaderNames, String[] responseHeaderValues) {
+        BvWebResourceRequest request = new BvWebResourceRequest(
+                url, isMainFrame, hasUserGesture, method, requestHeaderNames, requestHeaderValues);
+        Map<String, String> responseHeaders =
+                new HashMap<String, String>(responseHeaderNames.length);
+        // Note that we receive un-coalesced response header lines, thus we need to combine
+        // values for the same header.
+        for (int i = 0; i < responseHeaderNames.length; ++i) {
+            if (!responseHeaders.containsKey(responseHeaderNames[i])) {
+                responseHeaders.put(responseHeaderNames[i], responseHeaderValues[i]);
+            } else if (!responseHeaderValues[i].isEmpty()) {
+                String currentValue = responseHeaders.get(responseHeaderNames[i]);
+                if (!currentValue.isEmpty()) {
+                    currentValue += ", ";
+                }
+                responseHeaders.put(responseHeaderNames[i], currentValue + responseHeaderValues[i]);
+            }
+        }
+        BvWebResourceResponse response = new BvWebResourceResponse(
+                mimeType, encoding, null, statusCode, reasonPhrase, responseHeaders);
+        mClient.getCallbackHelper().postOnReceivedHttpError(request, response);
 
+
+    }
 
 
 

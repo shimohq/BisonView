@@ -73,7 +73,7 @@ BvContentsClientBridge::HttpErrorInfo::~HttpErrorInfo() {}
 
 // static
 void BvContentsClientBridge::Associate(WebContents* web_contents,
-                                          BvContentsClientBridge* handler) {
+                                       BvContentsClientBridge* handler) {
   web_contents->SetUserData(kBisonContentsClientBridge,
                             std::make_unique<UserData>(handler));
 }
@@ -93,9 +93,8 @@ BvContentsClientBridge* BvContentsClientBridge::FromWebContentsGetter(
 }
 
 // static
-BvContentsClientBridge* BvContentsClientBridge::FromID(
-    int render_process_id,
-    int render_frame_id) {
+BvContentsClientBridge* BvContentsClientBridge::FromID(int render_process_id,
+                                                       int render_frame_id) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
   content::RenderFrameHost* rfh =
       content::RenderFrameHost::FromID(render_process_id, render_frame_id);
@@ -104,9 +103,8 @@ BvContentsClientBridge* BvContentsClientBridge::FromID(
   return UserData::GetContents(web_contents);
 }
 
-BvContentsClientBridge::BvContentsClientBridge(
-    JNIEnv* env,
-    const JavaRef<jobject>& obj)
+BvContentsClientBridge::BvContentsClientBridge(JNIEnv* env,
+                                               const JavaRef<jobject>& obj)
     : java_ref_(env, obj) {
   DCHECK(!obj.is_null());
   Java_BvContentsClientBridge_setNativeContentsClientBridge(
@@ -121,12 +119,11 @@ BvContentsClientBridge::~BvContentsClientBridge() {
   }
 }
 
-void BvContentsClientBridge::AllowCertificateError(
-    int cert_error,
-    net::X509Certificate* cert,
-    const GURL& request_url,
-    CertErrorCallback callback,
-    bool* cancel_request) {
+void BvContentsClientBridge::AllowCertificateError(int cert_error,
+                                                   net::X509Certificate* cert,
+                                                   const GURL& request_url,
+                                                   CertErrorCallback callback,
+                                                   bool* cancel_request) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
   JNIEnv* env = AttachCurrentThread();
 
@@ -154,9 +151,9 @@ void BvContentsClientBridge::AllowCertificateError(
 }
 
 void BvContentsClientBridge::ProceedSslError(JNIEnv* env,
-                                                const JavaRef<jobject>& obj,
-                                                jboolean proceed,
-                                                jint id) {
+                                             const JavaRef<jobject>& obj,
+                                             jboolean proceed,
+                                             jint id) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
   CertErrorCallback* callback = pending_cert_error_callbacks_.Lookup(id);
   if (!callback || callback->is_null()) {
@@ -305,21 +302,21 @@ void BvContentsClientBridge::RunJavaScriptDialog(
     case content::JAVASCRIPT_DIALOG_TYPE_ALERT: {
       devtools_instrumentation::ScopedEmbedderCallbackTask("onJsAlert");
       Java_BvContentsClientBridge_handleJsAlert(env, obj, jurl, jmessage,
-                                                   callback_id);
+                                                callback_id);
       break;
     }
     case content::JAVASCRIPT_DIALOG_TYPE_CONFIRM: {
       devtools_instrumentation::ScopedEmbedderCallbackTask("onJsConfirm");
       Java_BvContentsClientBridge_handleJsConfirm(env, obj, jurl, jmessage,
-                                                     callback_id);
+                                                  callback_id);
       break;
     }
     case content::JAVASCRIPT_DIALOG_TYPE_PROMPT: {
       ScopedJavaLocalRef<jstring> jdefault_value(
           ConvertUTF16ToJavaString(env, default_prompt_text));
       devtools_instrumentation::ScopedEmbedderCallbackTask("onJsPrompt");
-      Java_BvContentsClientBridge_handleJsPrompt(
-          env, obj, jurl, jmessage, jdefault_value, callback_id);
+      Java_BvContentsClientBridge_handleJsPrompt(env, obj, jurl, jmessage,
+                                                 jdefault_value, callback_id);
       break;
     }
     default:
@@ -329,12 +326,11 @@ void BvContentsClientBridge::RunJavaScriptDialog(
 
 // jiang RunBeforeUnloadDialog
 
-bool BvContentsClientBridge::ShouldOverrideUrlLoading(
-    const base::string16& url,
-    bool has_user_gesture,
-    bool is_redirect,
-    bool is_main_frame,
-    bool* ignore_navigation) {
+bool BvContentsClientBridge::ShouldOverrideUrlLoading(const base::string16& url,
+                                                      bool has_user_gesture,
+                                                      bool is_redirect,
+                                                      bool is_main_frame,
+                                                      bool* ignore_navigation) {
   *ignore_navigation = false;
   JNIEnv* env = AttachCurrentThread();
   ScopedJavaLocalRef<jobject> obj = java_ref_.get(env);
@@ -357,12 +353,11 @@ bool BvContentsClientBridge::ShouldOverrideUrlLoading(
   return true;
 }
 
-void BvContentsClientBridge::NewDownload(
-    const GURL& url,
-    const std::string& user_agent,
-    const std::string& content_disposition,
-    const std::string& mime_type,
-    int64_t content_length) {
+void BvContentsClientBridge::NewDownload(const GURL& url,
+                                         const std::string& user_agent,
+                                         const std::string& content_disposition,
+                                         const std::string& mime_type,
+                                         int64_t content_length) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
   JNIEnv* env = AttachCurrentThread();
   ScopedJavaLocalRef<jobject> obj = java_ref_.get(env);
@@ -417,34 +412,34 @@ void BvContentsClientBridge::OnReceivedHttpError(
     const BisonWebResourceRequest& request,
     std::unique_ptr<HttpErrorInfo> http_error_info) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
-  // JNIEnv* env = AttachCurrentThread();
-  // ScopedJavaLocalRef<jobject> obj = java_ref_.get(env);
-  // if (obj.is_null())
-  //   return;
+  JNIEnv* env = AttachCurrentThread();
+  ScopedJavaLocalRef<jobject> obj = java_ref_.get(env);
+  if (obj.is_null())
+    return;
 
-  // AwWebResourceRequest::AwJavaWebResourceRequest java_web_resource_request;
-  // AwWebResourceRequest::ConvertToJava(env, request,
-  // &java_web_resource_request);
+  BisonWebResourceRequest::BisonJavaWebResourceRequest java_web_resource_request;
+  BisonWebResourceRequest::ConvertToJava(env, request,
+                                         &java_web_resource_request);
 
-  // ScopedJavaLocalRef<jstring> jstring_mime_type =
-  //     ConvertUTF8ToJavaString(env, http_error_info->mime_type);
-  // ScopedJavaLocalRef<jstring> jstring_encoding =
-  //     ConvertUTF8ToJavaString(env, http_error_info->encoding);
-  // ScopedJavaLocalRef<jstring> jstring_reason =
-  //     ConvertUTF8ToJavaString(env, http_error_info->status_text);
-  // ScopedJavaLocalRef<jobjectArray> jstringArray_response_header_names =
-  //     ToJavaArrayOfStrings(env, http_error_info->response_header_names);
-  // ScopedJavaLocalRef<jobjectArray> jstringArray_response_header_values =
-  //     ToJavaArrayOfStrings(env, http_error_info->response_header_values);
+  ScopedJavaLocalRef<jstring> jstring_mime_type =
+      ConvertUTF8ToJavaString(env, http_error_info->mime_type);
+  ScopedJavaLocalRef<jstring> jstring_encoding =
+      ConvertUTF8ToJavaString(env, http_error_info->encoding);
+  ScopedJavaLocalRef<jstring> jstring_reason =
+      ConvertUTF8ToJavaString(env, http_error_info->status_text);
+  ScopedJavaLocalRef<jobjectArray> jstringArray_response_header_names =
+      ToJavaArrayOfStrings(env, http_error_info->response_header_names);
+  ScopedJavaLocalRef<jobjectArray> jstringArray_response_header_values =
+      ToJavaArrayOfStrings(env, http_error_info->response_header_values);
 
-  // Java_AwContentsClientBridge_onReceivedHttpError(
-  //     env, obj, java_web_resource_request.jurl, request.is_main_frame,
-  //     request.has_user_gesture, java_web_resource_request.jmethod,
-  //     java_web_resource_request.jheader_names,
-  //     java_web_resource_request.jheader_values, jstring_mime_type,
-  //     jstring_encoding, http_error_info->status_code, jstring_reason,
-  //     jstringArray_response_header_names,
-  //     jstringArray_response_header_values);
+  Java_BvContentsClientBridge_onReceivedHttpError(
+      env, obj, java_web_resource_request.jurl, request.is_main_frame,
+      request.has_user_gesture, java_web_resource_request.jmethod,
+      java_web_resource_request.jheader_names,
+      java_web_resource_request.jheader_values, jstring_mime_type,
+      jstring_encoding, http_error_info->status_code, jstring_reason,
+      jstringArray_response_header_names,
+      jstringArray_response_header_values);
 }
 
 std::unique_ptr<BvContentsClientBridge::HttpErrorInfo>
@@ -467,11 +462,10 @@ BvContentsClientBridge::ExtractHttpErrorInfo(
   http_error_info->status_text = response_headers->GetStatusText();
   return http_error_info;
 }
-void BvContentsClientBridge::ConfirmJsResult(
-    JNIEnv* env,
-    const JavaRef<jobject>&,
-    int id,
-    const JavaRef<jstring>& prompt) {
+void BvContentsClientBridge::ConfirmJsResult(JNIEnv* env,
+                                             const JavaRef<jobject>&,
+                                             int id,
+                                             const JavaRef<jstring>& prompt) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
   content::JavaScriptDialogManager::DialogClosedCallback* callback =
       pending_js_dialog_callbacks_.Lookup(id);
@@ -490,8 +484,8 @@ void BvContentsClientBridge::ConfirmJsResult(
 // TakeSafeBrowsingAction unsupported
 
 void BvContentsClientBridge::CancelJsResult(JNIEnv*,
-                                               const JavaRef<jobject>&,
-                                               int id) {
+                                            const JavaRef<jobject>&,
+                                            int id) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
   content::JavaScriptDialogManager::DialogClosedCallback* callback =
       pending_js_dialog_callbacks_.Lookup(id);
