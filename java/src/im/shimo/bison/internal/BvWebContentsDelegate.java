@@ -233,8 +233,8 @@ public class BvWebContentsDelegate extends WebContentsDelegateAndroid {
     }
 
     @CalledByNative
-    public boolean addNewContents(boolean isDialog, boolean isUserGesture){
-        return mContentsClient.onCreateWindow(isDialog, isUserGesture);
+    public boolean addNewContents(String url, boolean isDialog, boolean isUserGesture){
+        return mContentsClient.onCreateWindow(url, isDialog, isUserGesture);
     }
 
     @Override

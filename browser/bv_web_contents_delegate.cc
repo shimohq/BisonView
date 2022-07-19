@@ -161,10 +161,11 @@ void BvWebContentsDelegate::AddNewContents(
   bool is_dialog = disposition == WindowOpenDisposition::NEW_POPUP;
   ScopedJavaLocalRef<jobject> java_delegate = GetJavaDelegate(env);
   bool create_popup = false;
-
   if (java_delegate.obj()) {
+    ScopedJavaLocalRef<jstring> java_url =
+      ConvertUTF8ToJavaString(env, target_url.spec());
     create_popup = Java_BvWebContentsDelegate_addNewContents(
-        env, java_delegate, is_dialog, user_gesture);
+        env, java_delegate,java_url, is_dialog, user_gesture);
   }
 
   if (create_popup) {
@@ -174,9 +175,9 @@ void BvWebContentsDelegate::AddNewContents(
     // until then, and when the callback is made we will swap the WebContents
     // out into the new BvContents.
 
-    // WebContents* raw_new_contents = new_contents.get();
-    // BvContents::FromWebContents(source)->SetPendingWebContentsForPopup(
-    //     std::move(new_contents));
+    WebContents* raw_new_contents = new_contents.get();
+    BvContents::FromWebContents(source)->SetPendingWebContentsForPopup(
+        std::move(new_contents));
 
     // It's possible that SetPendingWebContentsForPopup deletes |new_contents|,
     // but it only does so asynchronously, so it's safe to use a raw pointer
@@ -184,7 +185,7 @@ void BvWebContentsDelegate::AddNewContents(
     // Hide the WebContents for the pop up now, we will show it again
     // when the user calls us back with an BvContents to use to show it.
 
-    // raw_new_contents->WasHidden();
+    raw_new_contents->WasHidden();
   } else {
     // The embedder has forgone their chance to display this popup
     // window, so we're done with the WebContents now. We use

@@ -46,7 +46,7 @@ public class BisonWebChromeClient {
 
 
 
-    public boolean onCreateWindow(BisonView view, boolean isDialog, boolean isUserGesture,
+    public boolean onCreateWindow(BisonView view, String url , boolean isDialog, boolean isUserGesture,
             Message resultMsg) {
         return false;
     }

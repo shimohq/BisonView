@@ -209,7 +209,7 @@ std::string GetProduct() {
 }
 
 std::string GetUserAgent() {
-  std::string product = "Bison/1.0 " + GetProduct();
+  std::string product = "Bison/1.1.3 " + GetProduct();
   if (base::CommandLine::ForCurrentProcess()->HasSwitch(
           switches::kUseMobileUserAgent)) {
     product += " Mobile";

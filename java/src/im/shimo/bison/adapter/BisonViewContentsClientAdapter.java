@@ -222,7 +222,7 @@ public class BisonViewContentsClientAdapter extends BvContentsClientAdapter {
     }
 
     @Override
-    public boolean onCreateWindow(boolean isDialog, boolean isUserGesture) {
+    public boolean onCreateWindow(String url , boolean isDialog, boolean isUserGesture) {
         // jiang947
         try {
             TraceEvent.begin("BvContentsClient.onCreateWindow");
@@ -230,7 +230,7 @@ public class BisonViewContentsClientAdapter extends BvContentsClientAdapter {
             if (mBisonWebChromeClient != null) {
                 if (TRACE)
                     Log.i(TAG, "onCreateWindow");
-                result = mBisonWebChromeClient.onCreateWindow(mBisonView, isDialog, isUserGesture,
+                result = mBisonWebChromeClient.onCreateWindow(mBisonView, url, isDialog, isUserGesture,
                         null);
             } else {
                 result = false;

@@ -27,7 +27,20 @@ bool BvDownloadManagerDelegate::InterceptDownloadIfApplicable(
   if (!web_contents)
     return false;
 
-  // jiang 未完成 需要 ClientBridge
+  BvContentsClientBridge* client =
+      BvContentsClientBridge::FromWebContents(web_contents);
+  if (!client)
+    return true;
+
+  std::string bv_user_agent =
+      web_contents->GetUserAgentOverride().ua_string_override;
+  if (bv_user_agent.empty()) {
+    // use default user agent if nothing is provided
+    bv_user_agent = user_agent.empty() ? GetUserAgent() : user_agent;
+  }
+
+  client->NewDownload(url, bv_user_agent, content_disposition, mime_type,
+                      content_length);
   return true;
 }
 

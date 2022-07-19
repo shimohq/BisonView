@@ -319,7 +319,7 @@ public abstract class BvContentsClient {
     protected abstract void handleJsPrompt(String url, String message, String defaultValue,
             JsPromptResultReceiver receiver);
 
-    protected abstract boolean onCreateWindow(boolean isDialog, boolean isUserGesture);
+    protected abstract boolean onCreateWindow(String url ,boolean isDialog, boolean isUserGesture);
 
     protected abstract void onCloseWindow();
 
