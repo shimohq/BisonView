@@ -3,8 +3,6 @@
 #ifndef BISON_BROWSER_BISON_BROWSER_POLICY_CONNECTOR_H_
 #define BISON_BROWSER_BISON_BROWSER_POLICY_CONNECTOR_H_
 
-
-#include "base/macros.h"
 #include "components/policy/core/browser/browser_policy_connector_base.h"
 
 namespace bison {
@@ -14,15 +12,16 @@ namespace bison {
 class BvBrowserPolicyConnector : public policy::BrowserPolicyConnectorBase {
  public:
   BvBrowserPolicyConnector();
+
+  BvBrowserPolicyConnector(const BvBrowserPolicyConnector&) = delete;
+  BvBrowserPolicyConnector& operator=(const BvBrowserPolicyConnector&) = delete;
+
   ~BvBrowserPolicyConnector() override;
 
  protected:
   // policy::BrowserPolicyConnectorBase:
   std::vector<std::unique_ptr<policy::ConfigurationPolicyProvider>>
   CreatePolicyProviders() override;
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(BvBrowserPolicyConnector);
 };
 
 }  // namespace bison

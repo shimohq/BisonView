@@ -152,7 +152,7 @@ std::vector<const BvContents*> BvContentsLifecycleNotifier::GetAllBvContents()
 
 size_t BvContentsLifecycleNotifier::ToIndex(BvContentsState state) const {
   size_t index = static_cast<size_t>(state);
-  DCHECK(index < base::size(state_count_));
+  DCHECK(index < std::size(state_count_));
   return index;
 }
 
@@ -194,7 +194,7 @@ void BvContentsLifecycleNotifier::UpdateAppState() {
 }
 
 bool BvContentsLifecycleNotifier::HasBvContentsInstance() const {
-  for (size_t i = 0; i < base::size(state_count_); i++) {
+  for (size_t i = 0; i < std::size(state_count_); i++) {
     if (state_count_[i] > 0)
       return true;
   }

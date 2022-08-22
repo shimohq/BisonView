@@ -337,12 +337,12 @@ public class BisonViewSettingsAdapter extends BisonViewSettings {
 
     @Override
     public synchronized void setAppCacheEnabled(boolean flag) {
-        mBvSettings.setAppCacheEnabled(flag);
+        //mBvSettings.setAppCacheEnabled(flag);
     }
 
     @Override
     public synchronized void setAppCachePath(String appCachePath) {
-        mBvSettings.setAppCachePath(appCachePath);
+        //mBvSettings.setAppCachePath(appCachePath);
     }
 
     @Override

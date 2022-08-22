@@ -1,7 +1,7 @@
 package im.shimo.bison.internal;
 
-import android.util.SparseArray;
 import androidx.annotation.RestrictTo;
+import androidx.annotation.NonNull;
 
 import org.chromium.base.Callback;
 import org.chromium.base.ThreadUtils;
@@ -37,33 +37,18 @@ public class BvQuotaManagerBridge {
     // This is not owning. The native object is owned by the native BvBrowserContext.
     private long mNativeBvQuotaManagerBridge;
 
-    // The Java callbacks are saved here. An incrementing callback id is generated for each saved
-    // callback and is passed to the native side to identify callback.
-    private int mNextId;
-    private SparseArray<Callback<Origins>> mPendingGetOriginCallbacks;
-    private SparseArray<Callback<Long>> mPendingGetQuotaForOriginCallbacks;
-    private SparseArray<Callback<Long>> mPendingGetUsageForOriginCallbacks;
 
     public BvQuotaManagerBridge(long nativeBvQuotaManagerBridge) {
         mNativeBvQuotaManagerBridge = nativeBvQuotaManagerBridge;
-        mPendingGetOriginCallbacks = new SparseArray<>();
-        mPendingGetQuotaForOriginCallbacks = new SparseArray<>();
-        mPendingGetUsageForOriginCallbacks = new SparseArray<>();
-        BvQuotaManagerBridgeJni.get().init(mNativeBvQuotaManagerBridge, BvQuotaManagerBridge.this);
-    }
-
-    private int getNextId() {
-        ThreadUtils.assertOnUiThread();
-        return ++mNextId;
+        BvQuotaManagerBridgeJni.get().init(nativeBvQuotaManagerBridge, this);
     }
 
     /*
-     * There are five HTML5 offline storage APIs.
+     * There are four HTML5 offline storage APIs.
      * 1) Web Storage (ie the localStorage and sessionStorage variables)
      * 2) Web SQL database
-     * 3) Application cache
-     * 4) Indexed Database
-     * 5) Filesystem API
+     * 3) Indexed Database
+     * 4) Filesystem API
      */
 
     /**
@@ -72,6 +57,7 @@ public class BvQuotaManagerBridge {
      * TODO(boliu): Actually clear Web Storage.
      */
     public void deleteAllData() {
+        ThreadUtils.assertOnUiThread();
         BvQuotaManagerBridgeJni.get().deleteAllData(
                 mNativeBvQuotaManagerBridge, BvQuotaManagerBridge.this);
     }
@@ -80,66 +66,45 @@ public class BvQuotaManagerBridge {
      * Implements WebStorage.deleteOrigin(). Clear the storage of APIs 2-5 for the given origin.
      */
     public void deleteOrigin(String origin) {
+        ThreadUtils.assertOnUiThread();
         BvQuotaManagerBridgeJni.get().deleteOrigin(
-                mNativeBvQuotaManagerBridge, BvQuotaManagerBridge.this, origin);
+                mNativeBvQuotaManagerBridge, this, origin);
     }
 
     /**
      * Implements WebStorage.getOrigins. Get the per origin usage and quota of APIs 2-5 in
      * aggregate.
      */
-    public void getOrigins(Callback<Origins> callback) {
-        int callbackId = getNextId();
-        assert mPendingGetOriginCallbacks.get(callbackId) == null;
-        mPendingGetOriginCallbacks.put(callbackId, callback);
+    public void getOrigins(@NonNull Callback<Origins> callback) {
+        ThreadUtils.assertOnUiThread();
         BvQuotaManagerBridgeJni.get().getOrigins(
-                mNativeBvQuotaManagerBridge, BvQuotaManagerBridge.this, callbackId);
+                mNativeBvQuotaManagerBridge, this, callback);
     }
 
     /**
      * Implements WebStorage.getQuotaForOrigin. Get the quota of APIs 2-5 in aggregate for given
      * origin.
      */
-    public void getQuotaForOrigin(String origin, Callback<Long> callback) {
-        int callbackId = getNextId();
-        assert mPendingGetQuotaForOriginCallbacks.get(callbackId) == null;
-        mPendingGetQuotaForOriginCallbacks.put(callbackId, callback);
+    public void getQuotaForOrigin(String origin, @NonNull Callback<Long> callback) {
+        ThreadUtils.assertOnUiThread();
         BvQuotaManagerBridgeJni.get().getUsageAndQuotaForOrigin(
-                mNativeBvQuotaManagerBridge, BvQuotaManagerBridge.this, origin, callbackId, true);
+                mNativeBvQuotaManagerBridge, this, origin, callback, true);
     }
 
     /**
      * Implements WebStorage.getUsageForOrigin. Get the usage of APIs 2-5 in aggregate for given
      * origin.
      */
-    public void getUsageForOrigin(String origin, Callback<Long> callback) {
-        int callbackId = getNextId();
-        assert mPendingGetUsageForOriginCallbacks.get(callbackId) == null;
-        mPendingGetUsageForOriginCallbacks.put(callbackId, callback);
+    public void getUsageForOrigin(String origin, @NonNull Callback<Long> callback) {
+        ThreadUtils.assertOnUiThread();
         BvQuotaManagerBridgeJni.get().getUsageAndQuotaForOrigin(
-                mNativeBvQuotaManagerBridge, BvQuotaManagerBridge.this, origin, callbackId, false);
+                mNativeBvQuotaManagerBridge, this, origin, callback, false);
     }
 
     @CalledByNative
-    private void onGetOriginsCallback(int callbackId, String[] origin, long[] usages,
-            long[] quotas) {
-        assert mPendingGetOriginCallbacks.get(callbackId) != null;
-        mPendingGetOriginCallbacks.get(callbackId).onResult(new Origins(origin, usages, quotas));
-        mPendingGetOriginCallbacks.remove(callbackId);
-    }
-
-    @CalledByNative
-    private void onGetUsageAndQuotaForOriginCallback(
-            int callbackId, boolean isQuota, long usage, long quota) {
-        if (isQuota) {
-            assert mPendingGetQuotaForOriginCallbacks.get(callbackId) != null;
-            mPendingGetQuotaForOriginCallbacks.get(callbackId).onResult(quota);
-            mPendingGetQuotaForOriginCallbacks.remove(callbackId);
-        } else {
-            assert mPendingGetUsageForOriginCallbacks.get(callbackId) != null;
-            mPendingGetUsageForOriginCallbacks.get(callbackId).onResult(usage);
-            mPendingGetUsageForOriginCallbacks.remove(callbackId);
-        }
+    private void onGetOriginsCallback(
+            Callback<Origins> callback, String[] origin, long[] usages, long[] quotas) {
+        callback.onResult(new Origins(origin, usages, quotas));
     }
 
     @NativeMethods
@@ -149,9 +114,9 @@ public class BvQuotaManagerBridge {
         void deleteOrigin(
                 long nativeBvQuotaManagerBridge, BvQuotaManagerBridge caller, String origin);
         void getOrigins(
-                long nativeBvQuotaManagerBridge, BvQuotaManagerBridge caller, int callbackId);
+                long nativeBvQuotaManagerBridge, BvQuotaManagerBridge caller, Callback<Origins> callback);
         void getUsageAndQuotaForOrigin(long nativeBvQuotaManagerBridge, BvQuotaManagerBridge caller,
-                String origin, int callbackId, boolean isQuota);
+                String origin, Callback<Long> callback, boolean isQuota);
 
     }
 }

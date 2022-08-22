@@ -235,7 +235,7 @@ class AndroidStreamReaderURLLoaderTest : public ::testing::Test {
 
   base::test::TaskEnvironment task_environment_;
 
-  DISALLOW_COPY_AND_ASSIGN(AndroidStreamReaderURLLoaderTest);
+
 };
 
 TEST_F(AndroidStreamReaderURLLoaderTest, ReadFakeStream) {

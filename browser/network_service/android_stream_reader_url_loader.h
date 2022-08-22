@@ -7,13 +7,14 @@
 #include <string>
 #include <vector>
 
-#include "base/optional.h"
 #include "base/threading/thread_checker.h"
+#include "base/time/time.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
 #include "mojo/public/cpp/bindings/remote.h"
 #include "mojo/public/cpp/system/simple_watcher.h"
 #include "net/http/http_byte_range.h"
 #include "services/network/public/cpp/net_adapters.h"
+#include "services/network/public/cpp/resource_request.h"
 #include "services/network/public/mojom/url_loader.mojom.h"
 #include "services/network/public/mojom/url_response_head.mojom.h"
 
@@ -127,7 +128,7 @@ class AndroidStreamReaderURLLoader : public network::mojom::URLLoader {
 
   base::WeakPtrFactory<AndroidStreamReaderURLLoader> weak_factory_{this};
 
-  DISALLOW_COPY_AND_ASSIGN(AndroidStreamReaderURLLoader);
+
 };
 
 }  // namespace bison

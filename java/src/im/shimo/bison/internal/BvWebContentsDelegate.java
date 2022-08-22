@@ -25,6 +25,7 @@ import org.chromium.components.embedder_support.delegate.WebContentsDelegateAndr
 import org.chromium.content_public.browser.InvalidateTypes;
 import org.chromium.content_public.common.ContentUrlConstants;
 import org.chromium.content_public.common.ResourceRequestBody;
+import org.chromium.url.GURL;
 
 /**
  * BisonView-specific WebContentsDelegate.
@@ -109,10 +110,6 @@ public class BvWebContentsDelegate extends WebContentsDelegateAndroid {
                 break;
         }
     }
-    // @Override
-    // public void onLoadProgressChanged(int progress) {
-    //     mContentsClient.getCallbackHelper().postOnProgressChanged(progress);
-    // }
 
     @Override
     public boolean takeFocus(boolean reverse) {
@@ -157,12 +154,12 @@ public class BvWebContentsDelegate extends WebContentsDelegateAndroid {
     }
 
     @Override
-    public void onUpdateUrl(String url) {
+    public void onUpdateUrl(GURL url) {
         // TODO: implement
     }
 
     @Override
-    public void openNewTab(String url, String extraHeaders, ResourceRequestBody postData,
+    public void openNewTab(GURL url, String extraHeaders, ResourceRequestBody postData,
             int disposition, boolean isRendererInitiated) {
         // This is only called in chrome layers.
         assert false;
@@ -209,6 +206,7 @@ public class BvWebContentsDelegate extends WebContentsDelegateAndroid {
     @CalledByNative
     public void runFileChooser(int processId, int renderId, int modeFlags,
                 String acceptTypes, String title, String defaultFilename,  boolean capture){
+        int correctedModeFlags = FileModeConversionHelper.convertFileChooserMode(modeFlags);
         BvContentsClient.FileChooserParamsImpl params = new BvContentsClient.FileChooserParamsImpl(
                 modeFlags, acceptTypes, title, defaultFilename, capture);
 
@@ -245,7 +243,9 @@ public class BvWebContentsDelegate extends WebContentsDelegateAndroid {
 
     @Override
     @CalledByNative
-    public void navigationStateChanged(int flags){
+    public void navigationStateChanged(int flags) {
+    
+
         if ((flags & InvalidateTypes.URL) != 0
                /* && mBvContents.isPopupWindow() */
                 && mBvContents.hasAccessedInitialDocument()) {
@@ -259,13 +259,20 @@ public class BvWebContentsDelegate extends WebContentsDelegateAndroid {
 
     // jiang full screen view
     @Override
-    public void enterFullscreenModeForTab(boolean prefersNavigationBar) {
+    public void enterFullscreenModeForTab(boolean prefersNavigationBar, boolean prefersStatusBar) {
         enterFullscreen();
     }
 
     @Override
     public void exitFullscreenModeForTab() {
         exitFullscreen();
+    }
+
+    @Override
+    public int getDisplayMode() {
+        // jiang947 
+        //return mBvContents.getDisplayMode();
+        return 0;
     }
 
     @CalledByNative
@@ -305,9 +312,10 @@ public class BvWebContentsDelegate extends WebContentsDelegateAndroid {
     }
 
     @Override
-    public boolean shouldBlockMediaRequest(String url) {
+    public boolean shouldBlockMediaRequest(GURL url) {
         return mBvSettings != null
-                ? mBvSettings.getBlockNetworkLoads() && URLUtil.isNetworkUrl(url) : true;
+                ? mBvSettings.getBlockNetworkLoads() && URLUtil.isNetworkUrl(url.getSpec()) 
+                : true;
     }
 
     private static class GetDisplayNameTask extends AsyncTask<String[]> {

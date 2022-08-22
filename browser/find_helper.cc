@@ -10,15 +10,7 @@ using content::WebContents;
 namespace bison {
 
 FindHelper::FindHelper(WebContents* web_contents)
-    : WebContentsObserver(web_contents),
-      listener_(nullptr),
-      async_find_started_(false),
-      find_request_id_counter_(0),
-      current_request_id_(0),
-      current_session_id_(0),
-      last_match_count_(-1),
-      last_active_ordinal_(-1) {
-}
+    : web_contents_(web_contents) {}
 
 FindHelper::~FindHelper() {
 }
@@ -27,9 +19,9 @@ void FindHelper::SetListener(Listener* listener) {
   listener_ = listener;
 }
 
-void FindHelper::FindAllAsync(const base::string16& search_string) {
+void FindHelper::FindAllAsync(const std::u16string& search_string) {
   // Stop any ongoing asynchronous request.
-  web_contents()->StopFinding(content::STOP_FIND_ACTION_KEEP_SELECTION);
+  web_contents_->StopFinding(content::STOP_FIND_ACTION_KEEP_SELECTION);
 
   async_find_started_ = true;
 
@@ -43,7 +35,7 @@ void FindHelper::FindAllAsync(const base::string16& search_string) {
   options->match_case = false;
   options->new_session = true;
 
-  web_contents()->Find(current_request_id_, search_string, std::move(options));
+  web_contents_->Find(current_request_id_, search_string, std::move(options));
 }
 
 void FindHelper::HandleFindReply(int request_id,
@@ -70,12 +62,12 @@ void FindHelper::FindNext(bool forward) {
   options->match_case = false;
   options->new_session = false;
 
-  web_contents()->Find(current_request_id_, last_search_string_,
+  web_contents_->Find(current_request_id_, last_search_string_,
                        std::move(options));
 }
 
 void FindHelper::ClearMatches() {
-  web_contents()->StopFinding(content::STOP_FIND_ACTION_CLEAR_SELECTION);
+  web_contents_->StopFinding(content::STOP_FIND_ACTION_CLEAR_SELECTION);
 
   async_find_started_ = false;
   last_search_string_.clear();
@@ -83,16 +75,16 @@ void FindHelper::ClearMatches() {
   last_active_ordinal_ = -1;
 }
 
-bool FindHelper::MaybeHandleEmptySearch(const base::string16& search_string) {
+bool FindHelper::MaybeHandleEmptySearch(const std::u16string& search_string) {
   if (!search_string.empty())
     return false;
 
-  web_contents()->StopFinding(content::STOP_FIND_ACTION_CLEAR_SELECTION);
+  web_contents_->StopFinding(content::STOP_FIND_ACTION_CLEAR_SELECTION);
   NotifyResults(0, 0, true);
   return true;
 }
 
-void FindHelper::StartNewSession(const base::string16& search_string) {
+void FindHelper::StartNewSession(const std::u16string& search_string) {
   current_request_id_ = find_request_id_counter_++;
   current_session_id_ = current_request_id_;
   last_search_string_ = search_string;

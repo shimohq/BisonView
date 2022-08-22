@@ -1,6 +1,5 @@
 // create by jiang947
 
-
 #ifndef BISON_BROWSER_PERMISSION_BISON_PERMISSION_REQUEST_H_
 #define BISON_BROWSER_PERMISSION_BISON_PERMISSION_REQUEST_H_
 
@@ -8,7 +7,6 @@
 
 #include "base/android/jni_weak_ref.h"
 #include "base/android/scoped_java_ref.h"
-#include "base/macros.h"
 #include "base/memory/weak_ptr.h"
 #include "url/gurl.h"
 
@@ -77,7 +75,7 @@ class BvPermissionRequest {
   bool processed_;
   base::WeakPtrFactory<BvPermissionRequest> weak_factory_{this};
 
-  DISALLOW_COPY_AND_ASSIGN(BvPermissionRequest);
+
 };
 
 }  // namespace bison

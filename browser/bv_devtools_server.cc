@@ -66,7 +66,7 @@ class UnixDomainServerSocketFactory : public content::DevToolsSocketFactory {
   std::string socket_name_;
   int last_tethering_socket_;
 
-  DISALLOW_COPY_AND_ASSIGN(UnixDomainServerSocketFactory);
+
 };
 
 }  // namespace

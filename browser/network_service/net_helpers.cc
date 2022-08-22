@@ -1,7 +1,6 @@
 #include "bison/browser/network_service/net_helpers.h"
 
 #include "base/logging.h"
-#include "base/macros.h"
 #include "bison/browser/bv_contents_io_thread_client.h"
 #include "bison/common/url_constants.h"
 #include "net/base/load_flags.h"

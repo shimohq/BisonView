@@ -8,7 +8,6 @@
 #include <memory>
 #include <vector>
 
-#include "base/macros.h"
 #include "content/public/browser/devtools_manager_delegate.h"
 
 namespace bison {
@@ -26,7 +25,7 @@ class BvDevToolsManagerDelegate : public content::DevToolsManagerDelegate {
   bool IsBrowserTargetDiscoverable() override;
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(BvDevToolsManagerDelegate);
+
 };
 
 }  //  namespace bison

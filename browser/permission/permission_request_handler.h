@@ -1,9 +1,7 @@
 // create by jiang947
 
-
 #ifndef BISON_BROWSER_PERMISSION_PERMISSION_REQUEST_HANDLER_H_
 #define BISON_BROWSER_PERMISSION_PERMISSION_REQUEST_HANDLER_H_
-
 
 #include <stdint.h>
 
@@ -11,7 +9,6 @@
 #include <memory>
 #include <vector>
 
-#include "base/macros.h"
 #include "base/memory/weak_ptr.h"
 #include "content/public/browser/web_contents_observer.h"
 #include "url/gurl.h"
@@ -76,7 +73,7 @@ class PermissionRequestHandler : public content::WebContentsObserver {
   // opened for. Used to help expire on requests.
   int contents_unique_id_;
 
-  DISALLOW_COPY_AND_ASSIGN(PermissionRequestHandler);
+
 };
 
 }  // namespace bison

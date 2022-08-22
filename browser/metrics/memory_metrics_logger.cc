@@ -64,7 +64,7 @@ void RecordMemoryMetricsImpl(
       case memory_instrumentation::mojom::ProcessType::PLUGIN:
         FALLTHROUGH;
       case memory_instrumentation::mojom::ProcessType::OTHER:
-        //jiang 
+        //jiang
         //NOTREACHED();
         break;
     }
@@ -95,7 +95,7 @@ struct MemoryMetricsLogger::State : public base::RefCountedThreadSafe<State> {
 
   ~State() = default;
 
-  DISALLOW_COPY_AND_ASSIGN(State);
+
 };
 
 MemoryMetricsLogger::MemoryMetricsLogger()
@@ -141,7 +141,7 @@ void MemoryMetricsLogger::RecordMemoryMetricsAfterDelay(
 // static
 void MemoryMetricsLogger::RecordMemoryMetrics(scoped_refptr<State> state,
                                               RecordCallback done_callback) {
-  // jiang  有崩溃 先注释                                              
+  // jiang  有崩溃 先注释
   // memory_instrumentation::MemoryInstrumentation::GetInstance()
   //     ->RequestGlobalDump({}, base::BindOnce(&RecordMemoryMetricsImpl,
   //                                            std::move(done_callback)));

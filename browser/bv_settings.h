@@ -3,15 +3,15 @@
 #ifndef BISON_BROWSER_BISON_SETTINGS_H_
 #define BISON_BROWSER_BISON_SETTINGS_H_
 
-#include <memory>
-
 #include "base/android/jni_weak_ref.h"
 #include "base/android/scoped_java_ref.h"
 #include "content/public/browser/web_contents_observer.h"
 
-namespace content {
+namespace blink {
+namespace web_pref {
 struct WebPreferences;
 }
+}  // namespace blink
 
 namespace bison {
 
@@ -34,8 +34,17 @@ class BvSettings : public content::WebContentsObserver {
     PREFER_MEDIA_QUERY_OVER_FORCE_DARK = 2,
   };
 
+  // GENERATED_JAVA_ENUM_PACKAGE: im.shimo.bison.internal
+  enum RequestedWithHeaderMode {
+    NO_HEADER = 0,
+    APP_PACKAGE_NAME = 1,
+    CONSTANT_WEBVIEW = 2,
+  };
+
   static BvSettings* FromWebContents(content::WebContents* web_contents);
   static bool GetAllowSniffingFileUrls();
+
+static RequestedWithHeaderMode GetDefaultRequestedWithHeaderMode();
 
   BvSettings(JNIEnv* env, jobject obj, content::WebContents* web_contents);
   ~BvSettings() override;
@@ -82,8 +91,21 @@ class BvSettings : public content::WebContentsObserver {
       JNIEnv* env,
       const base::android::JavaParamRef<jobject>& obj);
 
-  void PopulateWebPreferences(content::WebPreferences* web_prefs);
+  void PopulateWebPreferences(blink::web_pref::WebPreferences* web_prefs);
   bool GetAllowFileAccess();
+  bool IsForceDarkApplied(JNIEnv* env,
+                          const base::android::JavaParamRef<jobject>& obj);
+
+  void SetEnterpriseAuthenticationAppLinkPolicyEnabled(
+      JNIEnv* env,
+      const base::android::JavaParamRef<jobject>& obj,
+      jboolean enabled);
+  bool GetEnterpriseAuthenticationAppLinkPolicyEnabled(
+      JNIEnv* env,
+      const base::android::JavaParamRef<jobject>& obj);
+  inline bool enterprise_authentication_app_link_policy_enabled() {
+    return enterprise_authentication_app_link_policy_enabled_;
+  }
 
  private:
   BvRenderViewHostExt* GetBisonRenderViewHostExt();
@@ -98,8 +120,9 @@ class BvSettings : public content::WebContentsObserver {
   bool javascript_can_open_windows_automatically_;
   bool allow_third_party_cookies_;
   bool allow_file_access_;
+  bool enterprise_authentication_app_link_policy_enabled_;
 
-  JavaObjectWeakGlobalRef bison_settings_;
+  JavaObjectWeakGlobalRef bv_settings_;
 };
 
 }  // namespace bison

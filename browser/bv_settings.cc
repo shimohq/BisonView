@@ -6,12 +6,14 @@
 #include "bison/browser/bv_browser_context.h"
 #include "bison/browser/bv_content_browser_client.h"
 #include "bison/browser/bv_contents.h"
+#include "bison/browser/bv_dark_mode.h"
 #include "bison/browser/renderer_host/bv_render_view_host_ext.h"
 #include "bison/common/bv_content_client.h"
+#include "bison/common/bv_features.h"
 
 #include "base/android/jni_android.h"
 #include "base/android/jni_string.h"
-#include "base/macros.h"
+#include "base/memory/raw_ptr.h"
 #include "base/supports_user_data.h"
 #include "components/viz/common/features.h"
 #include "content/public/browser/navigation_controller.h"
@@ -20,15 +22,16 @@
 #include "content/public/browser/renderer_preferences_util.h"
 #include "content/public/browser/storage_partition.h"
 #include "content/public/browser/web_contents.h"
-#include "content/public/common/web_preferences.h"
 #include "net/http/http_util.h"
-#include "third_party/blink/public/mojom/renderer_preferences.mojom.h"
+#include "services/network/public/mojom/network_context.mojom.h"
+#include "third_party/blink/public/common/renderer_preferences/renderer_preferences.h"
+#include "third_party/blink/public/mojom/webpreferences/web_preferences.mojom.h"
 
 using base::android::ConvertJavaStringToUTF16;
 using base::android::ConvertUTF8ToJavaString;
 using base::android::JavaParamRef;
 using base::android::ScopedJavaLocalRef;
-using content::WebPreferences;
+using blink::web_pref::WebPreferences;
 
 namespace bison {
 
@@ -39,9 +42,7 @@ void PopulateFixedWebPreferences(WebPreferences* web_prefs) {
   web_prefs->should_clear_document_background = false;
   web_prefs->viewport_meta_enabled = true;
   web_prefs->picture_in_picture_enabled = false;
-  web_prefs->disable_features_depending_on_viz = true;
   web_prefs->disable_accelerated_small_canvases = true;
-  web_prefs->reenable_web_components_v0 = true;
   // WebView has historically not adjusted font scale for text autosizing.
   web_prefs->device_scale_adjustment = 1.0;
 }
@@ -74,7 +75,9 @@ BvSettings::BvSettings(JNIEnv* env,
       javascript_can_open_windows_automatically_(false),
       allow_third_party_cookies_(false),
       allow_file_access_(false),
-      bison_settings_(env, obj) {
+      enterprise_authentication_app_link_policy_enabled_(
+          true),
+      bv_settings_(env, obj) {
   web_contents->SetUserData(kBvSettingsUserDataKey,
                             std::make_unique<BvSettingsUserData>(this));
 }
@@ -85,8 +88,8 @@ BvSettings::~BvSettings() {
   }
 
   JNIEnv* env = base::android::AttachCurrentThread();
-  ScopedJavaLocalRef<jobject> scoped_obj = bison_settings_.get(env);
-  if (scoped_obj.is_null())
+  ScopedJavaLocalRef<jobject> scoped_obj = bv_settings_.get(env);
+  if (!scoped_obj)
     return;
   Java_BvSettings_nativeBvSettingsGone(env, scoped_obj,
                                        reinterpret_cast<intptr_t>(this));
@@ -113,6 +116,25 @@ bool BvSettings::GetAllowSniffingFileUrls() {
   return Java_BvSettings_getAllowSniffingFileUrls(env);
 }
 
+BvSettings::RequestedWithHeaderMode
+BvSettings::GetDefaultRequestedWithHeaderMode() {
+  if (base::FeatureList::IsEnabled(features::kWebViewXRequestedWithHeader)) {
+    int configuredValue = features::kWebViewXRequestedWithHeaderMode.Get();
+    switch (configuredValue) {
+      case BvSettings::RequestedWithHeaderMode::CONSTANT_WEBVIEW:
+        return BvSettings::RequestedWithHeaderMode::CONSTANT_WEBVIEW;
+      case BvSettings::RequestedWithHeaderMode::NO_HEADER:
+        return BvSettings::RequestedWithHeaderMode::NO_HEADER;
+      default:
+        // If the field trial config is broken for some reason, use the
+        // package name, since the feature is still enabled.
+        return BvSettings::RequestedWithHeaderMode::APP_PACKAGE_NAME;
+    }
+  } else {
+    return BvSettings::RequestedWithHeaderMode::NO_HEADER;
+  }
+}
+
 BvRenderViewHostExt* BvSettings::GetBisonRenderViewHostExt() {
   if (!web_contents())
     return NULL;
@@ -133,8 +155,8 @@ void BvSettings::ResetScrollAndScaleState(JNIEnv* env,
 void BvSettings::UpdateEverything() {
   JNIEnv* env = base::android::AttachCurrentThread();
   CHECK(env);
-  ScopedJavaLocalRef<jobject> scoped_obj = bison_settings_.get(env);
-  if (scoped_obj.is_null())
+  ScopedJavaLocalRef<jobject> scoped_obj = bv_settings_.get(env);
+  if (!scoped_obj)
     return;
   // Grab the lock and call UpdateEverythingLocked.
   Java_BvSettings_updateEverything(env, scoped_obj);
@@ -161,7 +183,7 @@ void BvSettings::UpdateUserAgentLocked(JNIEnv* env,
 
   ScopedJavaLocalRef<jstring> str =
       Java_BvSettings_getUserAgentLocked(env, obj);
-  bool ua_overidden = str.obj() != NULL;
+  bool ua_overidden = !!str;
 
   if (ua_overidden) {
     std::string override = base::android::ConvertJavaStringToUTF8(str);
@@ -183,11 +205,7 @@ void BvSettings::UpdateWebkitPreferencesLocked(
   if (!render_view_host_ext)
     return;
 
-  content::RenderViewHost* render_view_host =
-      web_contents()->GetRenderViewHost();
-  if (!render_view_host)
-    return;
-  render_view_host->OnWebkitPreferencesChanged();
+  web_contents()->OnWebPreferencesChanged();
 }
 
 void BvSettings::UpdateInitialPageScaleLocked(
@@ -238,8 +256,7 @@ void BvSettings::UpdateRendererPreferencesLocked(
     return;
 
   bool update_prefs = false;
-  blink::mojom::RendererPreferences* prefs =
-      web_contents()->GetMutableRendererPrefs();
+  blink::RendererPreferences* prefs = web_contents()->GetMutableRendererPrefs();
 
   if (!renderer_prefs_initialized_) {
     content::UpdateFontRendererPreferencesFromSystemSettings(prefs);
@@ -262,7 +279,7 @@ void BvSettings::UpdateRendererPreferencesLocked(
         BvBrowserContext::FromWebContents(web_contents());
     // AndroidWebview does not use per-site storage partitions.
     content::StoragePartition* storage_partition =
-        content::BrowserContext::GetDefaultStoragePartition(bv_browser_context);
+        bv_browser_context->GetDefaultStoragePartition();
     std::string expanded_language_list =
         net::HttpUtil::ExpandLanguageList(prefs->accept_languages);
     storage_partition->GetNetworkContext()->SetAcceptLanguage(
@@ -282,7 +299,6 @@ void BvSettings::UpdateCookiePolicyLocked(JNIEnv* env,
 void BvSettings::UpdateOffscreenPreRasterLocked(
     JNIEnv* env,
     const JavaParamRef<jobject>& obj) {
-  // jiang
   BvContents* contents = BvContents::FromWebContents(web_contents());
   if (contents) {
     contents->SetOffscreenPreRaster(
@@ -312,8 +328,8 @@ void BvSettings::WebContentsDestroyed() {
 void BvSettings::PopulateWebPreferences(WebPreferences* web_prefs) {
   JNIEnv* env = base::android::AttachCurrentThread();
   CHECK(env);
-  ScopedJavaLocalRef<jobject> scoped_obj = bison_settings_.get(env);
-  if (scoped_obj.is_null())
+  ScopedJavaLocalRef<jobject> scoped_obj = bv_settings_.get(env);
+  if (!scoped_obj)
     return;
   // Grab the lock and call PopulateWebPreferencesLocked.
   Java_BvSettings_populateWebPreferences(env, scoped_obj,
@@ -344,27 +360,27 @@ void BvSettings::PopulateWebPreferencesLocked(JNIEnv* env,
     render_view_host_ext->SetTextZoomFactor(text_size_percent / 100.0f);
   }
 
-  web_prefs->standard_font_family_map[content::kCommonScript] =
+  web_prefs->standard_font_family_map[blink::web_pref::kCommonScript] =
       ConvertJavaStringToUTF16(
           Java_BvSettings_getStandardFontFamilyLocked(env, obj));
 
-  web_prefs->fixed_font_family_map[content::kCommonScript] =
+  web_prefs->fixed_font_family_map[blink::web_pref::kCommonScript] =
       ConvertJavaStringToUTF16(
           Java_BvSettings_getFixedFontFamilyLocked(env, obj));
 
-  web_prefs->sans_serif_font_family_map[content::kCommonScript] =
+  web_prefs->sans_serif_font_family_map[blink::web_pref::kCommonScript] =
       ConvertJavaStringToUTF16(
           Java_BvSettings_getSansSerifFontFamilyLocked(env, obj));
 
-  web_prefs->serif_font_family_map[content::kCommonScript] =
+  web_prefs->serif_font_family_map[blink::web_pref::kCommonScript] =
       ConvertJavaStringToUTF16(
           Java_BvSettings_getSerifFontFamilyLocked(env, obj));
 
-  web_prefs->cursive_font_family_map[content::kCommonScript] =
+  web_prefs->cursive_font_family_map[blink::web_pref::kCommonScript] =
       ConvertJavaStringToUTF16(
           Java_BvSettings_getCursiveFontFamilyLocked(env, obj));
 
-  web_prefs->fantasy_font_family_map[content::kCommonScript] =
+  web_prefs->fantasy_font_family_map[blink::web_pref::kCommonScript] =
       ConvertJavaStringToUTF16(
           Java_BvSettings_getFantasyFontFamilyLocked(env, obj));
 
@@ -408,10 +424,6 @@ void BvSettings::PopulateWebPreferencesLocked(JNIEnv* env,
 
   web_prefs->plugins_enabled = false;
 
-  web_prefs->application_cache_enabled =
-      Java_BvSettings_getAppCacheEnabledLocked(env, obj) &&
-      content::StoragePartition::IsAppCacheEnabled();
-
   web_prefs->local_storage_enabled =
       Java_BvSettings_getDomStorageEnabledLocked(env, obj);
 
@@ -438,8 +450,8 @@ void BvSettings::PopulateWebPreferencesLocked(JNIEnv* env,
 
   web_prefs->autoplay_policy =
       Java_BvSettings_getMediaPlaybackRequiresUserGestureLocked(env, obj)
-          ? content::AutoplayPolicy::kUserGestureRequired
-          : content::AutoplayPolicy::kNoUserGestureRequired;
+          ? blink::mojom::AutoplayPolicy::kUserGestureRequired
+          : blink::mojom::AutoplayPolicy::kNoUserGestureRequired;
 
   ScopedJavaLocalRef<jstring> url =
       Java_BvSettings_getDefaultVideoPosterURLLocked(env, obj);
@@ -511,52 +523,37 @@ void BvSettings::PopulateWebPreferencesLocked(JNIEnv* env,
 
   // getAllowMixedContentAutoupgradesLocked
 
-  bool is_dark_mode;
-  switch (Java_BvSettings_getForceDarkModeLocked(env, obj)) {
-    case ForceDarkMode::FORCE_DARK_OFF:
-      is_dark_mode = false;
-      break;
-    case ForceDarkMode::FORCE_DARK_ON:
-      is_dark_mode = true;
-      break;
-    case ForceDarkMode::FORCE_DARK_AUTO: {
-      // BvContents* contents = BvContents::FromWebContents(web_contents());
-      // is_dark_mode = contents && contents->GetViewTreeForceDarkState();
-      is_dark_mode = false;
-      break;
-    }
+  if (BvDarkMode* bv_dark_mode = BvDarkMode::FromWebContents(web_contents())) {
+    bv_dark_mode->PopulateWebPreferences(
+        web_prefs, Java_BvSettings_getForceDarkModeLocked(env, obj),
+        Java_BvSettings_getForceDarkBehaviorLocked(env, obj),
+        Java_BvSettings_isAlgorithmicDarkeningAllowedLocked(env, obj));
   }
-  web_prefs->preferred_color_scheme = is_dark_mode
-                                          ? blink::PreferredColorScheme::kDark
-                                          : blink::PreferredColorScheme::kLight;
-  if (is_dark_mode) {
-    switch (Java_BvSettings_getForceDarkBehaviorLocked(env, obj)) {
-      case ForceDarkBehavior::FORCE_DARK_ONLY: {
-        web_prefs->preferred_color_scheme = blink::PreferredColorScheme::kLight;
-        web_prefs->force_dark_mode_enabled = true;
-        break;
-      }
-      case ForceDarkBehavior::MEDIA_QUERY_ONLY: {
-        web_prefs->preferred_color_scheme = blink::PreferredColorScheme::kDark;
-        web_prefs->force_dark_mode_enabled = false;
-        break;
-      }
-      // Blink's behavior is that if the preferred color scheme matches the
-      // supported color scheme, then force dark will be disabled, otherwise
-      // the preferred color scheme will be reset to 'light'. Therefore
-      // when enabling force dark, we also set the preferred color scheme to
-      // dark so that dark themed content will be preferred over force
-      // darkening.
-      case ForceDarkBehavior::PREFER_MEDIA_QUERY_OVER_FORCE_DARK: {
-        web_prefs->preferred_color_scheme = blink::PreferredColorScheme::kDark;
-        web_prefs->force_dark_mode_enabled = true;
-        break;
-      }
-    }
-  } else {
-    web_prefs->preferred_color_scheme = blink::PreferredColorScheme::kLight;
-    web_prefs->force_dark_mode_enabled = false;
+
+  // WebView does not support WebAuthn yet.
+  web_prefs->disable_webauthn = true;
+}
+
+bool BvSettings::IsForceDarkApplied(JNIEnv* env,
+                                    const JavaParamRef<jobject>& obj) {
+  if (BvDarkMode* bv_dark_mode = BvDarkMode::FromWebContents(web_contents())) {
+    return bv_dark_mode->is_force_dark_applied();
   }
+  return false;
+}
+
+
+void BvSettings::SetEnterpriseAuthenticationAppLinkPolicyEnabled(
+    JNIEnv* env,
+    const JavaParamRef<jobject>& obj,
+    jboolean enabled) {
+  enterprise_authentication_app_link_policy_enabled_ = enabled;
+}
+
+bool BvSettings::GetEnterpriseAuthenticationAppLinkPolicyEnabled(
+    JNIEnv* env,
+    const JavaParamRef<jobject>& obj) {
+  return enterprise_authentication_app_link_policy_enabled();
 }
 
 bool BvSettings::GetAllowFileAccess() {

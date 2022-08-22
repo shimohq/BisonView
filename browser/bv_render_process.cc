@@ -8,7 +8,7 @@
 #include "base/android/scoped_java_ref.h"
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/render_process_host.h"
-
+#include "ipc/ipc_channel_proxy.h"
 
 using base::android::AttachCurrentThread;
 using content::BrowserThread;
@@ -44,6 +44,8 @@ BvRenderProcess::BvRenderProcess(RenderProcessHost* render_process_host)
   if (render_process_host_->IsReady()) {
     Ready();
   }
+  render_process_host_->GetChannel()->GetRemoteAssociatedInterface(
+      &renderer_remote_);
   render_process_host->AddObserver(this);
 }
 
@@ -52,6 +54,14 @@ BvRenderProcess::~BvRenderProcess() {
 
   Java_BvRenderProcess_setNative(AttachCurrentThread(), java_obj_, 0);
   java_obj_.Reset();
+}
+
+void BvRenderProcess::ClearCache() {
+  renderer_remote_->ClearCache();
+}
+
+void BvRenderProcess::SetJsOnlineProperty(bool network_up) {
+  renderer_remote_->SetJsOnlineProperty(network_up);
 }
 
 void BvRenderProcess::Ready() {
@@ -77,12 +87,12 @@ bool BvRenderProcess::TerminateChildProcess(
   return render_process_host_->Shutdown(0);
 }
 
-bool BvRenderProcess::IsLockedToOriginForTesting(
+bool BvRenderProcess::IsProcessLockedToSiteForTesting(
     JNIEnv* env,
     const base::android::JavaParamRef<jobject>& obj) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
 
-  return render_process_host_->IsLockedToOriginForTesting();
+  return render_process_host_->IsProcessLockedToSiteForTesting();  // IN-TEST
 }
 
 base::android::ScopedJavaLocalRef<jobject> BvRenderProcess::GetJavaObject() {

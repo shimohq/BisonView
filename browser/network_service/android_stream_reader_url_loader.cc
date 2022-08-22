@@ -95,7 +95,7 @@ class InputStreamReaderWrapper
   std::unique_ptr<InputStream> input_stream_;
   std::unique_ptr<InputStreamReader> input_stream_reader_;
 
-  DISALLOW_COPY_AND_ASSIGN(InputStreamReaderWrapper);
+
 };
 
 AndroidStreamReaderURLLoader::AndroidStreamReaderURLLoader(
@@ -192,7 +192,7 @@ void AndroidStreamReaderURLLoader::OnInputStreamOpened(
       // The original request has been restarted with a new loader or
       // completed. We can clean up this loader.
       // Generally speaking this can happen in the following cases
-      // (see bison_proxying_url_loader_factory.cc for delegate implementation):
+      // (see bv_proxying_url_loader_factory.cc for delegate implementation):
       //   1. InterceptResponseDelegate :
       //     - intercepted requests with custom response,
       //     - no restart required

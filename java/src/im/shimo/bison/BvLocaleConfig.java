@@ -12,6 +12,6 @@ public final class BvLocaleConfig {
     private BvLocaleConfig() {}
 
     public static String[] getWebViewSupportedPakLocales() {
-        return ProductConfig.UNCOMPRESSED_LOCALES;
+        return ProductConfig.LOCALES;
     }
 }

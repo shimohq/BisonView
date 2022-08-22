@@ -21,10 +21,10 @@ public final class BvRenderProcess  {
                 mNativeRenderProcess, BvRenderProcess.this);
     }
 
-    public boolean isLockedToOriginForTesting() {
+    public boolean isProcessLockedToSiteForTesting() {
         if (mNativeRenderProcess == 0) return false;
 
-        return BvRenderProcessJni.get().isLockedToOriginForTesting(
+        return BvRenderProcessJni.get().isProcessLockedToSiteForTesting(
                 mNativeRenderProcess, BvRenderProcess.this);
     }
 
@@ -41,6 +41,6 @@ public final class BvRenderProcess  {
     @NativeMethods
     interface Natives {
         boolean terminateChildProcess(long nativeBvRenderProcess, BvRenderProcess caller);
-        boolean isLockedToOriginForTesting(long nativeBvRenderProcess, BvRenderProcess caller);
+        boolean isProcessLockedToSiteForTesting(long nativeBvRenderProcess, BvRenderProcess caller);
     }
 }

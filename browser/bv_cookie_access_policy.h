@@ -4,9 +4,9 @@
 #define BISON_BROWSER_BISON_COOKIE_ACCESS_POLICY_H_
 
 #include "base/lazy_instance.h"
-#include "base/macros.h"
-#include "base/synchronization/lock.h"
+
 #include "base/no_destructor.h"
+#include "base/synchronization/lock.h"
 #include "net/cookies/site_for_cookies.h"
 
 class GURL;
@@ -57,7 +57,7 @@ class BvCookieAccessPolicy {
   bool accept_cookies_;
   base::Lock lock_;
 
-  DISALLOW_COPY_AND_ASSIGN(BvCookieAccessPolicy);
+
 };
 
 }  // namespace bison

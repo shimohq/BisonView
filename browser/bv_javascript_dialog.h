@@ -4,7 +4,7 @@
 #define BISON_BROWSER_BISON_JAVASCRIPT_DIALOG_H_
 
 #include "base/callback.h"
-#include "base/macros.h"
+
 #include "build/build_config.h"
 #include "content/public/browser/javascript_dialog_manager.h"
 
@@ -15,11 +15,11 @@ class BvJavaScriptDialogManager;
 class BvJavaScriptDialog {
  public:
   BvJavaScriptDialog(BvJavaScriptDialogManager* manager,
-                        gfx::NativeWindow parent_window,
-                        JavaScriptDialogType dialog_type,
-                        const base::string16& message_text,
-                        const base::string16& default_prompt_text,
-                        JavaScriptDialogManager::DialogClosedCallback callback);
+                     gfx::NativeWindow parent_window,
+                     JavaScriptDialogType dialog_type,
+                     const base::string16& message_text,
+                     const base::string16& default_prompt_text,
+                     JavaScriptDialogManager::DialogClosedCallback callback);
   ~BvJavaScriptDialog();
 
   // Called to cancel a dialog mid-flight.
@@ -28,7 +28,7 @@ class BvJavaScriptDialog {
  private:
   JavaScriptDialogManager::DialogClosedCallback callback_;
 
-  DISALLOW_COPY_AND_ASSIGN(BvJavaScriptDialog);
+
 };
 
 }  // namespace bison

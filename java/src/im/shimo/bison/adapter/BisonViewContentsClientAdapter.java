@@ -39,6 +39,7 @@ import im.shimo.bison.internal.PermissionResource;
 import org.chromium.base.Callback;
 import org.chromium.base.ContextUtils;
 import org.chromium.base.TraceEvent;
+import org.chromium.components.embedder_support.util.WebResourceResponseInfo;
 
 import java.lang.ref.WeakReference;
 import java.security.Principal;
@@ -125,7 +126,7 @@ public class BisonViewContentsClientAdapter extends BvContentsClientAdapter {
      * @see BvContentsClient#shouldInterceptRequest
      */
     @Override
-    public BvWebResourceResponse shouldInterceptRequest(BvWebResourceRequest request) {
+    public WebResourceResponseInfo shouldInterceptRequest(BvWebResourceRequest request) {
         WebResourceResponse response = mBisonViewClient.shouldInterceptRequest(mBisonView,
                 new WebResourceRequestAdapter(request));
         if (response == null)
@@ -135,7 +136,7 @@ public class BisonViewContentsClientAdapter extends BvContentsClientAdapter {
         if (responseHeaders == null)
             responseHeaders = new HashMap<String, String>();
 
-        return new BvWebResourceResponse(
+        return new WebResourceResponseInfo(
             response.getMimeType(),
             response.getEncoding(),
             response.getData(),

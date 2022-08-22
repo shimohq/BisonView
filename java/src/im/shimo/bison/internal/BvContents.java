@@ -1,6 +1,7 @@
 package im.shimo.bison.internal;
 
 import android.annotation.SuppressLint;
+import android.app.Activity;
 import android.content.ComponentCallbacks2;
 import android.content.Context;
 import android.content.Intent;
@@ -8,9 +9,12 @@ import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.ColorMatrix;
+import android.graphics.ColorMatrixColorFilter;
 import android.graphics.Paint;
 import android.graphics.Picture;
 import android.graphics.Rect;
+import android.net.Uri;
 import android.net.http.SslCertificate;
 import android.os.Build;
 import android.os.Bundle;
@@ -19,6 +23,7 @@ import android.os.Message;
 import android.os.SystemClock;
 import android.text.TextUtils;
 import android.util.Base64;
+import android.util.Pair;
 import android.util.SparseArray;
 import android.view.DragEvent;
 import android.view.KeyEvent;
@@ -27,12 +32,14 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewStructure;
 import android.view.accessibility.AccessibilityNodeProvider;
+import android.view.animation.AnimationUtils;
 import android.view.autofill.AutofillValue;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
 import android.view.textclassifier.TextClassifier;
 import android.webkit.JavascriptInterface;
 
+import androidx.annotation.IntDef;
 import androidx.annotation.NonNull;
 import androidx.annotation.RestrictTo;
 import androidx.annotation.VisibleForTesting;
@@ -49,19 +56,22 @@ import org.chromium.base.metrics.ScopedSysTraceEvent;
 import org.chromium.base.task.AsyncTask;
 import org.chromium.base.task.PostTask;
 import org.chromium.components.autofill.AutofillProvider;
+import org.chromium.components.embedder_support.util.WebResourceResponseInfo;
 import org.chromium.components.navigation_interception.InterceptNavigationDelegate;
-import org.chromium.components.navigation_interception.NavigationParams;
+import org.chromium.components.url_formatter.UrlFormatter;
 import org.chromium.content_public.browser.ChildProcessImportance;
 import org.chromium.content_public.browser.ImeAdapter;
 import org.chromium.content_public.browser.ImeEventObserver;
 import org.chromium.content_public.browser.JavaScriptCallback;
 import org.chromium.content_public.browser.JavascriptInjector;
 import org.chromium.content_public.browser.LoadUrlParams;
+import org.chromium.content_public.browser.MessagePayload;
 import org.chromium.content_public.browser.MessagePort;
 import org.chromium.content_public.browser.NavigationController;
+import org.chromium.content_public.browser.NavigationHandle;
 import org.chromium.content_public.browser.NavigationHistory;
-import org.chromium.content_public.browser.RenderCoordinates;
 import org.chromium.content_public.browser.RenderFrameHost;
+import org.chromium.content_public.browser.SelectionClient;
 import org.chromium.content_public.browser.SelectionPopupController;
 import org.chromium.content_public.browser.SmartClipProvider;
 import org.chromium.content_public.browser.UiThreadTaskTraits;
@@ -77,7 +87,7 @@ import org.chromium.net.NetworkChangeNotifier;
 import org.chromium.network.mojom.ReferrerPolicy;
 import org.chromium.ui.base.ActivityWindowAndroid;
 import org.chromium.ui.base.Clipboard;
-import org.chromium.ui.base.EventForwarder;
+import org.chromium.ui.base.IntentRequestTracker;
 import org.chromium.ui.base.PageTransition;
 import org.chromium.ui.base.ViewAndroidDelegate;
 import org.chromium.ui.base.WindowAndroid;
@@ -89,9 +99,14 @@ import java.lang.annotation.Annotation;
 import java.lang.ref.WeakReference;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.WeakHashMap;
+import java.util.concurrent.Callable;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import im.shimo.bison.BisonViewAndroidDelegate;
@@ -139,7 +154,7 @@ public class BvContents implements SmartClipProvider {
          * @see View#overScrollBy(int, int, int, int, int, int, int, int, boolean);
          */
         void overScrollBy(int deltaX, int deltaY, int scrollX, int scrollY, int scrollRangeX, int scrollRangeY,
-                          int maxOverScrollX, int maxOverScrollY, boolean isTouchEvent);
+                int maxOverScrollX, int maxOverScrollY, boolean isTouchEvent);
 
         /**
          * @see View#scrollTo(int, int)
@@ -212,8 +227,7 @@ public class BvContents implements SmartClipProvider {
     private boolean mIsUpdateVisibilityTaskPending;
     private Runnable mUpdateVisibilityRunnable;
 
-    private @RendererPriority
-    int mRendererPriority;
+    private @RendererPriority int mRendererPriority;
     private boolean mRendererPriorityWaivedWhenNotVisible;
 
     private Bitmap mFavicon;
@@ -331,46 +345,43 @@ public class BvContents implements SmartClipProvider {
         public boolean getSafeBrowsingEnabled() {
             return mSettings.getSafeBrowsingEnabled();
         }
+
+        @Override
+        public int getRequestedWithHeaderMode() {
+            return mSettings.getRequestedWithHeaderMode();
+        }
     }
 
     private class BackgroundThreadClientImpl extends BvContentsBackgroundThreadClient {
         // All methods are called on the background thread.
 
         @Override
-        public BvWebResourceResponse shouldInterceptRequest(BvWebResourceRequest request) {
+        public WebResourceResponseInfo shouldInterceptRequest(BvWebResourceRequest request) {
             String url = request.url;
-            BvWebResourceResponse webResourceResponse;
+            WebResourceResponseInfo webResourceResponseInfo;
             // Return the response directly if the url is default video poster url.
             // webResourceResponse =
             // mDefaultVideoPosterRequestHandler.shouldInterceptRequest(url);
             // if (webResourceResponse != null) return webResourceResponse;
 
-            webResourceResponse = mContentsClient.shouldInterceptRequest(request);
+            webResourceResponseInfo = mContentsClient.shouldInterceptRequest(request);
 
-            if (webResourceResponse == null) {
+            if (webResourceResponseInfo == null) {
                 mContentsClient.getCallbackHelper().postOnLoadResource(url);
             }
 
-            // if (webResourceResponse != null) {
-            // String mimeType = webResourceResponse.getMimeType();
-            // if (mimeType == null) {
-            // AwHistogramRecorder.recordMimeType(
-            // AwHistogramRecorder.MimeType.NULL_FROM_SHOULD_INTERCEPT_REQUEST);
-            // } else {
-            // AwHistogramRecorder.recordMimeType(
-            // AwHistogramRecorder.MimeType.NONNULL_FROM_SHOULD_INTERCEPT_REQUEST);
-            // }
-            // }
-            if (webResourceResponse != null && webResourceResponse.getData() == null) {
+            if (webResourceResponseInfo != null && webResourceResponseInfo.getData() == null) {
                 // In this case the intercepted URLRequest job will simulate an empty response
                 // which doesn't trigger the onReceivedError callback. For WebViewClassic
                 // compatibility we synthesize that callback. http://crbug.com/180950
-                mContentsClient.getCallbackHelper().postOnReceivedError(request,
+                mContentsClient.getCallbackHelper().postOnReceivedError(
+                        request,
                         new BvContentsClient.BvWebResourceError());
             }
-            return webResourceResponse;
+            return webResourceResponseInfo;
         }
 
+        //jiang
         @Override
         public void overrideRequest(BvWebResourceRequest request) {
             mContentsClient.overrideRequest(request);
@@ -378,11 +389,15 @@ public class BvContents implements SmartClipProvider {
 
     }
 
-    private class InterceptNavigationDelegateImpl implements InterceptNavigationDelegate {
+    private class InterceptNavigationDelegateImpl extends InterceptNavigationDelegate {
         @Override
-        public boolean shouldIgnoreNavigation(NavigationParams navigationParams) {
-            if (!navigationParams.isRendererInitiated) {
-                mContentsClient.getCallbackHelper().postOnPageStarted(navigationParams.url);
+        public boolean shouldIgnoreNavigation(NavigationHandle navigationHandle, GURL escapedUrl,
+                boolean applyUserGestureCarryover) {
+            if (!navigationHandle.isRendererInitiated()) {
+                GURL url = navigationHandle.getBaseUrlForDataUrl().isEmpty()
+                        ? navigationHandle.getUrl()
+                        : navigationHandle.getBaseUrlForDataUrl();
+                mContentsClient.getCallbackHelper().postOnPageStarted(url.getPossiblyInvalidSpec());
             }
             return false;
         }
@@ -392,7 +407,8 @@ public class BvContents implements SmartClipProvider {
     private class LayoutSizerDelegate implements BvLayoutSizer.Delegate {
         @Override
         public void requestLayout() {
-            if (mContainerView==null) return;
+            if (mContainerView == null)
+                return;
             mContainerView.requestLayout();
         }
 
@@ -403,7 +419,7 @@ public class BvContents implements SmartClipProvider {
 
         @Override
         public boolean isLayoutParamsHeightWrapContent() {
-            return mContainerView!=null && mContainerView.getLayoutParams() != null
+            return mContainerView != null && mContainerView.getLayoutParams() != null
                     && (mContainerView.getLayoutParams().height == ViewGroup.LayoutParams.WRAP_CONTENT);
         }
 
@@ -417,7 +433,7 @@ public class BvContents implements SmartClipProvider {
     private class BvScrollOffsetManagerDelegate implements BvScrollOffsetManager.Delegate {
         @Override
         public void overScrollContainerViewBy(int deltaX, int deltaY, int scrollX, int scrollY, int scrollRangeX,
-                                              int scrollRangeY, boolean isTouchEvent) {
+                int scrollRangeY, boolean isTouchEvent) {
             mInternalAccessAdapter.overScrollBy(deltaX, deltaY, scrollX, scrollY, scrollRangeX, scrollRangeY, 0, 0,
                     isTouchEvent);
         }
@@ -439,14 +455,14 @@ public class BvContents implements SmartClipProvider {
 
         @Override
         public int getContainerViewScrollX() {
-            if (mContainerView==null)
+            if (mContainerView == null)
                 return 0;
             return mContainerView.getScrollX();
         }
 
         @Override
         public int getContainerViewScrollY() {
-            if (mContainerView==null)
+            if (mContainerView == null)
                 return 0;
             return mContainerView.getScrollY();
         }
@@ -481,8 +497,8 @@ public class BvContents implements SmartClipProvider {
 
     // --------------------------------------------------------------------------------------------
     public BvContents(Context context, ViewGroup containerView, BvBrowserContext bvBrowserContext,
-                      InternalAccessDelegate internalAccessAdapter, BvContentsClientBridge bvContentsClientBridge,
-                      BvContentsClient bvContentsClient, BvSettings settings, int webContentsRenderView) {
+            InternalAccessDelegate internalAccessAdapter, BvContentsClientBridge bvContentsClientBridge,
+            BvContentsClient bvContentsClient, BvSettings settings, int webContentsRenderView) {
         mRendererPriority = RendererPriority.HIGH;
         mSettings = settings;
         updateDefaultLocale();
@@ -528,8 +544,8 @@ public class BvContents implements SmartClipProvider {
     }
 
     private void initWebContents(ViewAndroidDelegate viewDelegate, InternalAccessDelegate internalDispatcher,
-                                 WebContents webContents, WindowAndroid windowAndroid,
-                                 WebContentsInternalsHolder internalsHolder, int webContentsRenderView) {
+            WebContents webContents, WindowAndroid windowAndroid,
+            WebContentsInternalsHolder internalsHolder, int webContentsRenderView) {
         mContentViewRenderView = new ContentViewRenderView(mContext);
         mContentViewRenderView.onNativeLibraryLoaded(windowAndroid, webContentsRenderView);
         // mWindowAndroid.getWindowAndroid().setAnimationPlaceholderView(mContentViewRenderView.getSurfaceView());
@@ -601,12 +617,13 @@ public class BvContents implements SmartClipProvider {
         WindowAndroidWrapper wrapper = null;
 
         try (ScopedSysTraceEvent e = ScopedSysTraceEvent.scoped("BisonContents.getWindowAndroid")) {
-            boolean contextWrapsActivity = ContextUtils.activityFromContext(context) != null;
-            if (contextWrapsActivity) {
+            Activity activity = ContextUtils.activityFromContext(context);
+            if (activity != null) {
                 ActivityWindowAndroid activityWindow;
                 try (ScopedSysTraceEvent e2 = ScopedSysTraceEvent.scoped("BisonContents.createActivityWindow")) {
                     final boolean listenToActivityState = false;
-                    activityWindow = new ActivityWindowAndroid(context, listenToActivityState);
+                    activityWindow = new ActivityWindowAndroid(context, listenToActivityState,
+                            IntentRequestTracker.createFromActivity(activity));
                 }
                 wrapper = new WindowAndroidWrapper(activityWindow);
             } else {
@@ -654,7 +671,7 @@ public class BvContents implements SmartClipProvider {
 
     private JavascriptInjector getJavascriptInjector() {
         if (mJavascriptInjector == null) {
-            mJavascriptInjector = JavascriptInjector.fromWebContents(mWebContents);
+            mJavascriptInjector = JavascriptInjector.fromWebContents(mWebContents, true);
         }
         return mJavascriptInjector;
     }
@@ -741,7 +758,7 @@ public class BvContents implements SmartClipProvider {
             mViewAndroidDelegate.setContainerView(null);
             mViewAndroidDelegate = null;
         }
-        if (mJavascriptInjector!=null){
+        if (mJavascriptInjector != null) {
             mJavascriptInjector = null;
         }
 
@@ -817,7 +834,7 @@ public class BvContents implements SmartClipProvider {
     private static final Rect sLocalGlobalVisibleRect = new Rect();
 
     private Rect getGlobalVisibleRect() {
-        if (mContainerView==null || !mContainerView.getGlobalVisibleRect(sLocalGlobalVisibleRect)) {
+        if (mContainerView == null || !mContainerView.getGlobalVisibleRect(sLocalGlobalVisibleRect)) {
             sLocalGlobalVisibleRect.setEmpty();
         }
         return sLocalGlobalVisibleRect;
@@ -851,8 +868,8 @@ public class BvContents implements SmartClipProvider {
         // jiang
         // if (TRACE) Log.i(TAG, "%s capturePicture", this);
         // if (isDestroyed(WARN)) return null;
-        // return new AwPicture(AwContentsJni.get().capturePicture(mNativeAwContents,
-        // AwContents.this,
+        // return new AwPicture(AwContentsJni.get().capturePicture(mNativeBvContents,
+        // BvContents.this,
         // mScrollOffsetManager.computeHorizontalScrollRange(),
         // mScrollOffsetManager.computeVerticalScrollRange()));
         return null;
@@ -861,8 +878,8 @@ public class BvContents implements SmartClipProvider {
     // jiang
     // public void clearView() {
     // if (TRACE) Log.i(TAG, "%s clearView", this);
-    // if (!isDestroyed(WARN)) AwContentsJni.get().clearView(mNativeAwContents,
-    // AwContents.this);
+    // if (!isDestroyed(WARN)) AwContentsJni.get().clearView(mNativeBvContents,
+    // BvContents.this);
     // }
 
     // jiang
@@ -1017,7 +1034,8 @@ public class BvContents implements SmartClipProvider {
             BvContentsJni.get().grantFileSchemeAccesstoChildProcess(mNativeBvContents);
         }
 
-        if (params.getUrl() != null && params.getUrl().equals(mWebContents.getLastCommittedUrl())
+        if (params.getUrl() != null
+                && params.getUrl().equals(mWebContents.getLastCommittedUrl().getSpec())
                 && params.getTransitionType() == PageTransition.TYPED) {
             params.setTransitionType(PageTransition.RELOAD);
         }
@@ -1032,7 +1050,6 @@ public class BvContents implements SmartClipProvider {
                 if (referer.equals(header.toLowerCase(Locale.US))) {
                     params.setReferrer(new Referrer(extraHeaders.remove(header), ReferrerPolicy.DEFAULT));
                     params.setExtraHeaders(extraHeaders);
-
                     break;
                 }
             }
@@ -1041,6 +1058,8 @@ public class BvContents implements SmartClipProvider {
         BvContentsJni.get().setExtraHeadersForUrl(mNativeBvContents, params.getUrl(),
                 params.getExtraHttpRequestHeadersString());
         params.setExtraHeaders(new HashMap<String, String>());
+
+        params.setUrl(UrlFormatter.fixupUrl(params.getUrl()).getPossiblyInvalidSpec());
 
         mNavigationController.loadUrl(params);
 
@@ -1075,10 +1094,10 @@ public class BvContents implements SmartClipProvider {
     public String getLastCommittedUrl() {
         if (isDestroyed(NO_WARN))
             return null;
-        String url = mWebContents.getLastCommittedUrl();
-        if (url == null || url.trim().isEmpty())
+        GURL url = mWebContents.getLastCommittedUrl();
+        if (url == null || url.isEmpty())
             return null;
-        return url;
+        return url.getSpec();
     }
 
     public void requestFocus() {
@@ -1183,7 +1202,7 @@ public class BvContents implements SmartClipProvider {
 
     /**
      * @see android.webkit.WebView#requestChildRectangleOnScreen(View, Rect,
-     * boolean)
+     *      boolean)
      */
     public boolean requestChildRectangleOnScreen(View child, Rect rect, boolean immediate) {
         if (isDestroyed(WARN))
@@ -1192,19 +1211,7 @@ public class BvContents implements SmartClipProvider {
                 child.getTop() - child.getScrollY(), rect, immediate);
     }
 
-    private RenderCoordinates getRenderCoordinates() {
-        if (isDestroyed(NO_WARN))
-            return null;
-        return RenderCoordinates.fromWebContents(mWebContents);
-    }
 
-    public void scrollBy(int x, int y) {
-        mBvViewMethods.scrollBy(x, y);
-    }
-
-    public void scrollTo(int x, int y) {
-        mBvViewMethods.scrollTo(x, y);
-    }
 
     /**
      * @see View#computeHorizontalScrollRange()
@@ -1218,13 +1225,6 @@ public class BvContents implements SmartClipProvider {
      */
     public int computeHorizontalScrollOffset() {
         return mBvViewMethods.computeHorizontalScrollOffset();
-    }
-
-    /**
-     * @see View#computeHorizontalScrollExtent()
-     */
-    public int computeHorizontalScrollExtent() {
-        return mBvViewMethods.computeHorizontalScrollExtent();
     }
 
     /**
@@ -1397,17 +1397,6 @@ public class BvContents implements SmartClipProvider {
         }
     }
 
-    @VisibleForTesting
-    public void killRenderProcess() {
-        if (TRACE)
-            Log.i(TAG, "%s killRenderProcess", this);
-        if (isDestroyed(WARN)) {
-            throw new IllegalStateException("killRenderProcess() shouldn't be invoked after render"
-                    + " process is gone or bisonview is destroyed");
-        }
-        BvContentsJni.get().killRenderProcess(mNativeBvContents, this);
-    }
-
     public void documentHasImages(Message message) {
         if (!isDestroyed(WARN)) {
             BvContentsJni.get().documentHasImages(mNativeBvContents, message);
@@ -1444,7 +1433,7 @@ public class BvContents implements SmartClipProvider {
         NavigationHistory history = mNavigationController.getNavigationHistory();
         int currentIndex = history.getCurrentEntryIndex();
         if (currentIndex >= 0 && currentIndex < history.getEntryCount()) {
-            return history.getEntryAtIndex(currentIndex).getOriginalUrl();
+            return history.getEntryAtIndex(currentIndex).getOriginalUrl().getSpec();
         }
         return null;
     }
@@ -1470,7 +1459,7 @@ public class BvContents implements SmartClipProvider {
     public SslCertificate getCertificate() {
         return isDestroyed(WARN) ? null
                 : SslUtil.getCertificateFromDerBytes(
-                BvContentsJni.get().getCertificate(mNativeBvContents, BvContents.this));
+                        BvContentsJni.get().getCertificate(mNativeBvContents, BvContents.this));
     }
 
     public void clearSslPreferences() {
@@ -1565,6 +1554,40 @@ public class BvContents implements SmartClipProvider {
     // LOAD_URL_SCHEME_HISTOGRAM_NAME, value, UrlScheme.COUNT);
     // }
 
+    public void addWebMessageListener(@NonNull String jsObjectName,
+            @NonNull String[] allowedOriginRules, @NonNull WebMessageListener listener) {
+        if (TRACE)
+            Log.i(TAG, "%s addWebMessageListener=%s", this, jsObjectName);
+        if (listener == null) {
+            throw new NullPointerException("listener shouldn't be null");
+        }
+
+        if (TextUtils.isEmpty(jsObjectName)) {
+            throw new IllegalArgumentException("jsObjectName shouldn't be null or empty string");
+        }
+
+        for (int i = 0; i < allowedOriginRules.length; ++i) {
+            if (TextUtils.isEmpty(allowedOriginRules[i])) {
+                throw new IllegalArgumentException(
+                        "allowedOriginRules[" + i + "] is null or empty");
+            }
+        }
+
+        final String exceptionMessage = BvContentsJni.get().addWebMessageListener(mNativeBvContents, BvContents.this,
+                new WebMessageListenerHolder(listener), jsObjectName, allowedOriginRules);
+
+        if (!TextUtils.isEmpty(exceptionMessage)) {
+            throw new IllegalArgumentException(exceptionMessage);
+        }
+    }
+
+    public void removeWebMessageListener(@NonNull String jsObjectName) {
+        if (TRACE)
+            Log.i(TAG, "%s removeWebMessageListener=%s", this, jsObjectName);
+        BvContentsJni.get().removeWebMessageListener(
+                mNativeBvContents, BvContents.this, jsObjectName);
+    }
+
     @CalledByNative
     private void setAutofillClient(BvAutofillClient client) {
         mAutofillClient = client;
@@ -1584,6 +1607,31 @@ public class BvContents implements SmartClipProvider {
         if (url.startsWith("www.") || url.indexOf(":") == -1)
             url = "http://" + url;
         return url;
+    }
+
+    public void flingScroll(int velocityX, int velocityY) {
+        if (TRACE)
+            Log.i(TAG, "%s flingScroll", this);
+        if (isDestroyed(WARN))
+            return;
+        mWebContents.getEventForwarder().startFling(
+                SystemClock.uptimeMillis(), -velocityX, -velocityY, false, true);
+    }
+
+    public boolean pageUp(boolean top) {
+        if (TRACE)
+            Log.i(TAG, "%s pageUp", this);
+        if (isDestroyed(WARN))
+            return false;
+        return mScrollOffsetManager.pageUp(top);
+    }
+
+    public boolean pageDown(boolean bottom) {
+        if (TRACE)
+            Log.i(TAG, "%s pageDown", this);
+        if (isDestroyed(WARN))
+            return false;
+        return mScrollOffsetManager.pageDown(bottom);
     }
 
     public boolean canZoomIn() {
@@ -1733,7 +1781,8 @@ public class BvContents implements SmartClipProvider {
         // on Android M, WebView is not able to replace the text with the processed
         // text.
         // So set the readonly flag for M.
-        if (mContext == null) return;
+        if (mContext == null)
+            return;
         if (Build.VERSION.SDK_INT == Build.VERSION_CODES.M) {
             intent.putExtra(Intent.EXTRA_PROCESS_TEXT_READONLY, true);
         }
@@ -1873,7 +1922,7 @@ public class BvContents implements SmartClipProvider {
         mIsUpdateVisibilityTaskPending = false;
         if (isDestroyed(NO_WARN))
             return;
-        boolean contentVisible = BvContentsJni.get().isVisible(mNativeBvContents,this);
+        boolean contentVisible = BvContentsJni.get().isVisible(mNativeBvContents, this);
 
         if (contentVisible && !mIsContentVisible) {
             mWebContents.onShow();
@@ -1915,7 +1964,8 @@ public class BvContents implements SmartClipProvider {
      * @return False if restoring state failed.
      */
     public boolean restoreState(Bundle inState) {
-        if (TRACE) Log.i(TAG, "%s restoreState", this);
+        if (TRACE)
+            Log.i(TAG, "%s restoreState", this);
         if (isDestroyed(WARN) || inState == null)
             return false;
 
@@ -1976,7 +2026,8 @@ public class BvContents implements SmartClipProvider {
     }
 
     public void hideAutofillPopup() {
-        if (TRACE) Log.i(TAG, "%s hideAutofillPopup", this);
+        if (TRACE)
+            Log.i(TAG, "%s hideAutofillPopup", this);
         if (mAutofillClient != null) {
             mAutofillClient.hideAutofillPopup();
         }
@@ -2012,7 +2063,7 @@ public class BvContents implements SmartClipProvider {
      *                  allow callers to match requests with callbacks.
      * @param callback  the callback to be inserted
      * @throw IllegalStateException if this method is invoked after
-     * {@link #destroy()} has been called.
+     *        {@link #destroy()} has been called.
      */
     public void insertVisualStateCallback(long requestId, VisualStateCallback callback) {
         if (TRACE)
@@ -2060,7 +2111,7 @@ public class BvContents implements SmartClipProvider {
     }
 
     public void setRendererPriorityPolicy(@RendererPriority int rendererRequestedPriority,
-                                          boolean waivedWhenNotVisible) {
+            boolean waivedWhenNotVisible) {
         mRendererPriority = rendererRequestedPriority;
         mRendererPriorityWaivedWhenNotVisible = waivedWhenNotVisible;
         updateChildProcessImportance();
@@ -2199,7 +2250,7 @@ public class BvContents implements SmartClipProvider {
     // jiang
     private int[] getLocationOnScreen() {
         int[] result = new int[2];
-        if (mContainerView!=null){
+        if (mContainerView != null) {
             mContainerView.getLocationOnScreen(result);
         }
 
@@ -2309,7 +2360,7 @@ public class BvContents implements SmartClipProvider {
 
     private class BvViewMethodsImpl implements BvViewMethods {
         private int mLayerType = View.LAYER_TYPE_NONE;
-        //private ComponentCallbacks2 mComponentCallbacks;
+        // private ComponentCallbacks2 mComponentCallbacks;
 
         // Only valid within software onDraw().
         private final Rect mClipBoundsTemporary = new Rect();
@@ -2321,7 +2372,7 @@ public class BvContents implements SmartClipProvider {
 
         @Override
         public void requestFocus() {
-            if (isDestroyed(NO_WARN)|| mContainerView==null)
+            if (isDestroyed(NO_WARN) || mContainerView == null)
                 return;
             if (!mContainerView.isInTouchMode() && mSettings.shouldFocusFirstNode()) {
                 BvContentsJni.get().focusFirstNode(mNativeBvContents, BvContents.this);
@@ -2335,7 +2386,8 @@ public class BvContents implements SmartClipProvider {
         }
 
         private void updateHardwareAcceleratedFeaturesToggle() {
-            if (mContainerView==null) return;
+            if (mContainerView == null)
+                return;
             mSettings.setEnableSupportedHardwareAcceleratedFeatures(
                     mIsAttachedToWindow && mContainerView.isHardwareAccelerated()
                             && (mLayerType == View.LAYER_TYPE_NONE || mLayerType == View.LAYER_TYPE_HARDWARE));
@@ -2343,13 +2395,16 @@ public class BvContents implements SmartClipProvider {
 
         @Override
         public InputConnection onCreateInputConnection(EditorInfo outAttrs) {
-            return isDestroyed(NO_WARN) ? null
+            return isDestroyed(NO_WARN)
+                    ? null
                     : ImeAdapter.fromWebContents(mWebContents).onCreateInputConnection(outAttrs);
         }
 
         @Override
         public boolean onDragEvent(DragEvent event) {
-            return isDestroyed(NO_WARN) || mContainerView==null ? false : mWebContents.getEventForwarder().onDragEvent(event, mContainerView);
+            return isDestroyed(NO_WARN) || mContainerView == null
+                    ? false
+                    : mWebContents.getEventForwarder().onDragEvent(event, mContainerView);
         }
 
         @Override
@@ -2369,12 +2424,13 @@ public class BvContents implements SmartClipProvider {
             // avoid
             // embedder-specific customization, which is necessary only for WebView.
             // if (GamepadList.dispatchKeyEvent(event))
-            //     return true;
+            // return true;
 
             // // This check reflects Chrome's behavior and is a workaround for
             // // http://b/7697782.
-            // if (mContentsClient.hasBisonViewClient() && mContentsClient.shouldOverrideKeyEvent(event)) {
-            //     return mInternalAccessAdapter.super_dispatchKeyEvent(event);
+            // if (mContentsClient.hasBisonViewClient() &&
+            // mContentsClient.shouldOverrideKeyEvent(event)) {
+            // return mInternalAccessAdapter.super_dispatchKeyEvent(event);
             // }
             return mWebContents.getEventForwarder().dispatchKeyEvent(event);
         }
@@ -2422,7 +2478,7 @@ public class BvContents implements SmartClipProvider {
             updateDefaultLocale();
 
             // if (mComponentCallbacks != null)
-            //     return;
+            // return;
             // mComponentCallbacks = new BvComponentCallbacks();
             // mContext.registerComponentCallbacks(mComponentCallbacks);
         }
@@ -2446,8 +2502,8 @@ public class BvContents implements SmartClipProvider {
             postUpdateWebContentsVisibility();
 
             // if (mComponentCallbacks != null) {
-            //     mContext.unregisterComponentCallbacks(mComponentCallbacks);
-            //     mComponentCallbacks = null;
+            // mContext.unregisterComponentCallbacks(mComponentCallbacks);
+            // mComponentCallbacks = null;
             // }
 
             // jiang
@@ -2488,7 +2544,8 @@ public class BvContents implements SmartClipProvider {
         @Override
         public void onVisibilityChanged(View changedView, int visibility) {
             // jiang
-            if (mContainerView==null) return;
+            if (mContainerView == null)
+                return;
             boolean viewVisible = mContainerView.getVisibility() == View.VISIBLE;
             if (mIsViewVisible == viewVisible)
                 return;
@@ -2518,7 +2575,8 @@ public class BvContents implements SmartClipProvider {
 
         @Override
         public void onContainerViewOverScrolled(int scrollX, int scrollY, boolean clampedX, boolean clampedY) {
-            if (mContainerView==null) return;
+            if (mContainerView == null)
+                return;
             int oldX = mContainerView.getScrollX();
             int oldY = mContainerView.getScrollY();
 
@@ -2532,51 +2590,28 @@ public class BvContents implements SmartClipProvider {
         }
 
         @Override
-        public void scrollBy(int x, int y) {
-            EventForwarder forwarder = mWebContents.getEventForwarder();
-            if (forwarder != null) forwarder.scrollBy(x, y);
-        }
-
-        @Override
-        public void scrollTo(int x, int y) {
-            EventForwarder forwarder = mWebContents.getEventForwarder();
-            if (forwarder != null) forwarder.scrollTo(x, y);
-        }
-
-        @Override
         public int computeHorizontalScrollRange() {
-            RenderCoordinates rc = getRenderCoordinates();
-            return rc != null ? rc.getContentWidthPixInt() : 0;
+            return mScrollOffsetManager.computeHorizontalScrollRange();
         }
 
         @Override
         public int computeHorizontalScrollOffset() {
-            RenderCoordinates rc = getRenderCoordinates();
-            return rc != null ? rc.getScrollXPixInt() : 0;
-        }
-
-        @Override
-        public int computeHorizontalScrollExtent() {
-            RenderCoordinates rc = getRenderCoordinates();
-            return rc != null ? rc.getLastFrameViewportWidthPixInt() : 0;
+            return mScrollOffsetManager.computeHorizontalScrollOffset();
         }
 
         @Override
         public int computeVerticalScrollRange() {
-            RenderCoordinates rc = getRenderCoordinates();
-            return rc != null ? rc.getContentHeightPixInt() : 0;
+            return mScrollOffsetManager.computeVerticalScrollRange();
         }
 
         @Override
         public int computeVerticalScrollOffset() {
-            RenderCoordinates rc = getRenderCoordinates();
-            return rc != null ? rc.getScrollYPixInt() : 0;
+            return mScrollOffsetManager.computeVerticalScrollOffset();
         }
 
         @Override
         public int computeVerticalScrollExtent() {
-            RenderCoordinates rc = getRenderCoordinates();
-            return rc != null ? rc.getLastFrameViewportHeightPixInt() : 0;
+            return mScrollOffsetManager.computeVerticalScrollExtent();
         }
 
         @Override
@@ -2642,8 +2677,8 @@ public class BvContents implements SmartClipProvider {
         void updateDefaultLocale(String locale, String localeList);
 
         void setJavaPeers(long nativeBvContents, BvWebContentsDelegate webContentsDelegate,
-                          BvContentsClientBridge bvContentsClientBridge, BvContentsIoThreadClient ioThreadClient,
-                          InterceptNavigationDelegate navigationInterceptionDelegate, AutofillProvider autofillProvider);
+                BvContentsClientBridge bvContentsClientBridge, BvContentsIoThreadClient ioThreadClient,
+                InterceptNavigationDelegate navigationInterceptionDelegate, AutofillProvider autofillProvider);
 
         WebContents getWebContents(long nativeBvContents);
 
@@ -2660,8 +2695,6 @@ public class BvContents implements SmartClipProvider {
         void clearMatches(long nativeBvContents, BvContents caller);
 
         void clearCache(long nativeBvContents, boolean includeDiskFiles);
-
-        void killRenderProcess(long nativeBvContents, BvContents caller);
 
         byte[] getCertificate(long nativeBvContents, BvContents caller);
 
@@ -2680,19 +2713,24 @@ public class BvContents implements SmartClipProvider {
         void setViewVisibility(long nativeBvContents, BvContents caller, boolean visible);
 
         void setWindowVisibility(long nativeBvContents, BvContents caller, boolean visible);
+
         void setIsPaused(long nativeBvContents, BvContents caller, boolean paused);
+
         void onAttachedToWindow(long nativeBvContents, BvContents caller, int w, int h);
 
         void onDetachedFromWindow(long nativeBvContents, BvContents caller);
+
         boolean isVisible(long nativeBvContents, BvContents caller);
+
         void focusFirstNode(long nativeBvContents, BvContents caller);
 
         void setBackgroundColor(long nativeBvContents, BvContents caller, int color);
 
         void insertVisualStateCallback(long nativeBvContents, BvContents caller, long requestId,
-                                       VisualStateCallback callback);
+                VisualStateCallback callback);
 
-        void setExtraHeadersForUrl(long nativeBvContents, String url, String extraHeaders);
+        void setExtraHeadersForUrl(
+                long nativeBvContents, String url, String extraHeaders);
 
         void invokeGeolocationCallback(long nativeBvContents, boolean value, String requestingFrame);
 
@@ -2709,9 +2747,18 @@ public class BvContents implements SmartClipProvider {
         BvRenderProcess getRenderProcess(long nativeBvContents, BvContents caller);
 
         int addDocumentStartJavaScript(long nativeBvContents, BvContents caller, String script,
-                                       String[] allowedOriginRules);
+                String[] allowedOriginRules);
 
         void removeDocumentStartJavaScript(long nativeBvContents, BvContents caller, int scriptId);
+
+        String addWebMessageListener(long nativeBvContents, BvContents caller,
+                WebMessageListenerHolder listener, String jsObjectName, String[] allowedOrigins);
+
+        void removeWebMessageListener(
+                long nativeBvContents, BvContents caller, String jsObjectName);
+
+        WebMessageListenerInfo[] getJsObjectsInfo(
+                long nativeBvContents, BvContents caller, Class clazz);
 
         String getProductVersion();
 

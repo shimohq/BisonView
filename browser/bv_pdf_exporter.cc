@@ -66,10 +66,18 @@ void BvPdfExporter::ExportToPdf(JNIEnv* env,
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
   printing::PageRanges page_ranges;
   JNI_BvPdfExporter_GetPageRanges(env, pages, &page_ranges);
-  BvPrintManager* print_manager = BvPrintManager::CreateForWebContents(
-      web_contents_, CreatePdfSettings(env, obj, page_ranges), fd,
-      base::BindRepeating(&BvPdfExporter::DidExportPdf,
-                          base::Unretained(this)));
+
+  // Create an BvPrintManager for the provided WebContents if the
+  // BvPrintManager doesn't exist.
+  if (!BvPrintManager::FromWebContents(web_contents_))
+    BvPrintManager::CreateForWebContents(web_contents_);
+
+  // Update the parameters of the current print manager.
+  BvPrintManager* print_manager =
+      BvPrintManager::FromWebContents(web_contents_);
+  print_manager->UpdateParam(CreatePdfSettings(env, obj, page_ranges), fd,
+                             base::BindRepeating(&BvPdfExporter::DidExportPdf,
+                                                 base::Unretained(this)));
 
   if (!print_manager->PrintNow())
     DidExportPdf(0);
@@ -78,7 +86,7 @@ void BvPdfExporter::ExportToPdf(JNIEnv* env,
 namespace {
 // Converts from 1/1000 of inches to device units using DPI.
 int MilsToDots(int val, int dpi) {
-  return static_cast<int>(printing::ConvertUnitDouble(val, 1000.0, dpi));
+  return static_cast<int>(printing::ConvertUnitFloat(val, 1000.0, dpi));
 }
 }  // namespace
 

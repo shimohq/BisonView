@@ -8,11 +8,10 @@
 #include <map>
 
 #include "bison/browser/lifecycle/webview_app_state_observer.h"
+
 #include "base/android/jni_android.h"
 #include "base/callback.h"
 #include "base/callback_forward.h"
-#include "base/macros.h"
-#include "base/no_destructor.h"
 #include "base/observer_list.h"
 #include "base/sequence_checker.h"
 
@@ -39,6 +38,11 @@ class BvContentsLifecycleNotifier {
   // lose foreground.
   explicit BvContentsLifecycleNotifier(
       OnLoseForegroundCallback on_lose_foreground_callback);
+
+  BvContentsLifecycleNotifier(const BvContentsLifecycleNotifier&) = delete;
+  BvContentsLifecycleNotifier& operator=(const BvContentsLifecycleNotifier&) =
+      delete;
+
   virtual ~BvContentsLifecycleNotifier();
 
   void OnWebViewCreated(const BvContents* bv_contents);
@@ -61,14 +65,12 @@ class BvContentsLifecycleNotifier {
   struct BvContentsData {
     BvContentsData();
     BvContentsData(BvContentsData&& data);
+    BvContentsData(const BvContentsData&) = delete;
     ~BvContentsData();
 
     bool attached_to_window = false;
     bool window_visible = false;
     BvContentsState bv_content_state = BvContentsState::kDetached;
-
-   private:
-    DISALLOW_COPY(BvContentsData);
   };
 
   friend class TestBvContentsLifecycleNotifier;
@@ -105,8 +107,6 @@ class BvContentsLifecycleNotifier {
       WebViewAppStateObserver::State::kDestroyed;
 
   SEQUENCE_CHECKER(sequence_checker_);
-
-  DISALLOW_COPY_AND_ASSIGN(BvContentsLifecycleNotifier);
 };
 
 }  // namespace bison

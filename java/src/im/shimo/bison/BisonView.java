@@ -547,18 +547,6 @@ public class BisonView extends FrameLayout {
 
     // setScrollBarStyle
 
-
-    @Override
-    public void scrollBy(int x, int y) {
-        mProvider.scrollBy(x, y);
-    }
-
-    @Override
-    public void scrollTo(int x, int y) {
-        mProvider.scrollTo(x, y);
-    }
-
-
     @Override
     protected int computeHorizontalScrollRange() {
         return mProvider.computeHorizontalScrollRange();

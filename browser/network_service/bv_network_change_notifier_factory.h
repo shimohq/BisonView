@@ -23,6 +23,11 @@ class BvNetworkChangeNotifierFactory :
   // Must be called on the JNI thread.
   BvNetworkChangeNotifierFactory();
 
+  BvNetworkChangeNotifierFactory(const BvNetworkChangeNotifierFactory&) =
+      delete;
+  BvNetworkChangeNotifierFactory& operator=(
+      const BvNetworkChangeNotifierFactory&) = delete;
+
   // Must be called on the JNI thread.
   ~BvNetworkChangeNotifierFactory() override;
 
@@ -32,8 +37,6 @@ class BvNetworkChangeNotifierFactory :
  private:
   // Delegate passed to the instances created by this class.
   net::NetworkChangeNotifierDelegateAndroid delegate_;
-
-  DISALLOW_COPY_AND_ASSIGN(BvNetworkChangeNotifierFactory);
 };
 
 }  // namespace bison

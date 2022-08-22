@@ -13,30 +13,37 @@
 #include "bison/browser/cookie_manager.h"
 #include "bison/browser/network_service/net_helpers.h"
 #include "bison/common/bv_features.h"
+#include "bison/common/bv_switches.h"
 
 #include "base/base_paths_posix.h"
 #include "base/bind.h"
+#include "base/command_line.h"
 #include "base/feature_list.h"
 #include "base/files/file_util.h"
 #include "base/path_service.h"
-#include "base/single_thread_task_runner.h"
-#include "base/task/post_task.h"
+#include "base/task/single_thread_task_runner.h"
 #include "components/autofill/core/browser/autocomplete_history_manager.h"
 #include "components/autofill/core/common/autofill_prefs.h"
 #include "components/cdm/browser/media_drm_storage_impl.h"
+#include "components/crash/core/common/crash_key.h"
 #include "components/download/public/common/in_progress_download_manager.h"
 #include "components/keyed_service/core/simple_key_map.h"
 #include "components/policy/core/browser/browser_policy_connector_base.h"
 #include "components/policy/core/browser/configuration_policy_pref_store.h"
-#include "components/policy/core/browser/url_blacklist_manager.h"
+#include "components/policy/core/browser/url_blocklist_manager.h"
 #include "components/pref_registry/pref_registry_syncable.h"
 #include "components/prefs/in_memory_pref_store.h"
 #include "components/prefs/json_pref_store.h"
 #include "components/prefs/pref_registry_simple.h"
 #include "components/prefs/pref_service.h"
 #include "components/prefs/pref_service_factory.h"
+#include "components/prefs/segregated_pref_store.h"
+#include "components/profile_metrics/browser_profile_type.h"
+#include "components/safe_browsing/core/common/safe_browsing_prefs.h"
 #include "components/url_formatter/url_fixer.h"
 #include "components/user_prefs/user_prefs.h"
+#include "components/variations/variations_client.h"
+#include "components/variations/variations_ids_provider.h"
 #include "components/visitedlink/browser/visitedlink_writer.h"
 #include "content/public/browser/browser_task_traits.h"
 #include "content/public/browser/browser_thread.h"
@@ -44,25 +51,16 @@
 #include "content/public/browser/ssl_host_state_delegate.h"
 #include "content/public/browser/storage_partition.h"
 #include "content/public/browser/web_contents.h"
+#include "content/public/browser/zoom_level_delegate.h"
 #include "media/mojo/buildflags.h"
+#include "net/http/http_util.h"
 #include "net/proxy_resolution/proxy_config_service_android.h"
 #include "net/proxy_resolution/proxy_resolution_service.h"
-#include "services/preferences/tracked/segregated_pref_store.h"
+#include "services/cert_verifier/public/mojom/cert_verifier_service_factory.mojom.h"
+#include "services/network/public/mojom/network_context.mojom.h"
 
 using base::FilePath;
-using content::BackgroundFetchDelegate;
-using content::BackgroundSyncController;
-using content::BrowserPluginGuestManager;
 using content::BrowserThread;
-using content::BrowsingDataRemoverDelegate;
-using content::ClientHintsControllerDelegate;
-using content::ContentIndexProvider;
-using content::DownloadManagerDelegate;
-using content::PermissionControllerDelegate;
-using content::PushMessagingService;
-using content::ResourceContext;
-using content::SSLHostStateDelegate;
-using content::StorageNotificationService;
 
 namespace bison {
 
@@ -75,39 +73,142 @@ BvBrowserContext* g_browser_context = NULL;
 bool IgnoreOriginSecurityCheck(const GURL& url) {
   return true;
 }
+
+void MigrateProfileData(base::FilePath cache_path,
+                        base::FilePath context_storage_path) {
+  TRACE_EVENT0("startup", "MigrateProfileData");
+  FilePath old_cache_path;
+  base::PathService::Get(base::DIR_CACHE, &old_cache_path);
+  old_cache_path = old_cache_path.DirName().Append(
+      FILE_PATH_LITERAL("org.chromium.android_webview"));
+
+  if (base::PathExists(old_cache_path)) {
+    bool success = base::CreateDirectory(cache_path);
+    if (success)
+      success &= base::Move(old_cache_path, cache_path);
+    DCHECK(success);
+  }
+
+  base::FilePath old_context_storage_path;
+  base::PathService::Get(base::DIR_ANDROID_APP_DATA, &old_context_storage_path);
+
+  if (!base::PathExists(context_storage_path)) {
+    base::CreateDirectory(context_storage_path);
+  }
+
+  auto migrate_context_storage_data = [&old_context_storage_path,
+                                       &context_storage_path](auto& suffix) {
+    FilePath old_file = old_context_storage_path.Append(suffix);
+    if (base::PathExists(old_file)) {
+      FilePath new_file = context_storage_path.Append(suffix);
+
+      if (base::PathExists(new_file)) {
+        bool success =
+            base::Move(new_file, new_file.AddExtension(".partial-migration"));
+        DCHECK(success);
+      }
+      bool success = base::Move(old_file, new_file);
+      DCHECK(success);
+    }
+  };
+
+  // These were handled in the initial migration
+  migrate_context_storage_data("Web Data");
+  migrate_context_storage_data("Web Data-journal");
+  migrate_context_storage_data("GPUCache");
+  migrate_context_storage_data("blob_storage");
+  migrate_context_storage_data("Session Storage");
+
+  // These were missed in the initial migration
+  migrate_context_storage_data("File System");
+  migrate_context_storage_data("IndexedDB");
+  migrate_context_storage_data("Local Storage");
+  migrate_context_storage_data("QuotaManager");
+  migrate_context_storage_data("QuotaManager-journal");
+  migrate_context_storage_data("Service Worker");
+  migrate_context_storage_data("VideoDecodeStats");
+  migrate_context_storage_data("databases");
+  migrate_context_storage_data("shared_proto_db");
+  migrate_context_storage_data("webrtc_event_logs");
+}
+
+bool ShouldSendVariationsHeaders() {
+  // Note: Normally, checking the feature second is preferred to avoid tagging
+  // clients with the trial that are not participating in the behavior. However,
+  // doing so reveals the shouldSendVariationsHeaders() result for the clients
+  // where it's true, which would require carefully considering the implications
+  // of. This can be revisited later.
+  return base::FeatureList::IsEnabled(
+             features::kWebViewSendVariationsHeaders) &&
+         Java_BvBrowserContext_shouldSendVariationsHeaders(
+             base::android::AttachCurrentThread());
+}
+
+class BvVariationsClient : public variations::VariationsClient {
+ public:
+  explicit BvVariationsClient(content::BrowserContext* browser_context)
+      : browser_context_(browser_context),
+        should_send_headers_(ShouldSendVariationsHeaders()) {}
+
+  ~BvVariationsClient() override = default;
+
+  bool IsOffTheRecord() const override {
+    return browser_context_->IsOffTheRecord();
+  }
+
+  variations::mojom::VariationsHeadersPtr GetVariationsHeaders()
+      const override {
+    if (!should_send_headers_)
+      return nullptr;
+
+    const bool is_signed_in = false;
+    DCHECK_EQ(
+        variations::VariationsIdsProvider::Mode::kDontSendSignedInVariations,
+        variations::VariationsIdsProvider::GetInstance()->mode());
+    return variations::VariationsIdsProvider::GetInstance()
+        ->GetClientDataHeaders(is_signed_in);
+  }
+
+ private:
+  raw_ptr<content::BrowserContext> browser_context_;
+  bool should_send_headers_;
+};
+
 }  // namespace
 
 BvBrowserContext::BvBrowserContext()
     : context_storage_path_(GetContextStoragePath()),
       simple_factory_key_(GetPath(), IsOffTheRecord()) {
   DCHECK(!g_browser_context);
+
+  if (IsDefaultBrowserContext()) {
+    MigrateProfileData(GetCacheDir(), GetContextStoragePath());
+  }
+
   g_browser_context = this;
   SimpleKeyMap::GetInstance()->Associate(this, &simple_factory_key_);
 
   CreateUserPrefService();
 
-  visitedlink_writer_.reset(
-      new visitedlink::VisitedLinkWriter(this, this, false));
+  visitedlink_writer_ =
+      std::make_unique<visitedlink::VisitedLinkWriter>(this, this, false);
   visitedlink_writer_->Init();
 
-  form_database_service_.reset(
-      new BvFormDatabaseService(context_storage_path_));
+  form_database_service_ =
+      std::make_unique<BvFormDatabaseService>(context_storage_path_);
 
-  EnsureResourceContextInitialized(this);
+  EnsureResourceContextInitialized();
 }
 
 BvBrowserContext::~BvBrowserContext() {
   DCHECK_EQ(this, g_browser_context);
-  NotifyWillBeDestroyed(this);
+  NotifyWillBeDestroyed();
   SimpleKeyMap::GetInstance()->Dissociate(this);
-  if (resource_context_) {
-    BrowserThread::DeleteSoon(BrowserThread::IO, FROM_HERE,
-                              resource_context_.release());
-  }
   ShutdownStoragePartitions();
 
   g_browser_context = NULL;
 }
+
 // static
 BvBrowserContext* BvBrowserContext::GetDefault() {
   // TODO(joth): rather than store in a global here, lookup this instance
@@ -165,20 +266,18 @@ void BvBrowserContext::RegisterPrefs(PrefRegistrySimple* registry) {
   // The default value '0' represents the latest Chrome major version on which
   // the retention policy ran. By setting it to a low default value, we're
   // making sure it runs now (as it only runs once per major version).
-
-  // registry->RegisterIntegerPref(
-  //     autofill::prefs::kAutocompleteLastVersionRetentionPolicy, 0);
+  registry->RegisterIntegerPref(
+      autofill::prefs::kAutocompleteLastVersionRetentionPolicy, 0);
 
   // We only use the autocomplete feature of Autofill, which is controlled via
   // the manager_delegate. We don't use the rest of Autofill, which is why it is
   // hardcoded as disabled here.
   // TODO(crbug.com/873740): The following also disables autocomplete.
   // Investigate what the intended behavior is.
-
-  // registry->RegisterBooleanPref(autofill::prefs::kAutofillProfileEnabled,
-  //                               false);
-  // registry->RegisterBooleanPref(autofill::prefs::kAutofillCreditCardEnabled,
-  //                               false);
+  registry->RegisterBooleanPref(autofill::prefs::kAutofillProfileEnabled,
+                                false);
+  registry->RegisterBooleanPref(autofill::prefs::kAutofillCreditCardEnabled,
+                                false);
 
 #if BUILDFLAG(ENABLE_MOJO_CDM)
   cdm::MediaDrmStorageImpl::RegisterProfilePrefs(registry);
@@ -199,10 +298,10 @@ void BvBrowserContext::CreateUserPrefService() {
 
   pref_service_factory.set_user_prefs(base::MakeRefCounted<SegregatedPrefStore>(
       base::MakeRefCounted<InMemoryPrefStore>(),
-      base::MakeRefCounted<JsonPrefStore>(GetPrefStorePath()), persistent_prefs,
-      mojo::Remote<::prefs::mojom::TrackedPreferenceValidationDelegate>()));
+      base::MakeRefCounted<JsonPrefStore>(GetPrefStorePath()),
+      std::move(persistent_prefs)));
 
-  policy::URLBlacklistManager::RegisterProfilePrefs(pref_registry.get());
+  policy::URLBlocklistManager::RegisterProfilePrefs(pref_registry.get());
   BvBrowserPolicyConnector* browser_policy_connector =
       BvBrowserProcess::GetInstance()->browser_policy_connector();
   pref_service_factory.set_managed_prefs(
@@ -214,11 +313,22 @@ void BvBrowserContext::CreateUserPrefService() {
 
   user_pref_service_ = pref_service_factory.Create(pref_registry);
 
-  // if (IsDefaultBrowserContext()) {
-  //   MigrateLocalStatePrefs();
-  // }
+  if (IsDefaultBrowserContext()) {
+    MigrateLocalStatePrefs();
+  }
 
   user_prefs::UserPrefs::Set(this, user_pref_service_.get());
+}
+
+void BvBrowserContext::MigrateLocalStatePrefs() {
+  PrefService* local_state = BvBrowserProcess::GetInstance()->local_state();
+  if (!local_state->HasPrefPath(cdm::prefs::kMediaDrmStorage)) {
+    return;
+  }
+
+  user_pref_service_->Set(cdm::prefs::kMediaDrmStorage,
+                          *(local_state->Get(cdm::prefs::kMediaDrmStorage)));
+  local_state->ClearPref(cdm::prefs::kMediaDrmStorage);
 }
 
 // static
@@ -270,14 +380,14 @@ bool BvBrowserContext::IsOffTheRecord() {
   return false;
 }
 
-ResourceContext* BvBrowserContext::GetResourceContext() {
+content::ResourceContext* BvBrowserContext::GetResourceContext() {
   if (!resource_context_) {
-    resource_context_.reset(new BvResourceContext);
+    resource_context_ = std::make_unique<BvResourceContext>();
   }
   return resource_context_.get();
 }
 
-DownloadManagerDelegate*
+content::DownloadManagerDelegate*
 BvBrowserContext::GetDownloadManagerDelegate() {
   if (!GetUserData(kDownloadManagerDelegateKey)) {
     SetUserData(kDownloadManagerDelegateKey,
@@ -287,7 +397,7 @@ BvBrowserContext::GetDownloadManagerDelegate() {
       GetUserData(kDownloadManagerDelegateKey));
 }
 
-BrowserPluginGuestManager* BvBrowserContext::GetGuestManager() {
+content::BrowserPluginGuestManager* BvBrowserContext::GetGuestManager() {
   return NULL;
 }
 
@@ -295,35 +405,46 @@ storage::SpecialStoragePolicy* BvBrowserContext::GetSpecialStoragePolicy() {
   return NULL;
 }
 
-PushMessagingService* BvBrowserContext::GetPushMessagingService() {
-  return NULL;
-}
-
-StorageNotificationService*
-BvBrowserContext::GetStorageNotificationService() {
+content::PlatformNotificationService*
+BvBrowserContext::GetPlatformNotificationService() {
   return nullptr;
 }
 
-SSLHostStateDelegate* BvBrowserContext::GetSSLHostStateDelegate() {
+content::PushMessagingService* BvBrowserContext::GetPushMessagingService() {
+  return NULL;
+}
+
+content::StorageNotificationService* BvBrowserContext::GetStorageNotificationService() {
+  return nullptr;
+}
+
+content::SSLHostStateDelegate* BvBrowserContext::GetSSLHostStateDelegate() {
   if (!ssl_host_state_delegate_.get()) {
-    ssl_host_state_delegate_.reset(new BvSSLHostStateDelegate());
+    ssl_host_state_delegate_ = std::make_unique<BvSSLHostStateDelegate>();
   }
   return ssl_host_state_delegate_.get();
 }
 
-PermissionControllerDelegate*
+content::PermissionControllerDelegate*
 BvBrowserContext::GetPermissionControllerDelegate() {
   if (!permission_manager_.get())
-    permission_manager_.reset(new BvPermissionManager());
+    permission_manager_ = std::make_unique<BvPermissionManager>();
   return permission_manager_.get();
 }
 
-ClientHintsControllerDelegate*
+content::ClientHintsControllerDelegate*
 BvBrowserContext::GetClientHintsControllerDelegate() {
   return nullptr;
 }
 
-BackgroundFetchDelegate* BvBrowserContext::GetBackgroundFetchDelegate() {
+variations::VariationsClient* BvBrowserContext::GetVariationsClient() {
+  if (!variations_client_)
+    variations_client_ = std::make_unique<BvVariationsClient>(this);
+  return variations_client_.get();
+}
+
+content::BackgroundFetchDelegate*
+BvBrowserContext::GetBackgroundFetchDelegate() {
   return nullptr;
 }
 
@@ -332,7 +453,7 @@ BvBrowserContext::GetBackgroundSyncController() {
   return nullptr;
 }
 
-BrowsingDataRemoverDelegate*
+content::BrowsingDataRemoverDelegate*
 BvBrowserContext::GetBrowsingDataRemoverDelegate() {
   return nullptr;
 }
@@ -346,6 +467,12 @@ BvBrowserContext::RetriveInProgressDownloadManager() {
       /*wake_lock_provider_binder*/ base::NullCallback());
 }
 
+std::unique_ptr<content::ZoomLevelDelegate>
+BvBrowserContext::CreateZoomLevelDelegate(
+    const base::FilePath& partition_path) {
+  return nullptr;
+}
+
 void BvBrowserContext::RebuildTable(
     const scoped_refptr<URLEnumerator>& enumerator) {
   // Android WebView rebuilds from WebChromeClient.getVisitedHistory. The client
@@ -354,14 +481,17 @@ void BvBrowserContext::RebuildTable(
   enumerator->OnComplete(true);
 }
 
-
+void BvBrowserContext::SetExtendedReportingAllowed(bool allowed) {
+  user_pref_service_->SetBoolean(
+      ::prefs::kSafeBrowsingExtendedReportingOptInAllowed, allowed);
+}
 
 void BvBrowserContext::ConfigureNetworkContextParams(
     bool in_memory,
     const base::FilePath& relative_partition_path,
     network::mojom::NetworkContextParams* context_params,
-    network::mojom::CertVerifierCreationParams* cert_verifier_creation_params) {
-  DCHECK(context_params);
+    cert_verifier::mojom::CertVerifierCreationParams*
+        cert_verifier_creation_params) {
   context_params->user_agent = bison::GetUserAgent();
 
   // TODO(ntfschr): set this value to a proper value based on the user's
@@ -374,20 +504,25 @@ void BvBrowserContext::ConfigureNetworkContextParams(
   // HTTP cache
   context_params->http_cache_enabled = true;
   context_params->http_cache_max_size = GetHttpCacheSize();
-  context_params->http_cache_path = GetCacheDir();
+  context_params->http_cache_directory = GetCacheDir();
 
-  // BisonView should persist and restore cookies between app sessions (including
-  // session cookies).
-  context_params->cookie_path = BvBrowserContext::GetCookieStorePath();
+  // BisonView should persist and restore cookies between app sessions
+  // (including session cookies).
+  context_params->file_paths = network::mojom::NetworkContextFilePaths::New();
+  base::FilePath cookie_path = BvBrowserContext::GetCookieStorePath();
+  context_params->file_paths->data_directory = cookie_path.DirName();
+  context_params->file_paths->cookie_database_name = cookie_path.BaseName();
   context_params->restore_old_session_cookies = true;
   context_params->persist_session_cookies = true;
   context_params->cookie_manager_params =
       network::mojom::CookieManagerParams::New();
   context_params->cookie_manager_params->allow_file_scheme_cookies =
       GetCookieManager()->GetAllowFileSchemeCookies();
-
   context_params->cookie_manager_params->cookie_access_delegate_type =
-      network::mojom::CookieAccessDelegateType::ALWAYS_LEGACY;
+      base::CommandLine::ForCurrentProcess()->HasSwitch(
+          switches::kWebViewEnableModernCookieSameSite)
+          ? network::mojom::CookieAccessDelegateType::ALWAYS_NONLEGACY
+          : network::mojom::CookieAccessDelegateType::ALWAYS_LEGACY;
 
   context_params->initial_ssl_config = network::mojom::SSLConfig::New();
   // Allow SHA-1 to be used for locally-installed trust anchors, as WebView
@@ -397,27 +532,30 @@ void BvBrowserContext::ConfigureNetworkContextParams(
   // https://security.googleblog.com/2017/09/chromes-plan-to-distrust-symantec.html,
   // defer to the Android system.
   context_params->initial_ssl_config->symantec_enforcement_disabled = true;
+  // Do not enforce Legacy TLS removal if support is still enabled.
+  if (base::FeatureList::IsEnabled(
+          bison::features::kWebViewLegacyTlsSupport)) {
+    context_params->initial_ssl_config->version_min =
+        network::mojom::SSLVersion::kTLS1;
+  }
 
   //  not currently support Certificate Transparency
   // (http://crbug.com/921750).
   context_params->enforce_chrome_ct_policy = false;
 
-  // not support ftp yet.
-  context_params->enable_ftp_url_support = false;
-
-  context_params->enable_brotli =
-      base::FeatureList::IsEnabled(bison::features::kBisonViewBrotliSupport);
+  context_params->enable_brotli = base::FeatureList::IsEnabled(
+      bison::features::kWebViewBrotliSupport);
 
   context_params->check_clear_text_permitted =
       BvContentBrowserClient::get_check_cleartext_permitted();
 
   // Add proxy settings
-  BisonProxyConfigMonitor::GetInstance()->AddProxyToNetworkContextParams(
+  BvProxyConfigMonitor::GetInstance()->AddProxyToNetworkContextParams(
       context_params);
 }
 
-base::android::ScopedJavaLocalRef<jobject>
-JNI_BvBrowserContext_GetDefaultJava(JNIEnv* env) {
+base::android::ScopedJavaLocalRef<jobject> JNI_BvBrowserContext_GetDefaultJava(
+    JNIEnv* env) {
   return g_browser_context->GetJavaBrowserContext();
 }
 
@@ -425,8 +563,8 @@ base::android::ScopedJavaLocalRef<jobject>
 BvBrowserContext::GetJavaBrowserContext() {
   if (!obj_) {
     JNIEnv* env = base::android::AttachCurrentThread();
-    obj_ = Java_BvBrowserContext_create(
-        env, reinterpret_cast<intptr_t>(this), IsDefaultBrowserContext());
+    obj_ = Java_BvBrowserContext_create(env, reinterpret_cast<intptr_t>(this),
+                                        IsDefaultBrowserContext());
   }
   return base::android::ScopedJavaLocalRef<jobject>(obj_);
 }

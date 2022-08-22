@@ -5,6 +5,7 @@ import posixpath
 import shutil
 import zipfile
 import json
+from functools import reduce
 
 
 GYP_ANDROID_DIR = os.path.join(os.path.dirname(__file__),
@@ -32,6 +33,7 @@ def AddAssets(aar_zip, deps_configs, arch_transform = None):
         if zip_path in aar_zip.namelist():
           # print (zip_path +" in namelist")
           continue
+        print ("add res file name:" + zip_path)
         build_utils.AddToZipHermetic(
           aar_zip,os.path.join("assets",output),src_path=source)
 

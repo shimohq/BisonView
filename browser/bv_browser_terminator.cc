@@ -66,9 +66,10 @@ void OnRenderProcessGone(
     switch (delegate->OnRenderProcessGone(child_process_pid, crashed)) {
       case BvRenderProcessGoneDelegate::RenderProcessGoneResult::kException:
         // Let the exception propagate back to the message loop.
-        base::MessageLoopCurrentForUI::Get()->Abort();
+        base::CurrentUIThread::Get()->Abort();
         return;
       case BvRenderProcessGoneDelegate::RenderProcessGoneResult::kUnhandled:
+      // jiang chrashed
         if (crashed) {
           // Keeps this log unchanged, CTS test uses it to detect crash.
           std::string message = base::StringPrintf(

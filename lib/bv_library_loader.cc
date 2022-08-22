@@ -16,7 +16,7 @@ namespace bison {
   if (!content::android::OnJNIOnLoadInit())
     return false;
 
-  base::android::SetVersionNumber(PRODUCT_VERSION);
+  //base::android::SetVersionNumber(PRODUCT_VERSION);
   content::SetContentMainDelegate(new bison::BvMainDelegate());
   return true;
 

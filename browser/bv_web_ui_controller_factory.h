@@ -1,11 +1,8 @@
 // create by jiang947
 
-
 #ifndef BISON_BROWSER_BISON_WEB_UI_CONTROLLER_FACTORY_H_
 #define BISON_BROWSER_BISON_WEB_UI_CONTROLLER_FACTORY_H_
 
-
-#include "base/macros.h"
 #include "base/memory/singleton.h"
 #include "content/public/browser/web_ui_controller_factory.h"
 
@@ -32,7 +29,7 @@ class BvWebUIControllerFactory : public content::WebUIControllerFactory {
   BvWebUIControllerFactory();
   ~BvWebUIControllerFactory() override;
 
-  DISALLOW_COPY_AND_ASSIGN(BvWebUIControllerFactory);
+
 };
 
 }  // namespace bison

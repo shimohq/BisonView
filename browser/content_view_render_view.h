@@ -1,16 +1,14 @@
 // create by jiang947
 
-
 #ifndef BISON_BROWSER_CONTENT_VIEW_RENDER_VIEW_H_
 #define BISON_BROWSER_CONTENT_VIEW_RENDER_VIEW_H_
-
 
 #include <memory>
 
 #include "base/android/jni_weak_ref.h"
 #include "base/callback.h"
 #include "base/logging.h"
-#include "base/macros.h"
+
 #include "base/memory/weak_ptr.h"
 #include "content/public/browser/android/compositor_client.h"
 #include "ui/gfx/native_widget_types.h"
@@ -69,7 +67,7 @@ class ContentViewRenderView : public content::CompositorClient {
   gfx::NativeWindow root_window_;
   int current_surface_format_ = 0;
 
-  DISALLOW_COPY_AND_ASSIGN(ContentViewRenderView);
+
 };
 
 }  // namespace bison

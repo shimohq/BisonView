@@ -3,7 +3,6 @@
 #ifndef BISON_BROWSER_NETWORK_SERVICE_INPUT_STREAM_READER_H_
 #define BISON_BROWSER_NETWORK_SERVICE_INPUT_STREAM_READER_H_
 
-#include "base/macros.h"
 #include "base/memory/ref_counted.h"
 
 namespace net {
@@ -50,8 +49,6 @@ class InputStreamReader {
   int SkipToRequestedRange(const net::HttpByteRange& byte_range);
 
   bison::InputStream* stream_;
-
-  DISALLOW_COPY_AND_ASSIGN(InputStreamReader);
 };
 
 }  // namespace bison

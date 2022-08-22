@@ -1,6 +1,7 @@
 import("//bison/build/aar.gni")
+
+import("//build/android/resource_sizes.gni")
 import("//build/config/android/config.gni")
-import("//build/config/features.gni")
 import("//build/config/locales.gni")
 import("//build/config/sanitizers/sanitizers.gni")
 import("//components/gwp_asan/buildflags/buildflags.gni")
@@ -11,13 +12,15 @@ import("//mojo/public/tools/bindings/mojom.gni")
 import("//third_party/icu/config.gni")
 import("//tools/grit/grit_rule.gni")
 import("//tools/grit/repack.gni")
+import("//device/vr/buildflags/buildflags.gni")
+import("//pdf/features.gni")
+import("//printing/buildflags/buildflags.gni")
+import("//tools/resources/generate_resource_allowlist.gni")
 import("//tools/v8_context_snapshot/v8_context_snapshot.gni")
 import("config.gni")
 
 group("bison") {
-  deps = [
-    "shell",
-  ]
+
 }
 
 bison_aar_manifest_xml =
@@ -84,11 +87,18 @@ android_resources("bison_aar_resources") {
   android_manifest_dep = ":bison_aar_manifest"
 }
 
+java_cpp_features("bison_java_features_srcjar") {
+  visibility = [ ":*" ]
+  sources = [ "common/bv_features.cc" ]
+  template = "java/src/im/shimo/bison/internal/BvFeatures.java.tmpl"
+}
+
+
 generate_jni("bison_jni_headers") {
   sources = [
     "java/src/im/shimo/bison/ContentViewRenderView.java",
     "java/src/im/shimo/bison/internal/AndroidProtocolHandler.java",
-    "java/src/im/shimo/bison/internal/BisonWebResourceInterceptResponse.java",
+    "java/src/im/shimo/bison/internal/BvWebResourceInterceptResponse.java",
     "java/src/im/shimo/bison/internal/BvAutofillClient.java",
     "java/src/im/shimo/bison/internal/BvBrowserContext.java",
     "java/src/im/shimo/bison/internal/BvContents.java",
@@ -114,10 +124,13 @@ generate_jni("bison_jni_headers") {
     "java/src/im/shimo/bison/internal/WebMessageListenerInfo.java",
     "java/src/im/shimo/bison/internal/WebMessageListenerHolder.java",
     "java/src/im/shimo/bison/internal/JsReplyProxy.java",
+    "java/src/im/shimo/bison/internal/BvDarkMode.java",
+    "java/src/im/shimo/bison/internal/BvFeatureList.java",
   ]
 }
 
 android_library("bison_java") {
+  resources_package = "im.shimo.bison"
   sources = [
 
     "java/src/im/shimo/bison/BisonInitializer.java",
@@ -183,7 +196,7 @@ android_library("bison_java") {
     "java/src/im/shimo/bison/internal/AndroidProtocolHandler.java",
     "java/src/im/shimo/bison/internal/BvRenderProcessGoneDetail.java",
     "java/src/im/shimo/bison/internal/BvGeolocationPermissions.java",
-    "java/src/im/shimo/bison/internal/BisonWebResourceInterceptResponse.java",
+    "java/src/im/shimo/bison/internal/BvWebResourceInterceptResponse.java",
     "java/src/im/shimo/bison/internal/BvActionModeCallback.java",
     "java/src/im/shimo/bison/internal/BvAutofillClient.java",
     "java/src/im/shimo/bison/internal/BvBrowserContext.java",
@@ -231,24 +244,31 @@ android_library("bison_java") {
     "java/src/im/shimo/bison/internal/JsReplyProxy.java",
     "java/src/im/shimo/bison/internal/ContentHolder.java",
     "java/src/im/shimo/bison/internal/BvRunQueue.java",
-
-
+    "java/src/im/shimo/bison/internal/BvContentsStatics.java",
+    "java/src/im/shimo/bison/internal/FileModeConversionHelper.java",
+    "java/src/im/shimo/bison/internal/WebviewErrorCode.java",
+    "java/src/im/shimo/bison/internal/BvDarkMode.java",
+    "java/src/im/shimo/bison/internal/DarkModeHelper.java",
+    "java/src/im/shimo/bison/internal/BvFeatureList.java",
 
   ]
 
   srcjar_deps = [
     ":generate_sandboxed_service_srcjar",
+    ":bison_java_features_srcjar",
     "browser:browser_enums",
   ]
 
   deps = [
     ":bison_aar_resources",
+    ":bison_aar_manifest",
     ":bison_view_product_config_java",
     "//base:base_java",
     "//base:jni_java",
+    "//build/android:build_java",
+    "//components/android_autofill/browser:java",
     "//components/autofill/android:autofill_java",
-    "//components/autofill/android/provider:java",
-
+    "//components/url_formatter/android:url_formatter_java",
     "//components/embedder_support/android:web_contents_delegate_java",
     "//components/embedder_support/android:util_java",
     "//components/navigation_interception/android:navigation_interception_java",
@@ -259,13 +279,17 @@ android_library("bison_java") {
     "//device/gamepad:java",
     "//net/android:net_java",
     "//services/network/public/mojom:mojom_java",
+    "//services/network/public/mojom:url_loader_base_java",
 
-    # or not require
+
     "//third_party/blink/public:blink_headers_java",
-
+    "//third_party/blink/public/common:common_java",
+    "//third_party/blink/public/mojom:mojom_platform_java",
     # "//services/device/public/mojom",
     # ActivityWindowAndroid requires
-    "//third_party/android_deps:androidx_annotation_annotation_java",
+    "//third_party/androidx:androidx_annotation_annotation_java",
+    "//third_party/androidx:androidx_appcompat_appcompat_java",
+    "//third_party/androidx:androidx_core_core_java",
     "//ui/android:ui_java",
     "//url:gurl_java",
   ]
@@ -273,16 +297,13 @@ android_library("bison_java") {
   annotation_processor_deps = [ "//base/android/jni_generator:jni_processor" ]
 }
 
-action("generate_sandboxed_service_srcjar") {
+action_with_pydeps("generate_sandboxed_service_srcjar") {
   script = "//bison/build/generate_child_service.py"
-  depfile = "$target_gen_dir/$target_name.d"
 
   _srcjar_path = "${target_gen_dir}/${target_name}.srcjar"
   _rebased_srcjar_path = rebase_path(_srcjar_path, root_build_dir)
 
   args = [
-    "--depfile",
-    rebase_path(depfile, root_build_dir),
     "40",
     _rebased_srcjar_path,
   ]
@@ -312,40 +333,43 @@ shared_library("libbison_view") {
   ]
 
   configs -= [ "//build/config/android:hide_all_but_jni_onload" ]
-  configs += [ "//build/config/android:hide_all_but_jni" ]
+  configs += [
+    "//build/config/android:hide_all_but_jni" ,
+    "//build/config/compiler:chrome_orderfile_config",
+  ]
 }
 
-# grit("bison_resources_grit") {
-#   # External code should depend on ":resources" instead.
-#   visibility = [ ":*" ]
-#   source = "bison_resources.grd"
-#   outputs = [
-#     "grit/bison_resources.h",
-#     "bison_resources.pak",
-#   ]
-# }
+grit("bison_resources_grit") {
+  # External code should depend on ":resources" instead.
+  visibility = [ ":*" ]
+  source = "bison_resources.grd"
+  outputs = [
+    "grit/bison_resources.h",
+    "bison_resources.pak",
+  ]
+}
 
-# copy("copy_bison_resources") {
-#   sources = [ "$target_gen_dir/bison_resources.pak" ]
-#   outputs = [ "$root_out_dir/bison_resources.pak" ]
+copy("copy_bison_resources") {
+  sources = [ "$target_gen_dir/bison_resources.pak" ]
+  outputs = [ "$root_out_dir/bison_resources.pak" ]
 
-#   public_deps = [ ":bison_resources_grit" ]
-# }
+  public_deps = [ ":bison_resources_grit" ]
+}
 
-# group("resources") {
-#   public_deps = [ ":copy_bison_resources" ]
-# }
+group("resources") {
+  public_deps = [ ":copy_bison_resources" ]
+}
 
 bison_repack_locales("repack_locales") {
-  input_locales = locales
-  output_locales = locales
+  input_locales = platform_pak_locales
+  output_locales = platform_pak_locales
 }
 
 android_assets("locale_pak_assets") {
   disable_compression = true
   renaming_sources = []
   renaming_destinations = []
-  foreach(_locale, locales) {
+  foreach(_locale, platform_pak_locales) {
     renaming_sources += [ "$root_out_dir/bison/locales/$_locale.pak" ]
     renaming_destinations += [ "stored-locales/$_locale.pak" ]
   }
@@ -358,7 +382,7 @@ repack("repack_pack") {
     "$root_gen_dir/content/content_resources.pak",
     "$root_gen_dir/net/net_resources.pak",
     "$root_gen_dir/third_party/blink/public/resources/blink_resources.pak",
-
+    "$root_gen_dir/third_party/blink/public/resources/inspector_overlay_resources.pak",
     # "$target_gen_dir/aw_resources.pak",
     # "$target_gen_dir/components_resources.pak", # generate_components_resources
     # "$target_gen_dir/mojo_bindings_resources.pak", # generate_mojo_resources
@@ -366,12 +390,12 @@ repack("repack_pack") {
   ]
 
   deps = [
-    # ":generate_aw_resources",
     # ":generate_components_resources",
     # ":generate_mojo_resources",
     # ":generate_webui_resources",
     "//content:content_resources",
     "//net:net_resources",
+    "//third_party/blink/public:devtools_inspector_resources",
     "//third_party/blink/public:resources",
   ]
 
@@ -447,6 +471,12 @@ android_assets("bison_v8_snapshot_assets") {
 grit("generate_components_strings") {
   source = "../components/components_strings.grd"
 
+  defines = [
+    "enable_arcore=$enable_arcore",
+    "enable_pdf=$enable_pdf",
+    "enable_print_preview=$enable_print_preview",
+    "enable_vr=$enable_vr",
+  ]
   # components_strings contains strings from all components. WebView
   # will never display most of them, so we try to limit the included
   # strings. This allowlist trims about 50% more than the compile-based
@@ -465,6 +495,6 @@ grit("generate_components_strings") {
       process_file_template(
           android_bundle_locales_as_resources,
           [ "java/res/values-{{source_name_part}}/components_strings.xml" ]) +
-      process_file_template(locales_with_fake_bidi,
+      process_file_template(all_chrome_locales,
                             [ "components_strings_{{source_name_part}}.pak" ])
 }

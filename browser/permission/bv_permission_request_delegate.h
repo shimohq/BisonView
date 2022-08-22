@@ -5,7 +5,6 @@
 
 #include <stdint.h>
 
-#include "base/macros.h"
 #include "url/gurl.h"
 
 namespace bison {
@@ -24,8 +23,6 @@ class BvPermissionRequestDelegate {
 
   // Notify the permission request is allowed or not.
   virtual void NotifyRequestResult(bool allowed) = 0;
-
-  DISALLOW_COPY_AND_ASSIGN(BvPermissionRequestDelegate);
 };
 
 }  // namespace bison

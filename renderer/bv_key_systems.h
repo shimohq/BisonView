@@ -11,7 +11,7 @@
 
 namespace bison {
 
-void BisonAddKeySystems(std::vector<std::unique_ptr<media::KeySystemProperties>>*
+void BvAddKeySystems(std::vector<std::unique_ptr<media::KeySystemProperties>>*
                          key_systems_properties);
 
 }  // namespace bison

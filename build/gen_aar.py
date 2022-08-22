@@ -40,8 +40,6 @@ SRC_DIR = os.path.normpath(os.path.join(SCRIPT_DIR, os.pardir, os.pardir))
 
 
 
-
-
 DEFAULT_ARCHS = ['armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64']
 TARGET = 'bison:bison_view_aar'
 MANIFEST_FILE = 'gen/bison/bison_aar_manifest/AndroidManifest.xml'
@@ -53,12 +51,15 @@ jar_excluded_patterns = [
   "gen/_bison/*",
 
   "android/support/*",
-  "*/third_party/android_deps/*",
   "androidx/*",
   "android/support/*",
   "gen/_third_party/*",
   "com/google/*",
   "javax/*",
+  "kotlinx/*",
+  "kotlin/*",
+  "org/intellij/*",
+  "org/jetbrains/annotations*",
   "META-INF/*",
   "*.txt",
   "*.properties"
@@ -101,8 +102,6 @@ def _ParseArgs():
 
   parser.add_argument('--build-dir', default='out',
       help='Build dir. default  out')
-  # parser.add_argument('--output', default='bison_view.aar',
-  #     help='Output file of the script.')
   parser.add_argument('--arch', default=DEFAULT_ARCHS, nargs='*',
       help='Architectures to build. Defaults to %(default)s.')
   parser.add_argument('-p','--publish' ,action='store_true',default=False ,
@@ -202,8 +201,6 @@ def MergeZips(output, input_zips, path_transform=None, compress=None):
     for in_file in input_zips:
       # print ('input',in_file)
       with zipfile.ZipFile(in_file, 'r') as in_zip:
-        # ijar creates zips with null CRCs.
-        in_zip._expected_crc = None
         for info in in_zip.infolist():
           # Ignore directories.
           if info.filename[-1] == '/':
@@ -213,15 +210,19 @@ def MergeZips(output, input_zips, path_transform=None, compress=None):
             continue
           already_added = dst_name in added_names
           # TODO  jiang gen_jni filter for bison
+
+          # if "GEN_JNI" in dst_name:
+          #   print("GEN_JNI:",dst_name,in_file)
+
           if "GEN_JNI" in dst_name and not already_added:
-            already_added = not "bison" in in_file
-            # if not already_added:
-            #   print("already_added:",already_added,dst_name,in_file)
+            already_added = not "bison_view_aar__final_jni_java" in in_file
+            if not already_added:
+              print("already_added:",already_added,dst_name,in_file)
 
           if "J/N.class" in dst_name and not already_added:
-            already_added = not "bison" in in_file
-          if not already_added and "R.class" in dst_name:
-            print("already_added:",already_added,dst_name,in_file)
+            already_added = not "bison_view_aar__final_jni_java" in in_file
+          # if not already_added and "R.class" in dst_name:
+          #   print("already_added:",already_added,dst_name,in_file)
 
           if not already_added:
             # print("merge :" +dst_name)
@@ -302,28 +303,29 @@ def BuildAar(archs, output_file, common_gn_args,
         r_text_files = _ReadConfig(build_dir, arch, build_config ,'deps_info', 'extra_r_text_files')
         proguard_configs = _ReadConfig(build_dir, arch, build_config ,'deps_info', 'proguard_all_configs')
 
-      print("=== R ===")
-      for rf in r_text_files:
-          print(rf)
+      # print("=== R ===")
+      # for rf in r_text_files:
+      #     print(rf)
 
-      print("=== Res ===")
-      for rf in dependencies_res_zips:
-        if "android_deps" in rf:
-          print(rf)
+      # print("=== Res ===")
+      # for rf in dependencies_res_zips:
+      #   # if "android_deps" in rf:
+      #   print(rf)
 
-      print("=== jar ===")
-      for rf in jars:
-        if "android_deps" in rf:
-          print(rf)
-        if "bison" in rf:
-          print(rf)
+      # print("=== jar ===")
+      # for rf in jars:
+      #   # if "android_deps" in rf:
+      #   #   print(rf)
+      #   # if "bison" in rf:
+      #   #   print(rf)
+      #   print(rf)
 
       isCommonArgsGetted = True
 
 
   with zipfile.ZipFile(output_file, 'w') as aar_file:
     path_transform = CreatePathTransform(jar_excluded_patterns,
-                                             [], [])
+                                             [])
 
     AddAndroidManifest(aar_file, build_dir, archs[0])
 

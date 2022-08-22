@@ -21,7 +21,7 @@ bison_view_apk_tmpl("bison_shell_apk") {
   apk_name = "BisonApk"
   android_manifest = bison_apk_manifest_xml
   android_manifest_dep = ":bison_apk_manifest"
-  min_sdk_version = 21
+  min_sdk_version = default_min_sdk_version
   target_sdk_version = android_sdk_version
   product_config_java_packages = [ "im.shimo.bison" ]
 

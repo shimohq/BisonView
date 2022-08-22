@@ -1,4 +1,4 @@
-// create by jiang947 
+// create by jiang947
 
 
 #ifndef BISON_BROWSER_METRICS_MEMORY_METRICS_LOGGER_H_
@@ -9,7 +9,7 @@
 #include <memory>
 
 #include "base/callback_forward.h"
-#include "base/macros.h"
+
 #include "base/memory/scoped_refptr.h"
 
 namespace bison {
@@ -51,7 +51,7 @@ class MemoryMetricsLogger {
 
   scoped_refptr<State> state_;
 
-  DISALLOW_COPY_AND_ASSIGN(MemoryMetricsLogger);
+
 };
 
 }  // namespace bison

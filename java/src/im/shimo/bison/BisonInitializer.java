@@ -66,7 +66,7 @@ public class BisonInitializer {
         final boolean ignoreVisibilityForImportance = true;
         mAppPackageName = context.getPackageName();
         PathUtils.setPrivateDataDirectorySuffix(PRIVATE_DATA_DIRECTORY_SUFFIX);
-        ResourceBundle.setAvailablePakLocales(new String[] {}, BvLocaleConfig.getWebViewSupportedPakLocales());
+        ResourceBundle.setAvailablePakLocales(BvLocaleConfig.getWebViewSupportedPakLocales());
         ChildProcessCreationParams.set(mAppPackageName, "im.shimo.bison.PrivilegedProcessService", mAppPackageName,
                 "im.shimo.bison.SandboxedProcessService", isExternalService, LibraryProcessType.PROCESS_WEBVIEW_CHILD,
                 bindToCaller, ignoreVisibilityForImportance);

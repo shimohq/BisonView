@@ -9,9 +9,13 @@
 #include "bison/browser/bv_browser_process.h"
 
 #include "base/compiler_specific.h"
-#include "base/macros.h"
+#include "base/memory/raw_ptr.h"
 #include "base/task/single_thread_task_executor.h"
 #include "content/public/browser/browser_main_parts.h"
+
+namespace crash_reporter {
+class ChildExitObserver;
+}
 
 namespace metrics {
 class MemoryMetricsLogger;
@@ -25,25 +29,32 @@ class BvContentBrowserClient;
 class BvBrowserMainParts : public content::BrowserMainParts {
  public:
   explicit BvBrowserMainParts(BvContentBrowserClient* browser_client);
+
+  BvBrowserMainParts(const BvBrowserMainParts&) = delete;
+  BvBrowserMainParts& operator=(const BvBrowserMainParts&) = delete;
+
   ~BvBrowserMainParts() override;
 
   // BrowserMainParts overrides.
   int PreEarlyInitialization() override;
   int PreCreateThreads() override;
-  void PreMainMessageLoopRun() override;
-  bool MainMessageLoopRun(int* result_code) override;
+  int PreMainMessageLoopRun() override;
+  void WillRunMainMessageLoop(
+      std::unique_ptr<base::RunLoop>& run_loop) override;
   void PostCreateThreads() override;
 
  private:
+  void RegisterSyntheticTrials();
+
+  // Android specific UI SingleThreadTaskExecutor.
   std::unique_ptr<base::SingleThreadTaskExecutor> main_task_executor_;
 
-  BvContentBrowserClient* browser_client_;
+  raw_ptr<BvContentBrowserClient> browser_client_;
 
-  //std::unique_ptr<metrics::MemoryMetricsLogger> metrics_logger_;
+  // std::unique_ptr<metrics::MemoryMetricsLogger> metrics_logger_;
 
   std::unique_ptr<BvBrowserProcess> browser_process_;
-
-  DISALLOW_COPY_AND_ASSIGN(BvBrowserMainParts);
+  std::unique_ptr<crash_reporter::ChildExitObserver> child_exit_observer_;
 };
 
 }  // namespace bison

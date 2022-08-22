@@ -1,4 +1,4 @@
-// create by jiang947 
+// create by jiang947
 
 
 #ifndef BISON_BROWSER_METRICS_BISON_METRICS_LOG_UPLOADER_H_
@@ -31,7 +31,7 @@ class BisonMetricsLogUploader : public ::metrics::MetricsLogUploader {
  private:
   const metrics::MetricsLogUploader::UploadCallback on_upload_complete_;
 
-  DISALLOW_COPY_AND_ASSIGN(BisonMetricsLogUploader);
+
 };
 
 }  // namespace bison

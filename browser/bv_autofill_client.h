@@ -1,9 +1,7 @@
 // create by jiang947
 
-
 #ifndef BISON_BROWSER_BISON_AUTOFILL_CLIENT_H_
 #define BISON_BROWSER_BISON_AUTOFILL_CLIENT_H_
-
 
 #include <memory>
 #include <string>
@@ -11,7 +9,7 @@
 
 #include "base/android/jni_weak_ref.h"
 #include "base/compiler_specific.h"
-#include "base/macros.h"
+#include "base/memory/raw_ptr.h"
 #include "components/autofill/core/browser/autofill_client.h"
 #include "components/autofill/core/browser/payments/legal_message_line.h"
 #include "content/public/browser/web_contents_user_data.h"
@@ -54,6 +52,9 @@ namespace bison {
 class BvAutofillClient : public autofill::AutofillClient,
                          public content::WebContentsUserData<BvAutofillClient> {
  public:
+  BvAutofillClient(const BvAutofillClient&) = delete;
+  BvAutofillClient& operator=(const BvAutofillClient&) = delete;
+
   ~BvAutofillClient() override;
 
   void SetSaveFormData(bool enabled);
@@ -64,6 +65,7 @@ class BvAutofillClient : public autofill::AutofillClient,
   autofill::AutocompleteHistoryManager* GetAutocompleteHistoryManager()
       override;
   PrefService* GetPrefs() override;
+  const PrefService* GetPrefs() const override;
   syncer::SyncService* GetSyncService() override;
   signin::IdentityManager* GetIdentityManager() override;
   autofill::FormDataImporter* GetFormDataImporter() override;
@@ -72,7 +74,10 @@ class BvAutofillClient : public autofill::AutofillClient,
   ukm::UkmRecorder* GetUkmRecorder() override;
   ukm::SourceId GetUkmSourceId() override;
   autofill::AddressNormalizer* GetAddressNormalizer() override;
+  const GURL& GetLastCommittedURL() const override;
   security_state::SecurityLevel GetSecurityLevelForUmaHistograms() override;
+  const translate::LanguageState* GetLanguageState() override;
+  translate::TranslateDriver* GetTranslateDriver() override;
   void ShowAutofillSettings(bool show_credit_card_settings) override;
   void ShowUnmaskPrompt(
       const autofill::CreditCard& card,
@@ -80,10 +85,10 @@ class BvAutofillClient : public autofill::AutofillClient,
       base::WeakPtr<autofill::CardUnmaskDelegate> delegate) override;
   void OnUnmaskVerificationResult(PaymentsRpcResult result) override;
   void ConfirmAccountNameFixFlow(
-      base::OnceCallback<void(const base::string16&)> callback) override;
+      base::OnceCallback<void(const std::u16string&)> callback) override;
   void ConfirmExpirationDateFixFlow(
       const autofill::CreditCard& card,
-      base::OnceCallback<void(const base::string16&, const base::string16&)>
+      base::OnceCallback<void(const std::u16string&, const std::u16string&)>
           callback) override;
   void ConfirmSaveCreditCardLocally(
       const autofill::CreditCard& card,
@@ -97,14 +102,19 @@ class BvAutofillClient : public autofill::AutofillClient,
   void CreditCardUploadCompleted(bool card_saved) override;
   void ConfirmCreditCardFillAssist(const autofill::CreditCard& card,
                                    base::OnceClosure callback) override;
+  void ConfirmSaveAddressProfile(
+      const autofill::AutofillProfile& profile,
+      const autofill::AutofillProfile* original_profile,
+      SaveAddressProfilePromptOptions options,
+      AddressProfileSavePromptCallback callback) override;
   bool HasCreditCardScanFeature() override;
   void ScanCreditCard(CreditCardScanCallback callback) override;
   void ShowAutofillPopup(
       const autofill::AutofillClient::PopupOpenArgs& open_args,
       base::WeakPtr<autofill::AutofillPopupDelegate> delegate) override;
   void UpdateAutofillPopupDataListValues(
-      const std::vector<base::string16>& values,
-      const std::vector<base::string16>& labels) override;
+      const std::vector<std::u16string>& values,
+      const std::vector<std::u16string>& labels) override;
   base::span<const autofill::Suggestion> GetPopupSuggestions() const override;
   void PinPopupView() override;
   autofill::AutofillClient::PopupOpenArgs GetReopenPopupArgs() const override;
@@ -112,14 +122,15 @@ class BvAutofillClient : public autofill::AutofillClient,
                    autofill::PopupType popup_type) override;
   void HideAutofillPopup(autofill::PopupHidingReason reason) override;
   bool IsAutocompleteEnabled() override;
+  bool IsPasswordManagerEnabled() override;
   void PropagateAutofillPredictions(
       content::RenderFrameHost* rfh,
       const std::vector<autofill::FormStructure*>& forms) override;
-  void DidFillOrPreviewField(const base::string16& autofilled_value,
-                             const base::string16& profile_full_name) override;
-  bool IsContextSecure() override;
+  void DidFillOrPreviewField(const std::u16string& autofilled_value,
+                             const std::u16string& profile_full_name) override;
+  bool IsContextSecure() const override;
   bool ShouldShowSigninPromo() override;
-  bool AreServerCardsSupported() override;
+  bool AreServerCardsSupported() const override;
   void ExecuteCommand(int id) override;
 
   // RiskDataLoader:
@@ -140,8 +151,8 @@ class BvAutofillClient : public autofill::AutofillClient,
       bool is_rtl,
       const std::vector<autofill::Suggestion>& suggestions);
 
-  // The web_contents associated with this delegate.
-  content::WebContents* web_contents_;
+  content::WebContents& GetWebContents() const;
+
   bool save_form_data_ = false;
   JavaObjectWeakGlobalRef java_ref_;
 
@@ -151,13 +162,7 @@ class BvAutofillClient : public autofill::AutofillClient,
   std::vector<autofill::Suggestion> suggestions_;
   base::WeakPtr<autofill::AutofillPopupDelegate> delegate_;
 
-  // Tracks whether the autocomplete enabled metric has already been logged for
-  // this client.
-  bool autocomplete_uma_recorded_ = false;
-
   WEB_CONTENTS_USER_DATA_KEY_DECL();
-
-  DISALLOW_COPY_AND_ASSIGN(BvAutofillClient);
 };
 
 }  // namespace bison

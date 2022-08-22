@@ -1440,13 +1440,6 @@ public class BisonViewProvider {
         return mBvContents.onCheckIsTextEditor();
     }
 
-    public void scrollBy(int x, int y) {
-        mBvContents.scrollBy(x, y);
-    }
-
-    public void scrollTo(int x, int y) {
-        mBvContents.scrollTo(x, y);
-    }
 
     public int computeHorizontalScrollRange() {
         if (checkNeedsPost()) {
@@ -1475,7 +1468,7 @@ public class BisonViewProvider {
     }
 
     public int computeHorizontalScrollExtent() {
-        if (checkNeedsPost()) {
+        /*if (checkNeedsPost()) {
             int ret = mFactory.runOnUiThreadBlocking(new Callable<Integer>() {
                 @Override
                 public Integer call() {
@@ -1485,6 +1478,9 @@ public class BisonViewProvider {
             return ret;
         }
         return mBvContents.computeHorizontalScrollExtent();
+        */
+        // jiang947 暂时返回0
+        return 0;
     }
 
     public int computeVerticalScrollRange() {

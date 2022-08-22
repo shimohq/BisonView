@@ -1,0 +1,17 @@
+source_set("variations") {
+  sources = [
+    "bv_variations_service_client.cc",
+    "bv_variations_service_client.h",
+    "variations_seed_loader.cc",
+    "variations_seed_loader.h",
+  ]
+  deps = [
+    "//android_webview:browser_jni_headers",
+    "//android_webview/proto:aw_variations_seed_proto",
+    "//components/variations",
+    "//components/variations/net",
+    "//components/variations/service",
+    "//components/version_info",
+    "//components/version_info/android:channel_getter",
+  ]
+}

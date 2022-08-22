@@ -50,6 +50,7 @@ def main(args):
   build_utils.AddDepfileOption(parser)
   parser.add_argument('--output', required=True, help='Path to output aar.')
   parser.add_argument('--jars', required=True, help='GN list of jar inputs.')
+  #parser.add_argument('--srcjar_dep', required=True, help='srcjar dep')
   parser.add_argument('--dependencies-res-zips', required=True,
                       help='GN list of resource zips')
   parser.add_argument('--r-text-files', required=True,
@@ -107,7 +108,7 @@ def main(args):
             z, 'AndroidManifest.xml', src_path=options.android_manifest)
 
         path_transform = CreatePathTransform(options.jar_excluded_globs,
-                                             options.jar_included_globs, [])
+                                             options.jar_included_globs)
         with tempfile.NamedTemporaryFile() as jar_file:
           build_utils.MergeZips(
               jar_file.name, options.jars, path_transform=path_transform)
