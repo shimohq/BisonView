@@ -40,6 +40,7 @@
 #include "content/public/browser/android/media_url_interceptor_register.h"
 #include "content/public/browser/browser_main_runner.h"
 #include "content/public/browser/browser_thread.h"
+#include "content/public/browser/android/compositor.h"
 #include "content/public/common/content_descriptor_keys.h"
 #include "content/public/common/content_features.h"
 #include "content/public/common/content_switches.h"
@@ -265,7 +266,7 @@ bool BvMainDelegate::BasicStartupComplete(int* exit_code) {
     features.DisableIfNotSet(::translate::kTFLiteLanguageDetectionEnabled);
   }
 
-  //content::Compositor::Initialize();
+  content::Compositor::Initialize();
 
   return false;
 }
@@ -306,6 +307,8 @@ absl::variant<int, content::MainFunctionParams> BvMainDelegate::RunProcess(
   int exit_code = browser_runner_->Initialize(std::move(main_function_params));
   // We do not expect Initialize() to ever fail in AndroidWebView. On success
   // it returns a negative value but we do not want to use that on Android.
+
+  VLOG(0) << "RunProcess exit_code:" << exit_code ;
   DCHECK_LT(exit_code, 0);
   return 0;
 }
@@ -315,7 +318,7 @@ void BvMainDelegate::ProcessExiting(const std::string& process_type) {
 }
 
 bool BvMainDelegate::ShouldCreateFeatureList() {
-  return true;
+  return false;
 }
 
 // This function is called only on the browser process.

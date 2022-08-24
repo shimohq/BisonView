@@ -11,7 +11,6 @@
 #include "bison/browser/bv_content_browser_client.h"
 #include "bison/browser/bv_contents.h"
 #include "bison/browser/bv_devtools_manager_delegate.h"
-#include "bison/browser/metrics/memory_metrics_logger.h"
 #include "bison/browser/network_service/bv_network_change_notifier_factory.h"
 #include "bison/common/bv_switches.h"
 

@@ -299,8 +299,11 @@ def BuildAar(archs, output_file, common_gn_args,
       with open(os.path.join(output_directory , AAR_CONFIG_FILE),'r') as f :
         build_config = json.loads(f.read())
         jars = _ReadConfig(build_dir, arch , build_config,'deps_info', 'javac_full_classpath')
+        src_jars = _ReadConfig(build_dir, arch , build_config,'javac', 'classpath')
+        all_jars = src_jars + jars
+        all_jars = sorted(set(all_jars),key=all_jars.index)
         dependencies_res_zips =_ReadConfig(build_dir, arch, build_config ,'deps_info', 'dependency_zips')
-        r_text_files = _ReadConfig(build_dir, arch, build_config ,'deps_info', 'extra_r_text_files')
+        r_text_files = _ReadConfig(build_dir, arch, build_config ,'deps_info', 'dependency_r_txt_files')
         proguard_configs = _ReadConfig(build_dir, arch, build_config ,'deps_info', 'proguard_all_configs')
 
       # print("=== R ===")
@@ -330,7 +333,7 @@ def BuildAar(archs, output_file, common_gn_args,
     AddAndroidManifest(aar_file, build_dir, archs[0])
 
     with tempfile.NamedTemporaryFile() as jar_file:
-      MergeZips(jar_file.name, jars, path_transform=path_transform)
+      MergeZips(jar_file.name, all_jars, path_transform=path_transform)
       build_utils.AddToZipHermetic(aar_file, 'classes.jar', src_path=jar_file.name)
 
       build_utils.AddToZipHermetic(

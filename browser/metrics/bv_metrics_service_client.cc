@@ -1,5 +1,5 @@
 
-#include "bison/browser/metrics/bison_metrics_service_client.h"
+#include "bison/browser/metrics/bv_metrics_service_client.h"
 
 #include <jni.h>
 #include <cstdint>
@@ -52,7 +52,7 @@ const double kBetaDevCanarySampledInRate = 0.02;
 
 // Callbacks for metrics::MetricsStateManager::Create. Store/LoadClientInfo
 // allow Windows Chrome to back up ClientInfo. They're no-ops for WebView.
-BvMetricsServiceClient* g_bison_metrics_service_client = nullptr;
+BvMetricsServiceClient* g_bv_metrics_service_client = nullptr;
 
 void StoreClientInfo(const metrics::ClientInfo& client_info) {}
 
@@ -160,9 +160,9 @@ BvMetricsServiceClient::~BvMetricsServiceClient() {}
 
 // static
 BvMetricsServiceClient* BvMetricsServiceClient::GetInstance() {
-  DCHECK(g_bison_metrics_service_client);
-  g_bison_metrics_service_client->EnsureOnValidSequence();
-  return g_bison_metrics_service_client;
+  DCHECK(g_bv_metrics_service_client);
+  g_bv_metrics_service_client->EnsureOnValidSequence();
+  return g_bv_metrics_service_client;
 }
 
 int32_t BvMetricsServiceClient::GetProduct() {

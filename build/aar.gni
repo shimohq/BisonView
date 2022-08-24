@@ -49,6 +49,9 @@ template("bison_repack_locales") {
 template("android_aar") {
   assert(defined(invoker.shared_libraries))
   _deps = []
+  if (defined(invoker.deps)) {
+    _deps += invoker.deps
+  }
   _template_name = target_name
 
   _locales = string_join("\",\"", invoker.platform_pak_locales)
@@ -87,25 +90,17 @@ template("android_aar") {
   # generate_build_config_srcjar @see rules.gni 2676
 
   write_native_libraries_java("${_template_name}__native_libraries") {
-    # deps = [
-    #   ":${_template_name}__shared_library_list",
-    #   "//build/util:chrome_version_json",
-    # ]
-    # _native_lib_file =
-    #     rebase_path("$root_gen_dir/CHROME_VERSION.json", root_out_dir)
-    # version_number = "@FileArg($_native_lib_file:full-quoted)"
-    # native_libraries_list_file = _shared_library_list_file
-    # use_final_fields = true
     forward_variables_from(invoker, [ "main_component_library" ])
     native_libraries_list_file = _shared_library_list_file
     enable_chromium_linker = false
-    load_library_from_apk = true
+    load_library_from_apk = false
     use_modern_linker = false
     use_final_fields = true
   }
 
   android_library("${_template_name}__native_libraries_java") {
     srcjar_deps = [ ":${_template_name}__native_libraries" ]
+    low_classpath_priority = true
   }
 
   _deps += [ ":${_template_name}__native_libraries_java" ]
@@ -132,13 +127,12 @@ template("android_aar") {
 
     android_library("${_template_name}__final_jni_java") {
       srcjar_deps = [ ":${_template_name}__final_jni" ]
+      low_classpath_priority = true
     }
     _deps += [ ":${_template_name}__final_jni_java" ]
   }
 
-  if (defined(invoker.deps)) {
-    _deps += invoker.deps
-  }
+
 
   _native_libraries = []
   _deps += invoker.shared_libraries
@@ -147,8 +141,6 @@ template("android_aar") {
         [ "$root_build_dir/" + get_label_info(d, "name") + ".so" ]
   }
 
-  # print("_native_libraries",_native_libraries)
-  print("_deps",_deps)
   build_aar_impl(target_name) {
     forward_variables_from(invoker,
                            [

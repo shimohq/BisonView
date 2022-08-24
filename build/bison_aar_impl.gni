@@ -12,8 +12,7 @@ template("build_aar_impl") {
     _deps += invoker.deps
   }
 
-  _direct_deps_only =
-      defined(invoker.direct_deps_only) && invoker.direct_deps_only
+
 
   _build_config = "$target_gen_dir/$target_name.build_config"
   _build_config_target_name = "$target_name$build_config_target_suffix"
@@ -31,7 +30,7 @@ template("build_aar_impl") {
 
   _deps += [ ":$_build_config_target_name" ]
 
-  print ("build_aar -> _deps",_deps)
+  #print ("build_aar -> _deps",_deps)
   _rebased_build_config = rebase_path(_build_config, root_build_dir)
 
   action_with_pydeps(target_name) {
@@ -61,8 +60,6 @@ template("build_aar_impl") {
       rebase_path(depfile, root_build_dir),
       "--output",
       rebase_path(invoker.output, root_build_dir),
-      # "--srcjar_dep",
-      # _srcjar_deps,
       "--dependencies-res-zips=@FileArg($_rebased_build_config:deps_info:dependency_zips)",
       "--r-text-files=@FileArg($_rebased_build_config:deps_info:dependency_r_txt_files)",
       "--proguard-configs=@FileArg($_rebased_build_config:deps_info:proguard_all_configs)",
@@ -71,11 +68,11 @@ template("build_aar_impl") {
     ]
 
 
-    if (_direct_deps_only) {
-      args += [ "--jars=@FileArg($_rebased_build_config:javac:classpath)" ]
-    } else {
-      args += [ "--jars=@FileArg($_rebased_build_config:deps_info:javac_full_classpath)" ]
-    }
+
+    args += [ "--src_jars=@FileArg($_rebased_build_config:javac:classpath)" ]
+
+    args += [ "--jars=@FileArg($_rebased_build_config:deps_info:javac_full_classpath)" ]
+
     if (defined(invoker.android_manifest)) {
       args += [
         "--android-manifest",
