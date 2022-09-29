@@ -61,10 +61,6 @@ class BvFeatureListCreator {
   // of this variable. Stop using this variable afterwards.
   std::unique_ptr<PrefService> local_state_;
 
-  // A/B testing infrastructure for the entire application. empty until
-  // |SetupFieldTrials()| is called.
-  std::unique_ptr<base::FieldTrialList> field_trial_list_;
-
   // Performs set up for any WebView specific field trials.
   std::unique_ptr<BvFieldTrials> bv_field_trials_;
 

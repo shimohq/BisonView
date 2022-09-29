@@ -6,20 +6,20 @@ import android.content.Context;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 
-import org.chromium.base.ContextUtils;
+import androidx.annotation.VisibleForTesting;
+
 import org.chromium.base.Log;
 import org.chromium.base.ThreadUtils;
-import org.chromium.base.annotations.CalledByNative;
 import org.chromium.base.annotations.JNINamespace;
 import org.chromium.base.annotations.NativeMethods;
 
 /**
- * Determines user consent and app opt-out for metrics. See bison_metrics_service_client.h for more
+ * Determines user consent and app opt-out for metrics. See bv_metrics_service_client.h for more
  * explanation.
  */
 @JNINamespace("bison")
 public class BvMetricsServiceClient {
-    private static final String TAG = "BisonMetricsServiceCli-";
+    private static final String TAG = "BvMetricsServiceCli-";
 
     // Individual apps can use this meta-data tag in their manifest to opt out of metrics
     // reporting. See https://developer.android.com/reference/android/webkit/WebView.html
@@ -45,49 +45,49 @@ public class BvMetricsServiceClient {
         }
     }
 
-    private static boolean shouldRecordPackageName(Context ctx) {
-        // Only record if it's a system app or it was installed from Play Store.
-        String packageName = ctx.getPackageName();
-        String installerPackageName = ctx.getPackageManager().getInstallerPackageName(packageName);
-        return (ctx.getApplicationInfo().flags & ApplicationInfo.FLAG_SYSTEM) != 0
-                || (PLAY_STORE_PACKAGE_NAME.equals(installerPackageName));
-    }
-
+    /**
+     * Set user consent settings.
+     *
+     * @param ctx application {@link Context}
+     * @param userConsent user consent via Android Usage & diagnostics settings.
+     * @return whether metrics reporting is enabled or not.
+     */
     public static void setConsentSetting(Context ctx, boolean userConsent) {
         ThreadUtils.assertOnUiThread();
         BvMetricsServiceClientJni.get().setHaveMetricsConsent(userConsent, !isAppOptedOut(ctx));
     }
 
-    @CalledByNative
-    private static String getAppPackageName() {
-        Context ctx = ContextUtils.getApplicationContext();
-        return shouldRecordPackageName(ctx) ? ctx.getPackageName() : null;
+    @VisibleForTesting
+    public static void setFastStartupForTesting(boolean fastStartupForTesting) {
+        BvMetricsServiceClientJni.get().setFastStartupForTesting(fastStartupForTesting);
+    }
+
+    @VisibleForTesting
+    public static void setUploadIntervalForTesting(long uploadIntervalMs) {
+        BvMetricsServiceClientJni.get().setUploadIntervalForTesting(uploadIntervalMs);
     }
 
     /**
-     * Gets a long representing the install time of the embedder application. Units are in seconds,
-     * as this is the resolution used by the metrics service. Returns {@code -1} upon failure.
+     * Sets a callback to run each time after final metrics have been collected.
      */
-    // TODO(https://crbug.com/1012025): remove this when the kInstallDate pref has been persisted
-    // for one or two milestones.
-    @CalledByNative
-    private static long getAppInstallTime() {
-        try {
-            Context ctx = ContextUtils.getApplicationContext();
-            long installTimeMs = ctx.getPackageManager()
-                                         .getPackageInfo(ctx.getPackageName(), 0 /* flags */)
-                                         .firstInstallTime;
-            long installTimeSec = installTimeMs / 1000;
-            return installTimeSec;
-        } catch (PackageManager.NameNotFoundException e) {
-            // This should never happen.
-            Log.e(TAG, "App could not find itself by package name!");
-            return -1;
+    @VisibleForTesting
+    public static void setOnFinalMetricsCollectedListenerForTesting(Runnable listener) {
+        BvMetricsServiceClientJni.get().setOnFinalMetricsCollectedListenerForTesting(listener);
         }
+
+    @VisibleForTesting
+    public static void setAppPackageNameLoggingRuleForTesting(String version, long expiryDateMs) {
+        ThreadUtils.assertOnUiThread();
+        BvMetricsServiceClientJni.get().setAppPackageNameLoggingRuleForTesting(
+                version, expiryDateMs);
     }
 
     @NativeMethods
     interface Natives {
         void setHaveMetricsConsent(boolean userConsent, boolean appConsent);
+        void setFastStartupForTesting(boolean fastStartupForTesting);
+        void setUploadIntervalForTesting(long uploadIntervalMs);
+        void setOnFinalMetricsCollectedListenerForTesting(Runnable listener);
+        void setAppPackageNameLoggingRuleForTesting(String version, long expiryDateMs);
     }
 }

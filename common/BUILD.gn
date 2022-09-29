@@ -11,6 +11,8 @@ source_set("common") {
     "bv_media_drm_bridge_client.cc",
     "bv_media_drm_bridge_client.h",
     "devtools_instrumentation.h",
+    "metrics/app_package_name_logging_rule.cc",
+    "metrics/app_package_name_logging_rule.h",
     "url_constants.cc",
     "url_constants.h",
     "bv_switches.cc",

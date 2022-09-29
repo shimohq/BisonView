@@ -239,7 +239,7 @@ bool BvMainDelegate::BasicStartupComplete(int* exit_code) {
     features.DisableIfNotSet(::features::kInstalledApp);
     // features.EnableIfNotSet(
     //     metrics::UnsentLogStoreMetrics::kRecordLastUnsentLogMetadataMetrics);
-    features.DisableIfNotSet(::features::kPeriodicBackgroundSync);
+    //features.DisableIfNotSet(::features::kPeriodicBackgroundSync);
 
     // TODO(crbug.com/921655): Add support for User Agent Client hints on
     // WebView.
@@ -318,13 +318,13 @@ void BvMainDelegate::ProcessExiting(const std::string& process_type) {
 }
 
 bool BvMainDelegate::ShouldCreateFeatureList() {
-  return false;
+  return true;
 }
 
 // This function is called only on the browser process.
 void BvMainDelegate::PostEarlyInitialization(bool is_running_tests) {
   InitIcuAndResourceBundleBrowserSide();
-  bison_feature_list_creator_->CreateFeatureListAndFieldTrials();
+  bv_feature_list_creator_->CreateFeatureListAndFieldTrials();
   PostFieldTrialInitialization();
 }
 
@@ -349,9 +349,9 @@ content::ContentClient* BvMainDelegate::CreateContentClient() {
 }
 
 ContentBrowserClient* BvMainDelegate::CreateContentBrowserClient() {
-  bison_feature_list_creator_ = std::make_unique<BvFeatureListCreator>();
+  bv_feature_list_creator_ = std::make_unique<BvFeatureListCreator>();
   browser_client_ = std::make_unique<BvContentBrowserClient>(
-      bison_feature_list_creator_.get());
+      bv_feature_list_creator_.get());
   return browser_client_.get();
 }
 

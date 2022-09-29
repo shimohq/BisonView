@@ -52,7 +52,7 @@ class BvMainDelegate : public ContentMainDelegate {
   ContentRendererClient* CreateContentRendererClient() override;
 
  private:
-  std::unique_ptr<BvFeatureListCreator> bison_feature_list_creator_;
+  std::unique_ptr<BvFeatureListCreator> bv_feature_list_creator_;
   std::unique_ptr<BvContentBrowserClient> browser_client_;
   std::unique_ptr<BvContentGpuClient> gpu_client_;
   std::unique_ptr<BvContentRendererClient> renderer_client_;

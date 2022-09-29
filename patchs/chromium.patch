@@ -1,119 +1,151 @@
 diff --git a/BUILD.gn b/BUILD.gn
-index 16ad01eac88d3..bd56fd4d28dd7 100644
+index 09b4c938cdec9..584ac69d41ee4 100644
 --- a/BUILD.gn
 +++ b/BUILD.gn
-@@ -366,6 +366,9 @@ group("gn_all") {
+@@ -391,6 +391,7 @@ group("gn_all") {
        "//weblayer/public/java:client_aar",
        "//weblayer/shell/android:weblayer_shell_apk",
        "//weblayer/shell/android:weblayer_support_apk",
 +      "//bison",
-+      "//bison/shell",
-+      "//bison/test",
      ]
      deps -= [
        "//net:net_perftests",
 diff --git a/base/i18n/icu_util.cc b/base/i18n/icu_util.cc
-index 82022d5f490e8..cb941a346a156 100644
+index 83c641d3cfae8..2b756d913871f 100644
 --- a/base/i18n/icu_util.cc
 +++ b/base/i18n/icu_util.cc
-@@ -107,7 +107,7 @@ const char kIcuTimeZoneDataDir[] = "/config/data/tzdata/icu/44/le";
- #endif  // defined(OS_FUCHSIA)
+@@ -111,7 +111,7 @@ const char kIcuTimeZoneDataDir[] = "/config/data/tzdata/icu/44/le";
+ #endif  // BUILDFLAG(IS_FUCHSIA)
  
- #if defined(OS_ANDROID)
--const char kAssetsPathPrefix[] = "assets/";
-+const char kAssetsPathPrefix[] = "assets/bison/";
- #endif  // defined(OS_ANDROID)
+ #if BUILDFLAG(IS_ANDROID)
+-const char kAndroidAssetsIcuDataFileName[] = "assets/icudtl.dat";
++const char kAndroidAssetsIcuDataFileName[] = "assets/bison/icudtl.dat";
+ #endif  // BUILDFLAG(IS_ANDROID)
  
  // File handle intentionally never closed. Not using File here because its
 diff --git a/base/threading/thread_restrictions.h b/base/threading/thread_restrictions.h
-index 29a68a6b15bf1..1fa05cbbafb4c 100644
+index 114677b5163b8..e762625feecf8 100644
 --- a/base/threading/thread_restrictions.h
 +++ b/base/threading/thread_restrictions.h
-@@ -108,6 +108,13 @@ class CookieManager;
+@@ -122,6 +122,11 @@ class CookieManager;
  class ScopedAllowInitGLBindings;
  class VizCompositorThreadRunnerWebView;
- }
-+
+ }  // namespace android_webview
 +namespace bison {
 +class BvFormDatabaseService;
 +class CookieManager;
 +class ScopedAllowInitGLBindings;
 +}
-+
- namespace audio {
- class OutputDevice;
- }
-@@ -371,6 +378,7 @@ class BASE_EXPORT ScopedAllowBlocking {
-   friend class AdjustOOMScoreHelper;
-   friend class StackSamplingProfiler;
+ namespace ash {
+ class MojoUtils;
+ class BrowserDataMigrator;
+@@ -452,6 +457,7 @@ class BASE_EXPORT ScopedAllowBlocking {
+   friend class ::GaiaConfig;
+   friend class ::StartupTabProviderImpl;
    friend class android_webview::ScopedAllowInitGLBindings;
 +  friend class bison::ScopedAllowInitGLBindings;
-   friend class blink::DiskDataAllocator;
-   friend class chromeos::MojoUtils;  // http://crbug.com/1055467
-   friend class content::BrowserProcessSubThread;
-@@ -495,6 +503,10 @@ class BASE_EXPORT ScopedAllowBaseSyncPrimitivesOutsideBlockingScope {
+   friend class ash::MojoUtils;  // http://crbug.com/1055467
+   friend class ash::BrowserDataMigrator;
+   friend class base::AdjustOOMScoreHelper;
+@@ -640,6 +646,8 @@ class BASE_EXPORT ScopedAllowBaseSyncPrimitivesOutsideBlockingScope {
        AwFormDatabaseService;  // http://crbug.com/904431
    friend class android_webview::CookieManager;
    friend class android_webview::VizCompositorThreadRunnerWebView;
-+
 +  friend class bison::BvFormDatabaseService;
 +  friend class bison::CookieManager;
-+
    friend class audio::OutputDevice;
    friend class base::sequence_manager::internal::TaskQueueImpl;
    friend class base::FileDescriptorWatcher;
 diff --git a/base/trace_event/builtin_categories.h b/base/trace_event/builtin_categories.h
-index 31f563dd4d59c..79d3f84669bad 100644
+index a1a93418b0b0d..5f1f58922d73c 100644
 --- a/base/trace_event/builtin_categories.h
 +++ b/base/trace_event/builtin_categories.h
-@@ -30,6 +30,7 @@
+@@ -33,6 +33,7 @@
    X("accessibility")                                                     \
    X("AccountFetcherService")                                             \
    X("android_webview")                                                   \
 +  X("bison")                                                             \
+   /* Actions on Google Hardware, used in Google-internal code. */        \
    X("aogh")                                                              \
    X("audio")                                                             \
-   X("base")                                                              \
-diff --git a/build/android/gyp/compile_java.py b/build/android/gyp/compile_java.py
-index d3ace6dc36a03..eb349e8d4a7a1 100755
---- a/build/android/gyp/compile_java.py
-+++ b/build/android/gyp/compile_java.py
-@@ -301,7 +301,7 @@ class _InfoFileContext(object):
-       if '_aidl.srcjar' in source:
-         continue
-       assert not self._chromium_code or len(class_names) == 1, (
--          'Chromium java files must only have one class: {}'.format(source))
-+          'Chromium java files must only have one class: {},class name :{}'.format(source,class_names))
-       if self._chromium_code:
-         # This check is not necessary but nice to check this somewhere.
-         self._CheckPathMatchesClassName(java_file, package_name, class_names[0])
-diff --git a/build/android/gyp/filter_zip.py b/build/android/gyp/filter_zip.py
-index 9b52288c7a9bd..7a8cc61826426 100755
---- a/build/android/gyp/filter_zip.py
-+++ b/build/android/gyp/filter_zip.py
-@@ -30,7 +30,7 @@ def CreatePathTransform(exclude_globs, include_globs,
-        R.java classes from.
+diff --git a/build/android/gyp/write_build_config.py b/build/android/gyp/write_build_config.py
+index c5cee475e5018..5012176f6d808 100755
+--- a/build/android/gyp/write_build_config.py
++++ b/build/android/gyp/write_build_config.py
+@@ -942,6 +942,10 @@ def _AddJarMapping(jar_to_target, configs):
  
-   Returns:
--    * None if no filters are needed.
-+    * None if no filters are needed
-     * A function "(path) -> path" that returns None when |path| should be
-           stripped, or |path| otherwise.
-   """
+ 
+ def _CompareClasspathPriority(dep):
++  if  "//bison:bison_java" == dep.get('gn_target'):
++      print('gn_target ',dep)
++  if dep.get('low_classpath_priority'):
++    print('_CompareClasspathPriority',dep)
+   return 1 if dep.get('low_classpath_priority') else 0
+ 
+ 
+@@ -1642,13 +1646,25 @@ def main(argv):
+ 
+     # Preserve order of |all_library_deps|. Move low priority libraries to the
+     # end of the classpath.
++
++    # if "//bison:bison_view_aar" == options.gn_target:
++    #   print('all_library_deps_sorted_for_classpath',all_library_deps_sorted_for_classpath)
++
+     all_library_deps_sorted_for_classpath = sorted(
+         all_library_deps[::-1], key=_CompareClasspathPriority)
++    if "//bison:bison_view_aar" == options.gn_target:
++      print('all_library_deps_sorted_for_classpath',all_library_deps_sorted_for_classpath)
+ 
+     # The classpath used for bytecode-rewritting.
+     javac_full_classpath = OrderedSet.fromkeys(
+         c['unprocessed_jar_path']
+         for c in all_library_deps_sorted_for_classpath)
++
++    if "//bison:bison_view_aar" == options.gn_target:
++      print("=======")
++      print('javac_full_classpath',javac_full_classpath)
++      print("=======")
++
+     # The classpath used for error prone.
+     javac_full_interface_classpath = OrderedSet.fromkeys(
+         c['interface_jar_path'] for c in all_library_deps_sorted_for_classpath)
+diff --git a/content/browser/renderer_host/render_process_host_impl.cc b/content/browser/renderer_host/render_process_host_impl.cc
+index 43f05607cdabb..c753451c56e1a 100644
+--- a/content/browser/renderer_host/render_process_host_impl.cc
++++ b/content/browser/renderer_host/render_process_host_impl.cc
+@@ -1757,6 +1757,7 @@ bool RenderProcessHostImpl::Init() {
+ 
+     auto file_data = std::make_unique<ChildProcessLauncherFileData>();
+ #if BUILDFLAG(IS_POSIX)
++    VLOG(0) << "GetV8SnapshotFilesToPreload";
+     file_data->files_to_preload = GetV8SnapshotFilesToPreload();
+ #endif
+ 
 diff --git a/content/browser/v8_snapshot_files.cc b/content/browser/v8_snapshot_files.cc
-index a09a551e6af44..af7ac2f836341 100644
+index cb0af392214eb..2d0f946b359cb 100644
 --- a/content/browser/v8_snapshot_files.cc
 +++ b/content/browser/v8_snapshot_files.cc
-@@ -26,10 +26,17 @@ std::map<std::string, base::FilePath> GetV8SnapshotFilesToPreload() {
-       {kV8Snapshot32DataDescriptor,
-        base::FilePath(FILE_PATH_LITERAL("assets/v8_context_snapshot_32.bin"))}};
- #else
+@@ -19,15 +19,26 @@ std::map<std::string, base::FilePath> GetV8SnapshotFilesToPreload() {
+            base::FilePath(FILE_PATH_LITERAL("snapshot_blob.bin"))}};
+ #endif
+ #elif BUILDFLAG(IS_ANDROID)
+-#if !defined(USE_V8_CONTEXT_SNAPSHOT)
++#if defined(USE_V8_CONTEXT_SNAPSHOT)
++  return {
++      {kV8Snapshot64DataDescriptor,
++       base::FilePath(FILE_PATH_LITERAL("assets/v8_context_snapshot_64.bin"))},
++      {kV8Snapshot32DataDescriptor,
++       base::FilePath(FILE_PATH_LITERAL("assets/v8_context_snapshot_32.bin"))}};
++#else
 +#if defined(ARCH_CPU_ARM_FAMILY)
    return {{kV8Snapshot64DataDescriptor,
 -           base::FilePath(FILE_PATH_LITERAL("assets/snapshot_blob_64.bin"))},
 +           base::FilePath(FILE_PATH_LITERAL("assets/bison/arm/snapshot_blob_64.bin"))},
            {kV8Snapshot32DataDescriptor,
 -           base::FilePath(FILE_PATH_LITERAL("assets/snapshot_blob_32.bin"))}};
+-#elif defined(USE_V8_CONTEXT_SNAPSHOT)
+-  // For USE_V8_CONTEXT_SNAPSHOT, the renderer reads the files directly.
+-  return {};
 +           base::FilePath(FILE_PATH_LITERAL("assets/bison/arm/snapshot_blob_32.bin"))}};
 +#else   // ARCH_CPU_X86_FAMILY
 +  return {{kV8Snapshot64DataDescriptor,
@@ -122,302 +154,151 @@ index a09a551e6af44..af7ac2f836341 100644
 +           base::FilePath(FILE_PATH_LITERAL("assets/bison/x86/snapshot_blob_32.bin"))}};
 +#endif  // defined(ARCH_CPU_ARM_FAMILY)
  #endif
++
  #else
    return {};
-diff --git a/content/public/android/java/src/org/chromium/content/browser/accessibility/LollipopWebContentsAccessibility.java b/content/public/android/java/src/org/chromium/content/browser/accessibility/LollipopWebContentsAccessibility.java
-index 9208256213cbb..30ea5bdaaba6d 100644
---- a/content/public/android/java/src/org/chromium/content/browser/accessibility/LollipopWebContentsAccessibility.java
-+++ b/content/public/android/java/src/org/chromium/content/browser/accessibility/LollipopWebContentsAccessibility.java
-@@ -51,7 +51,7 @@ public class LollipopWebContentsAccessibility extends WebContentsAccessibilityIm
-         };
+ #endif
+diff --git a/content/shell/android/BUILD.gn b/content/shell/android/BUILD.gn
+index f21f3b5d04197..0b3c0661d49e3 100644
+--- a/content/shell/android/BUILD.gn
++++ b/content/shell/android/BUILD.gn
+@@ -174,13 +174,15 @@ android_assets("content_shell_assets") {
+   disable_compression = true
+   deps = [
+     "//content/shell:pak",
+-    "//third_party/icu:icu_assets",
++    #"//third_party/icu:icu_assets",
++    "//bison:bison_icu_assets",
++    "//bison:bison_v8_snapshot_assets"
+   ]
+-  if (use_v8_context_snapshot) {
+-    deps += [ "//tools/v8_context_snapshot:v8_context_snapshot_assets" ]
+-  } else {
+-    deps += [ "//v8:v8_external_startup_data_assets" ]
+-  }
++  # if (use_v8_context_snapshot) {
++  #   deps += [ "//tools/v8_context_snapshot:v8_context_snapshot_assets" ]
++  # } else {
++  #   deps += [ "//v8:v8_external_startup_data_assets" ]
++  # }
+ }
  
-         // Register a broadcast receiver for locale change for Lollipop or higher version.
--        if (mView.isAttachedToWindow()) registerLocaleChangeReceiver();
-+        if (mView.get()!=null && mView.get().isAttachedToWindow()) registerLocaleChangeReceiver();
-     }
- 
-     @Override
-diff --git a/content/public/android/java/src/org/chromium/content/browser/accessibility/WebContentsAccessibilityImpl.java b/content/public/android/java/src/org/chromium/content/browser/accessibility/WebContentsAccessibilityImpl.java
-index c7143c473f75d..d499d7b07025f 100644
---- a/content/public/android/java/src/org/chromium/content/browser/accessibility/WebContentsAccessibilityImpl.java
-+++ b/content/public/android/java/src/org/chromium/content/browser/accessibility/WebContentsAccessibilityImpl.java
-@@ -48,6 +48,7 @@ import org.chromium.content_public.browser.WebContents;
- import org.chromium.content_public.browser.WebContentsAccessibility;
- import org.chromium.ui.base.WindowAndroid;
- 
-+import java.lang.ref.WeakReference;
- import java.util.ArrayList;
- import java.util.HashMap;
- import java.util.HashSet;
-@@ -126,7 +127,7 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProvider
-     private boolean mIsHovering;
-     private int mLastHoverId = View.NO_ID;
-     private int mCurrentRootId;
--    protected View mView;
-+    protected WeakReference<View> mView;
-     private boolean mUserHasTouchExplored;
-     private boolean mPendingScrollToMakeNodeVisible;
-     private boolean mNotifyFrameInfoInitializedCalled;
-@@ -204,8 +205,8 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProvider
- 
-     protected WebContentsAccessibilityImpl(WebContents webContents) {
-         mWebContents = (WebContentsImpl) webContents;
--        mView = mWebContents.getViewAndroidDelegate().getContainerView();
--        mContext = mView.getContext();
-+        mView = new WeakReference<>(mWebContents.getViewAndroidDelegate().getContainerView());
-+        mContext = mView.get().getContext().getApplicationContext();
-         mProductVersion = mWebContents.getProductVersion();
-         mAccessibilityManager =
-                 (AccessibilityManager) mContext.getSystemService(Context.ACCESSIBILITY_SERVICE);
-@@ -229,12 +230,18 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProvider
-                 new AccessibilityEventDispatcher(new AccessibilityEventDispatcher.Client() {
-                     @Override
-                     public void postRunnable(Runnable toPost, long delayInMilliseconds) {
--                        mView.postDelayed(toPost, delayInMilliseconds);
-+                        if (mView.get()!=null){
-+                            mView.get().postDelayed(toPost, delayInMilliseconds);
-+                        }
+ template("content_shell_apk_tmpl") {
+diff --git a/content/shell/app/shell_main_delegate.cc b/content/shell/app/shell_main_delegate.cc
+index 86e85bdc4ea03..4c96e6d9f09e4 100644
+--- a/content/shell/app/shell_main_delegate.cc
++++ b/content/shell/app/shell_main_delegate.cc
+@@ -201,9 +201,13 @@ void ShellMainDelegate::PreSandboxStartup() {
+ // Disable platform crash handling and initialize the crash reporter, if
+ // requested.
+ // TODO(crbug.com/1226159): Implement crash reporter integration for Fuchsia.
++VLOG(0) << "BUILDFLAG(IS_FUCHSIA):" << BUILDFLAG(IS_FUCHSIA);
++VLOG(0) << "BUILDFLAG(IS_LINUX):" << BUILDFLAG(IS_LINUX);
 +
-                     }
+ #if !BUILDFLAG(IS_FUCHSIA)
+   if (base::CommandLine::ForCurrentProcess()->HasSwitch(
+           switches::kEnableCrashReporter)) {
++    VLOG(0) << "run BUILDFLAG(IS_FUCHSIA):";
+     std::string process_type =
+         base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
+             switches::kProcessType);
+@@ -212,6 +216,7 @@ void ShellMainDelegate::PreSandboxStartup() {
+     if (process_type != switches::kZygoteProcess) {
+       crash_reporter::InitializeCrashpad(process_type.empty(), process_type);
+ #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
++      VLOG(0) << "run BUILDFLAG(IS_LINUX):";
+       crash_reporter::SetFirstChanceExceptionHandler(
+           v8::TryHandleWebAssemblyTrapPosix);
+ #endif
+diff --git a/content/shell/browser/shell_content_browser_client.cc b/content/shell/browser/shell_content_browser_client.cc
+index 151e1706d7681..0e5649cc13dcd 100644
+--- a/content/shell/browser/shell_content_browser_client.cc
++++ b/content/shell/browser/shell_content_browser_client.cc
+@@ -665,6 +665,7 @@ void ShellContentBrowserClient::CreateFeatureListAndFieldTrials() {
+ std::unique_ptr<PrefService> ShellContentBrowserClient::CreateLocalState() {
+   auto pref_registry = base::MakeRefCounted<PrefRegistrySimple>();
  
-                     @Override
-                     public void removeRunnable(Runnable toRemove) {
--                        mView.removeCallbacks(toRemove);
-+                        if (mView.get()!=null){
-+                            mView.get().removeCallbacks(toRemove);
-+                        }
++  VLOG(0) << "not register metrices";
+   metrics::MetricsService::RegisterPrefs(pref_registry.get());
+   variations::VariationsService::RegisterPrefs(pref_registry.get());
+ 
+diff --git a/gin/v8_initializer.cc b/gin/v8_initializer.cc
+index cebcf5ac6f587..533da1eb51636 100644
+--- a/gin/v8_initializer.cc
++++ b/gin/v8_initializer.cc
+@@ -122,7 +122,14 @@ void GetV8FilePath(const char* file_name, base::FilePath* path_out) {
+ #if BUILDFLAG(IS_ANDROID)
+   // This is the path within the .apk.
+   *path_out =
+-      base::FilePath(FILE_PATH_LITERAL("assets")).AppendASCII(file_name);
++      base::FilePath(FILE_PATH_LITERAL("assets"))
++        .AppendASCII("bison")
++#if defined(ARCH_CPU_ARM_FAMILY)
++        .AppendASCII("arm")
++#else
++        .AppendASCII("x86")
++#endif
++        .AppendASCII(file_name);
+ #elif BUILDFLAG(IS_MAC)
+   base::ScopedCFTypeRef<CFStringRef> bundle_resource(
+       base::SysUTF8ToCFStringRef(file_name));
+@@ -165,6 +172,8 @@ base::File OpenV8File(const char* file_name,
+   GetV8FilePath(file_name, &path);
+ 
+ #if BUILDFLAG(IS_ANDROID)
 +
-                     }
++  VLOG(0) << "on android, v8 file path:" << path.value();
+   base::File file(base::android::OpenApkAsset(path.value(), region_out));
+   OpenV8FileResult result = file.IsValid() ? OpenV8FileResult::OPENED
+                                            : OpenV8FileResult::FAILED_OTHER;
+@@ -533,7 +542,7 @@ void V8Initializer::LoadV8SnapshotFromFile(
+     return;
  
-                     @Override
-@@ -404,12 +411,13 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProvider
+   if (!snapshot_file.IsValid()) {
+-    LOG(FATAL) << "Error loading V8 startup snapshot file";
++    LOG(FATAL) << "Error loading V8 startup snapshot file ,file path:" ;
+     return;
+   }
  
-         } else {
-             // If we have no copy of this node in our cache, build a new one from scratch.
--            final AccessibilityNodeInfo info = AccessibilityNodeInfo.obtain(mView);
-+            if (mView.get()==null) return null;
-+            final AccessibilityNodeInfo info = AccessibilityNodeInfo.obtain(mView.get());
-             info.setPackageName(mContext.getPackageName());
--            info.setSource(mView, virtualViewId);
-+            info.setSource(mView.get(), virtualViewId);
- 
-             if (virtualViewId == rootId) {
--                info.setParent(mView);
-+                info.setParent(mView.get());
-             }
- 
-             if (WebContentsAccessibilityImplJni.get().populateAccessibilityNodeInfo(
-@@ -608,12 +616,12 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProvider
-                 }
-                 return true;
-             case AccessibilityNodeInfo.ACTION_CLICK:
--                if (!mView.hasFocus()) mView.requestFocus();
-+                if (mView.get()!=null &&!mView.get().hasFocus()) mView.get().requestFocus();
-                 WebContentsAccessibilityImplJni.get().click(
-                         mNativeObj, WebContentsAccessibilityImpl.this, virtualViewId);
-                 return true;
-             case AccessibilityNodeInfo.ACTION_FOCUS:
--                if (!mView.hasFocus()) mView.requestFocus();
-+                if (mView.get()!=null && !mView.get().hasFocus()) mView.get().requestFocus();
-                 WebContentsAccessibilityImplJni.get().focus(
-                         mNativeObj, WebContentsAccessibilityImpl.this, virtualViewId);
-                 return true;
-@@ -1106,8 +1114,8 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProvider
-     private void sendAccessibilityEvent(int virtualViewId, int eventType) {
-         // The container view is indicated by a virtualViewId of NO_ID; post these events directly
-         // since there's no web-specific information to attach.
--        if (virtualViewId == View.NO_ID) {
--            mView.sendAccessibilityEvent(eventType);
-+        if (virtualViewId == View.NO_ID && mView.get()!=null) {
-+            mView.get().sendAccessibilityEvent(eventType);
-             return;
-         }
- 
-@@ -1135,11 +1143,12 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProvider
-         // the item that has accessibility focus. In practice, this doesn't seem to slow
-         // things down, because it's only called when the accessibility focus moves.
-         // TODO(dmazzoni): remove this if/when Android framework fixes bug.
--        mView.postInvalidate();
-+        if (mView.get()==null) return null;
-+        mView.get().postInvalidate();
- 
-         final AccessibilityEvent event = AccessibilityEvent.obtain(eventType);
-         event.setPackageName(mContext.getPackageName());
--        event.setSource(mView, virtualViewId);
-+        event.setSource(mView.get(), virtualViewId);
-         if (!WebContentsAccessibilityImplJni.get().populateAccessibilityEvent(mNativeObj,
-                     WebContentsAccessibilityImpl.this, event, virtualViewId, eventType)) {
-             event.recycle();
-@@ -1166,9 +1175,10 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProvider
-     private AccessibilityNodeInfo createNodeForHost(int rootId) {
-         // Since we don't want the parent to be focusable, but we can't remove
-         // actions from a node, copy over the necessary fields.
--        final AccessibilityNodeInfo result = AccessibilityNodeInfo.obtain(mView);
--        final AccessibilityNodeInfo source = AccessibilityNodeInfo.obtain(mView);
--        mView.onInitializeAccessibilityNodeInfo(source);
-+        if (mView.get() ==null) return null;
-+        final AccessibilityNodeInfo result = AccessibilityNodeInfo.obtain(mView.get());
-+        final AccessibilityNodeInfo source = AccessibilityNodeInfo.obtain(mView.get());
-+        mView.get().onInitializeAccessibilityNodeInfo(source);
- 
-         // Copy over parent and screen bounds.
-         Rect rect = new Rect();
-@@ -1178,7 +1188,7 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProvider
-         result.setBoundsInScreen(rect);
- 
-         // Set up the parent view, if applicable.
--        final ViewParent parent = mView.getParentForAccessibility();
-+        final ViewParent parent = mView.get().getParentForAccessibility();
-         if (parent instanceof View) {
-             result.setParent((View) parent);
-         }
-@@ -1191,7 +1201,7 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProvider
- 
-         // Add the Chrome root node.
-         if (isFrameInfoInitialized()) {
--            result.addChild(mView, rootId);
-+            result.addChild(mView.get(), rootId);
-         }
- 
-         return result;
-@@ -1311,17 +1321,23 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProvider
- 
-     @CalledByNative
-     private void announceLiveRegionText(String text) {
--        mView.announceForAccessibility(text);
-+        if (mView.get()!=null){
-+            mView.get().announceForAccessibility(text);
-+        }
-     }
- 
-     @CalledByNative
-     private void setAccessibilityNodeInfoParent(AccessibilityNodeInfo node, int parentId) {
--        node.setParent(mView, parentId);
-+        if (mView.get()!=null){
-+            node.setParent(mView.get(), parentId);
-+        }
-     }
- 
-     @CalledByNative
-     private void addAccessibilityNodeInfoChild(AccessibilityNodeInfo node, int childId) {
--        node.addChild(mView, childId);
-+        if (mView.get()!=null){
-+            node.addChild(mView.get(), childId);
-+        }
-     }
- 
-     @CalledByNative
-@@ -1509,6 +1525,7 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProvider
- 
-     protected void convertWebRectToAndroidCoordinates(Rect rect) {
-         // Offset by the scroll position.
-+        if (mView.get()==null) return;
-         RenderCoordinatesImpl rc = mWebContents.getRenderCoordinates();
-         rect.offset(-(int) rc.getScrollX(), -(int) rc.getScrollY());
- 
-@@ -1523,7 +1540,7 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProvider
- 
-         // Finally offset by the location of the view within the screen.
-         final int[] viewLocation = new int[2];
--        mView.getLocationOnScreen(viewLocation);
-+        mView.get().getLocationOnScreen(viewLocation);
-         rect.offset(viewLocation[0], viewLocation[1]);
- 
-         // Clip to the viewport bounds.
-@@ -1536,8 +1553,8 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProvider
-     private void requestSendAccessibilityEvent(AccessibilityEvent event) {
-         // If there is no parent, then the event can be ignored. In general the parent is only
-         // transiently null (such as during teardown, switching tabs...).
--        if (mView.getParent() != null) {
--            mView.getParent().requestSendAccessibilityEvent(mView, event);
-+        if (mView.get()!=null && mView.get().getParent() != null) {
-+            mView.get().getParent().requestSendAccessibilityEvent(mView.get(), event);
-         }
-     }
- 
-diff --git a/content/public/android/java/src/org/chromium/content/browser/input/SelectPopup.java b/content/public/android/java/src/org/chromium/content/browser/input/SelectPopup.java
-index 94cb66dbe800e..1c840107cadc4 100644
---- a/content/public/android/java/src/org/chromium/content/browser/input/SelectPopup.java
-+++ b/content/public/android/java/src/org/chromium/content/browser/input/SelectPopup.java
-@@ -133,7 +133,7 @@ public class SelectPopup implements HideablePopup, ViewAndroidDelegate.Container
-     @CalledByNative
-     private void show(View anchorView, long nativeSelectPopupSourceFrame, String[] items,
-             int[] enabled, boolean multiple, int[] selectedIndices, boolean rightAligned) {
--        if (mContainerView.getParent() == null || mContainerView.getVisibility() != View.VISIBLE) {
-+        if (mContainerView ==null || mContainerView.getParent() == null || mContainerView.getVisibility() != View.VISIBLE) {
-             mNativeSelectPopupSourceFrame = nativeSelectPopupSourceFrame;
-             selectMenuItems(null);
-             return;
 diff --git a/ipc/ipc_message_start.h b/ipc/ipc_message_start.h
-index 4464f1e4bb3b2..93b9e33d724a2 100644
+index 46882f437b1a5..364e6f1a9ca39 100644
 --- a/ipc/ipc_message_start.h
 +++ b/ipc/ipc_message_start.h
-@@ -44,6 +44,7 @@ enum IPCMessageStart {
+@@ -23,6 +23,7 @@ enum IPCMessageStart {
+   EncryptedMediaMsgStart,
+   GinJavaBridgeMsgStart,
    ExtensionWorkerMsgStart,
-   SubresourceFilterMsgStart,
-   UnfreezableFrameMsgStart,
 +  BisonViewMsgStart,
    LastIPCMsgStart  // Must come last.
  };
  
-diff --git a/tools/gritsettings/resource_ids.spec b/tools/gritsettings/resource_ids.spec
-index fa2306ead7d2b..3accd22f23122 100644
---- a/tools/gritsettings/resource_ids.spec
-+++ b/tools/gritsettings/resource_ids.spec
-@@ -504,7 +504,7 @@
-   "android_webview/ui/aw_strings.grd": {
-     "messages": [3020],
-   },
--
-+  
-   "ash/app_list/resources/app_list_resources.grd": {
-     "structures": [3040],
-   },
-@@ -648,7 +648,9 @@
-     "META": {"sizes": {"includes": [50],}},
-     "includes": [3880],
-   },
--
-+  "bison/bison_resources.grd": {
-+    "includes": [5000],
-+  },
-   # END "everything else" section.
-   # Everything but chrome/, components/, content/, and ios/
+diff --git a/third_party/blink/public/common/BUILD.gn b/third_party/blink/public/common/BUILD.gn
+index 611c6cff317b5..93df1a17307a5 100644
+--- a/third_party/blink/public/common/BUILD.gn
++++ b/third_party/blink/public/common/BUILD.gn
+@@ -94,6 +94,7 @@ source_set("headers") {
+   visibility = [
+     ":*",
+     "//android_webview/*",
++    "//bison/*",
+     "//chrome/*",
+     "//chromecast/*",
+     "//components/*",
+diff --git a/ui/android/java/res/values-v31/colors.xml b/ui/android/java/res/values-v31/colors.xml
+index e5bc62c31d05f..1f0ed9b187dd2 100644
+--- a/ui/android/java/res/values-v31/colors.xml
++++ b/ui/android/java/res/values-v31/colors.xml
+@@ -6,6 +6,6 @@
  
-diff --git a/ui/android/java/src/org/chromium/ui/display/DisplayAndroidManager.java b/ui/android/java/src/org/chromium/ui/display/DisplayAndroidManager.java
-index 00b381dcdb0a1..fe9a461662ccb 100644
---- a/ui/android/java/src/org/chromium/ui/display/DisplayAndroidManager.java
-+++ b/ui/android/java/src/org/chromium/ui/display/DisplayAndroidManager.java
-@@ -8,6 +8,8 @@ import android.annotation.SuppressLint;
- import android.content.Context;
- import android.hardware.display.DisplayManager;
- import android.hardware.display.DisplayManager.DisplayListener;
-+import android.os.Handler;
-+import android.os.Looper;
- import android.util.SparseArray;
- import android.view.Display;
- import android.view.WindowManager;
-@@ -32,7 +34,8 @@ public class DisplayAndroidManager {
-      */
-     private class DisplayListenerBackend implements DisplayListener {
-         public void startListening() {
--            getDisplayManager().registerDisplayListener(this, null);
-+
-+            getDisplayManager().registerDisplayListener(this, new Handler(Looper.getMainLooper()));
-         }
- 
-         // DisplayListener implementation:
-@@ -97,7 +100,7 @@ public class DisplayAndroidManager {
-     }
- 
-     public static Display getDefaultDisplayForContext(Context context) {
--        // TODO(boliu): There are other valid display context though they require R APIs to query.
-+        // TODO(boliu): There are other valid display context though hey require R APIs to query.
-         // This is good enough for now since nothing in chromium calls Context.createDisplayContext.
-         if (BuildInfo.targetsAtLeastR() && ContextUtils.activityFromContext(context) == null) {
-             return getGlobalDefaultDisplay();
+ <resources>
+     <!-- System colors for Android S+.-->
+-    <color name="system_neutral1_10">@android:color/system_neutral1_10</color>
+-    <color name="system_neutral1_900">@android:color/system_neutral1_900</color>
++    <color name="system_neutral1_10">#f0f0f0</color>
++    <color name="system_neutral1_900">#1b1b1b</color>
+ </resources>
 diff --git a/ui/base/resource/resource_bundle_android.cc b/ui/base/resource/resource_bundle_android.cc
-index e8cf7b78c6632..7ac432cfa89dc 100644
+index 7595aeb039758..270ef3c87396e 100644
 --- a/ui/base/resource/resource_bundle_android.cc
 +++ b/ui/base/resource/resource_bundle_android.cc
 @@ -88,7 +88,7 @@ void ResourceBundle::LoadCommonResources() {

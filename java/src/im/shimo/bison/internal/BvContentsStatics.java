@@ -87,24 +87,24 @@ public class BvContentsStatics {
         BvContentsStaticsJni.get().setServiceWorkerIoThreadClient(ioThreadClient, browserContext);
     }
 
-    @CalledByNative
-    private static void safeBrowsingAllowlistAssigned(Callback<Boolean> callback, boolean success) {
-        if (callback == null) return;
-        callback.onResult(success);
-    }
+    // @CalledByNative
+    // private static void safeBrowsingAllowlistAssigned(Callback<Boolean> callback, boolean success) {
+    //     if (callback == null) return;
+    //     callback.onResult(success);
+    // }
 
-    public static void setSafeBrowsingAllowlist(List<String> urls, Callback<Boolean> callback) {
-        String[] urlArray = urls.toArray(new String[urls.size()]);
-        if (callback == null) {
-            callback = b -> {
-            };
-        }
-        BvContentsStaticsJni.get().setSafeBrowsingAllowlist(urlArray, callback);
-    }
+    // public static void setSafeBrowsingAllowlist(List<String> urls, Callback<Boolean> callback) {
+    //     String[] urlArray = urls.toArray(new String[urls.size()]);
+    //     if (callback == null) {
+    //         callback = b -> {
+    //         };
+    //     }
+    //     BvContentsStaticsJni.get().setSafeBrowsingAllowlist(urlArray, callback);
+    // }
 
-    public static Uri getSafeBrowsingPrivacyPolicyUrl() {
-        return Uri.parse(BvContentsStaticsJni.get().getSafeBrowsingPrivacyPolicyUrl());
-    }
+    // public static Uri getSafeBrowsingPrivacyPolicyUrl() {
+    //     return Uri.parse(BvContentsStaticsJni.get().getSafeBrowsingPrivacyPolicyUrl());
+    // }
 
     public static void setCheckClearTextPermitted(boolean permitted) {
         BvContentsStaticsJni.get().setCheckClearTextPermitted(permitted);
@@ -156,13 +156,13 @@ public class BvContentsStatics {
         void logCommandLineForDebugging();
         void logFlagMetrics(String[] switches, String[] features);
 
-        String getSafeBrowsingPrivacyPolicyUrl();
+        //String getSafeBrowsingPrivacyPolicyUrl();
         void clearClientCertPreferences(Runnable callback);
         String getUnreachableWebDataUrl();
         String getProductVersion();
         void setServiceWorkerIoThreadClient(
                 BvContentsIoThreadClient ioThreadClient, BvBrowserContext browserContext);
-        void setSafeBrowsingAllowlist(String[] urls, Callback<Boolean> callback);
+        //void setSafeBrowsingAllowlist(String[] urls, Callback<Boolean> callback);
         void setCheckClearTextPermitted(boolean permitted);
         boolean isMultiProcessEnabled();
         String getVariationsHeader();

@@ -289,9 +289,8 @@ public class BvContentsClientBridge {
         error.errorCode = errorCode;
         error.description = description;
 
-        // String unreachableWebDataUrl = AwContentsStatics.getUnreachableWebDataUrl();
-        // boolean isErrorUrl =
-        // unreachableWebDataUrl != null && unreachableWebDataUrl.equals(request.url);
+        String unreachableWebDataUrl = BvContentsStatics.getUnreachableWebDataUrl();
+        boolean isErrorUrl = unreachableWebDataUrl != null && unreachableWebDataUrl.equals(request.url);
 
         if (error.errorCode != NetError.ERR_ABORTED) {
             // NetError.ERR_ABORTED error code is generated for the following reasons:

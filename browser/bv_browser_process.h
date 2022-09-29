@@ -26,11 +26,16 @@ extern const char kEnterpriseAuthAppLinkPolicy[];
 
 }  // namespace prefs
 
+class BvContentsLifecycleNotifier;
 class VisibilityMetricsLogger;
 
 class BvBrowserProcess {
  public:
   BvBrowserProcess(BvFeatureListCreator* bv_feature_list_creator);
+
+  BvBrowserProcess(const BvBrowserProcess&) = delete;
+  BvBrowserProcess& operator=(const BvBrowserProcess&) = delete;
+
   ~BvBrowserProcess();
 
   static BvBrowserProcess* GetInstance();
@@ -40,28 +45,8 @@ class BvBrowserProcess {
 
   void CreateBrowserPolicyConnector();
   void CreateLocalState();
-  // jiang bison not impl safe Browsing
-  // void InitSafeBrowsing();
 
-  // jiang bison not impl safe Browsing
-  // safe_browsing::RemoteSafeBrowsingDatabaseManager*
-  // GetSafeBrowsingDBManager();
 
-  // Called on UI thread.
-  // This method lazily creates TriggerManager.
-  // Needs to happen after |safe_browsing_ui_manager_| is created.
-  // jiang bison not impl safe Browsing
-  // safe_browsing::TriggerManager* GetSafeBrowsingTriggerManager();
-
-  // InitSafeBrowsing must be called first.
-  // Called on UI and IO threads.
-  // jiang bison not impl safe Browsing
-  // BisonSafeBrowsingWhitelistManager* GetSafeBrowsingWhitelistManager() const;
-
-  // InitSafeBrowsing must be called first.
-  // Called on UI and IO threads.
-  // jiang bison not impl safe Browsing
-  // BisonSafeBrowsingUIManager* GetSafeBrowsingUIManager() const;
 
   static void RegisterNetworkContextLocalStatePrefs(
       PrefRegistrySimple* pref_registry);
@@ -120,7 +105,7 @@ class BvBrowserProcess {
 
 
   //std::unique_ptr<VisibilityMetricsLogger> visibility_metrics_logger_;
-  //std::unique_ptr<AwContentsLifecycleNotifier> aw_contents_lifecycle_notifier_;
+  std::unique_ptr<BvContentsLifecycleNotifier> aw_contents_lifecycle_notifier_;
 };
 
 }  // namespace bison

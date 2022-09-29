@@ -126,6 +126,8 @@ generate_jni("bison_jni_headers") {
     "java/src/im/shimo/bison/internal/JsReplyProxy.java",
     "java/src/im/shimo/bison/internal/BvDarkMode.java",
     "java/src/im/shimo/bison/internal/BvFeatureList.java",
+    "java/src/im/shimo/bison/internal/BvContentsStatics.java",
+    #"java/src/im/shimo/bison/internal/VariationsSeedLoader.java",
   ]
 }
 

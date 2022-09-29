@@ -6,6 +6,9 @@
 #include <utility>
 #include <vector>
 
+#include "components/metrics/metrics_service.h"
+
+
 #include "bison/browser/bison_variations_seed_bridge.h"
 #include "bison/browser/bv_browser_context.h"
 #include "bison/browser/bv_browser_process.h"
@@ -109,9 +112,10 @@ BvFeatureListCreator::BvFeatureListCreator()
 BvFeatureListCreator::~BvFeatureListCreator() {}
 
 std::unique_ptr<PrefService> BvFeatureListCreator::CreatePrefService() {
+  //auto pref_registry = base::MakeRefCounted<PrefRegistrySimple>(); //shell
   auto pref_registry = base::MakeRefCounted<user_prefs::PrefRegistrySyncable>();
 
-  //AwMetricsServiceClient::RegisterMetricsPrefs(pref_registry.get());
+  metrics::MetricsService::RegisterPrefs(pref_registry.get());
   variations::VariationsService::RegisterPrefs(pref_registry.get());
 
   embedder_support::OriginTrialPrefs::RegisterPrefs(pref_registry.get());
@@ -142,81 +146,72 @@ std::unique_ptr<PrefService> BvFeatureListCreator::CreatePrefService() {
 
   pref_service_factory.set_read_error_callback(
       base::BindRepeating(&HandleReadError));
-
+  //pref_service_factory.Create(pref_registry);  //shell
   return pref_service_factory.Create(pref_registry);
 }
 
 
 void BvFeatureListCreator::SetUpFieldTrials() {
-  // auto* metrics_client = BvMetricsServiceClient::GetInstance();
+  //DCHECK(base::FieldTrialList::GetInstance());
+  // std::unique_ptr<BvVariationsSeed> seed_proto = TakeSeed();
+  // std::unique_ptr<variations::SeedResponse> seed;
+  // base::Time seed_date;  // Initializes to null time.
+  // if (seed_proto) {
+  //   seed = std::make_unique<variations::SeedResponse>();
+  //   seed->data = seed_proto->seed_data();
+  //   seed->signature = seed_proto->signature();
+  //   seed->country = seed_proto->country();
+  //   seed->date = seed_proto->date();
+  //   seed->is_gzip_compressed = seed_proto->is_gzip_compressed();
 
-  // Chrome uses the default entropy provider here (rather than low entropy
-  // provider). The default provider needs to know whether UMA is enabled, but
-  // WebView determines UMA by querying GMS, which is very slow. So WebView
-  // always uses the low entropy provider. Both providers guarantee permanent
-  // consistency, which is the main requirement. The difference is that the low
-  // entropy provider has fewer unique experiment combinations. This is better
-  // for privacy (since experiment state doesn't identify users), but also means
-  // fewer combinations tested in the wild.
-  // DCHECK(!field_trial_list_);
-  // field_trial_list_ = std::make_unique<base::FieldTrialList>(
-  //     metrics_client->CreateLowEntropyProvider());
+  //   // We set the seed fetch time to when the service downloaded the seed rather
+  //   // than base::Time::Now() because we want to compute seed freshness based on
+  //   // the initial download time, which happened in the service at some earlier
+  //   // point.
+  //   seed_date = base::Time::FromJavaTime(seed->date);
+  // }
 
-  // std::unique_ptr<variations::SeedResponse> seed = GetAndClearJavaSeed();
-  // base::Time null_time;
-  // base::Time seed_date =
-  //     seed ? base::Time::FromJavaTime(seed->date) : null_time;
-  // variations::UIStringOverrider ui_string_overrider;
-  // client_ = std::make_unique<BvVariationsServiceClient>();
+  // client_ = std::make_unique<AwVariationsServiceClient>();
   // auto seed_store = std::make_unique<variations::VariationsSeedStore>(
   //     local_state_.get(), /*initial_seed=*/std::move(seed),
-  //     /*on_initial_seed_stored=*/base::DoNothing());
+  //     /*signature_verification_enabled=*/g_signature_verification_enabled,
+  //     /*use_first_run_prefs=*/false);
 
-  // // We set the seed fetch time to when the service downloaded the seed
-  // rather
-  // // than base::Time::Now() because we want to compute seed freshness based
-  // on
-  // // the initial download time, which happened in the service at some earlier
-  // // point.
   // if (!seed_date.is_null())
   //   seed_store->RecordLastFetchTime(seed_date);
 
+  // variations::UIStringOverrider ui_string_overrider;
   // variations_field_trial_creator_ =
   //     std::make_unique<variations::VariationsFieldTrialCreator>(
-  //         local_state_.get(), client_.get(), std::move(seed_store),
-  //         ui_string_overrider);
+  //         client_.get(), std::move(seed_store), ui_string_overrider);
   // variations_field_trial_creator_->OverrideVariationsPlatform(
   //     variations::Study::PLATFORM_ANDROID_WEBVIEW);
 
-  // // Safe Mode is a feature which reverts to a previous variations seed if
-  // the
+  // // Safe Mode is a feature which reverts to a previous variations seed if the
   // // current one is suspected to be causing crashes, or preventing new seeds
   // // from being downloaded. It's not implemented for WebView because 1) it's
   // // difficult for WebView to implement Safe Mode's crash detection, and 2)
   // // downloading and disseminating seeds is handled by the WebView service,
-  // // which itself doesn't support variations; therefore a bad seed shouldn't
-  // be
-  // // able to break seed downloads. See https://crbug.com/801771 for more
-  // info. std::set<std::string> unforceable_field_trials;
-  // variations::SafeSeedManager ignored_safe_seed_manager(true,
-  //                                                       local_state_.get());
+  // // which itself doesn't support variations; therefore a bad seed shouldn't be
+  // // able to break seed downloads. See https://crbug.com/801771 for more info.
+  // variations::SafeSeedManager ignored_safe_seed_manager(local_state_.get());
 
-  // // Populate FieldTrialList. Since low_entropy_provider is null, it will
-  // fall
-  // // back to the provider we previously gave to FieldTrialList, which is a
-  // low
-  // // entropy provider.
-  // variations_field_trial_creator_->SetupFieldTrials(
-  //     cc::switches::kEnableGpuBenchmarking, switches::kEnableFeatures,
-  //     switches::kDisableFeatures, unforceable_field_trials,
-  //     std::vector<std::string>(),
-  //     content::GetSwitchDependentFeatureOverrides(
+  // auto feature_list = std::make_unique<base::FeatureList>();
+  // std::vector<std::string> variation_ids =
+  //     aw_feature_entries::RegisterEnabledFeatureEntries(feature_list.get());
+
+  // auto* metrics_client = AwMetricsServiceClient::GetInstance();
+  // // Populate FieldTrialList. Since |low_entropy_provider| is null, it will fall
+  // // back to the provider we previously gave to FieldTrialList, which is a low
+  // // entropy provider. The X-Client-Data header is not reported on WebView, so
+  // // we pass an empty object as the |low_entropy_source_value|.
+  // variations_field_trial_creator_->SetUpFieldTrials(
+  //     variation_ids,
+  //     GetSwitchDependentFeatureOverrides(
   //         *base::CommandLine::ForCurrentProcess()),
-  //     /*low_entropy_provider=*/nullptr,
-  //     std::make_unique<base::FeatureList>(), bv_field_trials_.get(),
-  //     &ignored_safe_seed_manager);
-
-  // CountOrRecordRestartsWithStaleSeed(local_state_.get(), IsSeedFresh());
+  //     /*low_entropy_provider=*/nullptr, std::move(feature_list),
+  //     metrics_client->metrics_state_manager(), aw_field_trials_.get(),
+  //     &ignored_safe_seed_manager, /*low_entropy_source_value=*/absl::nullopt);
 }
 
 void BvFeatureListCreator::CreateLocalState() {

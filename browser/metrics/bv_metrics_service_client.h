@@ -9,6 +9,7 @@
 #include <string>
 
 #include "bison/browser/lifecycle/webview_app_state_observer.h"
+#include "bison/common/metrics/app_package_name_logging_rule.h"
 
 #include "base/metrics/field_trial.h"
 #include "base/no_destructor.h"
@@ -39,7 +40,7 @@ enum class BackfillInstallDate {
 };
 
 
-class BvMetricsServiceClient : public metrics::MetricsServiceClient,
+class BvMetricsServiceClient : public ::metrics::AndroidMetricsServiceClient,
                                public WebViewAppStateObserver {
   friend class base::NoDestructor<BvMetricsServiceClient>;
 
@@ -61,15 +62,21 @@ class BvMetricsServiceClient : public metrics::MetricsServiceClient,
         metrics::MetricsService* service) = 0;
     virtual void AddWebViewAppStateObserver(
         WebViewAppStateObserver* observer) = 0;
-    virtual bool HasAwContentsEverCreated() const = 0;
+    virtual bool HasBvContentsEverCreated() const = 0;
   };
 
-  //   virtual void RegisterAdditionalMetricsProviders(
-  //       metrics::MetricsService* service) = 0;
-  //   virtual void AddWebViewAppStateObserver(
-  //       WebViewAppStateObserver* observer) = 0;
-  //   virtual bool HasContentsEverCreated() const = 0;
-  // };
+  // An enum to track the status of AppPackageNameLoggingRule used in
+  // ShouldRecordPackageName. These values are persisted to logs. Entries should
+  // not be renumbered and numeric values should never be reused.
+  enum class AppPackageNameLoggingRuleStatus {
+    kNotLoadedNoCache = 0,
+    kNotLoadedUseCache = 1,
+    kNewVersionFailedNoCache = 2,
+    kNewVersionFailedUseCache = 3,
+    kNewVersionLoaded = 4,
+    kSameVersionAsCache = 5,
+    kMaxValue = kSameVersionAsCache,
+  };
 
   static BvMetricsServiceClient* GetInstance();
   static void SetInstance(
