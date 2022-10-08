@@ -67,6 +67,7 @@ public class BisonShellMainActivity extends Activity {
         if (TextUtils.isEmpty(startupUrl)) {
             startupUrl = INITIAL_URL;
         }
+        Log.i(TAG, "startup url :" + startupUrl);
         mBisonView.loadUrl(startupUrl);
         mUrlTextView.setText(startupUrl);
     }

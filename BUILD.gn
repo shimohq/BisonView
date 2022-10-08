@@ -20,7 +20,9 @@ import("//tools/v8_context_snapshot/v8_context_snapshot.gni")
 import("config.gni")
 
 group("bison") {
-
+  deps = [
+    "shell",
+  ]
 }
 
 bison_aar_manifest_xml =
