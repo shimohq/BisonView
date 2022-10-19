@@ -5,22 +5,24 @@ import("//build/config/android/rules.gni")
 import("//third_party/icu/config.gni")
 import("//tools/v8_context_snapshot/v8_context_snapshot.gni")
 
-bison_apk_manifest_xml =
-    "$target_gen_dir/bison_apk_manifest/AndroidManifest.xml"
+testonly = true
 
 group("shell") {
   deps = [ ":bison_shell_apk" ]
 }
 
-bison_view_apk_tmpl("bison_shell_apk") {
+android_apk("bison_shell_apk") {
+  testonly = true
   sources = [
+    "java/im/shimo/bison/SandboxedProcessService0.java",
     "java/im/shimo/bison/shell/BisonShellApp.java",
     "java/im/shimo/bison/shell/BisonShellMainActivity.java",
+    "java/im/shimo/bison/test/BvJUnit4ClassRunner.java",
+    "java/im/shimo/bison/test/BvTestRunnerActivity.java",
   ]
 
   apk_name = "BisonApk"
-  android_manifest = bison_apk_manifest_xml
-  android_manifest_dep = ":bison_apk_manifest"
+  android_manifest = "AndroidManifest.xml"
   min_sdk_version = default_min_sdk_version
   target_sdk_version = android_sdk_version
   product_config_java_packages = [ "im.shimo.bison" ]
@@ -28,35 +30,53 @@ bison_view_apk_tmpl("bison_shell_apk") {
   command_line_flags_file = "bison-view-command-line"
 
   deps = [
-    ":bison_apk_manifest",
-    ":bison_apk_resources",
-    "//base:base_java",
-    "//bison:bison_icu_assets",
+    ":bison_shell_assets",
+    ":bison_shell_resources",
     "//bison:bison_java",
-    "//bison:bison_v8_snapshot_assets",
-    "//bison:locale_pak_assets",
-    "//bison:pak_file_assets",
+
+    # chromium
+    "//base:base_java",
+    "//base:base_java_test_support",
     "//content/public/android:content_java",
+    "//third_party/androidx:androidx_annotation_annotation_java",
+    "//third_party/junit:junit",
   ]
   shared_libraries = [ "//bison:libbison_view" ]
 }
 
-android_resources("bison_apk_resources") {
+android_resources("bison_shell_resources") {
   sources = [
     "res/drawable/progress.xml",
     "res/layout/main_activity.xml",
-    "res/mipmap-hdpi/app_icon.png",
-    "res/mipmap-mdpi/app_icon.png",
-    "res/mipmap-xhdpi/app_icon.png",
-    "res/mipmap-xxhdpi/app_icon.png",
-    "res/mipmap-xxxhdpi/app_icon.png",
     "res/values/strings.xml",
   ]
-  android_manifest = bison_apk_manifest_xml
-  android_manifest_dep = ":bison_apk_manifest"
 }
 
-jinja_template("bison_apk_manifest") {
-  input = "AndroidManifest.xml.jinja2"
-  output = bison_apk_manifest_xml
+android_assets("bison_shell_assets") {
+  sources = [
+    "shell/assets/asset_file.html",
+    "shell/assets/asset_icon.png",
+    "shell/assets/autofill.html",
+    "shell/assets/cookie_test.html",
+    "shell/assets/cors.html",
+    "shell/assets/full_screen_video.js",
+    "shell/assets/full_screen_video_inside_div_test.html",
+    "shell/assets/full_screen_video_test.html",
+    "shell/assets/full_screen_video_test_not_preloaded.html",
+    "shell/assets/key-system-test.html",
+    "shell/assets/star.svg",
+    "shell/assets/star.svgz",
+    "shell/assets/video.webm",
+    "shell/assets/visual_state_during_fullscreen_test.html",
+    "shell/assets/visual_state_on_page_commit_visible_test.html",
+    "shell/assets/visual_state_waits_for_js_detached_test.html",
+    "shell/assets/visual_state_waits_for_js_test.html",
+  ]
+
+  deps = [
+    "//bison:bison_icu_assets",
+    "//bison:bison_v8_snapshot_assets",
+    "//bison:locale_pak_assets",
+    "//bison:pak_file_assets",
+  ]
 }

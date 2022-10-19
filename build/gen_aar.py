@@ -30,6 +30,7 @@ import tempfile
 import zipfile
 import json
 from functools import partial
+from functools import reduce
 import jinja2
 from datetime import datetime
 
@@ -412,6 +413,8 @@ def createGnArgs(extra_gn_args,build_type):
     # 'use_v8_context_snapshot' : True,
     'ffmpeg_branding' : 'Chrome',
     'proprietary_codecs' : True, # <audio/>
+    'is_official_build': 'release' == build_type,
+    'treat_warnings_as_errors' : False,
     # 'v8_embed_script' : '//bison/docHistory.bundle.js',
   }
   return ' '.join([
