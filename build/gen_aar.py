@@ -53,7 +53,6 @@ jar_excluded_patterns = [
 
   "android/support/*",
   "androidx/*",
-  "android/support/*",
   "gen/_third_party/*",
   "com/google/*",
   "javax/*",
@@ -61,9 +60,11 @@ jar_excluded_patterns = [
   "kotlin/*",
   "org/intellij/*",
   "org/jetbrains/annotations*",
+  "org/apache/*",
   "META-INF/*",
   "*.txt",
-  "*.properties"
+  "*.properties",
+  "*.version"
 ]
 
 resource_included_patterns = [
@@ -302,6 +303,7 @@ def BuildAar(archs, output_file, common_gn_args,
         jars = _ReadConfig(build_dir, arch , build_config,'deps_info', 'javac_full_classpath')
         src_jars = _ReadConfig(build_dir, arch , build_config,'javac', 'classpath')
         all_jars = src_jars + jars
+      #  all_jars = filter(lambda x : "apache" not in x, set(all_jars))
         all_jars = sorted(set(all_jars),key=all_jars.index)
         dependencies_res_zips =_ReadConfig(build_dir, arch, build_config ,'deps_info', 'dependency_zips')
         r_text_files = _ReadConfig(build_dir, arch, build_config ,'deps_info', 'dependency_r_txt_files')
@@ -317,12 +319,12 @@ def BuildAar(archs, output_file, common_gn_args,
       #   print(rf)
 
       # print("=== jar ===")
-      # for rf in jars:
-      #   # if "android_deps" in rf:
-      #   #   print(rf)
-      #   # if "bison" in rf:
-      #   #   print(rf)
-      #   print(rf)
+      for rf in all_jars:
+        # if "android_deps" in rf:
+        #   print(rf)
+        # if "bison" in rf:
+        #   print(rf)
+        print(rf)
 
       isCommonArgsGetted = True
 
@@ -406,7 +408,7 @@ def publish(filename , verison , is_snapshot,common_gn_args):
 def createGnArgs(extra_gn_args,build_type):
   gn_args = {
     'target_os': 'android',
-    'is_debug': 'debug'== build_type,
+    'is_debug': 'debug' == build_type,
     'is_component_build': False,
     'rtc_include_tests': False,
     'v8_android_log_stdout' : 'debug'== build_type,
