@@ -416,7 +416,7 @@ def createGnArgs(extra_gn_args,build_type):
     'ffmpeg_branding' : 'Chrome',
     'proprietary_codecs' : True, # <audio/>
     'is_official_build': 'release' == build_type,
-    'treat_warnings_as_errors' : False,
+    #'treat_warnings_as_errors' : False,
     # 'v8_embed_script' : '//bison/docHistory.bundle.js',
   }
   return ' '.join([
