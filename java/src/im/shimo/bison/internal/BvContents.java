@@ -547,14 +547,15 @@ public class BvContents implements SmartClipProvider {
             WebContents webContents, WindowAndroid windowAndroid,
             WebContentsInternalsHolder internalsHolder, int webContentsRenderView) {
         mContentViewRenderView = new ContentViewRenderView(mContext);
-        mContentViewRenderView.onNativeLibraryLoaded(windowAndroid, webContentsRenderView);
+        mContentViewRenderView.onNativeLibraryLoaded(windowAndroid);
         // mWindowAndroid.getWindowAndroid().setAnimationPlaceholderView(mContentViewRenderView.getSurfaceView());
         mContainerView.addView(mContentViewRenderView);
         mWebContents.initialize(PRODUCT_VERSION, mViewAndroidDelegate, mInternalAccessAdapter,
                 mWindowAndroid.getWindowAndroid(), mWebContentsInternalsHolder);
         mNavigationController = mWebContents.getNavigationController();
         mWebContents.onShow();
-        mContentViewRenderView.setWebContents(mWebContents);
+        //mContentViewRenderView.setWebContents(mWebContents);
+        mContentViewRenderView.setCurrentWebContents(mWebContents);
         mViewEventSink = ViewEventSink.from(mWebContents);
         mViewEventSink.setHideKeyboardOnBlur(false);
         SelectionPopupController controller = SelectionPopupController.fromWebContents(webContents);
@@ -2657,9 +2658,9 @@ public class BvContents implements SmartClipProvider {
 
     public void setWebContentsRenderView(int renderView) {
 
-        mContentViewRenderView.requestMode(renderView, result -> {
+        // mContentViewRenderView.requestMode(renderView, result -> {
 
-        });
+        // });
     }
 
     public static void logCommandLineForDebugging() {

@@ -42,7 +42,7 @@ import org.chromium.ui.base.EventOffsetHandler;
 public class ContentView extends FrameLayout
         implements ViewEventSink.InternalAccessDelegate, SmartClipProvider,
                    OnHierarchyChangeListener, OnSystemUiVisibilityChangeListener , OnDragListener{
-    private static final String TAG = "bison.ContentView";
+    private static final String TAG = "ContentView";
 
     // Default value to signal that the ContentView's size need not be overridden.
     public static final int DEFAULT_MEASURE_SPEC =
@@ -315,7 +315,7 @@ public class ContentView extends FrameLayout
             TraceEvent.begin("ContentView.onFocusChanged");
             super.onFocusChanged(gainFocus, direction, previouslyFocusedRect);
             if (hasValidWebContents()) {
-            // getViewEventSink().setHideKeyboardOnBlur(true);
+            //  getViewEventSink().setHideKeyboardOnBlur(true);
                 getViewEventSink().onViewFocusChanged(gainFocus);
             }
         } finally {
