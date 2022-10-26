@@ -557,10 +557,12 @@ public class BisonView extends FrameLayout {
         return mProvider.computeHorizontalScrollOffset();
     }
 
+    /*
     @Override
     protected int computeHorizontalScrollExtent() {
         return mProvider.computeHorizontalScrollExtent();
     }
+     */
 
     @Override
     protected int computeVerticalScrollRange() {

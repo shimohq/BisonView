@@ -1155,7 +1155,8 @@ public class BvContents implements SmartClipProvider {
      * @see View#setScrollBarStyle(int)
      */
     public void setScrollBarStyle(int style) {
-        if (style == View.SCROLLBARS_INSIDE_OVERLAY || style == View.SCROLLBARS_OUTSIDE_OVERLAY) {
+        if (style == View.SCROLLBARS_INSIDE_OVERLAY
+                || style == View.SCROLLBARS_OUTSIDE_OVERLAY) {
             mOverlayHorizontalScrollbar = mOverlayVerticalScrollbar = true;
         } else {
             mOverlayHorizontalScrollbar = mOverlayVerticalScrollbar = false;

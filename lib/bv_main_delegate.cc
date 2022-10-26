@@ -75,7 +75,7 @@ BvMainDelegate::BvMainDelegate() = default;
 BvMainDelegate::~BvMainDelegate() = default;
 
 bool BvMainDelegate::BasicStartupComplete(int* exit_code) {
-  SetContentClient(&content_client_);
+  //SetContentClient(&content_client_);
 
   base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
 
@@ -299,7 +299,7 @@ void BvMainDelegate::PreSandboxStartup() {
 absl::variant<int, content::MainFunctionParams> BvMainDelegate::RunProcess(
     const std::string& process_type,
     content::MainFunctionParams main_function_params) {
-  // For non-browser process, return and have the caller run the main loop.
+  // Defer to the default main method outside the browser process.
   if (!process_type.empty())
     return std::move(main_function_params);
 
@@ -307,8 +307,6 @@ absl::variant<int, content::MainFunctionParams> BvMainDelegate::RunProcess(
   int exit_code = browser_runner_->Initialize(std::move(main_function_params));
   // We do not expect Initialize() to ever fail in AndroidWebView. On success
   // it returns a negative value but we do not want to use that on Android.
-
-  VLOG(0) << "RunProcess exit_code:" << exit_code ;
   DCHECK_LT(exit_code, 0);
   return 0;
 }

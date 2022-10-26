@@ -14,10 +14,9 @@ group("shell") {
 android_apk("bison_shell_apk") {
   testonly = true
   sources = [
-    "java/im/shimo/bison/SandboxedProcessService0.java",
     "java/im/shimo/bison/shell/BisonShellApp.java",
     "java/im/shimo/bison/shell/BisonShellMainActivity.java",
-    "java/im/shimo/bison/test/BvJUnit4ClassRunner.java",
+    # "java/im/shimo/bison/test/BvJUnit4ClassRunner.java",
     "java/im/shimo/bison/test/BvTestRunnerActivity.java",
   ]
 
@@ -54,23 +53,23 @@ android_resources("bison_shell_resources") {
 
 android_assets("bison_shell_assets") {
   sources = [
-    "shell/assets/asset_file.html",
-    "shell/assets/asset_icon.png",
-    "shell/assets/autofill.html",
-    "shell/assets/cookie_test.html",
-    "shell/assets/cors.html",
-    "shell/assets/full_screen_video.js",
-    "shell/assets/full_screen_video_inside_div_test.html",
-    "shell/assets/full_screen_video_test.html",
-    "shell/assets/full_screen_video_test_not_preloaded.html",
-    "shell/assets/key-system-test.html",
-    "shell/assets/star.svg",
-    "shell/assets/star.svgz",
-    "shell/assets/video.webm",
-    "shell/assets/visual_state_during_fullscreen_test.html",
-    "shell/assets/visual_state_on_page_commit_visible_test.html",
-    "shell/assets/visual_state_waits_for_js_detached_test.html",
-    "shell/assets/visual_state_waits_for_js_test.html",
+    "assets/asset_file.html",
+    "assets/asset_icon.png",
+    "assets/autofill.html",
+    "assets/cookie_test.html",
+    "assets/cors.html",
+    "assets/full_screen_video.js",
+    "assets/full_screen_video_inside_div_test.html",
+    "assets/full_screen_video_test.html",
+    "assets/full_screen_video_test_not_preloaded.html",
+    "assets/key-system-test.html",
+    "assets/star.svg",
+    "assets/star.svgz",
+    "assets/video.webm",
+    "assets/visual_state_during_fullscreen_test.html",
+    "assets/visual_state_on_page_commit_visible_test.html",
+    "assets/visual_state_waits_for_js_detached_test.html",
+    "assets/visual_state_waits_for_js_test.html",
   ]
 
   deps = [
