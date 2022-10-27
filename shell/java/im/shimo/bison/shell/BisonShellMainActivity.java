@@ -17,6 +17,7 @@ import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
+import android.webkit.JavascriptInterface;
 
 import org.chromium.base.CommandLine;
 import org.chromium.content_public.browser.DeviceUtils;
@@ -157,7 +158,6 @@ public class BisonShellMainActivity extends Activity {
             @Override
             public WebResourceResponse shouldInterceptRequest(BisonView view,
                     WebResourceRequest request) {
-                Log.w(TAG, "shouldInterceptRequest");
                 return null;
             }
 
@@ -181,8 +181,16 @@ public class BisonShellMainActivity extends Activity {
                 Log.w(TAG, "onGeolocationPermissionsShowPrompt");
             }
 
-
         });
+
+        mBisonView.addJavascriptInterface(new Object() {
+
+            @JavascriptInterface
+            public void callMe() {
+                Log.d(TAG, "callMe() called");
+            }
+
+        }, "test");
 
     }
 

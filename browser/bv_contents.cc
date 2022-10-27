@@ -132,11 +132,11 @@ class BvContentsUserData : public base::SupportsUserData::Data {
       return NULL;
     BvContentsUserData* data = static_cast<BvContentsUserData*>(
         web_contents->GetUserData(kBvContentsUserDataKey));
-    return data ? data->contents_ : NULL;
+    return data ? data->contents_.get() : NULL;
   }
 
  private:
-  BvContents* contents_;
+  raw_ptr<BvContents> contents_;
 };
 
 base::subtle::Atomic32 g_instance_count = 0;
@@ -312,6 +312,7 @@ void BvContents::SetAutofillClient(const JavaRef<jobject>& client) {
 BvContents::~BvContents() {
   DCHECK_EQ(this, BvContents::FromWebContents(web_contents_.get()));
   web_contents_->RemoveUserData(kBvContentsUserDataKey);
+  BvContentsClientBridge::Dissociate(web_contents_.get());
   JNIEnv* env = AttachCurrentThread();
   ScopedJavaLocalRef<jobject> obj = java_ref_.get(env);
   if (obj.is_null())

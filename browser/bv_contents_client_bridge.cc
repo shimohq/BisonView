@@ -54,7 +54,7 @@ class UserData : public base::SupportsUserData::Data {
       return NULL;
     UserData* data = static_cast<UserData*>(
         web_contents->GetUserData(kBvContentsClientBridge));
-    return data ? data->contents_ : NULL;
+    return data ? data->contents_.get() : NULL;
   }
 
   explicit UserData(BvContentsClientBridge* ptr) : contents_(ptr) {}
@@ -63,7 +63,7 @@ class UserData : public base::SupportsUserData::Data {
   UserData& operator=(const UserData&) = delete;
 
  private:
-  BvContentsClientBridge* contents_;
+  raw_ptr<BvContentsClientBridge> contents_;
 };
 
 }  // namespace

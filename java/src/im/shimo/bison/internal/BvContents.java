@@ -671,7 +671,7 @@ public class BvContents implements SmartClipProvider {
 
     private JavascriptInjector getJavascriptInjector() {
         if (mJavascriptInjector == null) {
-            mJavascriptInjector = JavascriptInjector.fromWebContents(mWebContents, true);
+            mJavascriptInjector = JavascriptInjector.fromWebContents(mWebContents, false);
         }
         return mJavascriptInjector;
     }
@@ -1534,12 +1534,14 @@ public class BvContents implements SmartClipProvider {
 
         for (int i = 0; i < allowedOriginRules.length; ++i) {
             if (TextUtils.isEmpty(allowedOriginRules[i])) {
-                throw new IllegalArgumentException("allowedOriginRules[" + i + "] shouldn't be null or empty");
+                throw new IllegalArgumentException(
+                        "allowedOriginRules[" + i + "] shouldn't be null or empty");
             }
         }
 
         return new ScriptReference(this,
-                BvContentsJni.get().addDocumentStartJavaScript(mNativeBvContents, this, script, allowedOriginRules));
+                BvContentsJni.get().addDocumentStartJavaScript(
+                        mNativeBvContents, this, script, allowedOriginRules));
     }
 
     void removeDocumentStartJavaScript(int scriptId) {

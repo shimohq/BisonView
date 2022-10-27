@@ -270,6 +270,7 @@ android_library("bison_java") {
     ":bison_aar_resources",
     ":bison_aar_manifest",
     ":bison_view_product_config_java",
+    # content deps
     "//base:base_java",
     "//base:jni_java",
     "//build/android:build_java",
@@ -284,6 +285,8 @@ android_library("bison_java") {
     "//components/viz/service:service_java",
     "//content/public/android:content_java",
     "//device/gamepad:java",
+    "//mojo/public/java:system_java",
+    "//mojo/public/java/system:system_impl_java",
     "//net/android:net_java",
     "//services/network/public/mojom:mojom_java",
     "//services/network/public/mojom:url_loader_base_java",
@@ -293,9 +296,9 @@ android_library("bison_java") {
     "//third_party/blink/public/common:common_java",
     "//third_party/blink/public/mojom:mojom_platform_java",
     # "//services/device/public/mojom",
-    # ActivityWindowAndroid requires
     "//third_party/androidx:androidx_annotation_annotation_java",
-    "//third_party/androidx:androidx_appcompat_appcompat_java",
+    # "//third_party/androidx:androidx_appcompat_appcompat_java",
+    # androidx.core.graphics.ColorUtils
     "//third_party/androidx:androidx_core_core_java",
     "//ui/android:ui_java",
     "//url:gurl_java",
@@ -390,7 +393,7 @@ repack("repack_pack") {
     "$root_gen_dir/net/net_resources.pak",
     "$root_gen_dir/third_party/blink/public/resources/blink_resources.pak",
     "$root_gen_dir/third_party/blink/public/resources/inspector_overlay_resources.pak",
-    # "$target_gen_dir/aw_resources.pak",
+
     # "$target_gen_dir/components_resources.pak", # generate_components_resources
     # "$target_gen_dir/mojo_bindings_resources.pak", # generate_mojo_resources
     # "$target_gen_dir/webui_resources.pak", #generate_webui_resources
