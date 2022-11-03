@@ -12,6 +12,7 @@
 #include "bison/browser/bv_contents.h"
 #include "bison/browser/bv_devtools_manager_delegate.h"
 #include "bison/browser/network_service/bv_network_change_notifier_factory.h"
+#include "bison/common/bv_paths.h"
 #include "bison/common/bv_switches.h"
 
 #include "base/android/apk_assets.h"
@@ -88,15 +89,12 @@ int BvBrowserMainParts::PreCreateThreads() {
   // initially, because safe browsing can be enabled later at runtime
   // on a per-webview basis.
 
-  // jiang
-  /*
   base::FilePath crash_dir;
-  if (base::PathService::Get(android_webview::DIR_CRASH_DUMPS, &crash_dir)) {
+  if (base::PathService::Get(bison::DIR_CRASH_DUMPS, &crash_dir)) {
     if (!base::PathExists(crash_dir)) {
       base::CreateDirectory(crash_dir);
     }
   }
-  */
 
   if (base::CommandLine::ForCurrentProcess()->HasSwitch(
           switches::kWebViewSandboxedRenderer)) {

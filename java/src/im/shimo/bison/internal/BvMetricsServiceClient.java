@@ -25,8 +25,6 @@ public class BvMetricsServiceClient {
     // reporting. See https://developer.android.com/reference/android/webkit/WebView.html
     private static final String OPT_OUT_META_DATA_STR = "android.webkit.WebView.MetricsOptOut";
 
-    private static final String PLAY_STORE_PACKAGE_NAME = "com.android.vending";
-
     private static boolean isAppOptedOut(Context ctx) {
         try {
             ApplicationInfo info = ctx.getPackageManager().getApplicationInfo(

@@ -138,7 +138,7 @@ void JNI_BvContentsStatics_LogCommandLineForDebugging(JNIEnv* env) {
   for (const auto& pair : command_line.GetSwitches()) {
     const std::string& key = pair.first;
     const base::CommandLine::StringType& value = pair.second;
-    LOG(INFO) << "WebViewCommandLine '" << key << "': '" << value << "'";
+    LOG(INFO) << "BisonViewCommandLine '" << key << "': '" << value << "'";
   }
 }
 

@@ -8,8 +8,11 @@
 #include "bison/browser/scoped_add_feature_flags.h"
 #include "bison/common/bv_content_client.h"
 #include "bison/common/bv_descriptors.h"
+#include "bison/common/bv_paths.h"
 #include "bison/common/bv_resource_bundle.h"
 #include "bison/common/bv_switches.h"
+#include "bison/common/crash_reporter/bv_crash_reporter_client.h"
+#include "bison/common/crash_reporter/crash_keys.h"
 #include "bison/gpu/bv_content_gpu_client.h"
 #include "bison/renderer/bv_content_renderer_client.h"
 
@@ -37,10 +40,10 @@
 #include "components/variations/variations_ids_provider.h"
 #include "components/version_info/android/channel_getter.h"
 #include "components/viz/common/features.h"
+#include "content/public/browser/android/compositor.h"
 #include "content/public/browser/android/media_url_interceptor_register.h"
 #include "content/public/browser/browser_main_runner.h"
 #include "content/public/browser/browser_thread.h"
-#include "content/public/browser/android/compositor.h"
 #include "content/public/common/content_descriptor_keys.h"
 #include "content/public/common/content_features.h"
 #include "content/public/common/content_switches.h"
@@ -75,7 +78,7 @@ BvMainDelegate::BvMainDelegate() = default;
 BvMainDelegate::~BvMainDelegate() = default;
 
 bool BvMainDelegate::BasicStartupComplete(int* exit_code) {
-  //SetContentClient(&content_client_);
+  // SetContentClient(&content_client_);
 
   base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
 
@@ -187,8 +190,8 @@ bool BvMainDelegate::BasicStartupComplete(int* exit_code) {
     if (base::android::BuildInfo::GetInstance()->sdk_int() >=
         base::android::SDK_VERSION_OREO) {
       features.EnableIfNotSet(autofill::features::kAutofillExtractAllDatalists);
-    features.EnableIfNotSet(
-        autofill::features::kAutofillSkipComparingInferredLabels);
+      features.EnableIfNotSet(
+          autofill::features::kAutofillSkipComparingInferredLabels);
     }
 
     features.EnableIfNotSet(::features::kLogJsConsoleMessages);
@@ -239,7 +242,7 @@ bool BvMainDelegate::BasicStartupComplete(int* exit_code) {
     features.DisableIfNotSet(::features::kInstalledApp);
     // features.EnableIfNotSet(
     //     metrics::UnsentLogStoreMetrics::kRecordLastUnsentLogMetadataMetrics);
-    //features.DisableIfNotSet(::features::kPeriodicBackgroundSync);
+    // features.DisableIfNotSet(::features::kPeriodicBackgroundSync);
 
     // TODO(crbug.com/921655): Add support for User Agent Client hints on
     // WebView.
@@ -266,6 +269,7 @@ bool BvMainDelegate::BasicStartupComplete(int* exit_code) {
     features.DisableIfNotSet(::translate::kTFLiteLanguageDetectionEnabled);
   }
 
+  bison::RegisterPathProvider();
   content::Compositor::Initialize();
 
   return false;
@@ -279,7 +283,6 @@ void BvMainDelegate::PreSandboxStartup() {
   base::CPU cpu_info;
 #endif
 
-  crash_reporter::InitializeCrashKeys();
   const base::CommandLine& command_line =
       *base::CommandLine::ForCurrentProcess();
 
@@ -294,6 +297,8 @@ void BvMainDelegate::PreSandboxStartup() {
   if (process_type == switches::kRendererProcess) {
     InitResourceBundleRendererSide();
   }
+
+  EnableCrashReporter(process_type);
 }
 
 absl::variant<int, content::MainFunctionParams> BvMainDelegate::RunProcess(
@@ -317,6 +322,12 @@ void BvMainDelegate::ProcessExiting(const std::string& process_type) {
 
 bool BvMainDelegate::ShouldCreateFeatureList() {
   return true;
+}
+
+variations::VariationsIdsProvider*
+BvMainDelegate::CreateVariationsIdsProvider() {
+  return variations::VariationsIdsProvider::Create(
+      variations::VariationsIdsProvider::Mode::kDontSendSignedInVariations);
 }
 
 // This function is called only on the browser process.
@@ -348,8 +359,8 @@ content::ContentClient* BvMainDelegate::CreateContentClient() {
 
 ContentBrowserClient* BvMainDelegate::CreateContentBrowserClient() {
   bv_feature_list_creator_ = std::make_unique<BvFeatureListCreator>();
-  browser_client_ = std::make_unique<BvContentBrowserClient>(
-      bv_feature_list_creator_.get());
+  browser_client_ =
+      std::make_unique<BvContentBrowserClient>(bv_feature_list_creator_.get());
   return browser_client_.get();
 }
 

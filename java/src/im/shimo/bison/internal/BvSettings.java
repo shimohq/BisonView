@@ -117,7 +117,6 @@ public class BvSettings {
     private boolean mAllowFileAccessFromFileURLs;
     private boolean mJavaScriptCanOpenWindowsAutomatically;
     private boolean mSupportMultipleWindows;
-    private boolean mAppCacheEnabled;
     private boolean mDomStorageEnabled;
     private boolean mDatabaseEnabled;
     private boolean mUseWideViewport;
@@ -141,9 +140,6 @@ public class BvSettings {
     // CookieManager.
     private boolean mAcceptThirdPartyCookies;
 
-    // if null, default to
-    // AwSafeBrowsingConfigHelper.getSafeBrowsingEnabledByManifest()
-    private Boolean mSafeBrowsingEnabled;
 
     private final boolean mSupportLegacyQuirks;
     private final boolean mAllowEmptyDocumentPersistence;
@@ -412,16 +408,6 @@ public class BvSettings {
         }
     }
 
-    /**
-     * Enable/Disable SafeBrowsing per WebView
-     *
-     * @param enabled true if this WebView should have SafeBrowsing
-     */
-    public void setSafeBrowsingEnabled(boolean enabled) {
-        synchronized (mSettingsLock) {
-            mSafeBrowsingEnabled = enabled;
-        }
-    }
 
     /**
      * Return whether third party cookies are enabled for an AwContents
@@ -447,17 +433,7 @@ public class BvSettings {
      */
     public boolean getSafeBrowsingEnabled() {
         synchronized (mSettingsLock) {
-            // Boolean userOptIn = AwSafeBrowsingConfigHelper.getSafeBrowsingUserOptIn();
-            //
-            // // If we don't know yet what the user's preference is, we go through Safe
-            // Browsing logic
-            // // anyway and correct the assumption before sending data to GMS.
-            // if (userOptIn != null && !userOptIn) return false;
-            //
-            // if (mSafeBrowsingEnabled == null) {
-            // return AwSafeBrowsingConfigHelper.getSafeBrowsingEnabledByManifest();
-            // }
-            return mSafeBrowsingEnabled;
+            return false;
         }
     }
 
@@ -1164,7 +1140,6 @@ public class BvSettings {
 
     /**
      * See {@link android.webkit.WebSettings#setImagesEnabled}.
-     * jiang ?
      */
     public void setImagesEnabled(boolean flag) {
         if (TRACE)
@@ -1179,7 +1154,6 @@ public class BvSettings {
 
     /**
      * See {@link android.webkit.WebSettings#getImagesEnabled}.
-     * jiang ?
      */
     public boolean getImagesEnabled() {
         synchronized (mSettingsLock) {

@@ -321,24 +321,30 @@ bool BvContentBrowserClient::ForceSniffingFileUrlsForHtml() {
 void BvContentBrowserClient::AppendExtraCommandLineSwitches(
     base::CommandLine* command_line,
     int child_process_id) {
-      //jiang947 暂时注释
-  // if (!command_line->HasSwitch(switches::kSingleProcess)) {
-  //   // The only kind of a child process WebView can have is renderer or utility.
-  //   std::string process_type =
-  //       command_line->GetSwitchValueASCII(switches::kProcessType);
-  //   DCHECK(process_type == switches::kRendererProcess ||
-  //          process_type == switches::kUtilityProcess)
-  //       << process_type;
-  //   // Pass crash reporter enabled state to renderer processes.
-  //   if (base::CommandLine::ForCurrentProcess()->HasSwitch(
-  //           ::switches::kEnableCrashReporter)) {
-  //     command_line->AppendSwitch(::switches::kEnableCrashReporter);
-  //   }
-  //   if (base::CommandLine::ForCurrentProcess()->HasSwitch(
-  //           ::switches::kEnableCrashReporterForTesting)) {
-  //     command_line->AppendSwitch(::switches::kEnableCrashReporterForTesting);
-  //   }
-  // }
+  //jiang947 暂时注释
+
+  if (!command_line->HasSwitch(switches::kSingleProcess)) {
+    // The only kind of a child process WebView can have is renderer or utility.
+    std::string process_type =
+        command_line->GetSwitchValueASCII(switches::kProcessType);
+    VLOG(0) << "process_type :" << process_type;
+    // DCHECK(process_type == switches::kRendererProcess ||
+    //        process_type == switches::kUtilityProcess)
+    //     << process_type;
+    // Pass crash reporter enabled state to renderer processes.
+    if (base::CommandLine::ForCurrentProcess()->HasSwitch(
+            ::switches::kEnableCrashReporter)) {
+      //command_line->AppendSwitch(::switches::kEnableCrashReporter);
+      VLOG(0) << "HasSwitch" << ::switches::kEnableCrashReporter;
+    }
+    command_line->AppendSwitch(::switches::kEnableCrashReporter);
+    if (base::CommandLine::ForCurrentProcess()->HasSwitch(
+            ::switches::kEnableCrashReporterForTesting)) {
+      //command_line->AppendSwitch(::switches::kEnableCrashReporterForTesting);
+      VLOG(0) << "HasSwitch" << ::switches::kEnableCrashReporterForTesting;
+    }
+    command_line->AppendSwitch(::switches::kEnableCrashReporterForTesting);
+  }
 }
 
 std::string BvContentBrowserClient::GetApplicationLocale() {
@@ -492,6 +498,12 @@ void BvContentBrowserClient::GetAdditionalMappedFilesForChildProcess(
 
   fd = ui::GetLocalePackFd(&region);
   mappings->ShareWithRegion(kBisonViewLocalePakDescriptor, fd, region);
+
+  int crash_signal_fd =
+      crashpad::CrashHandlerHost::Get()->GetDeathSignalSocket();
+  if (crash_signal_fd >= 0) {
+    mappings->Share(kCrashDumpSignal, crash_signal_fd);
+  }
 }
 
 void BvContentBrowserClient::OverrideWebkitPrefs(
