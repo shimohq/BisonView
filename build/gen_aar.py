@@ -406,6 +406,9 @@ def publish(filename , verison , is_snapshot,common_gn_args):
 
 
 def createGnArgs(extra_gn_args,build_type):
+
+  symbol_level =  2 if 'debug'== build_type else 0
+
   gn_args = {
     'target_os': 'android',
     'is_debug': 'debug' == build_type,
@@ -417,6 +420,10 @@ def createGnArgs(extra_gn_args,build_type):
     'proprietary_codecs' : True, # <audio/>
     'is_official_build': 'release' == build_type,
     'treat_warnings_as_errors' : False,
+    'symbol_level': symbol_level,
+    'blink_symbol_level' : symbol_level,
+    'use_debug_fission' : symbol_level == 2,
+    'clang_use_chrome_plugins' : 'debug' == build_type,
     # 'v8_embed_script' : '//bison/docHistory.bundle.js',
   }
   return ' '.join([

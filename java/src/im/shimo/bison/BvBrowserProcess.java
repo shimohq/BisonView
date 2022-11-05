@@ -26,7 +26,6 @@ import org.chromium.base.task.TaskTraits;
 import org.chromium.content_public.browser.BrowserStartupController;
 import org.chromium.content_public.browser.ChildProcessCreationParams;
 import org.chromium.content_public.browser.ChildProcessLauncherHelper;
-import org.chromium.policy.CombinedPolicyProvider;
 
 import java.io.File;
 import java.io.FileNotFoundException;

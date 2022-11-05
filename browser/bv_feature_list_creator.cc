@@ -146,7 +146,7 @@ std::unique_ptr<PrefService> BvFeatureListCreator::CreatePrefService() {
 
   pref_service_factory.set_read_error_callback(
       base::BindRepeating(&HandleReadError));
-  //pref_service_factory.Create(pref_registry);  //shell
+
   return pref_service_factory.Create(pref_registry);
 }
 

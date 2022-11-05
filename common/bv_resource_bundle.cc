@@ -26,6 +26,7 @@ void InitIcuAndResourceBundleBrowserSide() {
   if (locale.empty()) {
     LOG(WARNING) << "Failed to load locale .pak from apk.";
   }
+  VLOG(0) << "GetDefaultLocaleString:" << base::android::GetDefaultLocaleString();
   base::i18n::SetICUDefaultLocale(locale);
 
   base::FilePath pak_file_path;
