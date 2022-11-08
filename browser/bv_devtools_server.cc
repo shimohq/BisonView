@@ -2,22 +2,21 @@
 
 #include <utility>
 
-#include "bison/browser/bv_contents.h"
 #include "bison/bison_jni_headers/BvDevToolsServer_jni.h"
-#include "bison/common/bv_content_client.h"
+
 #include "base/bind.h"
+#include "base/command_line.h"
 #include "base/files/file_path.h"
-#include "base/json/json_writer.h"
 #include "base/memory/ptr_util.h"
 #include "base/strings/stringprintf.h"
-#include "base/strings/utf_string_conversions.h"
+#include "base/strings/string_number_conversions.h"
 #include "base/values.h"
 #include "content/public/browser/android/devtools_auth.h"
 #include "content/public/browser/devtools_agent_host.h"
 #include "content/public/browser/devtools_socket_factory.h"
-#include "content/public/browser/web_contents.h"
-#include "content/public/common/user_agent.h"
+#include "content/public/common/content_switches.h"
 #include "net/base/net_errors.h"
+#include "net/socket/tcp_server_socket.h"
 #include "net/socket/unix_domain_server_socket_posix.h"
 
 using base::android::JavaParamRef;
@@ -35,6 +34,10 @@ class UnixDomainServerSocketFactory : public content::DevToolsSocketFactory {
  public:
   explicit UnixDomainServerSocketFactory(const std::string& socket_name)
       : socket_name_(socket_name), last_tethering_socket_(0) {}
+
+  UnixDomainServerSocketFactory(const UnixDomainServerSocketFactory&) = delete;
+  UnixDomainServerSocketFactory& operator=(
+      const UnixDomainServerSocketFactory&) = delete;
 
  private:
   // content::DevToolsAgentHost::ServerSocketFactory.

@@ -8,8 +8,10 @@
 
 #include "base/android/scoped_java_ref.h"
 #include "base/logging.h"
-#include "base/stl_util.h"
+#include "base/metrics/histogram_functions.h"
 #include "base/strings/stringprintf.h"
+#include "components/crash/content/browser/crash_metrics_reporter_android.h"
+#include "components/crash/core/app/crashpad.h"
 #include "content/public/browser/browser_task_traits.h"
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/child_process_data.h"
@@ -76,6 +78,7 @@ void OnRenderProcessGone(
               "Render process (%d)'s crash wasn't handled by all associated  "
               "bisonviews, triggering application crash.",
               child_process_pid);
+              //crash_reporter::CrashWithoutDumping(message);
         } else {
           // The render process was most likely killed for OOM or switching
           // WebView provider, to make WebView backward compatible, kills the
@@ -104,6 +107,8 @@ void BvBrowserTerminator::OnChildExit(
     const crash_reporter::ChildExitObserver::TerminationInfo& info) {
   content::RenderProcessHost* rph =
       content::RenderProcessHost::FromID(info.process_host_id);
+
+  crash_reporter::CrashMetricsReporter::GetInstance()->ChildProcessExited(info);
 
   if (info.normal_termination) {
     return;

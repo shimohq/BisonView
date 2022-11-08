@@ -17,15 +17,16 @@ namespace bison {
 class BvDevToolsManagerDelegate : public content::DevToolsManagerDelegate {
  public:
   BvDevToolsManagerDelegate();
+  BvDevToolsManagerDelegate(const BvDevToolsManagerDelegate&) = delete;
+  BvDevToolsManagerDelegate& operator=(const BvDevToolsManagerDelegate&) =
+      delete;
+
   ~BvDevToolsManagerDelegate() override;
 
   // content::DevToolsManagerDelegate implementation.
   std::string GetTargetDescription(content::WebContents* web_contents) override;
   std::string GetDiscoveryPageHTML() override;
   bool IsBrowserTargetDiscoverable() override;
-
- private:
-
 };
 
 }  //  namespace bison

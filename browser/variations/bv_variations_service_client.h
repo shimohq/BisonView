@@ -1,7 +1,7 @@
 // create by jiang947
 
-#ifndef BISON_BROWSER_BV_VARIATIONS_SERVICE_CLIENT_H_
-#define BISON_BROWSER_BV_VARIATIONS_SERVICE_CLIENT_H_
+#ifndef BISON_BROWSER_VARIATIONS_BV_VARIATIONS_SERVICE_CLIENT_H_
+#define BISON_BROWSER_VARIATIONS_BV_VARIATIONS_SERVICE_CLIENT_H_
 
 #include <string>
 
@@ -37,4 +37,4 @@ class BvVariationsServiceClient : public variations::VariationsServiceClient {
 
 }  // namespace bison
 
-#endif  // BISON_BROWSER_BV_VARIATIONS_SERVICE_CLIENT_H_
+#endif  // BISON_BROWSER_VARIATIONS_BV_VARIATIONS_SERVICE_CLIENT_H_

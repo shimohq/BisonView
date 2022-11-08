@@ -28,7 +28,7 @@ BvHttpAuthHandler::BvHttpAuthHandler(const net::AuthChallengeInfo& auth_info,
                                      content::WebContents* web_contents,
                                      bool first_auth_attempt,
                                      LoginAuthRequiredCallback callback)
-    : WebContentsObserver(web_contents),
+    : web_contents_(web_contents->GetWeakPtr()),
       host_(auth_info.challenger.host()),
       realm_(auth_info.realm),
       callback_(std::move(callback)) {
@@ -68,16 +68,15 @@ void BvHttpAuthHandler::Cancel(JNIEnv* env, const JavaParamRef<jobject>& obj) {
 }
 
 void BvHttpAuthHandler::Start() {
-  DCHECK(web_contents());
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
 
   // The WebContents may have been destroyed during the PostTask.
-  if (!web_contents()) {
+  if (!web_contents_) {
     std::move(callback_).Run(absl::nullopt);
     return;
   }
 
-  BvContents* bv_contents = BvContents::FromWebContents(web_contents());
+  BvContents* bv_contents = BvContents::FromWebContents(web_contents_.get());
   if (!bv_contents->OnReceivedHttpAuthRequest(http_auth_handler_, host_,
                                               realm_)) {
     std::move(callback_).Run(absl::nullopt);

@@ -1,7 +1,3 @@
-// Copyright 2018 The Chromium Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file.
-
 package im.shimo.bison.internal;
 
 import android.content.ComponentName;
@@ -17,13 +13,12 @@ import android.os.SystemClock;
 
 import androidx.annotation.VisibleForTesting;
 
-import org.chromium.android_webview.AwBrowserProcess;
-import org.chromium.android_webview.common.AwSwitches;
-import org.chromium.android_webview.common.services.IVariationsSeedServer;
-import org.chromium.android_webview.common.services.IVariationsSeedServerCallback;
-import org.chromium.android_webview.common.services.ServiceNames;
-import org.chromium.android_webview.common.variations.VariationsServiceMetricsHelper;
-import org.chromium.android_webview.common.variations.VariationsUtils;
+// import im.shimo.bison.internal.services.IVariationsSeedServer;
+// import im.shimo.bison.internal.services.IVariationsSeedServerCallback;
+// import im.shimo.bison.internal.services.ServiceNames;
+// import im.shimo.bison.internal.VariationsServiceMetricsHelper;
+//import im.shimo.bison.internal.VariationsUtils;
+
 import org.chromium.base.ContextUtils;
 import org.chromium.base.Log;
 import org.chromium.base.annotations.JNINamespace;
@@ -60,7 +55,7 @@ import java.util.concurrent.TimeoutException;
  *    more often than MAX_REQUEST_PERIOD_MILLIS).
  *
  * VariationsSeedLoader should be used during WebView startup like so:
- * 1. Ensure ContextUtils.getApplicationContext(), AwBrowserProcess.getWebViewPackageName(), and
+ * 1. Ensure ContextUtils.getApplicationContext(), BvBrowserProcess.getWebViewPackageName(), and
  *    PathUtils are ready to use.
  * 2. As early as possible, call startVariationsInit() to begin the task.
  * 3. Perform any WebView startup tasks which don't require variations to be initialized.
@@ -100,7 +95,7 @@ public class VariationsSeedLoader {
     private static final String SEED_LOAD_RESULT_HISTOGRAM_NAME = "Variations.SeedLoadResult";
 
     private SeedLoadAndUpdateRunnable mRunnable;
-    private SeedServerCallback mSeedServerCallback = new SeedServerCallback();
+    //private SeedServerCallback mSeedServerCallback = new SeedServerCallback();
 
     private static void recordLoadSeedResult(@LoadSeedResult int result) {
         RecordHistogram.recordEnumeratedHistogram(
@@ -125,18 +120,20 @@ public class VariationsSeedLoader {
     }
 
     private static boolean shouldThrottleRequests(long now) {
-        long lastRequestTime = VariationsUtils.getStampTime();
-        if (lastRequestTime == 0) {
-            return false;
-        }
-        long maxRequestPeriodMillis = VariationsUtils.getDurationSwitchValueInMillis(
-                AwSwitches.FINCH_SEED_MIN_UPDATE_PERIOD, MAX_REQUEST_PERIOD_MILLIS);
-        return now < lastRequestTime + maxRequestPeriodMillis;
+        // long lastRequestTime = VariationsUtils.getStampTime();
+        // if (lastRequestTime == 0) {
+        //     return false;
+        // }
+        // long maxRequestPeriodMillis = VariationsUtils.getDurationSwitchValueInMillis(
+        //         AwSwitches.FINCH_SEED_MIN_UPDATE_PERIOD, MAX_REQUEST_PERIOD_MILLIS);
+        // return now < lastRequestTime + maxRequestPeriodMillis;
+        return false;
     }
 
     private boolean isSeedExpired(long seedFileTime) {
+
         long expirationDuration = VariationsUtils.getDurationSwitchValueInMillis(
-                AwSwitches.FINCH_SEED_EXPIRATION_AGE, SEED_EXPIRATION_MILLIS);
+                BvSwitches.FINCH_SEED_EXPIRATION_AGE, SEED_EXPIRATION_MILLIS);
         return getCurrentTimeMillis() > seedFileTime + expirationDuration;
     }
 
@@ -216,7 +213,7 @@ public class VariationsSeedLoader {
             if (mNeedNewSeed) {
                 // The new seed will arrive asynchronously; the new seed file is written by the
                 // service, and may complete after this app process has died.
-                requestSeedFromService(mCurrentSeedDate);
+                //requestSeedFromService(mCurrentSeedDate);
                 VariationsUtils.updateStampTime();
             }
 
@@ -239,71 +236,70 @@ public class VariationsSeedLoader {
         }
     }
 
-    // Connects to VariationsSeedServer service. Sends a file descriptor for our local copy of the
-    // seed to the service, to which the service will write a new seed.
-    private class SeedServerConnection implements ServiceConnection {
-        private ParcelFileDescriptor mNewSeedFd;
-        private long mOldSeedDate;
+    // jiang 这里先注释
+    // private class SeedServerConnection implements ServiceConnection {
+    //     private ParcelFileDescriptor mNewSeedFd;
+    //     private long mOldSeedDate;
 
-        public SeedServerConnection(ParcelFileDescriptor newSeedFd, long oldSeedDate) {
-            mNewSeedFd = newSeedFd;
-            mOldSeedDate = oldSeedDate;
-        }
+    //     public SeedServerConnection(ParcelFileDescriptor newSeedFd, long oldSeedDate) {
+    //         mNewSeedFd = newSeedFd;
+    //         mOldSeedDate = oldSeedDate;
+    //     }
 
-        public void start() {
-            try {
-                if (!ContextUtils.getApplicationContext().bindService(
-                            getServerIntent(), this, Context.BIND_AUTO_CREATE)) {
-                    Log.e(TAG, "Failed to bind to WebView service");
-                }
-                // Connect to nonembedded metrics Service at the same time we connect to variation
-                // service.
-                AwBrowserProcess.collectNonembeddedMetrics();
-            } catch (NameNotFoundException e) {
-                Log.e(TAG,
-                        "WebView provider \"" + AwBrowserProcess.getWebViewPackageName()
-                                + "\" not found!");
-            }
-        }
+    //     public void start() {
+    //         try {
+    //             if (!ContextUtils.getApplicationContext().bindService(
+    //                         getServerIntent(), this, Context.BIND_AUTO_CREATE)) {
+    //                 Log.e(TAG, "Failed to bind to WebView service");
+    //             }
+    //             // Connect to nonembedded metrics Service at the same time we connect to variation
+    //             // service.
+    //             BvBrowserProcess.collectNonembeddedMetrics();
+    //         } catch (NameNotFoundException e) {
+    //             Log.e(TAG,
+    //                     "WebView provider \"" + BvBrowserProcess.getWebViewPackageName()
+    //                             + "\" not found!");
+    //         }
+    //     }
 
-        @Override
-        public void onServiceConnected(ComponentName name, IBinder service) {
-            try {
-                if (mNewSeedFd.getFd() >= 0) {
-                    IVariationsSeedServer.Stub.asInterface(service).getSeed(
-                            mNewSeedFd, mOldSeedDate, mSeedServerCallback);
-                }
-            } catch (RemoteException e) {
-                Log.e(TAG, "Faild requesting seed", e);
-            } finally {
-                ContextUtils.getApplicationContext().unbindService(this);
-                VariationsUtils.closeSafely(mNewSeedFd);
-            }
-        }
+    //     @Override
+    //     public void onServiceConnected(ComponentName name, IBinder service) {
+    //         try {
+    //             if (mNewSeedFd.getFd() >= 0) {
+    //                 IVariationsSeedServer.Stub.asInterface(service).getSeed(
+    //                         mNewSeedFd, mOldSeedDate, mSeedServerCallback);
+    //             }
+    //         } catch (RemoteException e) {
+    //             Log.e(TAG, "Faild requesting seed", e);
+    //         } finally {
+    //             ContextUtils.getApplicationContext().unbindService(this);
+    //             VariationsUtils.closeSafely(mNewSeedFd);
+    //         }
+    //     }
 
-        @Override
-        public void onServiceDisconnected(ComponentName name) {}
-    }
+    //     @Override
+    //     public void onServiceDisconnected(ComponentName name) {}
+    // }
 
-    private class SeedServerCallback extends IVariationsSeedServerCallback.Stub {
-        @Override
-        public void reportVariationsServiceMetrics(Bundle metricsBundle) {
-            VariationsServiceMetricsHelper metrics =
-                    VariationsServiceMetricsHelper.fromBundle(metricsBundle);
-            if (metrics.hasJobInterval()) {
-                // Variations.DownloadJobInterval records time in minutes.
-                recordMinuteHistogram(DOWNLOAD_JOB_INTERVAL_HISTOGRAM_NAME,
-                        TimeUnit.MILLISECONDS.toMinutes(metrics.getJobInterval()),
-                        TimeUnit.DAYS.toMinutes(30));
-            }
-            if (metrics.hasJobQueueTime()) {
-                // Variations.DownloadJobQueueTime records time in minutes.
-                recordMinuteHistogram(DOWNLOAD_JOB_QUEUE_TIME_HISTOGRAM_NAME,
-                        TimeUnit.MILLISECONDS.toMinutes(metrics.getJobQueueTime()),
-                        TimeUnit.DAYS.toMinutes(30));
-            }
-        }
-    }
+    // private class SeedServerCallback extends IVariationsSeedServerCallback.Stub {
+    //     @Override
+    //     public void reportVariationsServiceMetrics(Bundle metricsBundle) {
+    //         VariationsServiceMetricsHelper metrics =
+    //                 VariationsServiceMetricsHelper.fromBundle(metricsBundle);
+    //         if (metrics.hasJobInterval()) {
+    //             // Variations.DownloadJobInterval records time in minutes.
+    //             recordMinuteHistogram(DOWNLOAD_JOB_INTERVAL_HISTOGRAM_NAME,
+    //                     TimeUnit.MILLISECONDS.toMinutes(metrics.getJobInterval()),
+    //                     TimeUnit.DAYS.toMinutes(30));
+    //         }
+    //         if (metrics.hasJobQueueTime()) {
+    //             // Variations.DownloadJobQueueTime records time in minutes.
+    //             recordMinuteHistogram(DOWNLOAD_JOB_QUEUE_TIME_HISTOGRAM_NAME,
+    //                     TimeUnit.MILLISECONDS.toMinutes(metrics.getJobQueueTime()),
+    //                     TimeUnit.DAYS.toMinutes(30));
+    //         }
+    //     }
+    // }
 
     @VisibleForTesting // Overridden by tests to wait until all work is done.
     protected void onBackgroundWorkFinished() {}
@@ -318,42 +314,43 @@ public class VariationsSeedLoader {
         return new Date().getTime();
     }
 
-    @VisibleForTesting // and non-static for overriding by tests
-    protected Intent getServerIntent() throws NameNotFoundException {
-        Intent intent = new Intent();
-        intent.setClassName(
-                AwBrowserProcess.getWebViewPackageName(), ServiceNames.VARIATIONS_SEED_SERVER);
-        return intent;
-    }
+    // jiang 这里先注释
+    // @VisibleForTesting // and non-static for overriding by tests
+    // protected Intent getServerIntent() throws NameNotFoundException {
+    //     Intent intent = new Intent();
+    //     intent.setClassName(
+    //             BvBrowserProcess.getWebViewPackageName(), ServiceNames.VARIATIONS_SEED_SERVER);
+    //     return intent;
+    // }
 
-    @VisibleForTesting
-    // Returns false if it didn't connect to the service.
-    protected boolean requestSeedFromService(long oldSeedDate) {
-        File newSeedFile = VariationsUtils.getNewSeedFile();
-        try {
-            newSeedFile.createNewFile(); // Silently returns false if already exists.
-        } catch (IOException e) {
-            Log.e(TAG, "Failed to create seed file " + newSeedFile);
-            return false;
-        }
-        ParcelFileDescriptor newSeedFd = null;
-        try {
-            newSeedFd =
-                    ParcelFileDescriptor.open(newSeedFile, ParcelFileDescriptor.MODE_WRITE_ONLY);
-        } catch (FileNotFoundException e) {
-            Log.e(TAG, "Failed to open seed file " + newSeedFile);
-            return false;
-        }
+    // @VisibleForTesting
+    // // Returns false if it didn't connect to the service.
+    // protected boolean requestSeedFromService(long oldSeedDate) {
+    //     File newSeedFile = VariationsUtils.getNewSeedFile();
+    //     try {
+    //         newSeedFile.createNewFile(); // Silently returns false if already exists.
+    //     } catch (IOException e) {
+    //         Log.e(TAG, "Failed to create seed file " + newSeedFile);
+    //         return false;
+    //     }
+    //     ParcelFileDescriptor newSeedFd = null;
+    //     try {
+    //         newSeedFd =
+    //                 ParcelFileDescriptor.open(newSeedFile, ParcelFileDescriptor.MODE_WRITE_ONLY);
+    //     } catch (FileNotFoundException e) {
+    //         Log.e(TAG, "Failed to open seed file " + newSeedFile);
+    //         return false;
+    //     }
 
-        VariationsUtils.debugLog("Requesting new seed from IVariationsSeedServer");
-        SeedServerConnection connection = new SeedServerConnection(newSeedFd, oldSeedDate);
-        connection.start();
+    //     VariationsUtils.debugLog("Requesting new seed from IVariationsSeedServer");
+    //     SeedServerConnection connection = new SeedServerConnection(newSeedFd, oldSeedDate);
+    //     connection.start();
 
-        return true;
-    }
+    //     return true;
+    // }
 
     // Begin asynchronously loading the variations seed. ContextUtils.getApplicationContext() and
-    // AwBrowserProcess.getWebViewPackageName() must be ready to use before calling this.
+    // BvBrowserProcess.getWebViewPackageName() must be ready to use before calling this.
     public void startVariationsInit() {
         mRunnable = new SeedLoadAndUpdateRunnable();
         (new Thread(mRunnable)).start();
@@ -390,13 +387,14 @@ public class VariationsSeedLoader {
 
     @NativeMethods
     interface Natives {
-        // Parses the AwVariationsSeed proto stored in the file with the given path, saving it in
+
+        // Parses the BvVariationsSeed proto stored in the file with the given path, saving it in
         // memory for later use by native code if the parsing succeeded. Returns true if the loading
         // and parsing were successful.
         boolean parseAndSaveSeedProto(String path);
 
         // Returns the timestamp in millis since unix epoch that the saved seed was generated on
-        // the server. This value corresponds to the |date| field in the AwVariationsSeed proto.
+        // the server. This value corresponds to the |date| field in the BvVariationsSeed proto.
         long getSavedSeedDate();
     }
 }

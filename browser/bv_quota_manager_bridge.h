@@ -72,8 +72,6 @@ class BvQuotaManagerBridge
   JavaObjectWeakGlobalRef java_ref_;
 
   base::WeakPtrFactory<BvQuotaManagerBridge> weak_factory_{this};
-
-
 };
 
 }  // namespace bison

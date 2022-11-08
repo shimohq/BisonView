@@ -42,6 +42,7 @@ class BvBrowserProcess {
 
   PrefService* local_state();
   BvBrowserPolicyConnector* browser_policy_connector();
+  VisibilityMetricsLogger* visibility_metrics_logger();
 
   void CreateBrowserPolicyConnector();
   void CreateLocalState();
@@ -104,7 +105,7 @@ class BvBrowserProcess {
   std::unique_ptr<BvContentsLifecycleNotifier> bv_contents_lifecycle_notifier_;
 
 
-  //std::unique_ptr<VisibilityMetricsLogger> visibility_metrics_logger_;
+  std::unique_ptr<VisibilityMetricsLogger> visibility_metrics_logger_;
   std::unique_ptr<BvContentsLifecycleNotifier> aw_contents_lifecycle_notifier_;
 };
 

@@ -95,6 +95,12 @@ java_cpp_features("bison_java_features_srcjar") {
   template = "java/src/im/shimo/bison/internal/BvFeatures.java.tmpl"
 }
 
+java_cpp_strings("bison_java_switches_srcjar") {
+  visibility = [ ":*" ]
+  sources = [ "common/bv_switches.cc" ]
+  template = "java/src/im/shimo/bison/internal/BvSwitches.java.tmpl"
+}
+
 generate_jni("bison_jni_headers") {
   sources = [
     "java/src/im/shimo/bison/ContentViewRenderView.java",
@@ -114,12 +120,13 @@ generate_jni("bison_jni_headers") {
     "java/src/im/shimo/bison/internal/BvFeatureList.java",
     "java/src/im/shimo/bison/internal/BvFormDatabase.java",
     "java/src/im/shimo/bison/internal/BvHttpAuthHandler.java",
-    #"java/src/im/shimo/bison/internal/BvMetricsServiceClient.java",
+    "java/src/im/shimo/bison/internal/BvMetricsServiceClient.java",
     "java/src/im/shimo/bison/internal/BvPdfExporter.java",
     "java/src/im/shimo/bison/internal/BvPermissionRequest.java",
     "java/src/im/shimo/bison/internal/BvQuotaManagerBridge.java",
     "java/src/im/shimo/bison/internal/BvRenderProcess.java",
     "java/src/im/shimo/bison/internal/BvSettings.java",
+    "java/src/im/shimo/bison/internal/BvTracingController.java",
     "java/src/im/shimo/bison/internal/BvVariationsSeedBridge.java",
     "java/src/im/shimo/bison/internal/BvWebContentsDelegate.java",
     "java/src/im/shimo/bison/internal/BvWebResourceInterceptResponse.java",
@@ -127,6 +134,7 @@ generate_jni("bison_jni_headers") {
     "java/src/im/shimo/bison/internal/BvWebResourceResponse.java",
     "java/src/im/shimo/bison/internal/InputStreamUtil.java",
     "java/src/im/shimo/bison/internal/JsReplyProxy.java",
+    "java/src/im/shimo/bison/internal/VariationsSeedLoader.java",
     "java/src/im/shimo/bison/internal/WebMessageListenerHolder.java",
     "java/src/im/shimo/bison/internal/WebMessageListenerInfo.java",
   ]
@@ -217,7 +225,7 @@ android_library("bison_java") {
     "java/src/im/shimo/bison/internal/BvGeolocationPermissions.java",
     "java/src/im/shimo/bison/internal/BvHttpAuthHandler.java",
     "java/src/im/shimo/bison/internal/BvLayoutSizer.java",
-    #"java/src/im/shimo/bison/internal/BvMetricsServiceClient.java",
+    "java/src/im/shimo/bison/internal/BvMetricsServiceClient.java",
     "java/src/im/shimo/bison/internal/BvPdfExporter.java",
     "java/src/im/shimo/bison/internal/BvPermissionRequest.java",
     "java/src/im/shimo/bison/internal/BvQuotaManagerBridge.java",
@@ -227,6 +235,7 @@ android_library("bison_java") {
     "java/src/im/shimo/bison/internal/BvSafeBrowsingResponse.java",
     "java/src/im/shimo/bison/internal/BvScrollOffsetManager.java",
     "java/src/im/shimo/bison/internal/BvSettings.java",
+    "java/src/im/shimo/bison/internal/BvTracingController.java",
     "java/src/im/shimo/bison/internal/BvVariationsSeedBridge.java",
     "java/src/im/shimo/bison/internal/BvViewMethods.java",
     "java/src/im/shimo/bison/internal/BvWebContentsDelegate.java",
@@ -249,6 +258,8 @@ android_library("bison_java") {
     "java/src/im/shimo/bison/internal/OverScrollGlow.java",
     "java/src/im/shimo/bison/internal/ScriptReference.java",
     "java/src/im/shimo/bison/internal/SslUtil.java",
+    "java/src/im/shimo/bison/internal/VariationsSeedLoader.java",
+    "java/src/im/shimo/bison/internal/VariationsUtils.java",
     "java/src/im/shimo/bison/internal/WebMessageListener.java",
     "java/src/im/shimo/bison/internal/WebMessageListenerHolder.java",
     "java/src/im/shimo/bison/internal/WebMessageListenerInfo.java",
@@ -257,6 +268,7 @@ android_library("bison_java") {
 
   srcjar_deps = [
     ":bison_java_features_srcjar",
+    ":bison_java_switches_srcjar",
     ":generate_sandboxed_service_srcjar",
     "browser:browser_enums",
   ]
@@ -265,6 +277,7 @@ android_library("bison_java") {
     ":bison_aar_manifest",
     ":bison_aar_resources",
     ":bison_view_product_config_java",
+    "//bison/proto:bv_variations_seed_proto_java",
 
     # content deps
     "//base:base_java",
@@ -281,6 +294,7 @@ android_library("bison_java") {
     "//components/navigation_interception/android:navigation_interception_java",
     "//components/policy/android:policy_java",
     "//components/url_formatter/android:url_formatter_java",
+    "//components/variations:variations_java",
     "//components/variations/android:variations_java",
     "//components/viz/common:common_java",
     "//components/viz/service:service_java",
@@ -297,6 +311,7 @@ android_library("bison_java") {
 
     # "//third_party/androidx:androidx_appcompat_appcompat_java",
     # androidx.core.graphics.ColorUtils
+    "//third_party/android_deps:protobuf_lite_runtime_java",
     "//third_party/androidx:androidx_core_core_java",
     "//third_party/blink/public:blink_headers_java",
     "//third_party/blink/public/common:common_java",

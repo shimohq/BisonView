@@ -2,6 +2,7 @@
 
 #include "bison/common/bv_features.h"
 #include "bison/common/bv_media_drm_bridge_client.h"
+#include "bison/common/crash_reporter/crash_keys.h"
 #include "bison/common/url_constants.h"
 
 #include "base/bind.h"
@@ -59,6 +60,7 @@ void BvContentClient::SetGpuInfo(const gpu::GPUInfo& gpu_info) {
   gpu::SetKeysForCrashLogging(gpu_info);
 }
 
+// 与Android WebView 不同
 bool BvContentClient::UsingSynchronousCompositing() {
   return false;
 }

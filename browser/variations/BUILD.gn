@@ -1,11 +1,13 @@
 source_set("variations") {
+  # jiang 这里还有点问题
   sources = [
     "bv_variations_service_client.cc",
     "bv_variations_service_client.h",
-    # "variations_seed_loader.cc",
-    # "variations_seed_loader.h",
+    "variations_seed_loader.cc",
+    "variations_seed_loader.h",
   ]
   deps = [
+    "//bison:bison_jni_headers",
     "//components/variations",
     "//components/variations/net",
     "//components/variations/service",

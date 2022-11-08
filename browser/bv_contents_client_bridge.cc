@@ -322,7 +322,7 @@ void BvContentsClientBridge::RunBeforeUnloadDialog(
     return;
   }
 
-  // jiang handleJsBeforeUnload
+  // jiang947 handleJsBeforeUnload
   // const std::u16string message_text =
   //     l10n_util::GetStringUTF16(IDS_BEFOREUNLOAD_MESSAGEBOX_MESSAGE);
 

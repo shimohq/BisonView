@@ -19,6 +19,7 @@ namespace bison {
 class BvFormDatabaseService : public WebDataServiceConsumer {
  public:
   BvFormDatabaseService(const base::FilePath path);
+  
   BvFormDatabaseService(const BvFormDatabaseService&) = delete;
   BvFormDatabaseService& operator=(const BvFormDatabaseService&) = delete;
 

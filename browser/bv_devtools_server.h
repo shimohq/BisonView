@@ -13,6 +13,10 @@ namespace bison {
 class BvDevToolsServer {
  public:
   BvDevToolsServer();
+
+  BvDevToolsServer(const BvDevToolsServer&) = delete;
+  BvDevToolsServer& operator=(const BvDevToolsServer&) = delete;
+
   ~BvDevToolsServer();
 
   // Opens linux abstract socket to be ready for remote debugging.
@@ -25,7 +29,6 @@ class BvDevToolsServer {
 
  private:
   bool is_started_;
-
 };
 
 }  // namespace bison

@@ -1,7 +1,8 @@
 // create by jiang947
 
-#ifndef BISON_COMMON_BISON_FEATURES_H_
-#define BISON_COMMON_BISON_FEATURES_H_
+#ifndef BISON_COMMON_BV_FEATURES_H_
+#define BISON_COMMON_BV_FEATURES_H_
+
 
 #include "base/feature_list.h"
 #include "base/metrics/field_trial_params.h"
@@ -41,7 +42,6 @@ extern const base::Feature
     kWebViewSynthesizePageLoadOnlyOnInitialMainDocumentAccess;
 
 }  // namespace features
-
 }  // namespace bison
 
-#endif  // BISON_COMMON_BISON_FEATURES_H_
+#endif  // BISON_COMMON_BV_FEATURES_H_

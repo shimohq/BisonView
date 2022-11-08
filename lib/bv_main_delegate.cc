@@ -96,6 +96,8 @@ bool BvMainDelegate::BasicStartupComplete(int* exit_code) {
 
   // Check damage in OnBeginFrame to prevent unnecessary draws.
   cl->AppendSwitch(cc::switches::kCheckDamageEarly);
+
+  cl->AppendSwitch(switches::kDisableScreenOrientationLock);
   cl->AppendSwitch(switches::kDisableSpeechSynthesisAPI);
 
   cl->AppendSwitch(switches::kDisablePermissionsAPI);
@@ -195,6 +197,8 @@ bool BvMainDelegate::BasicStartupComplete(int* exit_code) {
     }
 
     features.EnableIfNotSet(::features::kLogJsConsoleMessages);
+  features.DisableIfNotSet(::features::kDefaultANGLEVulkan);
+
     features.DisableIfNotSet(::features::kVulkan);
 
     features.DisableIfNotSet(::features::kWebPayments);
@@ -271,6 +275,7 @@ bool BvMainDelegate::BasicStartupComplete(int* exit_code) {
 
   bison::RegisterPathProvider();
   content::Compositor::Initialize();
+  heap_profiling::InitTLSSlot();
 
   return false;
 }
@@ -299,6 +304,21 @@ void BvMainDelegate::PreSandboxStartup() {
   }
 
   EnableCrashReporter(process_type);
+
+  base::android::BuildInfo* android_build_info =
+    base::android::BuildInfo::GetInstance();
+
+  static ::crash_reporter::CrashKeyString<64> app_name_key(
+      crash_keys::kAppPackageName);
+  app_name_key.Set(android_build_info->host_package_name());
+
+  static ::crash_reporter::CrashKeyString<64> app_version_key(
+      crash_keys::kAppPackageVersionCode);
+  app_version_key.Set(android_build_info->host_version_code());
+
+  static ::crash_reporter::CrashKeyString<8> sdk_int_key(
+      crash_keys::kAndroidSdkInt);
+  sdk_int_key.Set(base::NumberToString(android_build_info->sdk_int()));
 }
 
 absl::variant<int, content::MainFunctionParams> BvMainDelegate::RunProcess(
@@ -321,7 +341,7 @@ void BvMainDelegate::ProcessExiting(const std::string& process_type) {
 }
 
 bool BvMainDelegate::ShouldCreateFeatureList() {
-  return true;
+  return false;
 }
 
 variations::VariationsIdsProvider*

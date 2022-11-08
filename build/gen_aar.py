@@ -303,7 +303,7 @@ def BuildAar(archs, output_file, common_gn_args,
         jars = _ReadConfig(build_dir, arch , build_config,'deps_info', 'javac_full_classpath')
         src_jars = _ReadConfig(build_dir, arch , build_config,'javac', 'classpath')
         all_jars = src_jars + jars
-      #  all_jars = filter(lambda x : "apache" not in x, set(all_jars))
+
         all_jars = sorted(set(all_jars),key=all_jars.index)
         dependencies_res_zips =_ReadConfig(build_dir, arch, build_config ,'deps_info', 'dependency_zips')
         r_text_files = _ReadConfig(build_dir, arch, build_config ,'deps_info', 'dependency_r_txt_files')

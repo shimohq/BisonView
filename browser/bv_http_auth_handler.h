@@ -26,8 +26,7 @@ class AuthChallengeInfo;
 namespace bison {
 
 // Bridges the Java class of the same name and content::LoginDelegate.
-class BvHttpAuthHandler : public content::LoginDelegate,
-                          public content::WebContentsObserver {
+class BvHttpAuthHandler : public content::LoginDelegate{
  public:
   BvHttpAuthHandler(const net::AuthChallengeInfo& auth_info,
                     content::WebContents* web_contents,
@@ -47,6 +46,7 @@ class BvHttpAuthHandler : public content::LoginDelegate,
  private:
   void Start();
 
+  base::WeakPtr<content::WebContents> web_contents_;
   base::android::ScopedJavaGlobalRef<jobject> http_auth_handler_;
   std::string host_;
   std::string realm_;

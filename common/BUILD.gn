@@ -16,6 +16,8 @@ source_set("common") {
     "bv_resource_bundle.h",
     "bv_switches.cc",
     "bv_switches.h",
+    "components/bv_apps_package_names_allowlist_component_utils.cc",
+    "components/bv_apps_package_names_allowlist_component_utils.h",
     "crash_reporter/bv_crash_reporter_client.cc",
     "crash_reporter/bv_crash_reporter_client.h",
     "crash_reporter/crash_keys.cc",
@@ -28,9 +30,8 @@ source_set("common") {
   ]
 
   deps = [
-    "//bison:bison_jni_headers",
-
     "//base",
+    "//bison:bison_jni_headers",
     "//components/cdm/common",
     "//components/crash/core/app",
     "//components/crash/core/common:crash_key",

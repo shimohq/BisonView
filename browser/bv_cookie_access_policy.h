@@ -24,6 +24,10 @@ class BvCookieAccessPolicy {
  public:
   static BvCookieAccessPolicy* GetInstance();
 
+
+  BvCookieAccessPolicy(const BvCookieAccessPolicy&) = delete;
+  BvCookieAccessPolicy& operator=(const BvCookieAccessPolicy&) = delete;
+
   // Can we read/write any cookies? Can be called from any thread.
   bool GetShouldAcceptCookies();
   void SetShouldAcceptCookies(bool allow);
@@ -36,7 +40,6 @@ class BvCookieAccessPolicy {
   bool GetShouldAcceptThirdPartyCookies(int render_process_id,
                                         int render_frame_id,
                                         int frame_tree_node_id);
-  bool GetShouldAcceptThirdPartyCookies(const net::URLRequest& request);
 
   // Whether or not to allow cookies for requests with these parameters.
   bool AllowCookies(const GURL& url,
@@ -56,8 +59,6 @@ class BvCookieAccessPolicy {
                         bool accept_third_party_cookies);
   bool accept_cookies_;
   base::Lock lock_;
-
-
 };
 
 }  // namespace bison

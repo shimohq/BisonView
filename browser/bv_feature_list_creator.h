@@ -50,6 +50,8 @@ class BvFeatureListCreator {
     return std::move(browser_policy_connector_);
   }
 
+  static void DisableSignatureVerificationForTesting();
+
  private:
   std::unique_ptr<PrefService> CreatePrefService();
 

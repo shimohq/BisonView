@@ -23,6 +23,8 @@ class BvPdfExporter {
   BvPdfExporter(JNIEnv* env,
                 const base::android::JavaRef<jobject>& obj,
                 content::WebContents* web_contents);
+  BvPdfExporter(const BvPdfExporter&) = delete;
+  BvPdfExporter& operator=(const BvPdfExporter&) = delete;
 
   ~BvPdfExporter();
 

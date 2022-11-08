@@ -460,9 +460,9 @@ BvContentsIoThreadClient::GetRequestedWithHeaderMode() const {
                                                                java_object_));
 }
 
-void BvContentsIoThreadClient::OverrideRequestHeaderAsync(
-    BvWebResourceRequest request,
-    OverrideRequestRequestCallback callback) {
+// void BvContentsIoThreadClient::OverrideRequestHeaderAsync(
+//     BvWebResourceRequest request,
+//     OverrideRequestRequestCallback callback) {
   // DCHECK_CURRENTLY_ON(BrowserThread::IO);
   // base::OnceCallback<std::unique_ptr<BvWebResourceOverrideRequest>()>
   //     get_request = base::BindOnce(&NoOverrideRequest);
@@ -479,6 +479,6 @@ void BvContentsIoThreadClient::OverrideRequestHeaderAsync(
   // }
   // sequenced_task_runner_.get()->PostTaskAndReplyWithResult(
   //     FROM_HERE, std::move(get_request), std::move(callback));
-}
+// }
 
 }  // namespace bison

@@ -521,6 +521,7 @@ void BvSettings::PopulateWebPreferencesLocked(JNIEnv* env,
   web_prefs->scroll_top_left_interop_enabled =
       Java_BvSettings_getScrollTopLeftInteropEnabledLocked(env, obj);
 
+  // jiang947
   // getAllowMixedContentAutoupgradesLocked
 
   if (BvDarkMode* bv_dark_mode = BvDarkMode::FromWebContents(web_contents())) {

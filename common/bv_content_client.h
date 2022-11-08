@@ -1,7 +1,7 @@
 // create by jiang947
 
-#ifndef BISON_COMMON_BISON_CONTENT_CLIENT_H_
-#define BISON_COMMON_BISON_CONTENT_CLIENT_H_
+#ifndef BISON_COMMON_BV_CONTENT_CLIENT_H_
+#define BISON_COMMON_BV_CONTENT_CLIENT_H_
 
 #include "base/synchronization/lock.h"
 #include "content/public/common/content_client.h"
@@ -46,4 +46,4 @@ class BvContentClient : public content::ContentClient {
 
 }  // namespace bison
 
-#endif  // BISON_COMMON_BISON_CONTENT_CLIENT_H_
+#endif  // BISON_COMMON_BV_CONTENT_CLIENT_H_

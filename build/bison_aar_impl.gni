@@ -17,7 +17,7 @@ template("build_aar_impl") {
   _build_config = "$target_gen_dir/$target_name.build_config"
   _build_config_target_name = "$target_name$build_config_target_suffix"
 
-  ##print ("_build_config",_build_config)
+  print ("_build_config",_build_config)
 
   write_build_config(_build_config_target_name) {
     type = "dist_aar"

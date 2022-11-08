@@ -405,10 +405,19 @@ public class BvContentsClientBridge {
         // 1. There is no activity to handle this intent
         // 2. We can't come down to a single higher priority activity
         // 3. Best activity to handle is actually a browser.
-        if (bestActivity == null) {
+        if (bestActivity == null || isBrowserApp(bestActivity)) {
             return null;
         }
         return bestActivity;
+    }
+
+    private boolean isBrowserApp(ResolveInfo ri) {
+        if (ri.filter.hasCategory(Intent.CATEGORY_APP_BROWSER)
+                || (ri.filter.hasDataScheme("http") && ri.filter.hasDataScheme("https")
+                        && ri.filter.countDataAuthorities() == 0)) {
+            return true;
+        }
+        return false;
     }
 
     void confirmJsResult(int id, String prompt) {

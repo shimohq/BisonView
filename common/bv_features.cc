@@ -126,5 +126,4 @@ const base::Feature kWebViewSynthesizePageLoadOnlyOnInitialMainDocumentAccess{
     base::FEATURE_DISABLED_BY_DEFAULT};
 
 }  // namespace features
-
 }  // namespace bison

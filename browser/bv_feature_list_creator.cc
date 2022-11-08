@@ -8,14 +8,13 @@
 
 #include "components/metrics/metrics_service.h"
 
-
-#include "bison/browser/bison_variations_seed_bridge.h"
 #include "bison/browser/bv_browser_context.h"
 #include "bison/browser/bv_browser_process.h"
-#include "bison/browser/bv_pref_names.h"
-// #include "bison/browser/metrics/bison_metrics_service_client.h"
+#include "bison/browser/bv_feature_entries.h"
+#include "bison/browser/bv_metrics_service_client_delegate.h"
+#include "bison/browser/variations/variations_seed_loader.h"
+#include "bison/proto/bv_variations_seed.pb.h"
 
-#include "base/base_switches.h"
 #include "base/bind.h"
 #include "base/callback_helpers.h"
 #include "base/command_line.h"
@@ -50,6 +49,7 @@ namespace bison {
 
 namespace {
 
+bool g_signature_verification_enabled = true;
 
 // These prefs go in the JsonPrefStore, and will persist across runs. Other
 // prefs go in the InMemoryPrefStore, and will be lost when the process ends.
@@ -102,7 +102,15 @@ base::FilePath GetPrefStorePath() {
   return path;
 }
 
+// Adds WebView-specific switch-dependent feature overrides on top of the ones
+// from the content layer.
+std::vector<base::FeatureList::FeatureOverrideInfo>
+GetSwitchDependentFeatureOverrides(const base::CommandLine& command_line) {
+  std::vector<base::FeatureList::FeatureOverrideInfo> feature_overrides =
+      content::GetSwitchDependentFeatureOverrides(command_line);
 
+  return feature_overrides;
+}
 
 }  // namespace
 
@@ -112,10 +120,11 @@ BvFeatureListCreator::BvFeatureListCreator()
 BvFeatureListCreator::~BvFeatureListCreator() {}
 
 std::unique_ptr<PrefService> BvFeatureListCreator::CreatePrefService() {
-  //auto pref_registry = base::MakeRefCounted<PrefRegistrySimple>(); //shell
+  // auto pref_registry = base::MakeRefCounted<PrefRegistrySimple>(); //shell
   auto pref_registry = base::MakeRefCounted<user_prefs::PrefRegistrySyncable>();
 
-  metrics::MetricsService::RegisterPrefs(pref_registry.get());
+  // metrics::MetricsService::RegisterPrefs(pref_registry.get());
+  BvMetricsServiceClient::RegisterMetricsPrefs(pref_registry.get());
   variations::VariationsService::RegisterPrefs(pref_registry.get());
 
   embedder_support::OriginTrialPrefs::RegisterPrefs(pref_registry.get());
@@ -128,6 +137,11 @@ std::unique_ptr<PrefService> BvFeatureListCreator::CreatePrefService() {
   std::set<std::string> persistent_prefs;
   for (const char* const pref_name : kPersistentPrefsAllowlist)
     persistent_prefs.insert(pref_name);
+
+  persistent_prefs.insert(std::string(metrics::prefs::kMetricsLastSeenPrefix) +
+                          kBrowserMetricsName);
+  persistent_prefs.insert(std::string(metrics::prefs::kMetricsLastSeenPrefix) +
+                          metrics::kCrashpadHistogramAllocatorName);
 
   // SegregatedPrefStore may be validated with a MAC (message authentication
   // code). On Android, the store is protected by app sandboxing, so validation
@@ -150,68 +164,60 @@ std::unique_ptr<PrefService> BvFeatureListCreator::CreatePrefService() {
   return pref_service_factory.Create(pref_registry);
 }
 
-
 void BvFeatureListCreator::SetUpFieldTrials() {
-  //DCHECK(base::FieldTrialList::GetInstance());
-  // std::unique_ptr<BvVariationsSeed> seed_proto = TakeSeed();
-  // std::unique_ptr<variations::SeedResponse> seed;
-  // base::Time seed_date;  // Initializes to null time.
-  // if (seed_proto) {
-  //   seed = std::make_unique<variations::SeedResponse>();
-  //   seed->data = seed_proto->seed_data();
-  //   seed->signature = seed_proto->signature();
-  //   seed->country = seed_proto->country();
-  //   seed->date = seed_proto->date();
-  //   seed->is_gzip_compressed = seed_proto->is_gzip_compressed();
+  DCHECK(base::FieldTrialList::GetInstance());
+  std::unique_ptr<BvVariationsSeed> seed_proto = TakeSeed();
+  std::unique_ptr<variations::SeedResponse> seed;
+  base::Time seed_date;  // Initializes to null time.
+  if (seed_proto) {
+    seed = std::make_unique<variations::SeedResponse>();
+    seed->data = seed_proto->seed_data();
+    seed->signature = seed_proto->signature();
+    seed->country = seed_proto->country();
+    seed->date = seed_proto->date();
+    seed->is_gzip_compressed = seed_proto->is_gzip_compressed();
 
-  //   // We set the seed fetch time to when the service downloaded the seed rather
-  //   // than base::Time::Now() because we want to compute seed freshness based on
-  //   // the initial download time, which happened in the service at some earlier
-  //   // point.
-  //   seed_date = base::Time::FromJavaTime(seed->date);
-  // }
+    seed_date = base::Time::FromJavaTime(seed->date);
+  }
 
-  // client_ = std::make_unique<AwVariationsServiceClient>();
-  // auto seed_store = std::make_unique<variations::VariationsSeedStore>(
-  //     local_state_.get(), /*initial_seed=*/std::move(seed),
-  //     /*signature_verification_enabled=*/g_signature_verification_enabled,
-  //     /*use_first_run_prefs=*/false);
+  client_ = std::make_unique<BvVariationsServiceClient>();
+  auto seed_store = std::make_unique<variations::VariationsSeedStore>(
+      local_state_.get(), /*initial_seed=*/std::move(seed),
+      /*signature_verification_enabled=*/g_signature_verification_enabled,
+      /*use_first_run_prefs=*/false);
 
-  // if (!seed_date.is_null())
-  //   seed_store->RecordLastFetchTime(seed_date);
+  if (!seed_date.is_null())
+    seed_store->RecordLastFetchTime(seed_date);
 
-  // variations::UIStringOverrider ui_string_overrider;
-  // variations_field_trial_creator_ =
-  //     std::make_unique<variations::VariationsFieldTrialCreator>(
-  //         client_.get(), std::move(seed_store), ui_string_overrider);
-  // variations_field_trial_creator_->OverrideVariationsPlatform(
-  //     variations::Study::PLATFORM_ANDROID_WEBVIEW);
+  variations::UIStringOverrider ui_string_overrider;
+  variations_field_trial_creator_ =
+      std::make_unique<variations::VariationsFieldTrialCreator>(
+          client_.get(), std::move(seed_store), ui_string_overrider);
+  variations_field_trial_creator_->OverrideVariationsPlatform(
+      variations::Study::PLATFORM_ANDROID_WEBVIEW);
 
-  // // Safe Mode is a feature which reverts to a previous variations seed if the
-  // // current one is suspected to be causing crashes, or preventing new seeds
-  // // from being downloaded. It's not implemented for WebView because 1) it's
-  // // difficult for WebView to implement Safe Mode's crash detection, and 2)
-  // // downloading and disseminating seeds is handled by the WebView service,
-  // // which itself doesn't support variations; therefore a bad seed shouldn't be
-  // // able to break seed downloads. See https://crbug.com/801771 for more info.
-  // variations::SafeSeedManager ignored_safe_seed_manager(local_state_.get());
+  // Safe Mode is a feature which reverts to a previous variations seed if the
+  // current one is suspected to be causing crashes, or preventing new seeds
+  // from being downloaded. It's not implemented for WebView because 1) it's
+  // difficult for WebView to implement Safe Mode's crash detection, and 2)
+  // downloading and disseminating seeds is handled by the WebView service,
+  // which itself doesn't support variations; therefore a bad seed shouldn't be
+  // able to break seed downloads. See https://crbug.com/801771 for more info.
+  variations::SafeSeedManager ignored_safe_seed_manager(local_state_.get());
 
-  // auto feature_list = std::make_unique<base::FeatureList>();
-  // std::vector<std::string> variation_ids =
-  //     aw_feature_entries::RegisterEnabledFeatureEntries(feature_list.get());
+  auto feature_list = std::make_unique<base::FeatureList>();
+  std::vector<std::string> variation_ids =
+      bv_feature_entries::RegisterEnabledFeatureEntries(feature_list.get());
 
-  // auto* metrics_client = AwMetricsServiceClient::GetInstance();
-  // // Populate FieldTrialList. Since |low_entropy_provider| is null, it will fall
-  // // back to the provider we previously gave to FieldTrialList, which is a low
-  // // entropy provider. The X-Client-Data header is not reported on WebView, so
-  // // we pass an empty object as the |low_entropy_source_value|.
-  // variations_field_trial_creator_->SetUpFieldTrials(
-  //     variation_ids,
-  //     GetSwitchDependentFeatureOverrides(
-  //         *base::CommandLine::ForCurrentProcess()),
-  //     /*low_entropy_provider=*/nullptr, std::move(feature_list),
-  //     metrics_client->metrics_state_manager(), aw_field_trials_.get(),
-  //     &ignored_safe_seed_manager, /*low_entropy_source_value=*/absl::nullopt);
+  auto* metrics_client = BvMetricsServiceClient::GetInstance();
+  variations_field_trial_creator_->SetUpFieldTrials(
+      variation_ids,
+      GetSwitchDependentFeatureOverrides(
+          *base::CommandLine::ForCurrentProcess()),
+      /*low_entropy_provider=*/nullptr, std::move(feature_list),
+      metrics_client->metrics_state_manager(), bv_field_trials_.get(),
+      &ignored_safe_seed_manager,
+      /*low_entropy_source_value=*/absl::nullopt);
 }
 
 void BvFeatureListCreator::CreateLocalState() {
@@ -221,9 +227,14 @@ void BvFeatureListCreator::CreateLocalState() {
 
 void BvFeatureListCreator::CreateFeatureListAndFieldTrials() {
   CreateLocalState();
-  // jiang
-  // BvMetricsServiceClient::GetInstance()->Initialize(local_state_.get());
+  BvMetricsServiceClient::SetInstance(std::make_unique<BvMetricsServiceClient>(
+      std::make_unique<BvMetricsServiceClientDelegate>()));
+  BvMetricsServiceClient::GetInstance()->Initialize(local_state_.get());
   SetUpFieldTrials();
+}
+
+void BvFeatureListCreator::DisableSignatureVerificationForTesting() {
+  g_signature_verification_enabled = false;
 }
 
 }  // namespace bison

@@ -2,10 +2,6 @@
 #ifndef BISON_COMMON_CRASH_REPORTER_CRASH_KEYS_H_
 #define BISON_COMMON_CRASH_REPORTER_CRASH_KEYS_H_
 
-
-
-
-
 namespace bison {
 namespace crash_keys {
 

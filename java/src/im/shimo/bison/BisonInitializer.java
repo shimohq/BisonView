@@ -74,6 +74,9 @@ public class BisonInitializer {
     }
 
     public void ensureStarted() {
+        if (mStarted) {
+            return;
+        }
         synchronized (mLock) {
             startLocked();
         }
@@ -118,10 +121,12 @@ public class BisonInitializer {
     }
 
     public BisonViewWebStorage getWebStorage() {
+        ensureStarted();
         return mWebStorage;
     }
 
     public GeolocationPermissions getGeolocationPermissions() {
+        ensureStarted();
         return mGeolocationPermissions;
     }
 

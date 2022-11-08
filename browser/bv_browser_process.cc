@@ -3,6 +3,7 @@
 
 #include "bison/browser/bv_browser_context.h"
 #include "bison/browser/lifecycle/bv_contents_lifecycle_notifier.h"
+#include "bison/browser/metrics/visibility_metrics_logger.h"
 
 #include "base/android/jni_array.h"
 #include "base/android/jni_string.h"
@@ -93,17 +94,17 @@ BvBrowserPolicyConnector* BvBrowserProcess::browser_policy_connector() {
   return browser_policy_connector_.get();
 }
 
-// VisibilityMetricsLogger* BvBrowserProcess::visibility_metrics_logger() {
-//   if (!visibility_metrics_logger_) {
-//     visibility_metrics_logger_ = std::make_unique<VisibilityMetricsLogger>();
+VisibilityMetricsLogger* BvBrowserProcess::visibility_metrics_logger() {
+  if (!visibility_metrics_logger_) {
+    visibility_metrics_logger_ = std::make_unique<VisibilityMetricsLogger>();
 
-//     visibility_metrics_logger_->SetOnVisibilityChangedCallback(
-//         base::BindRepeating([](bool visible) {
-//           content::OnBrowserVisibilityChanged(visible);
-//         }));
-//   }
-//   return visibility_metrics_logger_.get();
-// }
+    visibility_metrics_logger_->SetOnVisibilityChangedCallback(
+        base::BindRepeating([](bool visible) {
+          content::OnBrowserVisibilityChanged(visible);
+        }));
+  }
+  return visibility_metrics_logger_.get();
+}
 
 void BvBrowserProcess::CreateBrowserPolicyConnector() {
   DCHECK(!browser_policy_connector_);
