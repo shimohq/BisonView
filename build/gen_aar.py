@@ -407,11 +407,12 @@ def publish(filename , verison , is_snapshot,common_gn_args):
 
 def createGnArgs(extra_gn_args,build_type):
 
-  symbol_level =  2 if 'debug'== build_type else 0
+  symbol_level =  2 if 'debug'== build_type else -1
 
   gn_args = {
     'target_os': 'android',
     'is_debug': 'debug' == build_type,
+    'android_full_debug': 'debug' == build_type,
     'is_component_build': False,
     'rtc_include_tests': False,
     'v8_android_log_stdout' : 'debug'== build_type,

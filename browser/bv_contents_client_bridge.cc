@@ -6,6 +6,7 @@
 
 #include "bison/bison_jni_headers/BvContentsClientBridge_jni.h"
 #include "bison/common/devtools_instrumentation.h"
+#include "bison/grit/components_strings.h"
 
 #include "base/android/jni_android.h"
 #include "base/android/jni_array.h"

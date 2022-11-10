@@ -10,7 +10,6 @@ import android.os.ParcelFileDescriptor;
 import android.os.RemoteException;
 import android.os.StrictMode;
 
-
 import org.chromium.base.CommandLine;
 import org.chromium.base.ContextUtils;
 import org.chromium.base.Log;
@@ -36,31 +35,38 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import androidx.annotation.RestrictTo;
+
+@RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
 public final class BvBrowserProcess {
     private static final String TAG = "BvBrowserProcess";
 
     private static final String WEBVIEW_DIR_BASENAME = "bison";
     private static final String EXCLUSIVE_LOCK_FILE = "bison_data.lock";
 
-    // To avoid any potential synchronization issues we post all minidump-copying actions to
+    // To avoid any potential synchronization issues we post all minidump-copying
+    // actions to
     // the same sequence to be run serially.
-    private static final TaskRunner sSequencedTaskRunner =
-            PostTask.createSequencedTaskRunner(TaskTraits.BEST_EFFORT_MAY_BLOCK);
+    private static final TaskRunner sSequencedTaskRunner = PostTask
+            .createSequencedTaskRunner(TaskTraits.BEST_EFFORT_MAY_BLOCK);
 
     private static RandomAccessFile sLockFile;
     private static FileLock sExclusiveFileLock;
     private static String sWebViewPackageName;
 
     /**
-     * Loads the native library, and performs basic static construction of objects needed
-     * to run webview in this process. Does not create threads; safe to call from zygote.
+     * Loads the native library, and performs basic static construction of objects
+     * needed
+     * to run webview in this process. Does not create threads; safe to call from
+     * zygote.
      * Note: it is up to the caller to ensure this is only called once.
      *
-     * @param processDataDirSuffix The suffix to use when setting the data directory for this
+     * @param processDataDirSuffix The suffix to use when setting the data directory
+     *                             for this
      *                             process; null to use no suffix.
      */
     public static void loadLibrary(String processDataDirSuffix) {
-        Log.d(TAG, "BvBrowserProcess loadLibrary " + processDataDirSuffix);
+        LibraryLoader.getInstance().setLibraryProcessType(LibraryProcessType.PROCESS_WEBVIEW);
         if (processDataDirSuffix == null) {
             PathUtils.setPrivateDataDirectorySuffix(WEBVIEW_DIR_BASENAME, "BisonView");
         } else {
@@ -80,7 +86,8 @@ public final class BvBrowserProcess {
     }
 
     /**
-     * Configures child process launcher. This is required only if child services are used in
+     * Configures child process launcher. This is required only if child services
+     * are used in
      * WebView.
      */
     public static void configureChildProcessLauncher() {
@@ -94,30 +101,34 @@ public final class BvBrowserProcess {
     }
 
     /**
-     * Starts the chromium browser process running within this process. Creates threads
-     * and performs other per-app resource allocations; must not be called from zygote.
+     * Starts the chromium browser process running within this process. Creates
+     * threads
+     * and performs other per-app resource allocations; must not be called from
+     * zygote.
      * Note: it is up to the caller to ensure this is only called once.
      */
+    @SuppressWarnings("deprecation")
     public static void start() {
         try (ScopedSysTraceEvent e1 = ScopedSysTraceEvent.scoped("BvBrowserProcess.start")) {
             final Context appContext = ContextUtils.getApplicationContext();
             // We must post to the UI thread to cover the case that the user
             // has invoked Chromium startup by using the (thread-safe)
             // CookieManager rather than creating a WebView.
+            //noinspection deprecation
             ThreadUtils.runOnUiThreadBlocking(() -> {
-                boolean multiProcess =
-                        CommandLine.getInstance().hasSwitch(BisonSwitches.WEBVIEW_SANDBOXED_RENDERER);
+                boolean multiProcess = CommandLine.getInstance().hasSwitch(BisonSwitches.WEBVIEW_SANDBOXED_RENDERER);
                 if (multiProcess) {
                     ChildProcessLauncherHelper.warmUp(appContext, true);
                 }
                 // The policies are used by browser startup, so we need to register the policy
-                // providers before starting the browser process. This only registers java objects
+                // providers before starting the browser process. This only registers java
+                // objects
                 // and doesn't need the native library.
 
                 CombinedPolicyProvider.get().registerProvider(new BisonPolicyProvider(appContext));
 
                 try (ScopedSysTraceEvent e2 = ScopedSysTraceEvent.scoped(
-                             "BvBrowserProcess.startBrowserProcessesSync")) {
+                        "BvBrowserProcess.startBrowserProcessesSync")) {
                     BrowserStartupController.getInstance().startBrowserProcessesSync(
                             LibraryProcessType.PROCESS_WEBVIEW, !multiProcess);
                 }
@@ -125,8 +136,18 @@ public final class BvBrowserProcess {
         }
     }
 
+    public static void setWebViewPackageName(String webViewPackageName) {
+        assert sWebViewPackageName == null || sWebViewPackageName.equals(webViewPackageName);
+        sWebViewPackageName = webViewPackageName;
+    }
 
+    public static String getWebViewPackageName() {
+        if (sWebViewPackageName == null)
+            return ""; // May be null in testing.
+        return sWebViewPackageName;
+    }
 
     // Do not instantiate this class.
-    private BvBrowserProcess() {}
+    private BvBrowserProcess() {
+    }
 }

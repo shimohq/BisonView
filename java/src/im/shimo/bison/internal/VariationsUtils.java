@@ -96,6 +96,7 @@ public class VariationsUtils {
     // of an incomplete download or copy. Other IO problems are actual errors, and are logged.
     @Nullable
     public static SeedInfo readSeedFile(File inFile) {
+        Log.e(TAG, "readSeedFile Failed reading seed file \"" + inFile);
         if (!inFile.exists()) return null;
         FileInputStream in = null;
         try {

@@ -264,6 +264,7 @@ android_library("bison_java") {
     "java/src/im/shimo/bison/internal/WebMessageListenerHolder.java",
     "java/src/im/shimo/bison/internal/WebMessageListenerInfo.java",
     "java/src/im/shimo/bison/internal/WebviewErrorCode.java",
+    #"java/src/im/shimo/bison/internal/BvBrowserProcess.java",
   ]
 
   srcjar_deps = [
@@ -409,16 +410,15 @@ repack("repack_pack") {
     "$root_gen_dir/net/net_resources.pak",
     "$root_gen_dir/third_party/blink/public/resources/blink_resources.pak",
     "$root_gen_dir/third_party/blink/public/resources/inspector_overlay_resources.pak",
-
-    # "$target_gen_dir/components_resources.pak", # generate_components_resources
-    # "$target_gen_dir/mojo_bindings_resources.pak", # generate_mojo_resources
-    # "$target_gen_dir/webui_resources.pak", #generate_webui_resources
+    "$target_gen_dir/components_resources.pak",  # generate_components_resources
+    "$target_gen_dir/mojo_bindings_resources.pak",  # generate_mojo_resources
+    "$target_gen_dir/webui_generated_resources.pak",  #generate_webui_resources
   ]
 
   deps = [
-    # ":generate_components_resources",
-    # ":generate_mojo_resources",
-    # ":generate_webui_resources",
+    ":generate_components_resources",
+    ":generate_mojo_resources",
+    ":generate_webui_resources",
     "//content:content_resources",
     "//net:net_resources",
     "//third_party/blink/public:devtools_inspector_resources",
@@ -426,6 +426,107 @@ repack("repack_pack") {
   ]
 
   output = "$target_gen_dir/resources.pak"
+}
+
+grit("generate_webui_resources") {
+  enable_input_discovery_for_gn_analyze = false
+  defines =
+      [ "SHARED_INTERMEDIATE_DIR=" + rebase_path(root_gen_dir, root_build_dir) ]
+  source = "$root_gen_dir/ui/webui/resources/webui_generated_resources.grd"
+  deps = [ "//ui/webui/resources:build_grd" ]
+
+  outputs = [
+    "grit/webui_generated_resources.h",
+    "grit/webui_generated_resources_map.cc",
+    "grit/webui_generated_resources_map.h",
+    "webui_generated_resources.pak",
+  ]
+
+  # webui/resources has way too many resources. The allowlist is trim this down
+  # to a reasonable size
+  _allowlist = "ui/grit_resources_allowlist.txt"
+  inputs = [ _allowlist ]
+  grit_flags = [
+    "-w",
+    rebase_path(_allowlist, root_build_dir),
+    "-E",
+    "root_gen_dir=" + rebase_path(root_gen_dir, root_build_dir),
+    "-E",
+    "root_src_dir=" + rebase_path("//", root_build_dir),
+  ]
+}
+
+grit("generate_mojo_resources") {
+  source = "../mojo/public/js/mojo_bindings_resources.grd"
+
+  # See :generate_webui_resources for an explanation of the allowlist
+  _allowlist = "ui/grit_resources_allowlist.txt"
+  inputs = [ _allowlist ]
+  grit_flags = [
+    "-w",
+    rebase_path(_allowlist, root_build_dir),
+  ]
+  outputs = [
+    "grit/mojo_bindings_resources.h",
+    "grit/mojo_bindings_resources_map.cc",
+    "grit/mojo_bindings_resources_map.h",
+    "mojo_bindings_resources.pak",
+  ]
+  deps = [
+    "//mojo/public/js:bindings_lite",
+    "//mojo/public/js:bindings_module",
+    "//mojo/public/mojom/base:base_js",
+  ]
+}
+
+action("concatenate_resources_allowlists") {
+  script = "//mojo/public/tools/bindings/concatenate-files.py"
+  inputs = [ "//bison/ui/grit_resources_allowlist.txt" ]
+
+  outputs = [ "$target_gen_dir/grit_resources_allowlist.txt" ]
+  args =
+      rebase_path(inputs, root_build_dir) + rebase_path(outputs, root_build_dir)
+}
+
+grit("generate_components_resources") {
+  # Note that dev_ui_components_resources.grd is Chrome-only, so excluded.
+  source = "../components/resources/components_resources.grd"
+  safe_browsing_mode = 2
+  use_brotli = true
+
+  defines = [
+    "enable_basic_printing=$enable_basic_printing",
+    "safe_browsing_mode=$safe_browsing_mode",
+  ]
+
+  # See :generate_webui_resources for an explanation of the allowlist
+  _allowlist = rebase_path("$target_gen_dir/grit_resources_allowlist.txt",
+                           root_build_dir)
+  _about_credits_file = get_label_info("//components/resources",
+                                       "target_gen_dir") + "/about_credits.html"
+
+  grit_flags = [
+    "-w",
+    _allowlist,
+    "-E",
+    "about_credits_file=" + rebase_path(_about_credits_file, root_build_dir),
+  ]
+  outputs = [
+    "grit/components_resources.h",
+    "components_resources.pak",
+  ]
+
+  deps = [
+    ":concatenate_resources_allowlists",
+    "//components/resources:about_credits",
+    "//components/resources/ssl/ssl_error_assistant:make_ssl_error_assistant_protobuf",
+  ]
+
+  if (safe_browsing_mode != 0) {
+    deps += [
+      "//components/safe_browsing/content/resources:make_file_types_protobuf",
+    ]
+  }
 }
 
 repack("repack_100_percent") {
