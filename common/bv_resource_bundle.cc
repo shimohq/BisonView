@@ -36,6 +36,7 @@ void InitIcuAndResourceBundleBrowserSide() {
 }
 
 void InitResourceBundleRendererSide() {
+  VLOG(0) << "InitResourceBundleRendererSide";
   auto* global_descriptors = base::GlobalDescriptors::GetInstance();
   int pak_fd = global_descriptors->Get(kBisonViewLocalePakDescriptor);
   base::MemoryMappedFile::Region pak_region =

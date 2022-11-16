@@ -59,19 +59,25 @@ public class BisonInitializer {
     }
 
     private BisonInitializer() {
-
         final Context context = ContextUtils.getApplicationContext();
+        mAppPackageName = context.getPackageName();
+        BisonResources.resetIds(context);
+        init();
+    }
+
+    public void init(){
+
         final boolean isExternalService = false;
         final boolean bindToCaller = true;
         final boolean ignoreVisibilityForImportance = true;
-        mAppPackageName = context.getPackageName();
+
         PathUtils.setPrivateDataDirectorySuffix(PRIVATE_DATA_DIRECTORY_SUFFIX);
         ResourceBundle.setAvailablePakLocales(BvLocaleConfig.getWebViewSupportedPakLocales());
         ChildProcessCreationParams.set(mAppPackageName, "im.shimo.bison.PrivilegedProcessService",
                 mAppPackageName, "im.shimo.bison.SandboxedProcessService",
                 isExternalService, LibraryProcessType.PROCESS_WEBVIEW_CHILD,
                 bindToCaller, ignoreVisibilityForImportance);
-        BisonResources.resetIds(context);
+
     }
 
     public void ensureStarted() {

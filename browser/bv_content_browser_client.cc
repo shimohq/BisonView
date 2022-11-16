@@ -492,13 +492,13 @@ void BvContentBrowserClient::GetAdditionalMappedFilesForChildProcess(
   base::MemoryMappedFile::Region region;
   int fd = ui::GetMainAndroidPackFd(&region);
   mappings->ShareWithRegion(kBisonViewMainPakDescriptor, fd, region);
-
+  VLOG(0) << "kBisonViewMainPakDescriptor fd is: fd";
   fd = ui::GetCommonResourcesPackFd(&region);
   mappings->ShareWithRegion(kBisonView100PercentPakDescriptor, fd, region);
-
+  VLOG(0) << "kBisonView100PercentPakDescriptor fd is: fd";
   fd = ui::GetLocalePackFd(&region);
   mappings->ShareWithRegion(kBisonViewLocalePakDescriptor, fd, region);
-
+  VLOG(0) << "kBisonViewLocalePakDescriptor fd is: fd";
   int crash_signal_fd =
       crashpad::CrashHandlerHost::Get()->GetDeathSignalSocket();
   if (crash_signal_fd >= 0) {

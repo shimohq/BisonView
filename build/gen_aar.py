@@ -69,8 +69,10 @@ jar_excluded_patterns = [
 
 resource_included_patterns = [
   "*/bison/*",
-  "*/ui/android/*",
+  "*/ui/*",
   "*/content/*",
+  "*/components/*",
+  "*/media/*"
 ]
 
 NEEDED_SO_FILES = [
@@ -319,12 +321,12 @@ def BuildAar(archs, output_file, common_gn_args,
       #   print(rf)
 
       # print("=== jar ===")
-      for rf in all_jars:
-        # if "android_deps" in rf:
-        #   print(rf)
-        # if "bison" in rf:
-        #   print(rf)
-        print(rf)
+      # for rf in all_jars:
+      #   # if "android_deps" in rf:
+      #   #   print(rf)
+      #   # if "bison" in rf:
+      #   #   print(rf)
+      #   print(rf)
 
       isCommonArgsGetted = True
 
@@ -412,11 +414,9 @@ def createGnArgs(extra_gn_args,build_type):
   gn_args = {
     'target_os': 'android',
     'is_debug': 'debug' == build_type,
-    'android_full_debug': 'debug' == build_type,
     'is_component_build': False,
     'rtc_include_tests': False,
     'v8_android_log_stdout' : 'debug'== build_type,
-    # 'use_v8_context_snapshot' : True,
     'ffmpeg_branding' : 'Chrome',
     'proprietary_codecs' : True, # <audio/>
     'is_official_build': 'release' == build_type,
@@ -425,6 +425,8 @@ def createGnArgs(extra_gn_args,build_type):
     'blink_symbol_level' : symbol_level,
     'use_debug_fission' : symbol_level == 2,
     'clang_use_chrome_plugins' : 'debug' == build_type,
+    #'android_full_debug': 'debug' == build_type,
+    # 'use_v8_context_snapshot' : True,
     # 'v8_embed_script' : '//bison/docHistory.bundle.js',
   }
   return ' '.join([
