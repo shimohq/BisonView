@@ -68,59 +68,6 @@ index a1a93418b0b0d..5f1f58922d73c 100644
    /* Actions on Google Hardware, used in Google-internal code. */        \
    X("aogh")                                                              \
    X("audio")                                                             \
-diff --git a/build/android/gyp/write_build_config.py b/build/android/gyp/write_build_config.py
-index c5cee475e5018..5012176f6d808 100755
---- a/build/android/gyp/write_build_config.py
-+++ b/build/android/gyp/write_build_config.py
-@@ -942,6 +942,10 @@ def _AddJarMapping(jar_to_target, configs):
- 
- 
- def _CompareClasspathPriority(dep):
-+  if  "//bison:bison_java" == dep.get('gn_target'):
-+      print('gn_target ',dep)
-+  if dep.get('low_classpath_priority'):
-+    print('_CompareClasspathPriority',dep)
-   return 1 if dep.get('low_classpath_priority') else 0
- 
- 
-@@ -1642,13 +1646,25 @@ def main(argv):
- 
-     # Preserve order of |all_library_deps|. Move low priority libraries to the
-     # end of the classpath.
-+
-+    # if "//bison:bison_view_aar" == options.gn_target:
-+    #   print('all_library_deps_sorted_for_classpath',all_library_deps_sorted_for_classpath)
-+
-     all_library_deps_sorted_for_classpath = sorted(
-         all_library_deps[::-1], key=_CompareClasspathPriority)
-+    if "//bison:bison_view_aar" == options.gn_target:
-+      print('all_library_deps_sorted_for_classpath',all_library_deps_sorted_for_classpath)
- 
-     # The classpath used for bytecode-rewritting.
-     javac_full_classpath = OrderedSet.fromkeys(
-         c['unprocessed_jar_path']
-         for c in all_library_deps_sorted_for_classpath)
-+
-+    if "//bison:bison_view_aar" == options.gn_target:
-+      print("=======")
-+      print('javac_full_classpath',javac_full_classpath)
-+      print("=======")
-+
-     # The classpath used for error prone.
-     javac_full_interface_classpath = OrderedSet.fromkeys(
-         c['interface_jar_path'] for c in all_library_deps_sorted_for_classpath)
-diff --git a/content/browser/renderer_host/render_process_host_impl.cc b/content/browser/renderer_host/render_process_host_impl.cc
-index 43f05607cdabb..c753451c56e1a 100644
---- a/content/browser/renderer_host/render_process_host_impl.cc
-+++ b/content/browser/renderer_host/render_process_host_impl.cc
-@@ -1757,6 +1757,7 @@ bool RenderProcessHostImpl::Init() {
- 
-     auto file_data = std::make_unique<ChildProcessLauncherFileData>();
- #if BUILDFLAG(IS_POSIX)
-+    VLOG(0) << "GetV8SnapshotFilesToPreload";
-     file_data->files_to_preload = GetV8SnapshotFilesToPreload();
- #endif
- 
 diff --git a/content/browser/v8_snapshot_files.cc b/content/browser/v8_snapshot_files.cc
 index cb0af392214eb..2d0f946b359cb 100644
 --- a/content/browser/v8_snapshot_files.cc
@@ -185,16 +132,10 @@ index f21f3b5d04197..0b3c0661d49e3 100644
  
  template("content_shell_apk_tmpl") {
 diff --git a/content/shell/app/shell_main_delegate.cc b/content/shell/app/shell_main_delegate.cc
-index 86e85bdc4ea03..4c96e6d9f09e4 100644
+index 86e85bdc4ea03..95380d1d34580 100644
 --- a/content/shell/app/shell_main_delegate.cc
 +++ b/content/shell/app/shell_main_delegate.cc
-@@ -201,9 +201,13 @@ void ShellMainDelegate::PreSandboxStartup() {
- // Disable platform crash handling and initialize the crash reporter, if
- // requested.
- // TODO(crbug.com/1226159): Implement crash reporter integration for Fuchsia.
-+VLOG(0) << "BUILDFLAG(IS_FUCHSIA):" << BUILDFLAG(IS_FUCHSIA);
-+VLOG(0) << "BUILDFLAG(IS_LINUX):" << BUILDFLAG(IS_LINUX);
-+
+@@ -204,6 +204,7 @@ void ShellMainDelegate::PreSandboxStartup() {
  #if !BUILDFLAG(IS_FUCHSIA)
    if (base::CommandLine::ForCurrentProcess()->HasSwitch(
            switches::kEnableCrashReporter)) {
@@ -202,7 +143,7 @@ index 86e85bdc4ea03..4c96e6d9f09e4 100644
      std::string process_type =
          base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
              switches::kProcessType);
-@@ -212,6 +216,7 @@ void ShellMainDelegate::PreSandboxStartup() {
+@@ -212,6 +213,7 @@ void ShellMainDelegate::PreSandboxStartup() {
      if (process_type != switches::kZygoteProcess) {
        crash_reporter::InitializeCrashpad(process_type.empty(), process_type);
  #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
@@ -260,18 +201,6 @@ index cebcf5ac6f587..533da1eb51636 100644
      return;
    }
  
-diff --git a/ipc/ipc_message_start.h b/ipc/ipc_message_start.h
-index 46882f437b1a5..364e6f1a9ca39 100644
---- a/ipc/ipc_message_start.h
-+++ b/ipc/ipc_message_start.h
-@@ -23,6 +23,7 @@ enum IPCMessageStart {
-   EncryptedMediaMsgStart,
-   GinJavaBridgeMsgStart,
-   ExtensionWorkerMsgStart,
-+  BisonViewMsgStart,
-   LastIPCMsgStart  // Must come last.
- };
- 
 diff --git a/third_party/blink/public/common/BUILD.gn b/third_party/blink/public/common/BUILD.gn
 index 611c6cff317b5..93df1a17307a5 100644
 --- a/third_party/blink/public/common/BUILD.gn
@@ -297,8 +226,21 @@ index e5bc62c31d05f..1f0ed9b187dd2 100644
 +    <color name="system_neutral1_10">#f0f0f0</color>
 +    <color name="system_neutral1_900">#1b1b1b</color>
  </resources>
+diff --git a/ui/android/java/src/org/chromium/ui/base/ResourceBundle.java b/ui/android/java/src/org/chromium/ui/base/ResourceBundle.java
+index 3fc8f81b2c234..b62a4f7978635 100644
+--- a/ui/android/java/src/org/chromium/ui/base/ResourceBundle.java
++++ b/ui/android/java/src/org/chromium/ui/base/ResourceBundle.java
+@@ -79,7 +79,7 @@ public final class ResourceBundle {
+             // This locale is not supported by Chromium.
+             return null;
+         }
+-        String pathPrefix = "assets/stored-locales/";
++        String pathPrefix = "assets/bison/stored-locales/";
+         if (inBundle) {
+             if (locale.equals("en-US")) {
+                 pathPrefix = "assets/fallback-locales/";
 diff --git a/ui/base/resource/resource_bundle_android.cc b/ui/base/resource/resource_bundle_android.cc
-index 7595aeb039758..270ef3c87396e 100644
+index 7595aeb039758..74ca2210a5b4c 100644
 --- a/ui/base/resource/resource_bundle_android.cc
 +++ b/ui/base/resource/resource_bundle_android.cc
 @@ -88,7 +88,7 @@ void ResourceBundle::LoadCommonResources() {
@@ -310,3 +252,23 @@ index 7595aeb039758..270ef3c87396e 100644
                          &g_chrome_100_percent_fd, &g_chrome_100_percent_region);
    DCHECK(success);
  
+@@ -116,7 +116,7 @@ std::string ResourceBundle::LoadLocaleResources(const std::string& pref_locale,
+                                                 bool crash_on_failure) {
+   DCHECK(!locale_resources_data_.get() &&
+          !secondary_locale_resources_data_.get())
+-             << "locale.pak already loaded";
++      << "locale.pak already loaded";
+   std::string app_locale = l10n_util::GetApplicationLocale(pref_locale);
+ 
+   // Some Chromium apps have two sets of .pak files for their UI strings, i.e.:
+@@ -189,8 +189,8 @@ std::string ResourceBundle::LoadLocaleResources(const std::string& pref_locale,
+     }
+   }
+ 
+-  locale_resources_data_ = LoadDataPackFromLocalePak(
+-      g_locale_pack_fd, g_locale_pack_region);
++  locale_resources_data_ =
++      LoadDataPackFromLocalePak(g_locale_pack_fd, g_locale_pack_region);
+ 
+   if (!locale_resources_data_.get())
+     return std::string();
