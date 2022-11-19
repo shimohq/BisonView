@@ -50,10 +50,10 @@ jar_excluded_patterns = [
   "im/shimo/bison/R$*.class",
   "im/shimo/bison/R.class",
   "gen/_bison/*",
+  "gen/_third_party/*",
 
   "android/support/*",
   "androidx/*",
-  "gen/_third_party/*",
   "com/google/*",
   "javax/*",
   "kotlinx/*",
@@ -61,10 +61,13 @@ jar_excluded_patterns = [
   "org/intellij/*",
   "org/jetbrains/annotations*",
   "org/apache/*",
+
   "META-INF/*",
   "*.txt",
   "*.properties",
-  "*.version"
+  "*.version",
+  "*.stamp",
+  "*.readme",
 ]
 
 resource_included_patterns = [
@@ -311,6 +314,7 @@ def BuildAar(archs, output_file, common_gn_args,
         r_text_files = _ReadConfig(build_dir, arch, build_config ,'deps_info', 'dependency_r_txt_files')
         proguard_configs = _ReadConfig(build_dir, arch, build_config ,'deps_info', 'proguard_all_configs')
 
+      print('src_jars',src_jars)
       # print("=== R ===")
       # for rf in r_text_files:
       #     print(rf)
@@ -425,7 +429,7 @@ def createGnArgs(extra_gn_args,build_type):
     'blink_symbol_level' : symbol_level,
     'use_debug_fission' : symbol_level == 2,
     'clang_use_chrome_plugins' : 'debug' == build_type,
-    #'android_full_debug': 'debug' == build_type,
+    # 'android_full_debug': 'debug' == build_type,
     # 'use_v8_context_snapshot' : True,
     # 'v8_embed_script' : '//bison/docHistory.bundle.js',
   }

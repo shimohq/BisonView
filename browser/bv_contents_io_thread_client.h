@@ -107,15 +107,15 @@ class BvContentsIoThreadClient {
   using ShouldInterceptRequestResponseCallback = base::OnceCallback<void(
       std::unique_ptr<BvWebResourceInterceptResponse>)>;
   // jiang947 暂时先注释
-  // using OverrideRequestRequestCallback =
-  //     base::OnceCallback<void(std::unique_ptr<BvWebResourceOverrideRequest>)>;
+  using OverrideRequestRequestCallback =
+      base::OnceCallback<void(std::unique_ptr<BvWebResourceOverrideRequest>)>;
 
   void ShouldInterceptRequestAsync(
       BvWebResourceRequest request,
       ShouldInterceptRequestResponseCallback callback);
 
-  // void OverrideRequestHeaderAsync(BvWebResourceRequest request,
-  //                                 OverrideRequestRequestCallback callback);
+  void OverrideRequestHeaderAsync(BvWebResourceRequest request,
+                                  OverrideRequestRequestCallback callback);
 
   // Retrieve the AllowContentAccess setting value of this BvContents.
   // This method is called on the IO thread only.

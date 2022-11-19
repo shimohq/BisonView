@@ -117,14 +117,14 @@ import im.shimo.bison.ContentViewRenderView;
 @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
 @JNINamespace("bison")
 public class BvContents implements SmartClipProvider {
-    private static final String TAG = "BisonContents";
+    private static final String TAG = "BvContents";
     private static final boolean TRACE = true;
     private static final int NO_WARN = 0;
     private static final int WARN = 1;
     private static final String PRODUCT_VERSION = BvContentsJni.get().getProductVersion();
 
     private static final String WEB_ARCHIVE_EXTENSION = ".mht";
-    // The request code should be unique per BisonView/BisonContents object.
+    // The request code should be unique per BisonView/BvContents object.
     private static final int PROCESS_TEXT_REQUEST_CODE = 100;
 
     private static String sCurrentLocales = "";

@@ -387,6 +387,40 @@ std::unique_ptr<BvWebResourceInterceptResponse> RunShouldInterceptRequest(
   return web_resource_intercept_response;
 }
 
+std::unique_ptr<BvWebResourceOverrideRequest> NoOverrideRequest() {
+  return nullptr;
+}
+
+std::unique_ptr<BvWebResourceOverrideRequest> RunOverrideRequest(
+    BvWebResourceRequest request,
+    JavaObjectWeakGlobalRef ref) {
+  base::ScopedBlockingCall scoped_blocking_call(FROM_HERE,
+                                                base::BlockingType::MAY_BLOCK);
+
+  JNIEnv* env = AttachCurrentThread();
+  base::android::ScopedJavaLocalRef<jobject> obj = ref.get(env);
+  if (!obj) {
+    return NoOverrideRequest();
+  }
+
+  BvWebResourceRequest::BisonJavaWebResourceRequest java_web_resource_request;
+  BvWebResourceRequest::ConvertToJava(env, request, &java_web_resource_request);
+
+  devtools_instrumentation::ScopedEmbedderCallbackTask embedder_callback(
+      "overrideRequest");
+  ScopedJavaLocalRef<jobject> ret =
+      Java_BvContentsBackgroundThreadClient_overrideRequestFromNative(
+          env, obj, java_web_resource_request.jurl,
+          request.is_outermost_main_frame, request.has_user_gesture,
+          java_web_resource_request.jmethod,
+          java_web_resource_request.jheader_names,
+          java_web_resource_request.jheader_values);
+
+  DCHECK(ret) << "overrideRequestFromNative() should return non-null value";
+
+  return std::make_unique<BvWebResourceOverrideRequest>(ret);
+}
+
 }  // namespace
 
 void BvContentsIoThreadClient::ShouldInterceptRequestAsync(
@@ -409,6 +443,27 @@ void BvContentsIoThreadClient::ShouldInterceptRequestAsync(
   base::PostTaskAndReplyWithResult(sequenced_task_runner_.get(), FROM_HERE,
                                    std::move(get_response),
                                    std::move(callback));
+}
+
+void BvContentsIoThreadClient::OverrideRequestHeaderAsync(
+    BvWebResourceRequest request,
+    OverrideRequestRequestCallback callback) {
+  DCHECK_CURRENTLY_ON(BrowserThread::IO);
+  base::OnceCallback<std::unique_ptr<BvWebResourceOverrideRequest>()>
+      get_request = base::BindOnce(&NoOverrideRequest);
+  JNIEnv* env = AttachCurrentThread();
+  if (!bg_thread_client_object_) {
+    bg_thread_client_object_.Reset(
+        Java_BvContentsIoThreadClient_getBackgroundThreadClient(env,
+                                                                java_object_));
+  }
+  if (bg_thread_client_object_) {
+    get_request = base::BindOnce(
+        &RunOverrideRequest, std::move(request),
+        JavaObjectWeakGlobalRef(env, bg_thread_client_object_.obj()));
+  }
+  base::PostTaskAndReplyWithResult(sequenced_task_runner_.get(), FROM_HERE,
+                                   std::move(get_request), std::move(callback));
 }
 
 bool BvContentsIoThreadClient::ShouldBlockContentUrls() const {
@@ -459,26 +514,4 @@ BvContentsIoThreadClient::GetRequestedWithHeaderMode() const {
       Java_BvContentsIoThreadClient_getRequestedWithHeaderMode(env,
                                                                java_object_));
 }
-
-// void BvContentsIoThreadClient::OverrideRequestHeaderAsync(
-//     BvWebResourceRequest request,
-//     OverrideRequestRequestCallback callback) {
-  // DCHECK_CURRENTLY_ON(BrowserThread::IO);
-  // base::OnceCallback<std::unique_ptr<BvWebResourceOverrideRequest>()>
-  //     get_request = base::BindOnce(&NoOverrideRequest);
-  // JNIEnv* env = AttachCurrentThread();
-  // if (bg_thread_client_object_ && !java_object_) {
-  //   bg_thread_client_object_.Reset(
-  //       Java_BvContentsIoThreadClient_getBackgroundThreadClient(env,
-  //                                                               java_object_));
-  // }
-  // if (!bg_thread_client_object_) {
-  //   get_request = base::BindOnce(
-  //       &RunOverrideRequest, std::move(request),
-  //       JavaObjectWeakGlobalRef(env, bg_thread_client_object_.obj()));
-  // }
-  // sequenced_task_runner_.get()->PostTaskAndReplyWithResult(
-  //     FROM_HERE, std::move(get_request), std::move(callback));
-// }
-
 }  // namespace bison

@@ -51,29 +51,34 @@ if (!is_component_build) {
 
     resource_included_patterns = [
       "*/bison/*",
-      "*/ui/android/*",
+      "*/ui/*",
       "*/content/*",
+      "*/components/*",
+      "*/media/*",
     ]
 
     jar_excluded_patterns = [
       "im/shimo/bison/R\$*.class",
       "im/shimo/bison/R.class",
-
       "gen/_bison/*",
       "gen/_third_party/*",
 
-      "javax/*",
-      "android/*",
+      "android/support/*",
       "androidx/*",
-
-      "com/google/android/gms/*",
-      "com/google/firebase/*",
+      "com/google/*",
+      "javax/*",
+      "kotlinx/*",
+      "kotlin/*",
+      "org/intellij/*",
+      "org/jetbrains/annotations*",
+      "org/apache/*",
 
       "META-INF/*",
+      "*.txt",
+      "*.properties",
+      "*.version",
       "*.stamp",
       "*.readme",
-      "*.properties",
-      "*.txt",
     ]
   }
 }
@@ -264,6 +269,7 @@ android_library("bison_java") {
     "java/src/im/shimo/bison/internal/WebMessageListenerHolder.java",
     "java/src/im/shimo/bison/internal/WebMessageListenerInfo.java",
     "java/src/im/shimo/bison/internal/WebviewErrorCode.java",
+
     #"java/src/im/shimo/bison/internal/BvBrowserProcess.java",
   ]
 
@@ -398,7 +404,7 @@ android_assets("locale_pak_assets") {
   renaming_destinations = []
   foreach(_locale, platform_pak_locales) {
     renaming_sources += [ "$root_out_dir/bison/locales/$_locale.pak" ]
-    renaming_destinations += [ "stored-locales/$_locale.pak" ]
+    renaming_destinations += [ "bison/stored-locales/$_locale.pak" ]
   }
   treat_as_locale_paks = true
   deps = [ ":repack_locales" ]

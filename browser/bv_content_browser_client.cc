@@ -1,7 +1,5 @@
 #include "bison/browser/bv_content_browser_client.h"
 
-#include <stddef.h>
-
 #include <memory>
 #include <string>
 #include <utility>
@@ -24,6 +22,7 @@
 #include "bison/browser/network_service/bv_proxying_restricted_cookie_manager.h"
 #include "bison/browser/network_service/bv_proxying_url_loader_factory.h"
 #include "bison/browser/network_service/bv_url_loader_throttle.h"
+#include "bison/browser/tracing/bv_tracing_delegate.h"
 #include "bison/common/bv_descriptors.h"
 #include "bison/common/bv_features.h"
 #include "bison/common/mojom/render_message_filter.mojom.h"
@@ -164,7 +163,7 @@ std::string GetProduct() {
 }
 
 std::string GetUserAgent() {
-  std::string product = "Bison/1.1.3 " + GetProduct();
+  std::string product = "Version/4.0 Bison/1.2.0 " + GetProduct();
   if (base::CommandLine::ForCurrentProcess()->HasSwitch(
           switches::kUseMobileUserAgent)) {
     product += " Mobile";
@@ -321,8 +320,6 @@ bool BvContentBrowserClient::ForceSniffingFileUrlsForHtml() {
 void BvContentBrowserClient::AppendExtraCommandLineSwitches(
     base::CommandLine* command_line,
     int child_process_id) {
-  //jiang947 暂时注释
-
   if (!command_line->HasSwitch(switches::kSingleProcess)) {
     // The only kind of a child process WebView can have is renderer or utility.
     std::string process_type =
@@ -481,8 +478,7 @@ bool BvContentBrowserClient::IsPepperVpnProviderAPIAllowed(
 }
 
 content::TracingDelegate* BvContentBrowserClient::GetTracingDelegate() {
-  //jiang
-  return nullptr;
+  return new BvTracingDelegate();
 }
 
 void BvContentBrowserClient::GetAdditionalMappedFilesForChildProcess(
@@ -492,13 +488,10 @@ void BvContentBrowserClient::GetAdditionalMappedFilesForChildProcess(
   base::MemoryMappedFile::Region region;
   int fd = ui::GetMainAndroidPackFd(&region);
   mappings->ShareWithRegion(kBisonViewMainPakDescriptor, fd, region);
-  VLOG(0) << "kBisonViewMainPakDescriptor fd is: fd";
   fd = ui::GetCommonResourcesPackFd(&region);
   mappings->ShareWithRegion(kBisonView100PercentPakDescriptor, fd, region);
-  VLOG(0) << "kBisonView100PercentPakDescriptor fd is: fd";
   fd = ui::GetLocalePackFd(&region);
   mappings->ShareWithRegion(kBisonViewLocalePakDescriptor, fd, region);
-  VLOG(0) << "kBisonViewLocalePakDescriptor fd is: fd";
   int crash_signal_fd =
       crashpad::CrashHandlerHost::Get()->GetDeathSignalSocket();
   if (crash_signal_fd >= 0) {
@@ -603,7 +596,6 @@ static bool IsEnterpriseAuthAppLinkUrl(const GURL& url) {
 
   return false;
 }
-
 
 bool BvContentBrowserClient::ShouldOverrideUrlLoading(
     int frame_tree_node_id,

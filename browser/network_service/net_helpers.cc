@@ -1,8 +1,9 @@
 #include "bison/browser/network_service/net_helpers.h"
 
-#include "base/logging.h"
 #include "bison/browser/bv_contents_io_thread_client.h"
 #include "bison/common/url_constants.h"
+
+#include "base/check_op.h"
 #include "net/base/load_flags.h"
 #include "url/gurl.h"
 
@@ -80,7 +81,7 @@ bool ShouldBlockURL(const GURL& url, BvContentsIoThreadClient* client) {
 }
 
 int GetHttpCacheSize() {
-  // jiang 暂时定20M
+  // jiang947 暂时定20M
   return 20 * 1024 * 1024;  // 20M
 }
 

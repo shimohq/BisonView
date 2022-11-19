@@ -35,6 +35,7 @@
 #include "mojo/public/cpp/bindings/receiver.h"
 #include "net/base/load_flags.h"
 #include "net/http/http_util.h"
+#include "net/url_request/referrer_policy.h"
 #include "services/network/public/cpp/resource_request.h"
 #include "services/network/public/mojom/early_hints.mojom.h"
 #include "services/network/public/mojom/fetch_api.mojom.h"
@@ -106,6 +107,8 @@ class InterceptedRequest : public network::mojom::URLLoader,
   void ContinueAfterInterceptWithOverride(
       std::unique_ptr<embedder_support::WebResourceResponse> response);
 
+  void OverrideRequestHeader(
+      std::unique_ptr<BvWebResourceOverrideRequest> override_request);
   void InterceptResponseReceived(
       std::unique_ptr<BvWebResourceInterceptResponse> intercept_response);
 
@@ -327,9 +330,9 @@ void InterceptedRequest::Restart() {
     // before network request is intercepted (i.e. if that's possible and
     // whether it can result in any issues).
     // jiang OverrideRequestHeaderAsync
-    io_thread_client->ShouldInterceptRequestAsync(
+    io_thread_client->OverrideRequestHeaderAsync(
         BvWebResourceRequest(request_),
-        base::BindOnce(&InterceptedRequest::InterceptResponseReceived,
+        base::BindOnce(&InterceptedRequest::OverrideRequestHeader,
                        weak_factory_.GetWeakPtr()));
   }
 }
@@ -346,6 +349,42 @@ bool InterceptedRequest::ShouldNotInterceptRequest() {
   return !input_stream_previously_failed_ &&
          (request_.url.SchemeIs(url::kContentScheme) ||
           bison::IsAndroidSpecialFileUrl(request_.url));
+}
+
+void InterceptedRequest::OverrideRequestHeader(
+    std::unique_ptr<BvWebResourceOverrideRequest> override_request) {
+  JNIEnv* env = base::android::AttachCurrentThread();
+  if (override_request && override_request->RaisedException(env)) {
+    SendErrorAndCompleteImmediately(net::ERR_UNEXPECTED);
+    return;
+  }
+
+  if (override_request && override_request->HasRequest(env)) {
+    std::string url = override_request->GetRequestUrl(env);
+
+    override_request->GetRequestHeaders(env, &request_.headers);
+    net::HttpRequestHeaders::Iterator headers_iterator(request_.headers);
+    while (headers_iterator.GetNext()) {
+      if (base::EqualsCaseInsensitiveASCII(headers_iterator.name(),
+                                           net::HttpRequestHeaders::kReferer)) {
+        request_.referrer = GURL(headers_iterator.value());
+        request_.referrer_policy = net::ReferrerPolicy::NEVER_CLEAR;
+        break;
+      }
+    }
+  }
+
+  std::unique_ptr<BvContentsIoThreadClient> io_thread_client =
+      GetIoThreadClient();
+  if (io_thread_client) {
+    // TODO: verify the case when WebContents::RenderFrameDeleted is called
+    // before network request is intercepted (i.e. if that's possible and
+    // whether it can result in any issues).
+    io_thread_client->ShouldInterceptRequestAsync(
+        BvWebResourceRequest(request_),
+        base::BindOnce(&InterceptedRequest::InterceptResponseReceived,
+                       weak_factory_.GetWeakPtr()));
+  }
 }
 
 void InterceptedRequest::InterceptResponseReceived(
@@ -383,7 +422,7 @@ void InterceptedRequest::InterceptResponseReceived(
     }
   }
   base::UmaHistogramEnumeration(
-      "Android.WebView.RequestedWithHeader.CommittedHeaderMode",
+      "BisonView.RequestedWithHeader.CommittedHeaderMode",
       committed_mode);
 
   JNIEnv* env = base::android::AttachCurrentThread();
@@ -852,42 +891,5 @@ void BvProxyingURLLoaderFactory::Clone(
   DCHECK_CURRENTLY_ON(content::BrowserThread::IO);
   proxy_receivers_.Add(this, std::move(loader_receiver));
 }
-
-// void InterceptedRequest::OverrideRequestHeader(
-//     std::unique_ptr<BvWebResourceOverrideRequest> override_request) {
-  // JNIEnv* env = base::android::AttachCurrentThread();
-  // if (override_request && override_request->RaisedException(env)) {
-  //   SendErrorAndCompleteImmediately(net::ERR_UNEXPECTED);
-  //   return;
-  // }
-
-  // if (override_request && override_request->HasRequest(env)) {
-  //   std::string url = override_request->GetRequestUrl(env);
-
-  //   override_request->GetRequestHeaders(env, &request_.headers);
-  //   net::HttpRequestHeaders::Iterator headers_iterator(request_.headers);
-  //   while (headers_iterator.GetNext()) {
-  //     if (base::EqualsCaseInsensitiveASCII(headers_iterator.name(),
-  //                                          net::HttpRequestHeaders::kReferer))
-  //                                          {
-  //       request_.referrer = GURL(headers_iterator.value());
-  //       request_.referrer_policy = net::URLRequest::NEVER_CLEAR_REFERRER;
-  //       break;
-  //     }
-  //   }
-  // }
-
-  // std::unique_ptr<BvContentsIoThreadClient> io_thread_client =
-  //     GetIoThreadClient();
-  // if (io_thread_client) {
-  //   // TODO: verify the case when WebContents::RenderFrameDeleted is called
-  //   // before network request is intercepted (i.e. if that's possible and
-  //   // whether it can result in any issues).
-  //   io_thread_client->ShouldInterceptRequestAsync(
-  //       BvWebResourceRequest(request_),
-  //       base::BindOnce(&InterceptedRequest::InterceptResponseReceived,
-  //                      weak_factory_.GetWeakPtr()));
-  // }
-// }
 
 }  // namespace bison

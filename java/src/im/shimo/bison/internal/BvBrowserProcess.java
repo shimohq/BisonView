@@ -94,10 +94,10 @@ public final class BvBrowserProcess {
         final boolean isExternalService = true;
         final boolean bindToCaller = true;
         final boolean ignoreVisibilityForImportance = true;
-        ChildProcessCreationParams.set(getWebViewPackageName(), isExternalService,
-                LibraryProcessType.PROCESS_WEBVIEW_CHILD, bindToCaller,
-                ignoreVisibilityForImportance, null /* privilegedServicesName */,
-                null /* sandboxedServicesName */);
+        ChildProcessCreationParams.set(mAppPackageName, "im.shimo.bison.PrivilegedProcessService",
+                mAppPackageName, "im.shimo.bison.SandboxedProcessService",
+                isExternalService, LibraryProcessType.PROCESS_WEBVIEW_CHILD,
+                bindToCaller, ignoreVisibilityForImportance);
     }
 
     /**

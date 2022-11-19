@@ -42,8 +42,7 @@ abstract class BvContentsBackgroundThreadClient {
         }
     }
 
-    // jiang
-    //@CalledByNative
+    @CalledByNative
     private BvWebResourceOverrideRequest overrideRequestFromNative(String url,
             boolean isMainFrame, boolean hasUserGesture, String method, String[] requestHeaderNames,
             String[] requestHeaderValues) {

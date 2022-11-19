@@ -30,13 +30,11 @@ void InitIcuAndResourceBundleBrowserSide() {
 
   base::FilePath pak_file_path;
   base::PathService::Get(ui::DIR_RESOURCE_PAKS_ANDROID, &pak_file_path);
-  VLOG(0) << "pak_file_path:" << pak_file_path;
   pak_file_path = pak_file_path.AppendASCII("resources.pak");
   ui::LoadMainAndroidPackFile("assets/bison/resources.pak", pak_file_path);
 }
 
 void InitResourceBundleRendererSide() {
-  VLOG(0) << "InitResourceBundleRendererSide";
   auto* global_descriptors = base::GlobalDescriptors::GetInstance();
   int pak_fd = global_descriptors->Get(kBisonViewLocalePakDescriptor);
   base::MemoryMappedFile::Region pak_region =

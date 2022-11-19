@@ -705,7 +705,6 @@ public class BvSettings {
     @CalledByNative
     private String getUserAgentLocked() {
         assert Thread.holdsLock(mSettingsLock);
-        Log.d(LOGTAG, "getUserAgentLocked:" + mUserAgent);
         return mUserAgent;
     }
 
