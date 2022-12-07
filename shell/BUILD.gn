@@ -70,6 +70,9 @@ android_assets("bison_shell_assets") {
     "assets/visual_state_on_page_commit_visible_test.html",
     "assets/visual_state_waits_for_js_detached_test.html",
     "assets/visual_state_waits_for_js_test.html",
+    "assets/dark_theme/index.html",
+    "assets/dark_theme/main.js",
+    "assets/dark_theme/style.css",
   ]
 
   deps = [

@@ -105,6 +105,304 @@ index cb0af392214eb..2d0f946b359cb 100644
  #else
    return {};
  #endif
+diff --git a/content/public/android/java/src/org/chromium/content/browser/accessibility/WebContentsAccessibilityImpl.java b/content/public/android/java/src/org/chromium/content/browser/accessibility/WebContentsAccessibilityImpl.java
+index fb07ff2c2196a..43bae4ffaa8fa 100644
+--- a/content/public/android/java/src/org/chromium/content/browser/accessibility/WebContentsAccessibilityImpl.java
++++ b/content/public/android/java/src/org/chromium/content/browser/accessibility/WebContentsAccessibilityImpl.java
+@@ -107,6 +107,7 @@ import java.util.List;
+ import java.util.Locale;
+ import java.util.Map;
+ import java.util.Set;
++import java.lang.ref.WeakReference;
+ 
+ /**
+  * Implementation of {@link WebContentsAccessibility} interface.
+@@ -209,14 +210,14 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
+ 
+     private final AccessibilityDelegate mDelegate;
+     protected AccessibilityManager mAccessibilityManager;
+-    protected final Context mContext;
++    protected final WeakReference<Context> mContext;
+     private String mProductVersion;
+     protected long mNativeObj;
+     private Rect mAccessibilityFocusRect;
+     private boolean mIsHovering;
+     private int mLastHoverId = View.NO_ID;
+     private int mCurrentRootId;
+-    protected View mView;
++    protected  WeakReference<View> mView;
+     private boolean mUserHasTouchExplored;
+     private boolean mPendingScrollToMakeNodeVisible;
+     private boolean mNotifyFrameInfoInitializedCalled;
+@@ -322,11 +323,11 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
+ 
+     protected WebContentsAccessibilityImpl(AccessibilityDelegate delegate) {
+         mDelegate = delegate;
+-        mView = mDelegate.getContainerView();
+-        mContext = mView.getContext();
++        mView = new WeakReference(mDelegate.getContainerView());
++        mContext = new WeakReference(mView.get().getContext());
+         mProductVersion = mDelegate.getProductVersion();
+         mAccessibilityManager =
+-                (AccessibilityManager) mContext.getSystemService(Context.ACCESSIBILITY_SERVICE);
++                (AccessibilityManager) mContext.get().getSystemService(Context.ACCESSIBILITY_SERVICE);
+         if (mDelegate.getWebContents() != null) {
+             mCaptioningController = new CaptioningController(mDelegate.getWebContents());
+             WindowEventObserverManager.from(mDelegate.getWebContents()).addObserver(this);
+@@ -357,12 +358,17 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
+                 new AccessibilityEventDispatcher(new AccessibilityEventDispatcher.Client() {
+                     @Override
+                     public void postRunnable(Runnable toPost, long delayInMilliseconds) {
+-                        mView.postDelayed(toPost, delayInMilliseconds);
++                        if (mView.get()!=null){
++                            mView.get().postDelayed(toPost, delayInMilliseconds);
++                        }
++
+                     }
+ 
+                     @Override
+                     public void removeRunnable(Runnable toRemove) {
+-                        mView.removeCallbacks(toRemove);
++                        if (mView.get()!=null){
++                            mView.get().removeCallbacks(toRemove);
++                        }
+                     }
+ 
+                     @Override
+@@ -400,7 +406,7 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
+         // actually requested.
+ 
+         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+-            AutofillManager autofillManager = mContext.getSystemService(AutofillManager.class);
++            AutofillManager autofillManager = mContext.get().getSystemService(AutofillManager.class);
+             if (autofillManager != null && autofillManager.isEnabled()) {
+                 // Native accessibility is usually initialized when getAccessibilityNodeProvider is
+                 // called, but the Autofill compatibility bridge only calls that method after it has
+@@ -433,7 +439,7 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
+         };
+ 
+         // Register a broadcast receiver for locale change.
+-        if (mView.isAttachedToWindow()) registerLocaleChangeReceiver();
++        if (mView.get()!=null && mView.get().isAttachedToWindow()) registerLocaleChangeReceiver();
+ 
+         // Define an initial set of relevant events if OnDemand feature is enabled.
+         if (ContentFeatureList.isEnabled(ContentFeatureList.ON_DEMAND_ACCESSIBILITY_EVENTS)) {
+@@ -444,7 +450,9 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
+                         convertMaskToEventTypes(serviceEventMask));
+                 mEventDispatcher.setOnDemandEnabled(true);
+             };
+-            mView.post(serviceMaskRunnable);
++            if (mView.get()!=null){
++                mView.get().post(serviceMaskRunnable);
++            }
+         }
+ 
+         // Set whether image descriptions should be enabled for this instance. We do not want
+@@ -806,12 +814,13 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
+ 
+         } else {
+             // If we have no copy of this node in our cache, build a new one from scratch.
+-            final AccessibilityNodeInfoCompat info = AccessibilityNodeInfoCompat.obtain(mView);
+-            info.setPackageName(mContext.getPackageName());
+-            info.setSource(mView, virtualViewId);
++            if (mContext.get() ==null || mView.get() ==null) return null;
++            final AccessibilityNodeInfoCompat info = AccessibilityNodeInfoCompat.obtain(mView.get());
++            info.setPackageName(mContext.get().getPackageName());
++            info.setSource(mView.get(), virtualViewId);
+ 
+             if (virtualViewId == rootId) {
+-                info.setParent(mView);
++                info.setParent(mView.get());
+             }
+ 
+             if (WebContentsAccessibilityImplJni.get().populateAccessibilityNodeInfo(
+@@ -999,11 +1008,11 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
+             }
+             return true;
+         } else if (action == ACTION_CLICK.getId()) {
+-            if (!mView.hasFocus()) mView.requestFocus();
++            if (mView.get()!=null && !mView.get().hasFocus()) mView.get().requestFocus();
+             performClick(virtualViewId);
+             return true;
+         } else if (action == ACTION_FOCUS.getId()) {
+-            if (!mView.hasFocus()) mView.requestFocus();
++            if (mView.get() !=null && !mView.get().hasFocus()) mView.get().requestFocus();
+             WebContentsAccessibilityImplJni.get().focus(
+                     mNativeObj, WebContentsAccessibilityImpl.this, virtualViewId);
+             return true;
+@@ -1527,8 +1536,8 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
+     private void sendAccessibilityEvent(int virtualViewId, int eventType) {
+         // The container view is indicated by a virtualViewId of NO_ID; post these events directly
+         // since there's no web-specific information to attach.
+-        if (virtualViewId == View.NO_ID) {
+-            mView.sendAccessibilityEvent(eventType);
++        if (virtualViewId == View.NO_ID && mView.get()!=null) {
++            mView.get().sendAccessibilityEvent(eventType);
+             return;
+         }
+ 
+@@ -1552,10 +1561,10 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
+                         mNativeObj, WebContentsAccessibilityImpl.this, virtualViewId)) {
+             return null;
+         }
+-
++        if (mContext.get() ==null || mView.get() ==null) return null;
+         final AccessibilityEvent event = AccessibilityEvent.obtain(eventType);
+-        event.setPackageName(mContext.getPackageName());
+-        event.setSource(mView, virtualViewId);
++        event.setPackageName(mContext.get().getPackageName());
++        event.setSource(mView.get(), virtualViewId);
+         if (eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
+             event.setContentChangeTypes(AccessibilityEvent.CONTENT_CHANGE_TYPE_SUBTREE);
+         }
+@@ -1576,11 +1585,12 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
+     private AccessibilityNodeInfoCompat createNodeForHost(int rootId) {
+         // Since we don't want the parent to be focusable, but we can't remove
+         // actions from a node, copy over the necessary fields.
+-        final AccessibilityNodeInfoCompat result = AccessibilityNodeInfoCompat.obtain(mView);
++        if (mView.get()==null) return null;
++        final AccessibilityNodeInfoCompat result = AccessibilityNodeInfoCompat.obtain(mView.get());
+         // mView requires an |AccessibilityNodeInfo| object here, so we keep the |source| as the
+         // non-Compat type rather than unwrapping an |AccessibilityNodeInfoCompat| object.
+-        final AccessibilityNodeInfo source = AccessibilityNodeInfo.obtain(mView);
+-        mView.onInitializeAccessibilityNodeInfo(source);
++        final AccessibilityNodeInfo source = AccessibilityNodeInfo.obtain(mView.get());
++        mView.get().onInitializeAccessibilityNodeInfo(source);
+ 
+         // Copy over parent and screen bounds.
+         Rect rect = new Rect();
+@@ -1590,7 +1600,7 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
+         result.setBoundsInScreen(rect);
+ 
+         // Set up the parent view, if applicable.
+-        final ViewParent parent = mView.getParentForAccessibility();
++        final ViewParent parent = mView.get().getParentForAccessibility();
+         if (parent instanceof View) {
+             result.setParent((View) parent);
+         }
+@@ -1603,7 +1613,7 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
+ 
+         // Add the Chrome root node.
+         if (isFrameInfoInitialized()) {
+-            result.addChild(mView, rootId);
++            result.addChild(mView.get(), rootId);
+         }
+ 
+         return result;
+@@ -1728,13 +1738,13 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
+     @CalledByNative
+     @SuppressLint("WrongConstant")
+     protected void handleDialogModalOpened(int virtualViewId) {
+-        if (isAccessibilityEnabled()) {
++        if (isAccessibilityEnabled()&& mView.get()!=null) {
+             AccessibilityEvent event =
+                     AccessibilityEvent.obtain(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED);
+             if (event == null) return;
+ 
+             event.setContentChangeTypes(CONTENT_CHANGE_TYPE_PANE_APPEARED);
+-            event.setSource(mView, virtualViewId);
++            event.setSource(mView.get(), virtualViewId);
+             requestSendAccessibilityEvent(event);
+         }
+     }
+@@ -1754,14 +1764,18 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
+ 
+     @CalledByNative
+     private void setAccessibilityNodeInfoParent(AccessibilityNodeInfoCompat node, int parentId) {
+-        node.setParent(mView, parentId);
++        if (mView.get()!=null){
++            node.setParent(mView.get(), parentId);
++        }
+     }
+ 
+     @CalledByNative
+     private void addAccessibilityNodeInfoChildren(
+             AccessibilityNodeInfoCompat node, int[] childIds) {
+-        for (int childId : childIds) {
+-            node.addChild(mView, childId);
++        if (mView.get()!=null){
++            for (int childId : childIds) {
++                node.addChild(mView.get(), childId);
++            }
+         }
+     }
+ 
+@@ -1991,6 +2005,7 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
+     protected CharSequence computeText(String text, boolean annotateAsLink, String language,
+             int[] suggestionStarts, int[] suggestionEnds, String[] suggestions) {
+         CharSequence charSequence = text;
++        if (mContext.get() == null) return charSequence;
+         if (annotateAsLink) {
+             SpannableString spannable = new SpannableString(text);
+             spannable.setSpan(new URLSpan(""), 0, spannable.length(), 0);
+@@ -2035,7 +2050,7 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
+                 suggestionArray[0] = suggestions[i];
+                 int flags = SuggestionSpan.FLAG_MISSPELLED;
+                 SuggestionSpan suggestionSpan =
+-                        new SuggestionSpan(mContext, suggestionArray, flags);
++                        new SuggestionSpan(mContext.get(), suggestionArray, flags);
+                 spannable.setSpan(suggestionSpan, start, end, 0);
+             }
+             charSequence = spannable;
+@@ -2060,7 +2075,9 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
+ 
+         // Finally offset by the location of the view within the screen.
+         final int[] viewLocation = new int[2];
+-        mView.getLocationOnScreen(viewLocation);
++        if (mView.get()!=null){
++            mView.get().getLocationOnScreen(viewLocation);
++        }
+         rect.offset(viewLocation[0], viewLocation[1]);
+ 
+         // Clip to the viewport bounds, and add unclipped values to the Bundle.
+@@ -2080,11 +2097,11 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
+         // If there is no parent, then the event can be ignored. In general the parent is only
+         // transiently null (such as during teardown, switching tabs...). Also ensure that
+         // accessibility is still enabled, throttling may result in events sent late.
+-        if (mView.getParent() != null && isAccessibilityEnabled()) {
++        if (mView.get()!=null && mView.get().getParent() != null && isAccessibilityEnabled()) {
+             mTotalDispatchedEvents++;
+             if (mTracker != null) mTracker.addEvent(event);
+             try {
+-                mView.getParent().requestSendAccessibilityEvent(mView, event);
++                mView.get().getParent().requestSendAccessibilityEvent(mView.get(), event);
+             } catch (IllegalStateException ignored) {
+                 // During boot-up of some content shell tests, events will erroneously be sent even
+                 // though the AccessibilityManager is not enabled, resulting in a crash.
+@@ -2306,8 +2323,9 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
+         // there is no need to check that Autofill is enabled here.
+         //
+         // https://cs.android.com/android/platform/superproject/+/HEAD:frameworks/base/core/java/android/view/autofill/AutofillManager.java;l=2817;drc=dd7d52f9632a0dbb8b14b69520c5ea31e0b3b4a2
++        if (mContext.get() ==null) return true;
+         String activeServices = Settings.Secure.getString(
+-                mContext.getContentResolver(), Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
++                mContext.get().getContentResolver(), Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
+         if (activeServices != null && !activeServices.isEmpty()) {
+             return false;
+         }
+@@ -2344,7 +2362,8 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
+             return true;
+         }
+ 
+-        ContentResolver contentResolver = mContext.getContentResolver();
++        if (mContext.get() ==null) return false;
++        ContentResolver contentResolver = mContext.get().getContentResolver();
+ 
+         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+             return (Settings.System.getInt(contentResolver, Settings.System.TEXT_SHOW_PASSWORD, 1)
+diff --git a/content/public/android/java/src/org/chromium/content_public/browser/WebContentsAccessibility.java b/content/public/android/java/src/org/chromium/content_public/browser/WebContentsAccessibility.java
+index ca83221448d51..12e82db206643 100644
+--- a/content/public/android/java/src/org/chromium/content_public/browser/WebContentsAccessibility.java
++++ b/content/public/android/java/src/org/chromium/content_public/browser/WebContentsAccessibility.java
+@@ -13,6 +13,8 @@ import android.view.accessibility.AccessibilityNodeProvider;
+ import androidx.annotation.RequiresApi;
+ import androidx.annotation.VisibleForTesting;
+ 
++
++
+ import org.chromium.content.browser.accessibility.WebContentsAccessibilityImpl;
+ 
+ /**
 diff --git a/content/shell/android/BUILD.gn b/content/shell/android/BUILD.gn
 index f21f3b5d04197..0b3c0661d49e3 100644
 --- a/content/shell/android/BUILD.gn
@@ -213,6 +511,19 @@ index 611c6cff317b5..93df1a17307a5 100644
      "//chrome/*",
      "//chromecast/*",
      "//components/*",
+diff --git a/third_party/blink/renderer/bindings/core/v8/v8_code_cache.cc b/third_party/blink/renderer/bindings/core/v8/v8_code_cache.cc
+index 73a2053127016..ccc2958cf72f4 100644
+--- a/third_party/blink/renderer/bindings/core/v8/v8_code_cache.cc
++++ b/third_party/blink/renderer/bindings/core/v8/v8_code_cache.cc
+@@ -47,7 +47,7 @@ uint32_t CacheTag(CacheTagKind kind, const String& encoding) {
+ 
+ // Check previously stored timestamp.
+ bool IsResourceHotForCaching(const SingleCachedMetadataHandler* cache_handler) {
+-  static constexpr base::TimeDelta kHotHours = base::Hours(72);
++  static constexpr base::TimeDelta kHotHours = base::Hours(7*24);
+   scoped_refptr<CachedMetadata> cached_metadata =
+       cache_handler->GetCachedMetadata(
+           V8CodeCache::TagForTimeStamp(cache_handler));
 diff --git a/ui/android/java/res/values-v31/colors.xml b/ui/android/java/res/values-v31/colors.xml
 index e5bc62c31d05f..1f0ed9b187dd2 100644
 --- a/ui/android/java/res/values-v31/colors.xml

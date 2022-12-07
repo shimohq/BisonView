@@ -57,6 +57,7 @@ public class BisonShellMainActivity extends Activity {
         if (commandLineParams != null) {
             CommandLine.getInstance().appendSwitchesAndArguments(commandLineParams);
         }
+
         // TraceEvent.setATraceEnabled(true);
         DeviceUtils.addDeviceSpecificUserAgentSwitch();
         setContentView(R.layout.main_activity);
@@ -71,6 +72,7 @@ public class BisonShellMainActivity extends Activity {
         Log.i(TAG, "startup url :" + startupUrl);
         mBisonView.loadUrl(startupUrl);
         mUrlTextView.setText(startupUrl);
+        mBisonView.getSettings().setForceDark(BisonViewSettings.FORCE_DARK_ON);
     }
 
     private void initializeUrlField() {
@@ -195,15 +197,13 @@ public class BisonShellMainActivity extends Activity {
     }
 
     private void setKeyboardVisibilityForUrl(boolean visible) {
-        InputMethodManager imm =
-                (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+        InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
         if (visible) {
             imm.showSoftInput(mUrlTextView, InputMethodManager.SHOW_IMPLICIT);
         } else {
             imm.hideSoftInputFromWindow(mUrlTextView.getWindowToken(), 0);
         }
     }
-
 
     private static String getUrlFromIntent(Intent intent) {
         return intent != null ? intent.getDataString() : null;

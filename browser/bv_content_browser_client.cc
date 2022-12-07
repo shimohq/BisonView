@@ -163,7 +163,7 @@ std::string GetProduct() {
 }
 
 std::string GetUserAgent() {
-  std::string product = "Version/4.0 Bison/1.2.0 " + GetProduct();
+  std::string product = "Version/4.0 Bison/1.2.1 " + GetProduct();
   if (base::CommandLine::ForCurrentProcess()->HasSwitch(
           switches::kUseMobileUserAgent)) {
     product += " Mobile";
@@ -368,7 +368,7 @@ content::GeneratedCodeCacheSettings
 BvContentBrowserClient::GetGeneratedCodeCacheSettings(
     content::BrowserContext* context) {
   BvBrowserContext* browser_context = static_cast<BvBrowserContext*>(context);
-  return content::GeneratedCodeCacheSettings(true, 10 * 1024 * 1024,
+  return content::GeneratedCodeCacheSettings(true, 100 * 1024 * 1024,
                                              browser_context->GetCacheDir());
 }
 

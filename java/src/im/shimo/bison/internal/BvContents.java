@@ -259,6 +259,8 @@ public class BvContents implements SmartClipProvider {
 
     private JavascriptInjector mJavascriptInjector;
 
+    private BvDarkMode mBvDarkMode;
+
     private static class WebContentsInternalsHolder implements WebContents.InternalsHolder {
         private final WeakReference<BvContents> mBisonContentsRef;
 
@@ -534,7 +536,8 @@ public class BvContents implements SmartClipProvider {
         mSettings.setWebContents(mWebContents);
 
         mDisplayObserver.onDIPScaleChanged(getDeviceScaleFactor());
-
+        mBvDarkMode = new BvDarkMode(context);
+        mBvDarkMode.setWebContents(mWebContents);
         mScrollOffsetManager = new BvScrollOffsetManager(new BvScrollOffsetManagerDelegate());
 
         mUpdateVisibilityRunnable = this::updateWebContentsVisibility;
@@ -553,7 +556,7 @@ public class BvContents implements SmartClipProvider {
         mWebContents.initialize(PRODUCT_VERSION, mViewAndroidDelegate, mInternalAccessAdapter,
                 mWindowAndroid.getWindowAndroid(), mWebContentsInternalsHolder);
         mNavigationController = mWebContents.getNavigationController();
-        mWebContents.onShow();
+        //mWebContents.onShow();
         mContentViewRenderView.setWebContents(mWebContents);
         mViewEventSink = ViewEventSink.from(mWebContents);
         mViewEventSink.setHideKeyboardOnBlur(false);
@@ -698,6 +701,8 @@ public class BvContents implements SmartClipProvider {
                 BvContentsJni.get().getEffectivePriority(mNativeBvContents, this)));
     }
 
+
+
     /**
      * Destroys this object and deletes its native counterpart.
      */
@@ -713,6 +718,11 @@ public class BvContents implements SmartClipProvider {
         mWebContents.setTopLevelNativeWindow(null);
         if (mAutofillClient != null) {
             mAutofillClient = null;
+        }
+
+        if (mBvDarkMode != null) {
+            mBvDarkMode.destroy();
+            mBvDarkMode = null;
         }
 
         // Remove pending messages
@@ -936,6 +946,7 @@ public class BvContents implements SmartClipProvider {
         if (url == null) {
             return;
         }
+
         LoadUrlParams params = new LoadUrlParams(url, PageTransition.TYPED);
         if (additionalHttpHeaders != null) {
             params.setExtraHeaders(new HashMap<>(additionalHttpHeaders));
@@ -1194,7 +1205,6 @@ public class BvContents implements SmartClipProvider {
     /**
      * Called by the embedder when the containing view is to be scrolled or
      * overscrolled.
-     *
      * @see View#onOverScrolled(int, int, int, int)
      */
     public void onContainerViewOverScrolled(int scrollX, int scrollY, boolean clampedX, boolean clampedY) {
@@ -1202,8 +1212,7 @@ public class BvContents implements SmartClipProvider {
     }
 
     /**
-     * @see android.webkit.WebView#requestChildRectangleOnScreen(View, Rect,
-     *      boolean)
+     * @see android.webkit.WebView#requestChildRectangleOnScreen(View, Rect, boolean)
      */
     public boolean requestChildRectangleOnScreen(View child, Rect rect, boolean immediate) {
         if (isDestroyed(WARN))
@@ -1211,8 +1220,6 @@ public class BvContents implements SmartClipProvider {
         return mScrollOffsetManager.requestChildRectangleOnScreen(child.getLeft() - child.getScrollX(),
                 child.getTop() - child.getScrollY(), rect, immediate);
     }
-
-
 
     /**
      * @see View#computeHorizontalScrollRange()
@@ -1576,8 +1583,9 @@ public class BvContents implements SmartClipProvider {
             }
         }
 
-        final String exceptionMessage = BvContentsJni.get().addWebMessageListener(mNativeBvContents, BvContents.this,
-                new WebMessageListenerHolder(listener), jsObjectName, allowedOriginRules);
+        final String exceptionMessage =
+                BvContentsJni.get().addWebMessageListener(mNativeBvContents, BvContents.this,
+                        new WebMessageListenerHolder(listener), jsObjectName, allowedOriginRules);
 
         if (!TextUtils.isEmpty(exceptionMessage)) {
             throw new IllegalArgumentException(exceptionMessage);
@@ -1613,8 +1621,7 @@ public class BvContents implements SmartClipProvider {
     }
 
     public void flingScroll(int velocityX, int velocityY) {
-        if (TRACE)
-            Log.i(TAG, "%s flingScroll", this);
+        if (TRACE) Log.i(TAG, "%s flingScroll", this);
         if (isDestroyed(WARN))
             return;
         mWebContents.getEventForwarder().startFling(
@@ -1676,11 +1683,9 @@ public class BvContents implements SmartClipProvider {
         BvContentsJni.get().zoomBy(mNativeBvContents, this, delta);
     }
 
-    public void evaluateJavaScript(String script, Callback<String> callback) {
-        if (TRACE)
-            Log.i(TAG, "%s evaluateJavascript=%s", this, script);
-        if (isDestroyed(WARN))
-            return;
+    public void evaluateJavaScript(String script, final Callback<String> callback) {
+        if (TRACE) Log.i(TAG, "%s evaluateJavascript=%s", this, script);
+        if (isDestroyed(WARN)) return;
         JavaScriptCallback jsCallback = null;
         if (callback != null) {
             jsCallback = jsonResult -> {
@@ -1744,7 +1749,6 @@ public class BvContents implements SmartClipProvider {
         return WebContentsAccessibility.fromWebContents(mWebContents);
     }
 
-    // @TargetApi(Build.VERSION_CODES.M)
     public void onProvideVirtualStructure(ViewStructure structure) {
         if (isDestroyed(WARN))
             return;
@@ -1802,7 +1806,8 @@ public class BvContents implements SmartClipProvider {
         if (isDestroyed(NO_WARN))
             return;
         if (requestCode == PROCESS_TEXT_REQUEST_CODE) {
-            SelectionPopupController.fromWebContents(mWebContents).onReceivedProcessTextResult(resultCode, data);
+            SelectionPopupController.fromWebContents(mWebContents)
+                    .onReceivedProcessTextResult(resultCode, data);
         } else {
             Log.e(TAG, "Received activity result for an unknown request code %d", requestCode);
         }
@@ -1904,9 +1909,6 @@ public class BvContents implements SmartClipProvider {
     }
 
     private void setWindowVisibilityInternal(boolean visible) {
-        // mInvalidateRootViewOnNextDraw |= Build.VERSION.SDK_INT <=
-        // Build.VERSION_CODES.LOLLIPOP
-        // && visible && !mIsWindowVisible;
         mIsWindowVisible = visible;
         if (!isDestroyed(NO_WARN)) {
             BvContentsJni.get().setWindowVisibility(mNativeBvContents, BvContents.this, mIsWindowVisible);
@@ -2029,8 +2031,7 @@ public class BvContents implements SmartClipProvider {
     }
 
     public void hideAutofillPopup() {
-        if (TRACE)
-            Log.i(TAG, "%s hideAutofillPopup", this);
+        if (TRACE) Log.i(TAG, "%s hideAutofillPopup", this);
         if (mAutofillClient != null) {
             mAutofillClient.hideAutofillPopup();
         }
@@ -2053,14 +2054,6 @@ public class BvContents implements SmartClipProvider {
 
     /**
      * Inserts a {@link VisualStateCallback}.
-     * <p>
-     * The {@link VisualStateCallback} will be inserted in Blink and will be invoked
-     * when the contents of the DOM tree at the moment that the callback was
-     * inserted (or later) are drawn into the screen. In other words, the following
-     * events need to happen before the callback is invoked: 1. The DOM tree is
-     * committed becoming the pending tree - see ThreadProxy::BeginMainFrame 2. The
-     * pending tree is activated becoming the active tree 3. A frame swap happens
-     * that draws the active tree into the screen
      *
      * @param requestId an id that will be returned from the callback invocation to
      *                  allow callers to match requests with callbacks.
@@ -2221,7 +2214,7 @@ public class BvContents implements SmartClipProvider {
     /**
      * Invokes the given {@link VisualStateCallback}.
      *
-     * @param callback  the callback to be invoked
+     * @param callback the callback to be invoked
      * @param requestId the id passed to
      *                  {@link BvContents#insertVisualStateCallback}
      * @param result    true if the callback should succeed and false otherwise
@@ -2237,7 +2230,8 @@ public class BvContents implements SmartClipProvider {
 
     // Called as a result of BvContentsJni.get().updateLastHitTestData.
     @CalledByNative
-    private void updateHitTestData(int type, String extra, String href, String anchorText, String imgSrc) {
+    private void updateHitTestData(
+            int type, String extra, String href, String anchorText, String imgSrc) {
         mPossiblyStaleHitTestData.hitTestResultType = type;
         mPossiblyStaleHitTestData.hitTestResultExtraData = extra;
         mPossiblyStaleHitTestData.href = href;
@@ -2249,14 +2243,13 @@ public class BvContents implements SmartClipProvider {
         // jiang
     }
 
-    // @CalledByNative
     // jiang
+    // @CalledByNative
     private int[] getLocationOnScreen() {
         int[] result = new int[2];
         if (mContainerView != null) {
             mContainerView.getLocationOnScreen(result);
         }
-
         return result;
     }
 
@@ -2546,7 +2539,6 @@ public class BvContents implements SmartClipProvider {
 
         @Override
         public void onVisibilityChanged(View changedView, int visibility) {
-            // jiang
             if (mContainerView == null)
                 return;
             boolean viewVisible = mContainerView.getVisibility() == View.VISIBLE;
@@ -2557,10 +2549,8 @@ public class BvContents implements SmartClipProvider {
 
         @Override
         public void onWindowVisibilityChanged(int visibility) {
-            // jiang
             boolean windowVisible = visibility == View.VISIBLE;
-            if (mIsWindowVisible == windowVisible)
-                return;
+            if (mIsWindowVisible == windowVisible) return;
             setWindowVisibilityInternal(windowVisible);
         }
 
@@ -2619,8 +2609,7 @@ public class BvContents implements SmartClipProvider {
 
         @Override
         public void computeScroll() {
-            if (isDestroyed(NO_WARN))
-                return;
+            if (isDestroyed(NO_WARN)) return;
             // BvContentsJni.get().onComputeScroll(mNativeBvContents, BvContents.this,
             // AnimationUtils.currentAnimationTimeMillis());
         }

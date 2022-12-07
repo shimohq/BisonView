@@ -81,8 +81,7 @@ bool ShouldBlockURL(const GURL& url, BvContentsIoThreadClient* client) {
 }
 
 int GetHttpCacheSize() {
-  // jiang947 暂时定20M
-  return 20 * 1024 * 1024;  // 20M
+  return 300 * 1024 * 1024;  // 300M
 }
 
 }  // namespace bison

@@ -39,8 +39,6 @@ from bison_build_util import AddResources, MergeRTxt , MergeProguardConfigs ,Add
 SCRIPT_DIR = os.path.dirname(os.path.realpath(sys.argv[0]))
 SRC_DIR = os.path.normpath(os.path.join(SCRIPT_DIR, os.pardir, os.pardir))
 
-
-
 DEFAULT_ARCHS = ['armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64']
 TARGET = 'bison:bison_view_aar'
 MANIFEST_FILE = 'gen/bison/bison_aar_manifest/AndroidManifest.xml'
@@ -55,6 +53,7 @@ jar_excluded_patterns = [
   "android/support/*",
   "androidx/*",
   "com/google/*",
+  "google/protobuf/*"
   "javax/*",
   "kotlinx/*",
   "kotlin/*",
@@ -68,6 +67,8 @@ jar_excluded_patterns = [
   "*.version",
   "*.stamp",
   "*.readme",
+  "*.bin",
+  "*.proto"
 ]
 
 resource_included_patterns = [
@@ -115,6 +116,11 @@ def _ParseArgs():
       help ='publish aar file to maven')
   parser.add_argument('-s','--snapshot', action='store_true',default=False ,
       help ='publish snapshot to maven')
+  parser.add_argument('--rid', default='nexus' ,
+      help ='repositoryId for maven')
+  parser.add_argument('--classifier',default='' ,
+      help ='classifier for file')
+
   parser.add_argument('-v','--verbose', action='store_true', default=False,
       help='Debug logging.')
 
@@ -306,6 +312,12 @@ def BuildAar(archs, output_file, common_gn_args,
       with open(os.path.join(output_directory , AAR_CONFIG_FILE),'r') as f :
         build_config = json.loads(f.read())
         jars = _ReadConfig(build_dir, arch , build_config,'deps_info', 'javac_full_classpath')
+
+        jars = filter(lambda x : "org.apache.http.legacy.jar" not in x, set(jars))
+        jars = filter(lambda x : "protobuf-javalite-3.19.3.jar" not in x, set(jars))
+        jars = filter(lambda x : "jsr305-3.0.2.jar" not in x, set(jars))
+        jars = list( filter(lambda x : "annotations-13.0.jar" not in x, set(jars)))
+
         src_jars = _ReadConfig(build_dir, arch , build_config,'javac', 'classpath')
         all_jars = src_jars + jars
 
@@ -315,22 +327,8 @@ def BuildAar(archs, output_file, common_gn_args,
         proguard_configs = _ReadConfig(build_dir, arch, build_config ,'deps_info', 'proguard_all_configs')
 
       print('src_jars',src_jars)
-      # print("=== R ===")
-      # for rf in r_text_files:
-      #     print(rf)
+      print('android_deps jars',list (filter(lambda x : "android_deps" in x, set(jars))))
 
-      # print("=== Res ===")
-      # for rf in dependencies_res_zips:
-      #   # if "android_deps" in rf:
-      #   print(rf)
-
-      # print("=== jar ===")
-      # for rf in all_jars:
-      #   # if "android_deps" in rf:
-      #   #   print(rf)
-      #   # if "bison" in rf:
-      #   #   print(rf)
-      #   print(rf)
 
       isCommonArgsGetted = True
 
@@ -376,18 +374,22 @@ def _GeneratePom(target_file, version,args):
     {
       "groupId": "androidx.appcompat",
       "artifactId": "appcompat",
-      "version" : "1.2.0",
+      "version" : "1.4.0",
       "type" : "aar"
+    },
+    {
+      "groupId": "com.google.protobuf",
+      "artifactId": "protobuf-javalite",
+      "version" : "3.19.3",
+      "type" : "jar"
     }
   ]
-
   pom = template.render(version=version,args=args ,deps = deps)
-  print (pom)
   with open(target_file, 'w') as fh:
     fh.write(pom)
 
 
-def publish(filename , verison , is_snapshot,common_gn_args):
+def publish(filename , verison , is_snapshot,common_gn_args,rid,classifier):
   url = os.environ.get('SNAPSHOT_REPOSITORY_URL', None) if is_snapshot else os.environ.get('RELEASE_REPOSITORY_URL', None)
   pom_path = os.path.join(os.path.dirname(filename),os.path.splitext(os.path.basename(filename))[0]+'.pom')
   _GeneratePom(pom_path, verison, common_gn_args)
@@ -396,7 +398,7 @@ def publish(filename , verison , is_snapshot,common_gn_args):
     "-DgroupId":GROUP_ID,
     "-DartifactId":ARTIFACT_ID,
     "-Dversion": verison,
-    "-DrepositoryId":"nexus" ,
+    "-DrepositoryId":rid,
     "-Durl": url ,
     "-Dfile":filename,
     "-DpomFile":pom_path,
@@ -404,6 +406,9 @@ def publish(filename , verison , is_snapshot,common_gn_args):
   }
   cmd.extend(['deploy:deploy-file'])
   cmd.extend(['{}={}'.format(*arg) for arg in args.items()])
+
+  if classifier:
+    cmd.extend(['-Dclassifier='+classifier])
 
   logging.info('Uploading: %s', filename)
   logging.info('maven cmd is: %s', " ".join(cmd))
@@ -455,7 +460,7 @@ def main():
            args.build_dir,args.build_type, args.extra_gn_switches, args.extra_ninja_switches)
   if args.publish:
     gn_args = common_gn_args if args.snapshot else None;
-    publish(output, verison, args.snapshot, common_gn_args)
+    publish(output, verison, args.snapshot, common_gn_args,args.rid,args.classifier)
 
 
 

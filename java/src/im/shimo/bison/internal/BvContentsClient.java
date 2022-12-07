@@ -517,6 +517,5 @@ public abstract class BvContentsClient {
     public abstract void onRendererUnresponsive(BvRenderProcess renderProcess);
     public abstract void onRendererResponsive(BvRenderProcess renderProcess);
 
-    //jiang 这里可能需要加一个adapter
     public abstract boolean onRenderProcessGone(BvRenderProcessGoneDetail detail);
 }
