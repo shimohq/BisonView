@@ -827,15 +827,26 @@ public class BisonViewProvider {
     }
 
     public void setDownloadListener(BisonView.DownloadListener listener) {
-        mContentsClient.setDownloadListener(listener);
+        if (mContentsClient!=null){
+            mContentsClient.setDownloadListener(listener);
+        }
+
     }
 
     public void setBisonWebChromeClient(BisonWebChromeClient client) {
-        mContentsClient.setBisonWebChromeClient(client);
+        if (mContentsClient!=null){
+            mContentsClient.setBisonWebChromeClient(client);
+        }
+
     }
 
     public BisonWebChromeClient getBisonWebChromeClient() {
-        return mContentsClient.getBisonWebChromeClient();
+        if (mContentsClient!=null){
+            return mContentsClient.getBisonWebChromeClient();
+        }else {
+            return null;
+        }
+
     }
 
     // doesSupportFullscreen
@@ -1366,7 +1377,10 @@ public class BisonViewProvider {
             });
             return ret;
         }
-        mBvContents.requestFocus();
+        if (mBvContents!=null){
+            mBvContents.requestFocus();
+        }
+
         return mBisonViewInternalAccess.super_requestFocus(direction, previouslyFocusedRect);
     }
 
@@ -1380,7 +1394,10 @@ public class BisonViewProvider {
             });
             return;
         }
-        mBvContents.onMeasure(widthMeasureSpec, heightMeasureSpec);
+        if (mBvContents!=null){
+            mBvContents.onMeasure(widthMeasureSpec, heightMeasureSpec);
+        }
+
     }
 
     public boolean requestChildRectangleOnScreen(final View child, final Rect rect, final boolean immediate) {
@@ -1393,7 +1410,11 @@ public class BisonViewProvider {
             });
             return ret;
         }
-        return mBvContents.requestChildRectangleOnScreen(child, rect, immediate);
+        if (mBvContents!=null){
+            return mBvContents.requestChildRectangleOnScreen(child, rect, immediate);
+        }else {
+            return false;
+        }
     }
 
     public void setBackgroundColor(final int color) {
@@ -1577,7 +1598,6 @@ public class BisonViewProvider {
             }else{
                 return false;
             }
-
         }
 
         @Override

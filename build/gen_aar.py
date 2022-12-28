@@ -118,8 +118,6 @@ def _ParseArgs():
       help ='publish snapshot to maven')
   parser.add_argument('--rid', default='nexus' ,
       help ='repositoryId for maven')
-  parser.add_argument('--classifier',default='' ,
-      help ='classifier for file')
 
   parser.add_argument('-v','--verbose', action='store_true', default=False,
       help='Debug logging.')
@@ -389,7 +387,7 @@ def _GeneratePom(target_file, version,args):
     fh.write(pom)
 
 
-def publish(filename , verison , is_snapshot,common_gn_args,rid,classifier):
+def publish(filename , verison , is_snapshot,common_gn_args,rid):
   url = os.environ.get('SNAPSHOT_REPOSITORY_URL', None) if is_snapshot else os.environ.get('RELEASE_REPOSITORY_URL', None)
   pom_path = os.path.join(os.path.dirname(filename),os.path.splitext(os.path.basename(filename))[0]+'.pom')
   _GeneratePom(pom_path, verison, common_gn_args)
@@ -406,9 +404,6 @@ def publish(filename , verison , is_snapshot,common_gn_args,rid,classifier):
   }
   cmd.extend(['deploy:deploy-file'])
   cmd.extend(['{}={}'.format(*arg) for arg in args.items()])
-
-  if classifier:
-    cmd.extend(['-Dclassifier='+classifier])
 
   logging.info('Uploading: %s', filename)
   logging.info('maven cmd is: %s', " ".join(cmd))
@@ -460,7 +455,7 @@ def main():
            args.build_dir,args.build_type, args.extra_gn_switches, args.extra_ninja_switches)
   if args.publish:
     gn_args = common_gn_args if args.snapshot else None;
-    publish(output, verison, args.snapshot, common_gn_args,args.rid,args.classifier)
+    publish(output, verison, args.snapshot, common_gn_args,args.rid)
 
 
 
