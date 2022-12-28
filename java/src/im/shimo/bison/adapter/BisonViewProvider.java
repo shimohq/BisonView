@@ -787,7 +787,9 @@ public class BisonViewProvider {
     }
 
     public void setBisonViewClient(BisonViewClient client) {
-        mContentsClient.setBisonViewClient(client);
+        if (mContentsClient!=null){
+            mContentsClient.setBisonViewClient(client);
+        }
     }
 
     public BisonViewClient getBisonViewClient() {
@@ -1552,58 +1554,89 @@ public class BisonViewProvider {
 
         @Override
         public boolean super_onKeyUp(int keyCode, KeyEvent event) {
-            // jiang webview no-op
-            return mBisonViewInternalAccess.super_onKeyUp(keyCode, event);
+            if (mBisonViewInternalAccess!=null){
+                return mBisonViewInternalAccess.super_onKeyUp(keyCode, event);
+            }else{
+                return false;
+            }
+
         }
 
         @Override
         public void onScrollChanged(int l, int t, int oldl, int oldt) {
-            // jiang webview no-op ?
-            mBisonViewInternalAccess.onScrollChanged(l, t, oldl, oldt);
+            if (mBisonViewInternalAccess!=null){
+                mBisonViewInternalAccess.onScrollChanged(l, t, oldl, oldt);
+            }
+
         }
 
         @Override
         public boolean super_dispatchKeyEvent(KeyEvent event) {
-            return mBisonViewInternalAccess.super_dispatchKeyEvent(event);
+            if (mBisonViewInternalAccess!=null){
+                return mBisonViewInternalAccess.super_dispatchKeyEvent(event);
+            }else{
+                return false;
+            }
+
         }
 
         @Override
         public boolean super_onGenericMotionEvent(MotionEvent event) {
-            return mBisonViewInternalAccess.super_onGenericMotionEvent(event);
+            if (mBisonViewInternalAccess!=null){
+                return mBisonViewInternalAccess.super_onGenericMotionEvent(event);
+            }else {
+                return false;
+            }
+
         }
 
         @Override
         public void overScrollBy(int deltaX, int deltaY, int scrollX, int scrollY, int scrollRangeX, int scrollRangeY,
                                  int maxOverScrollX, int maxOverScrollY, boolean isTouchEvent) {
-            mBisonViewInternalAccess.overScrollBy(deltaX, deltaY, scrollX, scrollY, scrollRangeX, scrollRangeY,
+            if (mBisonViewInternalAccess!=null){
+                mBisonViewInternalAccess.overScrollBy(deltaX, deltaY, scrollX, scrollY, scrollRangeX, scrollRangeY,
                     maxOverScrollX, maxOverScrollY, isTouchEvent);
-
+            }
         }
 
         @Override
         public void super_scrollTo(int scrollX, int scrollY) {
-            mBisonViewInternalAccess.super_scrollTo(scrollX, scrollY);
+            if (mBisonViewInternalAccess!=null){
+                mBisonViewInternalAccess.super_scrollTo(scrollX, scrollY);
+            }
         }
 
         @Override
         public void setMeasuredDimension(int measuredWidth, int measuredHeight) {
-            mBisonViewInternalAccess.setMeasuredDimension(measuredWidth, measuredHeight);
+            if (mBisonViewInternalAccess!=null){
+                mBisonViewInternalAccess.setMeasuredDimension(measuredWidth, measuredHeight);
+            }
         }
 
         @Override
         public int super_getScrollBarStyle() {
-            return mBisonViewInternalAccess.super_getScrollBarStyle();
+            if (mBisonViewInternalAccess!= null){
+                return mBisonViewInternalAccess.super_getScrollBarStyle();
+            }else {
+                return 0;
+            }
+
         }
 
         @Override
         public void super_startActivityForResult(Intent intent, int requestCode) {
-            mBisonViewInternalAccess.super_startActivityForResult(intent, requestCode);
+            if (mBisonViewInternalAccess!=null){
+                mBisonViewInternalAccess.super_startActivityForResult(intent, requestCode);
+            }
+
         }
 
         @Override
         public void super_onConfigurationChanged(Configuration newConfig) {
-            // jiang sys webview no-op ?
-            mBisonViewInternalAccess.super_onConfigurationChanged(newConfig);
+            if (mBisonViewInternalAccess!=null){
+                mBisonViewInternalAccess.super_onConfigurationChanged(newConfig);
+            }
+
         }
 
     }
