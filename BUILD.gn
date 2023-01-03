@@ -328,6 +328,9 @@ android_library("bison_java") {
   ]
 
   annotation_processor_deps = [ "//base/android/jni_generator:jni_processor" ]
+  if (enable_spellcheck) {
+    deps += [ "//components/spellcheck/browser/android:java" ]
+  }
 }
 
 action_with_pydeps("generate_sandboxed_service_srcjar") {
