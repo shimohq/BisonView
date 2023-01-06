@@ -68,6 +68,122 @@ index a1a93418b0b0d..5f1f58922d73c 100644
    /* Actions on Google Hardware, used in Google-internal code. */        \
    X("aogh")                                                              \
    X("audio")                                                             \
+diff --git a/chrome/android/BUILD.gn b/chrome/android/BUILD.gn
+index 0577383561b41..cc0de49353aa1 100644
+--- a/chrome/android/BUILD.gn
++++ b/chrome/android/BUILD.gn
+@@ -2397,8 +2397,10 @@ _chrome_public_shared_deps = [
+   ":chrome_public_apk_resources",
+   ":chrome_public_base_module_java",
+   ":chrome_public_non_pak_assets",
+-  ":chrome_public_v8_assets",
+-  "//third_party/icu:icu_assets",
++  # ":chrome_public_v8_assets",
++  # "//third_party/icu:icu_assets",
++  "//bison:bison_v8_snapshot_assets",
++  "//bison:bison_icu_assets",
+ ]
+ 
+ generate_jni("test_support_jni_headers") {
+diff --git a/content/browser/accessibility/browser_accessibility_android.cc b/content/browser/accessibility/browser_accessibility_android.cc
+index 29a058e7f30d2..676de7e6dd14e 100644
+--- a/content/browser/accessibility/browser_accessibility_android.cc
++++ b/content/browser/accessibility/browser_accessibility_android.cc
+@@ -481,7 +481,7 @@ const char* BrowserAccessibilityAndroid::GetClassName() const {
+     // On Android, contenteditable needs to be handled the same as any
+     // other text field.
+     role = ax::mojom::Role::kTextField;
+-  } else if (ui::IsAndroidTextViewCandidate(role) && HasOnlyTextChildren()) {
++  } else if (IsAndroidTextView()) {
+     // On Android, we want to report some extra nodes as TextViews. For example,
+     // a <div> that only contains text, or a <p> that only contains text.
+     role = ax::mojom::Role::kStaticText;
+@@ -490,6 +490,10 @@ const char* BrowserAccessibilityAndroid::GetClassName() const {
+   return ui::AXRoleToAndroidClassName(role, PlatformGetParent() != nullptr);
+ }
+ 
++bool BrowserAccessibilityAndroid::IsAndroidTextView() const {
++  return ui::IsAndroidTextViewCandidate(GetRole()) && HasOnlyTextChildren();
++}
++
+ bool BrowserAccessibilityAndroid::IsChildOfLeaf() const {
+   BrowserAccessibility* ancestor = InternalGetParent();
+ 
+diff --git a/content/browser/accessibility/browser_accessibility_android.h b/content/browser/accessibility/browser_accessibility_android.h
+index 34419340b2e2d..372fc001b66fe 100644
+--- a/content/browser/accessibility/browser_accessibility_android.h
++++ b/content/browser/accessibility/browser_accessibility_android.h
+@@ -37,6 +37,7 @@ class CONTENT_EXPORT BrowserAccessibilityAndroid : public BrowserAccessibility {
+   std::u16string GetLocalizedStringForImageAnnotationStatus(
+       ax::mojom::ImageAnnotationStatus status) const override;
+ 
++  bool IsAndroidTextView() const;
+   bool IsCheckable() const;
+   bool IsChecked() const;
+   bool IsClickable() const override;
+diff --git a/content/browser/accessibility/browser_accessibility_manager_android.cc b/content/browser/accessibility/browser_accessibility_manager_android.cc
+index 7db2cbd0f8973..357ee15c76443 100644
+--- a/content/browser/accessibility/browser_accessibility_manager_android.cc
++++ b/content/browser/accessibility/browser_accessibility_manager_android.cc
+@@ -263,6 +263,17 @@ void BrowserAccessibilityManagerAndroid::FireGeneratedEvent(
+       wcax->AnnounceLiveRegionText(text);
+       break;
+     }
++    case ui::AXEventGenerator::Event::NAME_CHANGED: {
++      // Clear node from cache whenever the name changes to ensure fresh data.
++      wcax->ClearNodeInfoCacheForGivenId(android_node->unique_id());
++
++      // If this is a simple text element, also send an event to the framework.
++      if (ui::IsText(android_node->GetRole()) ||
++          android_node->IsAndroidTextView()) {
++        wcax->HandleTextContentChanged(android_node->unique_id());
++      }
++      break;
++    }
+     case ui::AXEventGenerator::Event::RANGE_VALUE_CHANGED:
+       DCHECK(android_node->GetData().IsRangeValueSupported());
+       if (android_node->IsSlider())
+@@ -336,7 +347,6 @@ void BrowserAccessibilityManagerAndroid::FireGeneratedEvent(
+     case ui::AXEventGenerator::Event::MENU_ITEM_SELECTED:
+     case ui::AXEventGenerator::Event::MULTILINE_STATE_CHANGED:
+     case ui::AXEventGenerator::Event::MULTISELECTABLE_STATE_CHANGED:
+-    case ui::AXEventGenerator::Event::NAME_CHANGED:
+     case ui::AXEventGenerator::Event::OBJECT_ATTRIBUTE_CHANGED:
+     case ui::AXEventGenerator::Event::OTHER_ATTRIBUTE_CHANGED:
+     case ui::AXEventGenerator::Event::PARENT_CHANGED:
+diff --git a/content/browser/accessibility/web_contents_accessibility_android.cc b/content/browser/accessibility/web_contents_accessibility_android.cc
+index 23bc1fadc5eaf..3cca1fc4a4efa 100644
+--- a/content/browser/accessibility/web_contents_accessibility_android.cc
++++ b/content/browser/accessibility/web_contents_accessibility_android.cc
+@@ -445,6 +445,16 @@ void WebContentsAccessibilityAndroid::AnnounceLiveRegionText(
+       env, obj, base::android::ConvertUTF16ToJavaString(env, text));
+ }
+ 
++void WebContentsAccessibilityAndroid::HandleTextContentChanged(
++    int32_t unique_id) {
++  JNIEnv* env = AttachCurrentThread();
++  ScopedJavaLocalRef<jobject> obj = java_ref_.get(env);
++  if (obj.is_null())
++    return;
++  Java_WebContentsAccessibilityImpl_handleTextContentChanged(env, obj,
++                                                             unique_id);
++}
++
+ void WebContentsAccessibilityAndroid::HandleTextSelectionChanged(
+     int32_t unique_id) {
+   JNIEnv* env = AttachCurrentThread();
+diff --git a/content/browser/accessibility/web_contents_accessibility_android.h b/content/browser/accessibility/web_contents_accessibility_android.h
+index 905910cf7cd80..47915ce86f651 100644
+--- a/content/browser/accessibility/web_contents_accessibility_android.h
++++ b/content/browser/accessibility/web_contents_accessibility_android.h
+@@ -385,6 +385,7 @@ class CONTENT_EXPORT WebContentsAccessibilityAndroid
+   void HandleScrolledToAnchor(int32_t unique_id);
+   void HandleDialogModalOpened(int32_t unique_id);
+   void AnnounceLiveRegionText(const std::u16string& text);
++  void HandleTextContentChanged(int32_t unique_id);
+   void HandleTextSelectionChanged(int32_t unique_id);
+   void HandleEditableTextChanged(int32_t unique_id);
+   void HandleSliderChanged(int32_t unique_id);
 diff --git a/content/browser/v8_snapshot_files.cc b/content/browser/v8_snapshot_files.cc
 index cb0af392214eb..2d0f946b359cb 100644
 --- a/content/browser/v8_snapshot_files.cc
@@ -106,7 +222,7 @@ index cb0af392214eb..2d0f946b359cb 100644
    return {};
  #endif
 diff --git a/content/public/android/java/src/org/chromium/content/browser/accessibility/WebContentsAccessibilityImpl.java b/content/public/android/java/src/org/chromium/content/browser/accessibility/WebContentsAccessibilityImpl.java
-index fb07ff2c2196a..43bae4ffaa8fa 100644
+index fb07ff2c2196a..7f6efd131b67b 100644
 --- a/content/public/android/java/src/org/chromium/content/browser/accessibility/WebContentsAccessibilityImpl.java
 +++ b/content/public/android/java/src/org/chromium/content/browser/accessibility/WebContentsAccessibilityImpl.java
 @@ -107,6 +107,7 @@ import java.util.List;
@@ -289,7 +405,24 @@ index fb07ff2c2196a..43bae4ffaa8fa 100644
          }
  
          return result;
-@@ -1728,13 +1738,13 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
+@@ -1659,6 +1669,16 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
+         sendAccessibilityEvent(id, AccessibilityEvent.TYPE_VIEW_TEXT_SELECTION_CHANGED);
+     }
+ 
++    @CalledByNative
++    private void handleTextContentChanged(int id) {
++        AccessibilityEvent event =
++                buildAccessibilityEvent(id, AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED);
++        if (event != null) {
++            event.setContentChangeTypes(AccessibilityEvent.CONTENT_CHANGE_TYPE_TEXT);
++            requestSendAccessibilityEvent(event);
++        }
++    }
++
+     @CalledByNative
+     private void handleEditableTextChanged(int id) {
+         sendAccessibilityEvent(id, AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED);
+@@ -1728,13 +1748,13 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
      @CalledByNative
      @SuppressLint("WrongConstant")
      protected void handleDialogModalOpened(int virtualViewId) {
@@ -305,7 +438,7 @@ index fb07ff2c2196a..43bae4ffaa8fa 100644
              requestSendAccessibilityEvent(event);
          }
      }
-@@ -1754,14 +1764,18 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
+@@ -1754,14 +1774,18 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
  
      @CalledByNative
      private void setAccessibilityNodeInfoParent(AccessibilityNodeInfoCompat node, int parentId) {
@@ -327,7 +460,7 @@ index fb07ff2c2196a..43bae4ffaa8fa 100644
          }
      }
  
-@@ -1991,6 +2005,7 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
+@@ -1991,6 +2015,7 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
      protected CharSequence computeText(String text, boolean annotateAsLink, String language,
              int[] suggestionStarts, int[] suggestionEnds, String[] suggestions) {
          CharSequence charSequence = text;
@@ -335,7 +468,7 @@ index fb07ff2c2196a..43bae4ffaa8fa 100644
          if (annotateAsLink) {
              SpannableString spannable = new SpannableString(text);
              spannable.setSpan(new URLSpan(""), 0, spannable.length(), 0);
-@@ -2035,7 +2050,7 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
+@@ -2035,7 +2060,7 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
                  suggestionArray[0] = suggestions[i];
                  int flags = SuggestionSpan.FLAG_MISSPELLED;
                  SuggestionSpan suggestionSpan =
@@ -344,7 +477,7 @@ index fb07ff2c2196a..43bae4ffaa8fa 100644
                  spannable.setSpan(suggestionSpan, start, end, 0);
              }
              charSequence = spannable;
-@@ -2060,7 +2075,9 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
+@@ -2060,7 +2085,9 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
  
          // Finally offset by the location of the view within the screen.
          final int[] viewLocation = new int[2];
@@ -355,7 +488,7 @@ index fb07ff2c2196a..43bae4ffaa8fa 100644
          rect.offset(viewLocation[0], viewLocation[1]);
  
          // Clip to the viewport bounds, and add unclipped values to the Bundle.
-@@ -2080,11 +2097,11 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
+@@ -2080,11 +2107,11 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
          // If there is no parent, then the event can be ignored. In general the parent is only
          // transiently null (such as during teardown, switching tabs...). Also ensure that
          // accessibility is still enabled, throttling may result in events sent late.
@@ -369,7 +502,7 @@ index fb07ff2c2196a..43bae4ffaa8fa 100644
              } catch (IllegalStateException ignored) {
                  // During boot-up of some content shell tests, events will erroneously be sent even
                  // though the AccessibilityManager is not enabled, resulting in a crash.
-@@ -2306,8 +2323,9 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
+@@ -2306,8 +2333,9 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
          // there is no need to check that Autofill is enabled here.
          //
          // https://cs.android.com/android/platform/superproject/+/HEAD:frameworks/base/core/java/android/view/autofill/AutofillManager.java;l=2817;drc=dd7d52f9632a0dbb8b14b69520c5ea31e0b3b4a2
@@ -380,7 +513,7 @@ index fb07ff2c2196a..43bae4ffaa8fa 100644
          if (activeServices != null && !activeServices.isEmpty()) {
              return false;
          }
-@@ -2344,7 +2362,8 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
+@@ -2344,7 +2372,8 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
              return true;
          }
  
@@ -429,38 +562,6 @@ index f21f3b5d04197..0b3c0661d49e3 100644
  }
  
  template("content_shell_apk_tmpl") {
-diff --git a/content/shell/app/shell_main_delegate.cc b/content/shell/app/shell_main_delegate.cc
-index 86e85bdc4ea03..95380d1d34580 100644
---- a/content/shell/app/shell_main_delegate.cc
-+++ b/content/shell/app/shell_main_delegate.cc
-@@ -204,6 +204,7 @@ void ShellMainDelegate::PreSandboxStartup() {
- #if !BUILDFLAG(IS_FUCHSIA)
-   if (base::CommandLine::ForCurrentProcess()->HasSwitch(
-           switches::kEnableCrashReporter)) {
-+    VLOG(0) << "run BUILDFLAG(IS_FUCHSIA):";
-     std::string process_type =
-         base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
-             switches::kProcessType);
-@@ -212,6 +213,7 @@ void ShellMainDelegate::PreSandboxStartup() {
-     if (process_type != switches::kZygoteProcess) {
-       crash_reporter::InitializeCrashpad(process_type.empty(), process_type);
- #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
-+      VLOG(0) << "run BUILDFLAG(IS_LINUX):";
-       crash_reporter::SetFirstChanceExceptionHandler(
-           v8::TryHandleWebAssemblyTrapPosix);
- #endif
-diff --git a/content/shell/browser/shell_content_browser_client.cc b/content/shell/browser/shell_content_browser_client.cc
-index 151e1706d7681..0e5649cc13dcd 100644
---- a/content/shell/browser/shell_content_browser_client.cc
-+++ b/content/shell/browser/shell_content_browser_client.cc
-@@ -665,6 +665,7 @@ void ShellContentBrowserClient::CreateFeatureListAndFieldTrials() {
- std::unique_ptr<PrefService> ShellContentBrowserClient::CreateLocalState() {
-   auto pref_registry = base::MakeRefCounted<PrefRegistrySimple>();
- 
-+  VLOG(0) << "not register metrices";
-   metrics::MetricsService::RegisterPrefs(pref_registry.get());
-   variations::VariationsService::RegisterPrefs(pref_registry.get());
- 
 diff --git a/gin/v8_initializer.cc b/gin/v8_initializer.cc
 index cebcf5ac6f587..533da1eb51636 100644
 --- a/gin/v8_initializer.cc
@@ -551,7 +652,7 @@ index 3fc8f81b2c234..b62a4f7978635 100644
              if (locale.equals("en-US")) {
                  pathPrefix = "assets/fallback-locales/";
 diff --git a/ui/base/resource/resource_bundle_android.cc b/ui/base/resource/resource_bundle_android.cc
-index 7595aeb039758..74ca2210a5b4c 100644
+index 7595aeb039758..06708ad123fe9 100644
 --- a/ui/base/resource/resource_bundle_android.cc
 +++ b/ui/base/resource/resource_bundle_android.cc
 @@ -88,7 +88,7 @@ void ResourceBundle::LoadCommonResources() {
@@ -572,14 +673,3 @@ index 7595aeb039758..74ca2210a5b4c 100644
    std::string app_locale = l10n_util::GetApplicationLocale(pref_locale);
  
    // Some Chromium apps have two sets of .pak files for their UI strings, i.e.:
-@@ -189,8 +189,8 @@ std::string ResourceBundle::LoadLocaleResources(const std::string& pref_locale,
-     }
-   }
- 
--  locale_resources_data_ = LoadDataPackFromLocalePak(
--      g_locale_pack_fd, g_locale_pack_region);
-+  locale_resources_data_ =
-+      LoadDataPackFromLocalePak(g_locale_pack_fd, g_locale_pack_region);
- 
-   if (!locale_resources_data_.get())
-     return std::string();

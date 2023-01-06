@@ -72,7 +72,6 @@ public class BisonShellMainActivity extends Activity {
         Log.i(TAG, "startup url :" + startupUrl);
         mBisonView.loadUrl(startupUrl);
         mUrlTextView.setText(startupUrl);
-        mBisonView.getSettings().setForceDark(BisonViewSettings.FORCE_DARK_ON);
     }
 
     private void initializeUrlField() {
