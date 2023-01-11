@@ -1,13 +1,11 @@
 // create by jiang947
 
-
 #ifndef BISON_BROWSER_BISON_SSL_HOST_STATE_DELEGATE_H_
 #define BISON_BROWSER_BISON_SSL_HOST_STATE_DELEGATE_H_
 
 #include <map>
 #include <string>
 
-#include "base/macros.h"
 #include "content/public/browser/ssl_host_state_delegate.h"
 #include "net/base/hash_value.h"
 #include "net/cert/x509_certificate.h"
@@ -43,6 +41,10 @@ class CertPolicy {
 class BvSSLHostStateDelegate : public content::SSLHostStateDelegate {
  public:
   BvSSLHostStateDelegate();
+
+  BvSSLHostStateDelegate(const BvSSLHostStateDelegate&) = delete;
+  BvSSLHostStateDelegate& operator=(const BvSSLHostStateDelegate&) = delete;
+
   ~BvSSLHostStateDelegate() override;
 
   // Records that |cert| is permitted to be used for |host| in the future, for
@@ -72,6 +74,12 @@ class BvSSLHostStateDelegate : public content::SSLHostStateDelegate {
                                  int child_id,
                                  InsecureContentType content_type) override;
 
+  // HTTPS-First Mode is not implemented in Android Webview.
+  void AllowHttpForHost(const std::string& host,
+                        content::WebContents* web_contents) override;
+  bool IsHttpAllowedForHost(const std::string& host,
+                            content::WebContents* web_contents) override;
+
   // Revokes all SSL certificate error allow exceptions made by the user for
   // |host|.
   void RevokeUserAllowExceptions(const std::string& host) override;
@@ -86,8 +94,6 @@ class BvSSLHostStateDelegate : public content::SSLHostStateDelegate {
  private:
   // Certificate policies for each host.
   std::map<std::string, internal::CertPolicy> cert_policy_for_host_;
-
-  DISALLOW_COPY_AND_ASSIGN(BvSSLHostStateDelegate);
 };
 
 }  // namespace bison

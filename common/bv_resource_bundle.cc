@@ -2,7 +2,6 @@
 
 #include "bison/common/bv_descriptors.h"
 
-#include "base/android/apk_assets.h"
 #include "base/android/locale_utils.h"
 #include "base/files/file.h"
 #include "base/files/file_path.h"
@@ -29,10 +28,8 @@ void InitIcuAndResourceBundleBrowserSide() {
   }
   base::i18n::SetICUDefaultLocale(locale);
 
-
   base::FilePath pak_file_path;
   base::PathService::Get(ui::DIR_RESOURCE_PAKS_ANDROID, &pak_file_path);
-  VLOG(0) << "pak_file_path:" << pak_file_path;
   pak_file_path = pak_file_path.AppendASCII("resources.pak");
   ui::LoadMainAndroidPackFile("assets/bison/resources.pak", pak_file_path);
 }
@@ -45,9 +42,9 @@ void InitResourceBundleRendererSide() {
   ui::ResourceBundle::InitSharedInstanceWithPakFileRegion(base::File(pak_fd),
                                                           pak_region);
 
-  std::pair<int, ui::ScaleFactor> extra_paks[] = {
-      {kBisonViewMainPakDescriptor, ui::SCALE_FACTOR_NONE},
-      {kBisonView100PercentPakDescriptor, ui::SCALE_FACTOR_100P}};
+  std::pair<int, ui::ResourceScaleFactor> extra_paks[] = {
+      {kBisonViewMainPakDescriptor, ui::kScaleFactorNone},
+      {kBisonView100PercentPakDescriptor, ui::k100Percent}};
 
   for (const auto& pak_info : extra_paks) {
     pak_fd = global_descriptors->Get(pak_info.first);

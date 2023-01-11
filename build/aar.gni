@@ -15,14 +15,8 @@ template("repackage_jars") {
 }
 
 template("bison_view_apk_tmpl") {
-  _native_lib_file =
-      rebase_path("$root_gen_dir/CHROME_VERSION.json", root_out_dir)
-  _native_lib_version_arg = "@FileArg($_native_lib_file:full-quoted)"
-
   android_apk(target_name) {
     forward_variables_from(invoker, "*")
-    native_lib_version_arg = _native_lib_version_arg
-    native_lib_version_rule = "//build/util:chrome_version_json"
   }
 }
 
@@ -37,11 +31,13 @@ template("bison_repack_locales") {
       "${root_gen_dir}/bison/components_strings_",
       "${root_gen_dir}/third_party/blink/public/strings/blink_strings_",
       "${root_gen_dir}/ui/strings/app_locale_settings_",
+      "${root_gen_dir}/ui/strings/ax_strings_",
     ]
     deps += [
       "//bison:generate_components_strings",
       "//third_party/blink/public/strings",
       "//ui/strings:app_locale_settings",
+      "//ui/strings:ax_strings",
     ]
 
     # source_patterns += webview_repack_locales_source_patterns
@@ -53,9 +49,12 @@ template("bison_repack_locales") {
 template("android_aar") {
   assert(defined(invoker.shared_libraries))
   _deps = []
+  if (defined(invoker.deps)) {
+    _deps += invoker.deps
+  }
   _template_name = target_name
 
-  _locales = string_join("\",\"", invoker.locales)
+  _locales = string_join("\",\"", invoker.platform_pak_locales)
   _locales = "{\"${_locales}\"}"
 
   _product_config_java_package = invoker.product_config_java_package
@@ -63,16 +62,17 @@ template("android_aar") {
     defines = []
     defines += [ "USE_FINAL" ]
 
-    package_path = string_replace(_product_config_java_package, ".", "/")
+    #package_path = string_replace(_product_config_java_package, ".", "/")
     sources = [ "//build/android/java/templates/ProductConfig.template" ]
     defines += [ "PACKAGE=${_product_config_java_package}" ]
     defines += [
       "USE_CHROMIUM_LINKER_VALUE=false",
       "USE_MODERN_LINKER_VALUE=false",
       "IS_BUNDLE_VALUE=false",
-      "UNCOMPRESSED_LOCALE_LIST=${_locales}",
+      "LOCALE_LIST=${_locales}",
     ]
   }
+
   android_library("${_template_name}__generate_product_config_java") {
     srcjar_deps = [ ":${_template_name}__product_config_srcjar" ]
   }
@@ -90,19 +90,17 @@ template("android_aar") {
   # generate_build_config_srcjar @see rules.gni 2676
 
   write_native_libraries_java("${_template_name}__native_libraries") {
-    deps = [
-      ":${_template_name}__shared_library_list",
-      "//build/util:chrome_version_json",
-    ]
-    _native_lib_file =
-        rebase_path("$root_gen_dir/CHROME_VERSION.json", root_out_dir)
-    version_number = "@FileArg($_native_lib_file:full-quoted)"
+    forward_variables_from(invoker, [ "main_component_library" ])
     native_libraries_list_file = _shared_library_list_file
+    enable_chromium_linker = false
+    load_library_from_apk = false
+    use_modern_linker = false
     use_final_fields = true
   }
 
   android_library("${_template_name}__native_libraries_java") {
     srcjar_deps = [ ":${_template_name}__native_libraries" ]
+    low_classpath_priority = true
   }
 
   _deps += [ ":${_template_name}__native_libraries_java" ]
@@ -129,13 +127,12 @@ template("android_aar") {
 
     android_library("${_template_name}__final_jni_java") {
       srcjar_deps = [ ":${_template_name}__final_jni" ]
+      low_classpath_priority = true
     }
     _deps += [ ":${_template_name}__final_jni_java" ]
   }
 
-  if (defined(invoker.deps)) {
-    _deps += invoker.deps
-  }
+
 
   _native_libraries = []
   _deps += invoker.shared_libraries
@@ -143,8 +140,6 @@ template("android_aar") {
     _native_libraries +=
         [ "$root_build_dir/" + get_label_info(d, "name") + ".so" ]
   }
-
-  # print("_native_libraries",_native_libraries)
 
   build_aar_impl(target_name) {
     forward_variables_from(invoker,

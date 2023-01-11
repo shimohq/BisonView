@@ -1,21 +1,24 @@
 package im.shimo.bison.internal;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.URLConnection;
-import java.util.List;
-import java.util.zip.GZIPInputStream;
+import android.content.Context;
+import android.content.res.AssetManager;
+import android.net.Uri;
+import android.util.Log;
+import android.util.TypedValue;
+
+import androidx.annotation.RestrictTo;
 
 import org.chromium.base.ContextUtils;
 import org.chromium.base.annotations.CalledByNative;
 import org.chromium.base.annotations.JNINamespace;
 import org.chromium.base.annotations.NativeMethods;
+import org.chromium.url.GURL;
 
-import android.content.res.AssetManager;
-import android.net.Uri;
-import android.util.Log;
-import android.util.TypedValue;
-import androidx.annotation.RestrictTo;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URLConnection;
+import java.util.List;
+import java.util.zip.GZIPInputStream;
 
 
 @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
@@ -35,7 +38,7 @@ public class AndroidProtocolHandler {
      * @return An InputStream to the Android resource.
      */
     @CalledByNative
-    public static InputStream open(String url) {
+    public static InputStream open(GURL url) {
         Uri uri = verifyUrl(url);
         if (uri == null) {
             return null;
@@ -88,8 +91,14 @@ public class AndroidProtocolHandler {
 
     private static int getFieldId(String assetType, String assetName)
             throws ClassNotFoundException, NoSuchFieldException, IllegalAccessException {
+        Context appContext = ContextUtils.getApplicationContext();
+        String packageName = appContext.getPackageName();
+        int id = appContext.getResources().getIdentifier(assetName, assetType, packageName);
+        if (id != 0) {
+            return id;
+        }
+        // Fail back to reflection if getIdentifier fails, see https://crbug.com/923956.
         Class<?> clazz = null;
-        String packageName = ContextUtils.getApplicationContext().getPackageName();
         try {
             clazz = getClazz(packageName, assetType);
         } catch (ClassNotFoundException e) {
@@ -106,9 +115,9 @@ public class AndroidProtocolHandler {
                 }
             }
         }
-
         java.lang.reflect.Field field = clazz.getField(assetName);
-        int id = field.getInt(null);
+        id = field.getInt(null);
+
         return id;
     }
 
@@ -150,7 +159,13 @@ public class AndroidProtocolHandler {
                 Log.e(TAG, "Asset not of type string: " + uri);
                 return null;
             }
-        } catch (ClassNotFoundException | IllegalAccessException | NoSuchFieldException e) {
+        } catch (ClassNotFoundException e) {
+            Log.e(TAG, "Unable to open resource URL: " + uri, e);
+            return null;
+        } catch (NoSuchFieldException e) {
+            Log.e(TAG, "Unable to open resource URL: " + uri, e);
+            return null;
+        } catch (IllegalAccessException e) {
             Log.e(TAG, "Unable to open resource URL: " + uri, e);
             return null;
         }
@@ -189,7 +204,7 @@ public class AndroidProtocolHandler {
      * @return The mime type or null if the type is unknown.
      */
     @CalledByNative
-    public static String getMimeType(InputStream stream, String url) {
+    public static String getMimeType(InputStream stream, GURL url) {
         Uri uri = verifyUrl(url);
         if (uri == null) {
             return null;
@@ -198,9 +213,7 @@ public class AndroidProtocolHandler {
             String path = uri.getPath();
             // The content URL type can be queried directly.
             if (CONTENT_SCHEME.equals(uri.getScheme())) {
-                String mimeType =
-                        ContextUtils.getApplicationContext().getContentResolver().getType(uri);
-                return mimeType;
+              return ContextUtils.getApplicationContext().getContentResolver().getType(uri);
                 // Asset files may have a known extension.
             } else if (uri.getScheme().equals(FILE_SCHEME)
                     && path.startsWith(AndroidProtocolHandlerJni.get().getAndroidAssetPath())) {
@@ -217,20 +230,20 @@ public class AndroidProtocolHandler {
         try {
             return URLConnection.guessContentTypeFromStream(stream);
         } catch (IOException e) {
-
             return null;
         }
     }
 
     /**
-     * Make sure the given string URL is correctly formed and parse it into a Uri.
+     * Make sure the given GURL is correctly formed and parse it into a Uri.
      *
      * @return a Uri instance, or null if the URL was invalid.
      */
-    private static Uri verifyUrl(String url) {
+    private static Uri verifyUrl(GURL url) {
         if (url == null) return null;
         if (url.isEmpty()) return null;
-        Uri uri = Uri.parse(url); // Never null. parse() doesn't actually parse or verify anything.
+        Uri uri = Uri.parse(
+                url.getSpec()); // Never null. parse() doesn't actually parse or verify anything.
         String path = uri.getPath();
         if (path == null || path.isEmpty() || path.equals("/")) {
             Log.e(TAG, "URL does not have a path: " + url);

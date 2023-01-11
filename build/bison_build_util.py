@@ -5,6 +5,7 @@ import posixpath
 import shutil
 import zipfile
 import json
+from functools import reduce
 
 
 GYP_ANDROID_DIR = os.path.join(os.path.dirname(__file__),

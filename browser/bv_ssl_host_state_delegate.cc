@@ -46,14 +46,24 @@ void BvSSLHostStateDelegate::HostRanInsecureContent(
     const std::string& host,
     int child_id,
     InsecureContentType content_type) {
-  // Intentional no-op for Android WebView.
 }
 
 bool BvSSLHostStateDelegate::DidHostRunInsecureContent(
     const std::string& host,
     int child_id,
     InsecureContentType content_type) {
-  // Intentional no-op for Android WebView.
+  return false;
+}
+
+void BvSSLHostStateDelegate::AllowHttpForHost(
+    const std::string& host,
+    content::WebContents* web_contents) {
+}
+
+bool BvSSLHostStateDelegate::IsHttpAllowedForHost(
+    const std::string& host,
+    content::WebContents* web_contents) {
+
   return false;
 }
 
@@ -66,7 +76,7 @@ void BvSSLHostStateDelegate::AllowCert(const std::string& host,
 
 void BvSSLHostStateDelegate::Clear(
     base::RepeatingCallback<bool(const std::string&)> host_filter) {
-  if (host_filter.is_null()) {
+  if (!host_filter) {
     cert_policy_for_host_.clear();
     return;
   }

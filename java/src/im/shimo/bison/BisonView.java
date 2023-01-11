@@ -41,7 +41,7 @@ import im.shimo.bison.R;
 public class BisonView extends FrameLayout {
 
     @Retention(RetentionPolicy.SOURCE)
-    @IntDef({MODE_SURFACE_VIEW, MODE_SURFACE_VIEW})
+    @IntDef({ MODE_SURFACE_VIEW, MODE_SURFACE_VIEW })
     public @interface WebContentsRenderView {
     }
 
@@ -75,10 +75,12 @@ public class BisonView extends FrameLayout {
     }
 
     private void initialize(Context context, @Nullable AttributeSet attrs) {
+        if (isInEditMode())
+            return;
+        mProvider = new BisonViewProvider(this, mWebContentsRenderView, new InternalAccess());
         TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.BisonView);
         mWebContentsRenderView = a.getInt(R.styleable.BisonView_webContentsRenderView, 0);
         a.recycle();
-        mProvider = new BisonViewProvider(this, mWebContentsRenderView, new InternalAccess());
         setOverScrollMode(View.OVER_SCROLL_ALWAYS);
         setFocusable(true);
         setFocusableInTouchMode(true);
@@ -119,7 +121,6 @@ public class BisonView extends FrameLayout {
     public WebBackForwardList restoreState(Bundle inState) {
         return mProvider.restoreState(inState);
     }
-
 
     public void loadUrl(String url, Map<String, String> additionalHttpHeaders) {
         mProvider.loadUrl(url, additionalHttpHeaders);
@@ -342,11 +343,11 @@ public class BisonView extends FrameLayout {
         mProvider.onPause();
     }
 
-    public void onResume(){
+    public void onResume() {
         mProvider.onResume();
     }
 
-    public boolean isPaused(){
+    public boolean isPaused() {
         return mProvider.isPaused();
     }
 
@@ -481,47 +482,64 @@ public class BisonView extends FrameLayout {
     // }
 
     public BisonViewSettings getSettings() {
-        // jiang getSettings 这里还有点问题
         return mProvider.getSettings();
     }
 
     @Override
     public void setBackgroundColor(int color) {
-        // jiang 尝试性的去掉这个
-        // super.setBackgroundColor(color);
-        mProvider.setBackgroundColor(color);
+        if (mProvider != null) {
+            mProvider.setBackgroundColor(color);
+        } else {
+            super.setBackgroundColor(color);
+        }
+
     }
 
     public void setWebContentsRenderView(@WebContentsRenderView int renderView) {
-        if (mWebContentsRenderView == renderView) return;
+        if (mWebContentsRenderView == renderView)
+            return;
         mWebContentsRenderView = renderView;
-        mProvider.setWebContentsRenderView(renderView);
+        if (mProvider != null) {
+            mProvider.setWebContentsRenderView(renderView);
+        }
     }
-
 
     // findFocus
     @Override
     public boolean onCheckIsTextEditor() {
-        return mProvider.onCheckIsTextEditor();
+        if (mProvider != null) {
+            return mProvider.onCheckIsTextEditor();
+        } else {
+            return super.onCheckIsTextEditor();
+        }
     }
 
     @Override
     protected void onConfigurationChanged(Configuration newConfig) {
-        mProvider.onConfigurationChanged(newConfig);
+        if (mProvider != null) {
+            mProvider.onConfigurationChanged(newConfig);
+        } else {
+            super.onConfigurationChanged(newConfig);
+        }
+
     }
 
     @Override
     protected void onAttachedToWindow() {
         assert !mAttachedContents;
         super.onAttachedToWindow();
-        mProvider.onAttachedToWindow();
+        if (mProvider != null) {
+            mProvider.onAttachedToWindow();
+        }
         mAttachedContents = true;
     }
 
     @Override
     protected void onDetachedFromWindow() {
         assert mAttachedContents;
-        mProvider.onDetachedFromWindow();
+        if (!isInEditMode()) {
+            mProvider.onDetachedFromWindow();
+        }
         mAttachedContents = false;
         super.onDetachedFromWindow();
     }
@@ -541,124 +559,188 @@ public class BisonView extends FrameLayout {
 
     @Override
     public void setScrollBarStyle(int style) {
-        mProvider.setScrollBarStyle(style);
+        if (mProvider != null) {
+            mProvider.setScrollBarStyle(style);
+        }
         super.setScrollBarStyle(style);
     }
 
     // setScrollBarStyle
 
-
-    @Override
-    public void scrollBy(int x, int y) {
-        mProvider.scrollBy(x, y);
-    }
-
-    @Override
-    public void scrollTo(int x, int y) {
-        mProvider.scrollTo(x, y);
-    }
-
-
     @Override
     protected int computeHorizontalScrollRange() {
-        return mProvider.computeHorizontalScrollRange();
+        if (mProvider != null) {
+            return mProvider.computeHorizontalScrollRange();
+        } else {
+            return super.computeHorizontalScrollRange();
+        }
     }
 
     @Override
     protected int computeHorizontalScrollOffset() {
-        return mProvider.computeHorizontalScrollOffset();
+        if (mProvider != null) {
+            return mProvider.computeHorizontalScrollOffset();
+        } else {
+            return computeHorizontalScrollOffset();
+        }
+
     }
 
-    @Override
-    protected int computeHorizontalScrollExtent() {
-        return mProvider.computeHorizontalScrollExtent();
-    }
+    /*
+     * @Override
+     * protected int computeHorizontalScrollExtent() {
+     * return mProvider.computeHorizontalScrollExtent();
+     * }
+     */
 
     @Override
     protected int computeVerticalScrollRange() {
-        return mProvider.computeVerticalScrollRange();
+        if (mProvider != null) {
+            return mProvider.computeVerticalScrollRange();
+        } else {
+            return super.computeVerticalScrollRange();
+        }
     }
 
     @Override
     protected int computeVerticalScrollOffset() {
-        return mProvider.computeVerticalScrollOffset();
+        if (mProvider != null) {
+            return mProvider.computeVerticalScrollOffset();
+        } else {
+            return super.computeVerticalScrollOffset();
+        }
     }
 
     @Override
     protected int computeVerticalScrollExtent() {
-        return mProvider.computeVerticalScrollExtent();
+        if (mProvider != null) {
+            return mProvider.computeVerticalScrollExtent();
+        } else {
+            return super.computeVerticalScrollExtent();
+        }
+
     }
 
     // @Override
     // public void computeScroll() {
-    //     mProvider.computeScroll();
+    // mProvider.computeScroll();
     // }
 
     @Override
     public boolean onHoverEvent(MotionEvent ev) {
-        return mProvider.onHoverEvent(ev);
+        if (mProvider != null) {
+            return mProvider.onHoverEvent(ev);
+        } else {
+            return super.onHoverEvent(ev);
+        }
+
     }
 
     @Override
     public boolean onTouchEvent(MotionEvent ev) {
-        return mProvider.onTouchEvent(ev);
+        if (mProvider != null) {
+            return mProvider.onTouchEvent(ev);
+        } else {
+            return super.onTouchEvent(ev);
+        }
     }
 
     @Override
     public boolean onGenericMotionEvent(MotionEvent ev) {
-        return mProvider.onGenericMotionEvent(ev);
+        if (mProvider != null) {
+            return mProvider.onGenericMotionEvent(ev);
+        } else {
+            return super.onGenericMotionEvent(ev);
+        }
     }
 
     // onTrackballEvent
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
-        return mProvider.onKeyDown(keyCode, event);
+        if (mProvider != null) {
+            return mProvider.onKeyDown(keyCode, event);
+        } else {
+            return super.onKeyDown(keyCode, event);
+        }
+
     }
 
     @Override
     public boolean onKeyUp(int keyCode, KeyEvent event) {
-        return mProvider.onKeyUp(keyCode, event);
+        if (mProvider != null) {
+            return mProvider.onKeyUp(keyCode, event);
+        } else {
+            return super.onKeyUp(keyCode, event);
+        }
+
     }
 
     @Override
     public boolean onKeyMultiple(int keyCode, int repeatCount, KeyEvent event) {
-        return mProvider.onKeyMultiple(keyCode, repeatCount, event);
+        if (mProvider != null) {
+            return mProvider.onKeyMultiple(keyCode, repeatCount, event);
+        } else {
+            return super.onKeyMultiple(keyCode, repeatCount, event);
+        }
+
     }
 
     @Override
     public InputConnection onCreateInputConnection(EditorInfo outAttrs) {
-        return mProvider.onCreateInputConnection(outAttrs);
-    }
+        if (mProvider != null) {
+            return mProvider.onCreateInputConnection(outAttrs);
+        } else {
+            return super.onCreateInputConnection(outAttrs);
+        }
 
+    }
 
     @Override
     public void onWindowFocusChanged(boolean hasWindowFocus) {
-        mProvider.onWindowFocusChanged(hasWindowFocus);
+        if (mProvider != null) {
+            mProvider.onWindowFocusChanged(hasWindowFocus);
+        }
+
         super.onWindowFocusChanged(hasWindowFocus);
     }
-
 
     @Override
     protected void onFocusChanged(boolean focused, int direction, Rect previouslyFocusedRect) {
         super.onFocusChanged(focused, direction, previouslyFocusedRect);
-        mProvider.onFocusChanged(focused, direction, previouslyFocusedRect);
+        if (mProvider != null) {
+            mProvider.onFocusChanged(focused, direction, previouslyFocusedRect);
+        }
+
     }
 
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
-        return mProvider.dispatchKeyEvent(event);
+        if (mProvider != null) {
+            return mProvider.dispatchKeyEvent(event);
+        } else {
+            return super.dispatchKeyEvent(event);
+        }
+
     }
 
     @Override
     public boolean requestFocus(int direction, Rect previouslyFocusedRect) {
-        return mProvider.requestFocus(direction, previouslyFocusedRect);
+        if (mProvider != null) {
+            return mProvider.requestFocus(direction, previouslyFocusedRect);
+        } else {
+            return super.requestFocus(direction, previouslyFocusedRect);
+        }
+
     }
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
-        mProvider.onMeasure(widthMeasureSpec, heightMeasureSpec);
+        if (mProvider != null) {
+            mProvider.onMeasure(widthMeasureSpec, heightMeasureSpec);
+        }
+
     }
 
     // @Override
@@ -669,29 +751,38 @@ public class BisonView extends FrameLayout {
 
     @Override
     protected void onOverScrolled(int scrollX, int scrollY, boolean clampedX, boolean clampedY) {
-        mProvider.onOverScrolled(scrollX, scrollY, clampedX, clampedY);
+        if (mProvider != null) {
+            mProvider.onOverScrolled(scrollX, scrollY, clampedX, clampedY);
+        } else {
+            super.onOverScrolled(scrollX, scrollY, clampedX, clampedY);
+        }
+
     }
 
     @Override
     protected void onScrollChanged(int l, int t, int oldl, int oldt) {
         super.onScrollChanged(l, t, oldl, oldt);
         // if (mProvider != null) {
-        //     mProvider.onScrollChanged(l, t, oldl, oldt);
+        // mProvider.onScrollChanged(l, t, oldl, oldt);
         // }
     }
 
     @Override
     protected void onVisibilityChanged(View changedView, int visibility) {
         super.onVisibilityChanged(changedView, visibility);
-        mProvider.onVisibilityChanged(changedView, visibility);
+        if (mProvider != null) {
+            mProvider.onVisibilityChanged(changedView, visibility);
+        }
+
     }
 
     @Override
     protected void onWindowVisibilityChanged(int visibility) {
         super.onWindowVisibilityChanged(visibility);
-        mProvider.onWindowVisibilityChanged(visibility);
+        if (mProvider != null) {
+            mProvider.onWindowVisibilityChanged(visibility);
+        }
     }
-
 
     // @Override
     // protected void onDraw(Canvas canvas) {
@@ -706,14 +797,23 @@ public class BisonView extends FrameLayout {
 
     @Override
     public boolean performAccessibilityAction(int action, Bundle arguments) {
-        return mProvider.performAccessibilityAction(action, arguments);
+        if (mProvider != null) {
+            return mProvider.performAccessibilityAction(action, arguments);
+        } else {
+            return super.performAccessibilityAction(action, arguments);
+        }
+
     }
 
     @Override
     public boolean onDragEvent(DragEvent event) {
-        return mProvider.onDragEvent(event);
-    }
+        if (mProvider != null) {
+            return mProvider.onDragEvent(event);
+        } else {
+            return super.onDragEvent(event);
+        }
 
+    }
 
     public static void setRemoteDebuggingEnabled(boolean enable) {
         if (gBvDevToolsServer == null) {
@@ -756,7 +856,7 @@ public class BisonView extends FrameLayout {
         }
 
         public void overScrollBy(int deltaX, int deltaY, int scrollX, int scrollY, int scrollRangeX, int scrollRangeY,
-                                 int maxOverScrollX, int maxOverScrollY, boolean isTouchEvent) {
+                int maxOverScrollX, int maxOverScrollY, boolean isTouchEvent) {
             // We're intentionally not calling super.scrollTo here to make testing easier.
             BisonView.this.overScrollBy(deltaX, deltaY, scrollX, scrollY, scrollRangeX, scrollRangeY, maxOverScrollX,
                     maxOverScrollY, isTouchEvent);
@@ -908,7 +1008,7 @@ public class BisonView extends FrameLayout {
          * @param contentLength      The file size reported by the server
          */
         public void onDownloadStart(String url, String userAgent, String contentDisposition, String mimetype,
-                                    long contentLength);
+                long contentLength);
 
     }
 

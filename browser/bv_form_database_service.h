@@ -1,12 +1,10 @@
 // create by jiang947
 
-
 #ifndef BISON_BROWSER_BISON_FORM_DATABASE_SERVICE_H_
 #define BISON_BROWSER_BISON_FORM_DATABASE_SERVICE_H_
 
-
 #include "base/files/file_path.h"
-#include "base/macros.h"
+
 #include "base/synchronization/waitable_event.h"
 #include "components/autofill/core/browser/webdata/autofill_webdata_service.h"
 #include "components/webdata/common/web_data_service_consumer.h"
@@ -21,6 +19,9 @@ namespace bison {
 class BvFormDatabaseService : public WebDataServiceConsumer {
  public:
   BvFormDatabaseService(const base::FilePath path);
+  
+  BvFormDatabaseService(const BvFormDatabaseService&) = delete;
+  BvFormDatabaseService& operator=(const BvFormDatabaseService&) = delete;
 
   ~BvFormDatabaseService() override;
 
@@ -34,7 +35,7 @@ class BvFormDatabaseService : public WebDataServiceConsumer {
   void ClearFormData();
 
   scoped_refptr<autofill::AutofillWebDataService>
-      get_autofill_webdata_service();
+  get_autofill_webdata_service();
 
   // WebDataServiceConsumer implementation.
   void OnWebDataServiceRequestDone(
@@ -47,8 +48,6 @@ class BvFormDatabaseService : public WebDataServiceConsumer {
 
   scoped_refptr<autofill::AutofillWebDataService> autofill_data_;
   scoped_refptr<WebDatabaseService> web_database_;
-
-  DISALLOW_COPY_AND_ASSIGN(BvFormDatabaseService);
 };
 
 }  // namespace bison

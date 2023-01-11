@@ -11,6 +11,7 @@ enum {
   kBisonViewLocalePakDescriptor = kContentIPCDescriptorMax + 1,
   kBisonViewMainPakDescriptor,
   kBisonView100PercentPakDescriptor,
+  kAndroidWebViewCrashSignalDescriptor,
   kAndroidMinidumpDescriptor,
 };
 

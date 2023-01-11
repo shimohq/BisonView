@@ -21,9 +21,9 @@ namespace bison {
 namespace {
 
 // Calls through to WebMessageListenerInfo.
-class AwWebMessageHost : public js_injection::WebMessageHost {
+class BvWebMessageHost : public js_injection::WebMessageHost {
  public:
-  AwWebMessageHost(js_injection::WebMessageReplyProxy* reply_proxy,
+  BvWebMessageHost(js_injection::WebMessageReplyProxy* reply_proxy,
                    const base::android::ScopedJavaGlobalRef<jobject>& listener,
                    const std::string& origin_string,
                    bool is_main_frame)
@@ -32,7 +32,7 @@ class AwWebMessageHost : public js_injection::WebMessageHost {
         origin_string_(origin_string),
         is_main_frame_(is_main_frame) {}
 
-  ~AwWebMessageHost() override = default;
+  ~BvWebMessageHost() override = default;
 
   // js_injection::WebMessageHost:
   void OnPostMessage(
@@ -92,7 +92,7 @@ std::unique_ptr<js_injection::WebMessageHost>
 BvWebMessageHostFactory::CreateHost(const std::string& origin_string,
                                     bool is_main_frame,
                                     js_injection::WebMessageReplyProxy* proxy) {
-  return std::make_unique<AwWebMessageHost>(proxy, listener_, origin_string,
+  return std::make_unique<BvWebMessageHost>(proxy, listener_, origin_string,
                                             is_main_frame);
 }
 

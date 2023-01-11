@@ -1,10 +1,10 @@
 // create by jiang947
 
-#ifndef BISON_RENDERER_BISON_RENDER_VIEW_EXT_H_
-#define BISON_RENDERER_BISON_RENDER_VIEW_EXT_H_
+#ifndef BISON_RENDERER_BV_RENDER_VIEW_EXT_H_
+#define BISON_RENDERER_BV_RENDER_VIEW_EXT_H_
 
 #include "base/timer/timer.h"
-#include "content/public/renderer/render_view_observer.h"
+#include "third_party/blink/public/web/web_view_observer.h"
 #include "ui/gfx/geometry/size.h"
 
 namespace bison {
@@ -16,15 +16,18 @@ namespace bison {
 // Render process side of BvRenderViewHostExt, this provides cross-process
 // implementation of miscellaneous WebView functions that we need to poke
 // WebKit directly to implement (and that aren't needed in the chrome app).
-class BvRenderViewExt : public content::RenderViewObserver {
+class BvRenderViewExt : public blink::WebViewObserver {
  public:
-  static void RenderViewCreated(content::RenderView* render_view);
+  BvRenderViewExt(const BvRenderViewExt&) = delete;
+  BvRenderViewExt& operator=(const BvRenderViewExt&) = delete;
+
+  static void WebViewCreated(blink::WebView* web_view);
 
  private:
-  BvRenderViewExt(content::RenderView* render_view);
+  BvRenderViewExt(blink::WebView* web_view);
   ~BvRenderViewExt() override;
 
-  // RenderViewObserver:
+  // blink::WebViewObserver overrides.
   void DidCommitCompositorFrame() override;
   void DidUpdateMainFrameLayout() override;
   void OnDestruct() override;
@@ -36,10 +39,8 @@ class BvRenderViewExt : public content::RenderViewObserver {
   // Whether the contents size may have changed and |UpdateContentsSize| needs
   // to be called.
   bool needs_contents_size_update_ = true;
-
-  DISALLOW_COPY_AND_ASSIGN(BvRenderViewExt);
 };
 
 }  // namespace bison
 
-#endif  // BISON_RENDERER_BISON_RENDER_VIEW_EXT_H_
+#endif  // BISON_RENDERER_BV_RENDER_VIEW_EXT_H_

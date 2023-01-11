@@ -50,6 +50,7 @@ def main(args):
   build_utils.AddDepfileOption(parser)
   parser.add_argument('--output', required=True, help='Path to output aar.')
   parser.add_argument('--jars', required=True, help='GN list of jar inputs.')
+  parser.add_argument('--src_jars', required=True, help='srcjar dep')
   parser.add_argument('--dependencies-res-zips', required=True,
                       help='GN list of resource zips')
   parser.add_argument('--r-text-files', required=True,
@@ -84,6 +85,7 @@ def main(args):
     parser.error('You must provide --abi if you have native libs')
 
   options.jars = build_utils.ParseGnList(options.jars)
+  options.src_jars = build_utils.ParseGnList(options.src_jars)
   options.dependencies_res_zips = build_utils.ParseGnList(
       options.dependencies_res_zips)
   options.r_text_files = build_utils.ParseGnList(options.r_text_files)
@@ -97,8 +99,10 @@ def main(args):
       options.resource_included_globs)
 
   #print("\n".join(options.jars))
+  all_jars = options.src_jars + options.jars
+  all_jars = sorted(set(all_jars),key=all_jars.index)
 
-  options.deps_configs= build_utils.ParseGnList(options.deps_configs)
+  options.deps_configs = build_utils.ParseGnList(options.deps_configs)
 
   with tempfile.NamedTemporaryFile(delete=False) as staging_file:
     try:
@@ -107,10 +111,10 @@ def main(args):
             z, 'AndroidManifest.xml', src_path=options.android_manifest)
 
         path_transform = CreatePathTransform(options.jar_excluded_globs,
-                                             options.jar_included_globs, [])
+                                             options.jar_included_globs)
         with tempfile.NamedTemporaryFile() as jar_file:
           build_utils.MergeZips(
-              jar_file.name, options.jars, path_transform=path_transform)
+              jar_file.name, all_jars, path_transform=path_transform)
           build_utils.AddToZipHermetic(z, 'classes.jar', src_path=jar_file.name)
 
         build_utils.AddToZipHermetic(

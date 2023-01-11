@@ -3,11 +3,12 @@
 #ifndef BISON_BROWSER_BISON_BROWSER_PROCESS_H_
 #define BISON_BROWSER_BISON_BROWSER_PROCESS_H_
 
-#include "base/feature_list.h"
 #include "bison/browser/bv_browser_context.h"
 #include "bison/browser/bv_feature_list_creator.h"
 #include "bison/browser/lifecycle/bv_contents_lifecycle_notifier.h"
 
+#include "base/feature_list.h"
+#include "base/memory/raw_ptr.h"
 #include "components/prefs/pref_change_registrar.h"
 #include "components/prefs/pref_service.h"
 #include "content/public/browser/network_service_instance.h"
@@ -20,51 +21,45 @@ namespace prefs {
 
 // Used for Kerberos authentication.
 extern const char kAuthAndroidNegotiateAccountType[];
-extern const char kAuthServerWhitelist[];
+extern const char kAuthServerAllowlist[];
+extern const char kEnterpriseAuthAppLinkPolicy[];
 
 }  // namespace prefs
+
+class BvContentsLifecycleNotifier;
+class VisibilityMetricsLogger;
 
 class BvBrowserProcess {
  public:
   BvBrowserProcess(BvFeatureListCreator* bv_feature_list_creator);
+
+  BvBrowserProcess(const BvBrowserProcess&) = delete;
+  BvBrowserProcess& operator=(const BvBrowserProcess&) = delete;
+
   ~BvBrowserProcess();
 
   static BvBrowserProcess* GetInstance();
 
   PrefService* local_state();
   BvBrowserPolicyConnector* browser_policy_connector();
+  VisibilityMetricsLogger* visibility_metrics_logger();
 
   void CreateBrowserPolicyConnector();
   void CreateLocalState();
-  // jiang bison not impl safe Browsing
-  // void InitSafeBrowsing();
 
-  // jiang bison not impl safe Browsing
-  // safe_browsing::RemoteSafeBrowsingDatabaseManager*
-  // GetSafeBrowsingDBManager();
 
-  // Called on UI thread.
-  // This method lazily creates TriggerManager.
-  // Needs to happen after |safe_browsing_ui_manager_| is created.
-  // jiang bison not impl safe Browsing
-  // safe_browsing::TriggerManager* GetSafeBrowsingTriggerManager();
-
-  // InitSafeBrowsing must be called first.
-  // Called on UI and IO threads.
-  // jiang bison not impl safe Browsing
-  // BisonSafeBrowsingWhitelistManager* GetSafeBrowsingWhitelistManager() const;
-
-  // InitSafeBrowsing must be called first.
-  // Called on UI and IO threads.
-  // jiang bison not impl safe Browsing
-  // BisonSafeBrowsingUIManager* GetSafeBrowsingUIManager() const;
 
   static void RegisterNetworkContextLocalStatePrefs(
       PrefRegistrySimple* pref_registry);
+  static void RegisterEnterpriseAuthenticationAppLinkPolicyPref(
+      PrefRegistrySimple* pref_registry);
+
   // Constructs HttpAuthDynamicParams based on |local_state_|.
   network::mojom::HttpAuthDynamicParamsPtr CreateHttpAuthDynamicParams();
 
   void PreMainMessageLoopRun();
+
+  static void TriggerMinidumpUploading();
 
  private:
   // jiang bison not impl safe Browsing
@@ -109,7 +104,9 @@ class BvBrowserProcess {
 
   std::unique_ptr<BvContentsLifecycleNotifier> bv_contents_lifecycle_notifier_;
 
-  DISALLOW_COPY_AND_ASSIGN(BvBrowserProcess);
+
+  std::unique_ptr<VisibilityMetricsLogger> visibility_metrics_logger_;
+  std::unique_ptr<BvContentsLifecycleNotifier> aw_contents_lifecycle_notifier_;
 };
 
 }  // namespace bison

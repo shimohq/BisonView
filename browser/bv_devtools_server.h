@@ -6,14 +6,17 @@
 #include <memory>
 #include <vector>
 
-#include "base/macros.h"
-
 namespace bison {
 
-// This class controls BisonView-specific Developer Tools remote debugging server.
+// This class controls BisonView-specific Developer Tools remote debugging
+// server.
 class BvDevToolsServer {
  public:
   BvDevToolsServer();
+
+  BvDevToolsServer(const BvDevToolsServer&) = delete;
+  BvDevToolsServer& operator=(const BvDevToolsServer&) = delete;
+
   ~BvDevToolsServer();
 
   // Opens linux abstract socket to be ready for remote debugging.
@@ -26,7 +29,6 @@ class BvDevToolsServer {
 
  private:
   bool is_started_;
-  DISALLOW_COPY_AND_ASSIGN(BvDevToolsServer);
 };
 
 }  // namespace bison

@@ -1,11 +1,12 @@
 // create by jiang947
 
-#ifndef BISON_BROWSER_BISON_DOWNLOAD_MANAGER_DELEGATE_H_
-#define BISON_BROWSER_BISON_DOWNLOAD_MANAGER_DELEGATE_H_
+#ifndef BISON_BROWSER_BV_DOWNLOAD_MANAGER_DELEGATE_H_
+#define BISON_BROWSER_BV_DOWNLOAD_MANAGER_DELEGATE_H_
+
+
 
 #include <string>
 
-#include "base/macros.h"
 #include "base/supports_user_data.h"
 #include "content/public/browser/download_manager_delegate.h"
 
@@ -23,6 +24,11 @@ class BvDownloadManagerDelegate : public content::DownloadManagerDelegate,
                                   public base::SupportsUserData::Data {
  public:
   BvDownloadManagerDelegate();
+
+  BvDownloadManagerDelegate(const BvDownloadManagerDelegate&) = delete;
+  BvDownloadManagerDelegate& operator=(const BvDownloadManagerDelegate&) =
+      delete;
+
   ~BvDownloadManagerDelegate() override;
 
   // content::DownloadManagerDelegate implementation.
@@ -35,11 +41,8 @@ class BvDownloadManagerDelegate : public content::DownloadManagerDelegate,
       int64_t content_length,
       bool is_transient,
       content::WebContents* web_contents) override;
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(BvDownloadManagerDelegate);
 };
 
 }  // namespace bison
 
-#endif  // BISON_BROWSER_BISON_DOWNLOAD_MANAGER_DELEGATE_H_
+#endif  // BISON_BROWSER_BV_DOWNLOAD_MANAGER_DELEGATE_H_

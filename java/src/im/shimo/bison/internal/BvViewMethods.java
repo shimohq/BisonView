@@ -120,15 +120,6 @@ interface BvViewMethods {
      */
     void onContainerViewScrollChanged(int l, int t, int oldl, int oldt);
 
-    /**
-     * @see android.view.View#scrollBy
-     */
-    public void scrollBy(int x, int y);
-
-    /**
-     * @see android.view.View#scrollTo
-     */
-    public void scrollTo(int x, int y);
 
     /**
      * @see android.view.View#onOverScrolled
@@ -145,11 +136,6 @@ interface BvViewMethods {
      * @see android.view.View#computeHorizontalScrollOffset
      */
     int computeHorizontalScrollOffset();
-
-    /**
-     * @see android.view.View#computeHorizontalScrollExtent
-     */
-    int computeHorizontalScrollExtent();
 
     /**
      * @see android.view.View#computeVerticalScrollRange

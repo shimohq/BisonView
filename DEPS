@@ -28,13 +28,12 @@ vars = {
   'mac_xcode_version': 'default',
 
   'chromium_git': 'https://chromium.googlesource.com',
-  'chromium_version' : '85.0.4183.127',
+  'chromium_version' : '103.0.5060.129',
 }
 
 deps = {
   'src':
     Var('chromium_git') + '/chromium/src.git@' + Var('chromium_version'),
-
 }
 
 hooks = [

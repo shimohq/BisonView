@@ -10,6 +10,7 @@ import android.view.DragEvent;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.View.OnDragListener;
 import android.view.View.OnSystemUiVisibilityChangeListener;
 import android.view.ViewGroup;
 import android.view.ViewGroup.OnHierarchyChangeListener;
@@ -40,20 +41,22 @@ import org.chromium.ui.base.EventOffsetHandler;
  */
 public class ContentView extends FrameLayout
         implements ViewEventSink.InternalAccessDelegate, SmartClipProvider,
-                   OnHierarchyChangeListener, OnSystemUiVisibilityChangeListener {
+                   OnHierarchyChangeListener, OnSystemUiVisibilityChangeListener , OnDragListener{
     private static final String TAG = "bison.ContentView";
 
     // Default value to signal that the ContentView's size need not be overridden.
     public static final int DEFAULT_MEASURE_SPEC =
             MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED);
 
-    private final WebContents mWebContents;
+    @Nullable
+    private WebContents mWebContents;
     private final ViewGroup mContainerView;
     private boolean mIsObscuredForAccessibility;
     private final ObserverList<OnHierarchyChangeListener> mHierarchyChangeListeners =
             new ObserverList<>();
     private final ObserverList<OnSystemUiVisibilityChangeListener> mSystemUiChangeListeners =
             new ObserverList<>();
+    private final ObserverList<OnDragListener> mOnDragListeners = new ObserverList<>();
     private ViewEventSink mViewEventSink;
 
     /**
@@ -75,10 +78,7 @@ public class ContentView extends FrameLayout
      */
     public static ContentView createContentView(Context context,
             @Nullable EventOffsetHandler eventOffsetHandler,
-            WebContents webContents, ViewGroup containerView) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            return new ContentViewApi23(context, eventOffsetHandler, webContents ,containerView);
-        }
+            @Nullable WebContents webContents, ViewGroup containerView) {
         return new ContentView(context, eventOffsetHandler, webContents ,containerView);
     }
 
@@ -110,15 +110,33 @@ public class ContentView extends FrameLayout
 
         setOnHierarchyChangeListener(this);
         setOnSystemUiVisibilityChangeListener(this);
+        setOnDragListener(this);
     }
 
     protected WebContentsAccessibility getWebContentsAccessibility() {
-        return hasValidWebContents() ? WebContentsAccessibility.fromWebContents(mWebContents)
+        return webContentsAttached() ? WebContentsAccessibility.fromWebContents(mWebContents)
                                            : null;
     }
 
     public WebContents getWebContents() {
         return mWebContents;
+    }
+
+    public void setWebContents(WebContents webContents) {
+        boolean wasFocused = isFocused();
+        boolean wasWindowFocused = hasWindowFocus();
+        boolean wasAttached = isAttachedToWindow();
+        boolean wasObscured = mIsObscuredForAccessibility;
+        if (wasFocused) onFocusChanged(false, View.FOCUS_FORWARD, null);
+        if (wasWindowFocused) onWindowFocusChanged(false);
+        if (wasAttached) onDetachedFromWindow();
+        if (wasObscured) setIsObscuredForAccessibility(false);
+        mWebContents = webContents;
+        mViewEventSink = null;
+        if (wasFocused) onFocusChanged(true, View.FOCUS_FORWARD, null);
+        if (wasWindowFocused) onWindowFocusChanged(true);
+        if (wasAttached) onAttachedToWindow();
+        if (wasObscured) setIsObscuredForAccessibility(true);
     }
 
     /**
@@ -195,6 +213,28 @@ public class ContentView extends FrameLayout
         mSystemUiChangeListeners.removeObserver(listener);
     }
 
+    /**
+     * Registers the given listener to receive DragEvent updates on this view.
+     * @param listener Listener to receive DragEvent updates.
+     */
+    public void addOnDragListener(OnDragListener listener) {
+        mOnDragListeners.addObserver(listener);
+    }
+
+    /**
+     * Unregisters the given listener to receive DragEvent updates on this view.
+     * @param listener Listener that doesn't want to receive DragEvent updates anymore.
+     */
+    public void removeOnDragListener(OnDragListener listener) {
+        mOnDragListeners.removeObserver(listener);
+    }
+
+    @Override
+    public void setOnDragListener(OnDragListener listener) {
+        assert listener == this : "Use add/removeOnDragListener instead.";
+        super.setOnDragListener(listener);
+    }
+
     // View.OnHierarchyChangeListener implementation
 
     @Override
@@ -218,6 +258,17 @@ public class ContentView extends FrameLayout
         for (OnSystemUiVisibilityChangeListener listener : mSystemUiChangeListeners) {
             listener.onSystemUiVisibilityChange(visibility);
         }
+    }
+
+    // View.OnDragListener implementation
+
+    @Override
+    public boolean onDrag(View view, DragEvent event) {
+        for (OnDragListener listener : mOnDragListeners) {
+            listener.onDrag(view, event);
+        }
+        // Do not consume the drag event to allow #onDragEvent to be called.
+        return false;
     }
 
     @Override
@@ -247,10 +298,6 @@ public class ContentView extends FrameLayout
 
     @Override
     public InputConnection onCreateInputConnection(EditorInfo outAttrs) {
-        return mContainerView.onCreateInputConnection(outAttrs);
-    }
-
-    public InputConnection createInputConnection(EditorInfo outAttrs){
         // Calls may come while/after WebContents is destroyed. See https://crbug.com/821750#c8.
         if (!hasValidWebContents()) return null;
         return ImeAdapter.fromWebContents(mWebContents).onCreateInputConnection(outAttrs);
@@ -443,6 +490,7 @@ public class ContentView extends FrameLayout
     private RenderCoordinates getRenderCoordinates() {
         return hasValidWebContents() ? RenderCoordinates.fromWebContents(mWebContents) : null;
     }
+
     // End FrameLayout overrides.
 
     @Override
@@ -486,6 +534,12 @@ public class ContentView extends FrameLayout
         }
     }
 
+    @Override
+    public void onProvideVirtualStructure(final ViewStructure structure) {
+        WebContentsAccessibility wcax = getWebContentsAccessibility();
+        if (wcax != null) wcax.onProvideVirtualStructure(structure, false);
+    }
+
     ///////////////////////////////////////////////////////////////////////////////////////////////
     //              Start Implementation of ViewEventSink.InternalAccessDelegate                 //
     ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -515,18 +569,5 @@ public class ContentView extends FrameLayout
 
     private boolean webContentsAttached() {
         return hasValidWebContents() && mWebContents.getTopLevelNativeWindow() != null;
-    }
-
-    private static class ContentViewApi23 extends ContentView {
-        public ContentViewApi23(Context context, EventOffsetHandler eventOffsetHandler,
-                WebContents webContents ,ViewGroup containerView) {
-            super(context,eventOffsetHandler, webContents ,containerView);
-        }
-
-        @Override
-        public void onProvideVirtualStructure(final ViewStructure structure) {
-            WebContentsAccessibility wcax = getWebContentsAccessibility();
-            if (wcax != null) wcax.onProvideVirtualStructure(structure, false);
-        }
     }
 }

@@ -4,18 +4,19 @@
 #include <memory>
 #include <utility>
 
+#include "bison/bison_jni_headers/AndroidProtocolHandler_jni.h"
+#include "bison/common/url_constants.h"
+
 #include "base/android/jni_android.h"
 #include "base/android/jni_string.h"
 #include "base/android/jni_weak_ref.h"
-#include "bison/bison_jni_headers/AndroidProtocolHandler_jni.h"
-#include "bison/common/url_constants.h"
+#include "components/embedder_support/android/util/input_stream.h"
 #include "content/public/common/url_constants.h"
-#include "input_stream.h"
 #include "net/base/io_buffer.h"
 #include "net/base/mime_util.h"
 #include "net/base/net_errors.h"
 #include "net/http/http_util.h"
-#include "net/url_request/url_request.h"
+#include "url/android/gurl_android.h"
 #include "url/gurl.h"
 #include "url/url_constants.h"
 
@@ -25,7 +26,7 @@ using base::android::ConvertUTF8ToJavaString;
 using base::android::JavaParamRef;
 using base::android::ScopedJavaGlobalRef;
 using base::android::ScopedJavaLocalRef;
-using bison::InputStream;
+using embedder_support::InputStream;
 
 namespace bison {
 
@@ -35,11 +36,11 @@ std::unique_ptr<InputStream> CreateInputStream(JNIEnv* env, const GURL& url) {
   DCHECK(env);
 
   // Open the input stream.
-  ScopedJavaLocalRef<jstring> jurl = ConvertUTF8ToJavaString(env, url.spec());
   ScopedJavaLocalRef<jobject> stream =
-      bison::Java_AndroidProtocolHandler_open(env, jurl);
+      bison::Java_AndroidProtocolHandler_open(
+          env, url::GURLAndroid::FromNativeGURL(env, url));
 
-  if (stream.is_null()) {
+  if (!stream) {
     DLOG(ERROR) << "Unable to open input stream for Android URL";
     return nullptr;
   }
@@ -48,16 +49,14 @@ std::unique_ptr<InputStream> CreateInputStream(JNIEnv* env, const GURL& url) {
 
 bool GetInputStreamMimeType(JNIEnv* env,
                             const GURL& url,
-                            InputStream* stream,
+                            embedder_support::InputStream* stream,
                             std::string* mime_type) {
   // Query the mime type from the Java side. It is possible for the query to
   // fail, as the mime type cannot be determined for all supported schemes.
-  ScopedJavaLocalRef<jstring> java_url =
-      ConvertUTF8ToJavaString(env, url.spec());
   ScopedJavaLocalRef<jstring> returned_type =
-      bison::Java_AndroidProtocolHandler_getMimeType(env, stream->jobj(),
-                                                     java_url);
-  if (returned_type.is_null())
+      bison::Java_AndroidProtocolHandler_getMimeType(
+          env, stream->jobj(), url::GURLAndroid::FromNativeGURL(env, url));
+  if (!returned_type)
     return false;
 
   *mime_type = base::android::ConvertJavaStringToUTF8(returned_type);

@@ -7,7 +7,6 @@
 
 #include "base/android/scoped_java_ref.h"
 #include "base/compiler_specific.h"
-#include "base/macros.h"
 
 namespace net {
 class IOBuffer;
@@ -55,8 +54,6 @@ class InputStream {
  private:
   base::android::ScopedJavaGlobalRef<jobject> jobject_;
   base::android::ScopedJavaGlobalRef<jbyteArray> buffer_;
-
-  DISALLOW_COPY_AND_ASSIGN(InputStream);
 };
 
 }  // namespace bison

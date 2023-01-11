@@ -4,9 +4,9 @@
 #define BISON_BROWSER_BISON_COOKIE_ACCESS_POLICY_H_
 
 #include "base/lazy_instance.h"
-#include "base/macros.h"
-#include "base/synchronization/lock.h"
+
 #include "base/no_destructor.h"
+#include "base/synchronization/lock.h"
 #include "net/cookies/site_for_cookies.h"
 
 class GURL;
@@ -24,6 +24,10 @@ class BvCookieAccessPolicy {
  public:
   static BvCookieAccessPolicy* GetInstance();
 
+
+  BvCookieAccessPolicy(const BvCookieAccessPolicy&) = delete;
+  BvCookieAccessPolicy& operator=(const BvCookieAccessPolicy&) = delete;
+
   // Can we read/write any cookies? Can be called from any thread.
   bool GetShouldAcceptCookies();
   void SetShouldAcceptCookies(bool allow);
@@ -36,7 +40,6 @@ class BvCookieAccessPolicy {
   bool GetShouldAcceptThirdPartyCookies(int render_process_id,
                                         int render_frame_id,
                                         int frame_tree_node_id);
-  bool GetShouldAcceptThirdPartyCookies(const net::URLRequest& request);
 
   // Whether or not to allow cookies for requests with these parameters.
   bool AllowCookies(const GURL& url,
@@ -56,8 +59,6 @@ class BvCookieAccessPolicy {
                         bool accept_third_party_cookies);
   bool accept_cookies_;
   base::Lock lock_;
-
-  DISALLOW_COPY_AND_ASSIGN(BvCookieAccessPolicy);
 };
 
 }  // namespace bison

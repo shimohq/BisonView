@@ -4,14 +4,14 @@
 #include <vector>
 
 #include "bison/common/bv_switches.h"
-#include "bison/common/render_view_messages.h"
+#include "bison/common/mojom/frame.mojom.h"
 #include "bison/common/url_constants.h"
 // #include "bison/grit/bison_resources.h"
 // #include "bison/grit/bison_strings.h"
-#include "bison/renderer/bison_content_settings_client.h"
+#include "bison/renderer/bv_content_settings_client.h"
 #include "bison/renderer/bv_key_systems.h"
-#include "bison/renderer/bison_print_render_frame_helper_delegate.h"
-#include "bison/renderer/bison_render_frame_ext.h"
+#include "bison/renderer/bv_print_render_frame_helper_delegate.h"
+#include "bison/renderer/bv_render_frame_ext.h"
 #include "bison/renderer/bv_render_view_ext.h"
 // #include "bison/renderer/bison_url_loader_throttle_provider.h"
 // #include "bison/renderer/bison_websocket_handshake_throttle_provider.h"
@@ -21,17 +21,19 @@
 #include "base/i18n/rtl.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/strings/string_util.h"
+#include "components/android_system_error_page/error_page_populator.h"
 #include "components/js_injection/renderer/js_communication.h"
 #include "components/page_load_metrics/renderer/metrics_render_frame_observer.h"
 #include "components/printing/renderer/print_render_frame_helper.h"
 #include "components/visitedlink/renderer/visitedlink_reader.h"
 #include "content/public/child/child_thread.h"
 #include "content/public/common/url_constants.h"
-#include "content/public/renderer/document_state.h"
 #include "content/public/renderer/render_frame.h"
 #include "content/public/renderer/render_thread.h"
 #include "content/public/renderer/render_view.h"
+#include "ipc/ipc_sync_channel.h"
 #include "mojo/public/cpp/bindings/binder_map.h"
+#include "third_party/blink/public/common/associated_interfaces/associated_interface_provider.h"
 #include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/public/platform/web_string.h"
 #include "third_party/blink/public/platform/web_url.h"
@@ -57,10 +59,10 @@ BvContentRendererClient::~BvContentRendererClient() = default;
 
 void BvContentRendererClient::RenderThreadStarted() {
   RenderThread* thread = RenderThread::Get();
-  bison_render_thread_observer_.reset(new BisonRenderThreadObserver);
-  thread->AddObserver(bison_render_thread_observer_.get());
+  bv_render_thread_observer_ = std::make_unique<BvRenderThreadObserver>();
+  thread->AddObserver(bv_render_thread_observer_.get());
 
-  visited_link_reader_.reset(new visitedlink::VisitedLinkReader);
+  visited_link_reader_ = std::make_unique<visitedlink::VisitedLinkReader>();
 
   // browser_interface_broker_ =
   //     blink::Platform::Current()->GetBrowserInterfaceBroker();
@@ -81,7 +83,6 @@ void BvContentRendererClient::ExposeInterfacesToBrowser(
 
 bool BvContentRendererClient::HandleNavigation(
     content::RenderFrame* render_frame,
-    bool is_content_initiated,
     bool render_view_was_created_by_renderer,
     blink::WebFrame* frame,
     const blink::WebURLRequest& request,
@@ -96,23 +97,18 @@ bool BvContentRendererClient::HandleNavigation(
   // initiated and hence will not yield a shouldOverrideUrlLoading() callback.
   // Webview classic does not consider reload application-initiated so we
   // continue the same behavior.
-  // TODO(sgurun) is_content_initiated is normally false for cross-origin
-  // navigations but since android_webview does not swap out renderers, this
-  // works fine. This will stop working if android_webview starts swapping out
-  // renderers on navigation.
-  bool application_initiated =
-      !is_content_initiated || type == blink::kWebNavigationTypeBackForward;
+  bool application_initiated = type == blink::kWebNavigationTypeBackForward;
 
   // Don't offer application-initiated navigations unless it's a redirect.
   if (application_initiated && !is_redirect)
     return false;
 
-  bool is_main_frame = !frame->Parent();
+  bool is_outermost_main_frame = frame->IsOutermostMainFrame();
   const GURL& gurl = request.Url();
   // For HTTP schemes, only top-level navigations can be overridden. Similarly,
   // WebView Classic lets app override only top level about:blank navigations.
   // So we filter out non-top about:blank navigations here.
-  if (!is_main_frame &&
+  if (!is_outermost_main_frame &&
       (gurl.SchemeIs(url::kHttpScheme) || gurl.SchemeIs(url::kHttpsScheme) ||
        gurl.SchemeIs(url::kAboutScheme)))
     return false;
@@ -131,108 +127,56 @@ bool BvContentRendererClient::HandleNavigation(
   }
 
   bool ignore_navigation = false;
-  base::string16 url = request.Url().GetString().Utf16();
+  std::u16string url = request.Url().GetString().Utf16();
   bool has_user_gesture = request.HasUserGesture();
 
-  int render_frame_id = render_frame->GetRoutingID();
-  RenderThread::Get()->Send(new BisonViewHostMsg_ShouldOverrideUrlLoading(
-      render_frame_id, url, has_user_gesture, is_redirect, is_main_frame,
-      &ignore_navigation));
+  mojo::AssociatedRemote<mojom::FrameHost> frame_host_remote;
+  render_frame->GetRemoteAssociatedInterfaces()->GetInterface(
+      &frame_host_remote);
+  frame_host_remote->ShouldOverrideUrlLoading(
+      url, has_user_gesture, is_redirect, is_outermost_main_frame,
+      &ignore_navigation);
+
   return ignore_navigation;
 }
 
 void BvContentRendererClient::RenderFrameCreated(
     content::RenderFrame* render_frame) {
-  new BisonContentSettingsClient(render_frame);
+  new BvContentSettingsClient(render_frame);
   new printing::PrintRenderFrameHelper(
-      render_frame, std::make_unique<BisonPrintRenderFrameHelperDelegate>());
-  new BisonRenderFrameExt(render_frame);
+      render_frame, std::make_unique<BvPrintRenderFrameHelperDelegate>());
+  new BvRenderFrameExt(render_frame);
   new js_injection::JsCommunication(render_frame);
 
-  // TODO(jam): when the frame tree moves into content and parent() works at
-  // RenderFrame construction, simplify this by just checking parent().
-  content::RenderFrame* parent_frame =
-      render_frame->GetRenderView()->GetMainRenderFrame();
-  if (parent_frame && parent_frame != render_frame) {
+  content::RenderFrame* main_frame = render_frame->GetMainRenderFrame();
+  if (main_frame && main_frame != render_frame) {
     // Avoid any race conditions from having the browser's UI thread tell the IO
     // thread that a subframe was created.
-    RenderThread::Get()->Send(new BisonViewHostMsg_SubFrameCreated(
-        parent_frame->GetRoutingID(), render_frame->GetRoutingID()));
+    GetRenderMessageFilter()->SubFrameCreated(main_frame->GetRoutingID(),
+                                              render_frame->GetRoutingID());
   }
 
 #if BUILDFLAG(ENABLE_SPELLCHECK)
   new SpellCheckProvider(render_frame, spellcheck_.get(), this);
 #endif
 
+  // Owned by |render_frame|.
+  new page_load_metrics::MetricsRenderFrameObserver(render_frame);
 }
 
-void BvContentRendererClient::RenderViewCreated(
-    content::RenderView* render_view) {
-  BvRenderViewExt::RenderViewCreated(render_view);
-}
-
-bool BvContentRendererClient::HasErrorPage(int http_status_code) {
-  return http_status_code >= 400;
-}
-
-bool BvContentRendererClient::ShouldSuppressErrorPage(
-    content::RenderFrame* render_frame,
-    const GURL& url,
-    int error_code) {
-  DCHECK(render_frame != nullptr);
-
-  BisonRenderFrameExt* render_frame_ext =
-      BisonRenderFrameExt::FromRenderFrame(render_frame);
-  if (render_frame_ext == nullptr)
-    return false;
-
-  return render_frame_ext->GetWillSuppressErrorPage();
+void BvContentRendererClient::WebViewCreated(blink::WebView* web_view) {
+  BvRenderViewExt::WebViewCreated(web_view);
 }
 
 void BvContentRendererClient::PrepareErrorPage(
     content::RenderFrame* render_frame,
     const blink::WebURLError& error,
     const std::string& http_method,
+    content::mojom::AlternativeErrorPageOverrideInfoPtr
+        alternative_error_page_info,
     std::string* error_html) {
-  // std::string err;
-  // if (error.reason() == net::ERR_TEMPORARILY_THROTTLED)
-  //   err = kThrottledErrorDescription;
-  // else
-  //   err = net::ErrorToString(error.reason());
 
-  if (!error_html)
-    return;
-
-  // // Create the error page based on the error reason.
-  // GURL gurl(error.url());
-  // std::string url_string = gurl.possibly_invalid_spec();
-  // int reason_id = IDS_AW_WEBPAGE_CAN_NOT_BE_LOADED;
-
-  // if (err.empty())
-  //   reason_id = IDS_AW_WEBPAGE_TEMPORARILY_DOWN;
-
-  // std::string escaped_url = net::EscapeForHTML(url_string);
-  // std::vector<std::string> replacements;
-  // replacements.push_back(
-  //     l10n_util::GetStringUTF8(IDS_AW_WEBPAGE_NOT_AVAILABLE));
-  // replacements.push_back(
-  //     l10n_util::GetStringFUTF8(reason_id, base::UTF8ToUTF16(escaped_url)));
-
-  // // Having chosen the base reason, chose what extra information to add.
-  // if (reason_id == IDS_AW_WEBPAGE_TEMPORARILY_DOWN) {
-  //   replacements.push_back(
-  //       l10n_util::GetStringUTF8(IDS_AW_WEBPAGE_TEMPORARILY_DOWN_SUGGESTIONS));
-  // } else {
-  //   replacements.push_back(err);
-  // }
-  // if (base::i18n::IsRTL())
-  //   replacements.push_back("direction: rtl;");
-  // else
-  //   replacements.push_back("");
-  // *error_html = base::ReplaceStringPlaceholders(
-  //     ui::ResourceBundle::GetSharedInstance().DecompressDataResource(
-  //         IDR_AW_LOAD_ERROR_HTML),
-  //     replacements, nullptr);
+  android_system_error_page::PopulateErrorPageHtml(error, error_html);
 }
 
 uint64_t BvContentRendererClient::VisitedLinkHash(const char* canonical_url,
@@ -248,34 +192,17 @@ void BvContentRendererClient::RunScriptsAtDocumentStart(
     content::RenderFrame* render_frame) {
   js_injection::JsCommunication* communication =
       js_injection::JsCommunication::Get(render_frame);
-  // We will get RunScriptsAtDocumentStart() event even before we received
-  // RenderFrameCreated() for that |render_frame|. This is because Blink code
-  // does initialization work on the main frame, which is not related to any
-  // real navigation. If the communication is nullptr, it means we haven't
-  // received RenderFrameCreated() yet, we simply ignore this event for
-  // JsCommunication since that is not the right time to run the script and
-  // the script may not reach renderer from browser yet.
-  if (communication)
     communication->RunScriptsAtDocumentStart();
 }
 
-void BvContentRendererClient::AddSupportedKeySystems(
-    std::vector<std::unique_ptr<::media::KeySystemProperties>>* key_systems) {
-  BisonAddKeySystems(key_systems);
+void BvContentRendererClient::GetSupportedKeySystems(
+    media::GetSupportedKeySystemsCB cb) {
+  media::KeySystemPropertiesVector key_systems;
+  BvAddKeySystems(&key_systems);
+  std::move(cb).Run(std::move(key_systems));
 }
 
-// std::unique_ptr<content::WebSocketHandshakeThrottleProvider>
-// BvContentRendererClient::CreateWebSocketHandshakeThrottleProvider() {
-//   return std::make_unique<BisonWebSocketHandshakeThrottleProvider>(
-//       browser_interface_broker_.get());
-// }
 
-// std::unique_ptr<content::URLLoaderThrottleProvider>
-// BvContentRendererClient::CreateURLLoaderThrottleProvider(
-//     content::URLLoaderThrottleProviderType provider_type) {
-//   return std::make_unique<BisonURLLoaderThrottleProvider>(
-//       browser_interface_broker_.get(), provider_type);
-// }
 
 void BvContentRendererClient::GetInterface(
     const std::string& interface_name,
@@ -287,4 +214,12 @@ void BvContentRendererClient::GetInterface(
       mojo::GenericPendingReceiver(interface_name, std::move(interface_pipe)));
 }
 
-}  // namespace bison
+mojom::RenderMessageFilter* BvContentRendererClient::GetRenderMessageFilter() {
+  if (!render_message_filter_) {
+    RenderThread::Get()->GetChannel()->GetRemoteAssociatedInterface(
+        &render_message_filter_);
+  }
+  return render_message_filter_.get();
+}
+
+}  // namespace android_webview

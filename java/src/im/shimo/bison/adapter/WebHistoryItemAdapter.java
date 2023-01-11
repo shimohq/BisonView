@@ -5,12 +5,13 @@ import androidx.annotation.RestrictTo;
 import im.shimo.bison.WebHistoryItem;
 
 import org.chromium.content_public.browser.NavigationEntry;
+import org.chromium.url.GURL;
 
 @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
 public class WebHistoryItemAdapter extends WebHistoryItem {
 
-    private final String mUrl;
-    private final String mOriginalUrl;
+    private final GURL mUrl;
+    private final GURL mOriginalUrl;
     private final String mTitle;
     private final Bitmap mFavicon;
 
@@ -35,7 +36,7 @@ public class WebHistoryItemAdapter extends WebHistoryItem {
      */
     @Override
     public String getUrl() {
-        return mUrl;
+        return mUrl.getSpec();
     }
 
     /**
@@ -43,7 +44,7 @@ public class WebHistoryItemAdapter extends WebHistoryItem {
      */
     @Override
     public String getOriginalUrl() {
-        return mOriginalUrl;
+        return mOriginalUrl.getSpec();
     }
 
     /**
@@ -63,7 +64,7 @@ public class WebHistoryItemAdapter extends WebHistoryItem {
     }
 
     // Clone constructor.
-    private WebHistoryItemAdapter(String url, String originalUrl, String title, Bitmap favicon) {
+    private WebHistoryItemAdapter(GURL url, GURL originalUrl, String title, Bitmap favicon) {
         mUrl = url;
         mOriginalUrl = originalUrl;
         mTitle = title;

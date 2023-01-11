@@ -3,7 +3,6 @@
 #ifndef BISON_COMMON_DEVTOOLS_INSTRUMENTATION_H_
 #define BISON_COMMON_DEVTOOLS_INSTRUMENTATION_H_
 
-#include "base/macros.h"
 #include "base/trace_event/trace_event.h"
 
 namespace bison {
@@ -30,7 +29,7 @@ class ScopedEmbedderCallbackTask {
   }
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(ScopedEmbedderCallbackTask);
+
 };
 
 }  // namespace devtools_instrumentation

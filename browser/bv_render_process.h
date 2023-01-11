@@ -4,11 +4,14 @@
 #ifndef BISON_BROWSER_BISON_RENDER_PROCESS_H_
 #define BISON_BROWSER_BISON_RENDER_PROCESS_H_
 
+#include "bison/common/mojom/renderer.mojom.h"
+
 #include "base/android/scoped_java_ref.h"
+#include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/supports_user_data.h"
-
 #include "content/public/browser/render_process_host_observer.h"
+#include "mojo/public/cpp/bindings/associated_remote.h"
 
 namespace bison {
 
@@ -23,12 +26,19 @@ class BvRenderProcess : public content::RenderProcessHostObserver,
   bool TerminateChildProcess(JNIEnv* env,
                              const base::android::JavaParamRef<jobject>& obj);
 
-  bool IsLockedToOriginForTesting(
+  bool IsProcessLockedToSiteForTesting(
       JNIEnv* env,
       const base::android::JavaParamRef<jobject>& obj);
 
   explicit BvRenderProcess(content::RenderProcessHost* render_process_host);
+
+  BvRenderProcess(const BvRenderProcess&) = delete;
+  BvRenderProcess& operator=(const BvRenderProcess&) = delete;
+
   ~BvRenderProcess() override;
+
+  void ClearCache();
+  void SetJsOnlineProperty(bool network_up);
 
  private:
   void Ready();
@@ -43,10 +53,11 @@ class BvRenderProcess : public content::RenderProcessHostObserver,
 
   base::android::ScopedJavaGlobalRef<jobject> java_obj_;
 
-  content::RenderProcessHost* render_process_host_;
+  raw_ptr<content::RenderProcessHost> render_process_host_;
+
+  mojo::AssociatedRemote<mojom::Renderer> renderer_remote_;
 
   base::WeakPtrFactory<BvRenderProcess> weak_factory_{this};
-  DISALLOW_COPY_AND_ASSIGN(BvRenderProcess);
 };
 
 }  // namespace bison

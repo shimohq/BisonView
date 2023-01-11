@@ -12,15 +12,16 @@
 #include "base/bind.h"
 #include "base/callback.h"
 #include "base/logging.h"
+#include "components/permissions/permission_util.h"
 #include "content/public/browser/child_process_security_policy.h"
 #include "content/public/browser/permission_controller.h"
-#include "content/public/browser/permission_type.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/render_process_host.h"
 #include "content/public/browser/web_contents.h"
+#include "third_party/blink/public/common/permissions/permission_utils.h"
 
+using blink::PermissionType;
 using blink::mojom::PermissionStatus;
-using content::PermissionType;
 
 using RequestPermissionsCallback =
     base::OnceCallback<void(const std::vector<PermissionStatus>&)>;
@@ -41,6 +42,9 @@ void PermissionRequestResponseCallbackWrapper(
 class LastRequestResultCache {
  public:
   LastRequestResultCache() = default;
+
+  LastRequestResultCache(const LastRequestResultCache&) = delete;
+  LastRequestResultCache& operator=(const LastRequestResultCache&) = delete;
 
   void SetResult(PermissionType permission,
                  const GURL& requesting_origin,
@@ -145,8 +149,6 @@ class LastRequestResultCache {
 
   using StatusMap = std::unordered_map<std::string, PermissionStatus>;
   StatusMap pmi_result_cache_;
-
-  DISALLOW_COPY_AND_ASSIGN(LastRequestResultCache);
 };
 
 class BvPermissionManager::PendingRequest {
@@ -233,20 +235,19 @@ BvPermissionManager::~BvPermissionManager() {
   CancelPermissionRequests();
 }
 
-int BvPermissionManager::RequestPermission(
+void BvPermissionManager::RequestPermission(
     PermissionType permission,
     content::RenderFrameHost* render_frame_host,
     const GURL& requesting_origin,
     bool user_gesture,
     base::OnceCallback<void(PermissionStatus)> callback) {
-  return RequestPermissions(
-      std::vector<PermissionType>(1, permission), render_frame_host,
-      requesting_origin, user_gesture,
+  RequestPermissions(std::vector<PermissionType>(1, permission),
+                     render_frame_host, requesting_origin, user_gesture,
       base::BindOnce(&PermissionRequestResponseCallbackWrapper,
                      std::move(callback)));
 }
 
-int BvPermissionManager::RequestPermissions(
+void BvPermissionManager::RequestPermissions(
     const std::vector<PermissionType>& permissions,
     content::RenderFrameHost* render_frame_host,
     const GURL& requesting_origin,
@@ -254,7 +255,7 @@ int BvPermissionManager::RequestPermissions(
     base::OnceCallback<void(const std::vector<PermissionStatus>&)> callback) {
   if (permissions.empty()) {
     std::move(callback).Run(std::vector<PermissionStatus>());
-    return content::PermissionController::kNoPendingOperation;
+    return;
   }
 
   const GURL& embedding_origin = LastCommittedOrigin(render_frame_host);
@@ -295,6 +296,8 @@ int BvPermissionManager::RequestPermissions(
       continue;
 
     if (!delegate) {
+      DVLOG(0) << "Dropping permissions request for "
+               << static_cast<int>(permissions[i]);
       pending_request_raw->SetPermissionStatus(permissions[i],
                                                PermissionStatus::DENIED);
       continue;
@@ -324,7 +327,6 @@ int BvPermissionManager::RequestPermissions(
       case PermissionType::NOTIFICATIONS:
       case PermissionType::DURABLE_STORAGE:
       case PermissionType::BACKGROUND_SYNC:
-      case PermissionType::FLASH:
       case PermissionType::ACCESSIBILITY_EVENTS:
       case PermissionType::CLIPBOARD_READ_WRITE:
       case PermissionType::CLIPBOARD_SANITIZED_WRITE:
@@ -338,6 +340,8 @@ int BvPermissionManager::RequestPermissions(
       case PermissionType::STORAGE_ACCESS_GRANT:
       case PermissionType::CAMERA_PAN_TILT_ZOOM:
       case PermissionType::WINDOW_PLACEMENT:
+      case PermissionType::LOCAL_FONTS:
+      case PermissionType::DISPLAY_CAPTURE:
         NOTIMPLEMENTED() << "RequestPermissions is not implemented for "
                          << static_cast<int>(permissions[i]);
         pending_request_raw->SetPermissionStatus(permissions[i],
@@ -368,7 +372,7 @@ int BvPermissionManager::RequestPermissions(
   // If delegate resolve the permission synchronously, all requests could be
   // already resolved here.
   if (!pending_requests_.Lookup(request_id))
-    return content::PermissionController::kNoPendingOperation;
+    return;
 
   // If requests are resolved without calling delegate functions, e.g.
   // PermissionType::MIDI is permitted within the previous for-loop, all
@@ -380,10 +384,7 @@ int BvPermissionManager::RequestPermissions(
         std::move(pending_request_raw->callback);
     pending_requests_.Remove(request_id);
     std::move(completed_callback).Run(results);
-    return content::PermissionController::kNoPendingOperation;
   }
-
-  return request_id;
 }
 
 // static
@@ -439,6 +440,17 @@ void BvPermissionManager::ResetPermission(PermissionType permission,
   result_cache_->ClearResult(permission, requesting_origin, embedding_origin);
 }
 
+void BvPermissionManager::RequestPermissionsFromCurrentDocument(
+    const std::vector<PermissionType>& permissions,
+    content::RenderFrameHost* render_frame_host,
+    bool user_gesture,
+    base::OnceCallback<void(const std::vector<blink::mojom::PermissionStatus>&)>
+        callback) {
+  RequestPermissions(permissions, render_frame_host,
+                     LastCommittedOrigin(render_frame_host), user_gesture,
+                     std::move(callback));
+}
+
 PermissionStatus BvPermissionManager::GetPermissionStatus(
     PermissionType permission,
     const GURL& requesting_origin,
@@ -455,27 +467,36 @@ PermissionStatus BvPermissionManager::GetPermissionStatus(
   return PermissionStatus::DENIED;
 }
 
-PermissionStatus BvPermissionManager::GetPermissionStatusForFrame(
+PermissionStatus BvPermissionManager::GetPermissionStatusForCurrentDocument(
     PermissionType permission,
-    content::RenderFrameHost* render_frame_host,
-    const GURL& requesting_origin) {
+    content::RenderFrameHost* render_frame_host) {
   return GetPermissionStatus(
-      permission, requesting_origin,
-      content::WebContents::FromRenderFrameHost(render_frame_host)
-          ->GetLastCommittedURL()
-          .GetOrigin());
+      permission,
+      permissions::PermissionUtil::GetLastCommittedOriginAsURL(
+          render_frame_host),
+      permissions::PermissionUtil::GetLastCommittedOriginAsURL(
+          render_frame_host->GetMainFrame()));
 }
 
-int BvPermissionManager::SubscribePermissionStatusChange(
+PermissionStatus BvPermissionManager::GetPermissionStatusForWorker(
     PermissionType permission,
+    content::RenderProcessHost* render_process_host,
+    const GURL& worker_origin) {
+  return GetPermissionStatus(permission, worker_origin, worker_origin);
+}
+
+BvPermissionManager::SubscriptionId
+BvPermissionManager::SubscribePermissionStatusChange(
+    PermissionType permission,
+    content::RenderProcessHost* render_process_host,
     content::RenderFrameHost* render_frame_host,
     const GURL& requesting_origin,
     base::RepeatingCallback<void(PermissionStatus)> callback) {
-  return content::PermissionController::kNoPendingOperation;
+  return SubscriptionId();
 }
 
 void BvPermissionManager::UnsubscribePermissionStatusChange(
-    int subscription_id) {}
+    SubscriptionId subscription_id) {}
 
 void BvPermissionManager::CancelPermissionRequest(int request_id) {
   PendingRequest* pending_request = pending_requests_.Lookup(request_id);
@@ -531,7 +552,6 @@ void BvPermissionManager::CancelPermissionRequest(int request_id) {
       case PermissionType::AUDIO_CAPTURE:
       case PermissionType::VIDEO_CAPTURE:
       case PermissionType::BACKGROUND_SYNC:
-      case PermissionType::FLASH:
       case PermissionType::ACCESSIBILITY_EVENTS:
       case PermissionType::CLIPBOARD_READ_WRITE:
       case PermissionType::CLIPBOARD_SANITIZED_WRITE:
@@ -545,6 +565,8 @@ void BvPermissionManager::CancelPermissionRequest(int request_id) {
       case PermissionType::STORAGE_ACCESS_GRANT:
       case PermissionType::CAMERA_PAN_TILT_ZOOM:
       case PermissionType::WINDOW_PLACEMENT:
+      case PermissionType::LOCAL_FONTS:
+      case PermissionType::DISPLAY_CAPTURE:
         NOTIMPLEMENTED() << "CancelPermission not implemented for "
                          << static_cast<int>(permission);
         break;
@@ -591,8 +613,8 @@ int BvPermissionManager::GetRenderFrameID(
 
 GURL BvPermissionManager::LastCommittedOrigin(
     content::RenderFrameHost* render_frame_host) {
-  return content::WebContents::FromRenderFrameHost(render_frame_host)
-      ->GetLastCommittedURL().GetOrigin();
+  return permissions::PermissionUtil::GetLastCommittedOriginAsURL(
+      render_frame_host);
 }
 
 BvBrowserPermissionRequestDelegate* BvPermissionManager::GetDelegate(

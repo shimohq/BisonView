@@ -1,28 +1,32 @@
 package im.shimo.bison.internal;
-
+import androidx.annotation.NonNull;
+import androidx.annotation.RestrictTo;
 
 import org.chromium.base.Log;
 import org.chromium.base.ThreadUtils;
 import org.chromium.base.annotations.CalledByNative;
 import org.chromium.base.annotations.JNINamespace;
+import org.chromium.components.embedder_support.util.WebResourceResponseInfo;
 
-import androidx.annotation.RestrictTo;
+
 
 @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
 @JNINamespace("bison")
 abstract class BvContentsBackgroundThreadClient {
     private static final String TAG = "BisonContentsBackground";
 
-    public abstract BvWebResourceResponse shouldInterceptRequest(
+    public abstract WebResourceResponseInfo shouldInterceptRequest(
             BvWebResourceRequest request);
 
+    // Protected methods ---------------------------------------------------------------------------
 
+    @NonNull
     @CalledByNative
-    private BisonWebResourceInterceptResponse shouldInterceptRequestFromNative(String url,
+    private BvWebResourceInterceptResponse shouldInterceptRequestFromNative(String url,
             boolean isMainFrame, boolean hasUserGesture, String method, String[] requestHeaderNames,
             String[] requestHeaderValues) {
         try {
-            return new BisonWebResourceInterceptResponse(
+            return new BvWebResourceInterceptResponse(
                     shouldInterceptRequest(new BvWebResourceRequest(url, isMainFrame,
                             hasUserGesture, method, requestHeaderNames, requestHeaderValues)),
                     false);
@@ -34,10 +38,9 @@ abstract class BvContentsBackgroundThreadClient {
                 throw e;
             });
 
-            return new BisonWebResourceInterceptResponse(null, true);
+            return new BvWebResourceInterceptResponse(null, true);
         }
     }
-
 
     @CalledByNative
     private BvWebResourceOverrideRequest overrideRequestFromNative(String url,

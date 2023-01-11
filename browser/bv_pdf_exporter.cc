@@ -10,6 +10,7 @@
 
 #include "bison/browser/bv_print_manager.h"
 #include "bison/bison_jni_headers/BvPdfExporter_jni.h"
+
 #include "base/android/jni_android.h"
 #include "base/android/jni_array.h"
 #include "base/bind.h"
@@ -44,7 +45,7 @@ BvPdfExporter::BvPdfExporter(JNIEnv* env,
                              const JavaRef<jobject>& obj,
                              content::WebContents* web_contents)
     : java_ref_(env, obj), web_contents_(web_contents) {
-  DCHECK(!obj.is_null());
+  DCHECK(obj);
   Java_BvPdfExporter_setNativeBvPdfExporter(env, obj,
                                             reinterpret_cast<intptr_t>(this));
 }
@@ -52,7 +53,7 @@ BvPdfExporter::BvPdfExporter(JNIEnv* env,
 BvPdfExporter::~BvPdfExporter() {
   JNIEnv* env = base::android::AttachCurrentThread();
   ScopedJavaLocalRef<jobject> obj = java_ref_.get(env);
-  if (obj.is_null())
+   if (!obj)
     return;
   // Clear the Java peer's weak pointer to |this| object.
   Java_BvPdfExporter_setNativeBvPdfExporter(env, obj, 0);
@@ -66,10 +67,18 @@ void BvPdfExporter::ExportToPdf(JNIEnv* env,
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
   printing::PageRanges page_ranges;
   JNI_BvPdfExporter_GetPageRanges(env, pages, &page_ranges);
-  BvPrintManager* print_manager = BvPrintManager::CreateForWebContents(
-      web_contents_, CreatePdfSettings(env, obj, page_ranges), fd,
-      base::BindRepeating(&BvPdfExporter::DidExportPdf,
-                          base::Unretained(this)));
+
+  // Create an BvPrintManager for the provided WebContents if the
+  // BvPrintManager doesn't exist.
+  if (!BvPrintManager::FromWebContents(web_contents_))
+    BvPrintManager::CreateForWebContents(web_contents_);
+
+  // Update the parameters of the current print manager.
+  BvPrintManager* print_manager =
+      BvPrintManager::FromWebContents(web_contents_);
+  print_manager->UpdateParam(CreatePdfSettings(env, obj, page_ranges), fd,
+                             base::BindRepeating(&BvPdfExporter::DidExportPdf,
+                                                 base::Unretained(this)));
 
   if (!print_manager->PrintNow())
     DidExportPdf(0);
@@ -78,7 +87,7 @@ void BvPdfExporter::ExportToPdf(JNIEnv* env,
 namespace {
 // Converts from 1/1000 of inches to device units using DPI.
 int MilsToDots(int val, int dpi) {
-  return static_cast<int>(printing::ConvertUnitDouble(val, 1000.0, dpi));
+  return static_cast<int>(printing::ConvertUnitFloat(val, 1000, dpi));
 }
 }  // namespace
 
@@ -122,7 +131,7 @@ std::unique_ptr<printing::PrintSettings> BvPdfExporter::CreatePdfSettings(
 void BvPdfExporter::DidExportPdf(int page_count) {
   JNIEnv* env = base::android::AttachCurrentThread();
   ScopedJavaLocalRef<jobject> obj = java_ref_.get(env);
-  if (obj.is_null())
+  if (!obj)
     return;
   Java_BvPdfExporter_didExportPdf(env, obj, page_count);
 }

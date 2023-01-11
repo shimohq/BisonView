@@ -787,7 +787,9 @@ public class BisonViewProvider {
     }
 
     public void setBisonViewClient(BisonViewClient client) {
-        mContentsClient.setBisonViewClient(client);
+        if (mContentsClient!=null){
+            mContentsClient.setBisonViewClient(client);
+        }
     }
 
     public BisonViewClient getBisonViewClient() {
@@ -825,15 +827,26 @@ public class BisonViewProvider {
     }
 
     public void setDownloadListener(BisonView.DownloadListener listener) {
-        mContentsClient.setDownloadListener(listener);
+        if (mContentsClient!=null){
+            mContentsClient.setDownloadListener(listener);
+        }
+
     }
 
     public void setBisonWebChromeClient(BisonWebChromeClient client) {
-        mContentsClient.setBisonWebChromeClient(client);
+        if (mContentsClient!=null){
+            mContentsClient.setBisonWebChromeClient(client);
+        }
+
     }
 
     public BisonWebChromeClient getBisonWebChromeClient() {
-        return mContentsClient.getBisonWebChromeClient();
+        if (mContentsClient!=null){
+            return mContentsClient.getBisonWebChromeClient();
+        }else {
+            return null;
+        }
+
     }
 
     // doesSupportFullscreen
@@ -1364,7 +1377,10 @@ public class BisonViewProvider {
             });
             return ret;
         }
-        mBvContents.requestFocus();
+        if (mBvContents!=null){
+            mBvContents.requestFocus();
+        }
+
         return mBisonViewInternalAccess.super_requestFocus(direction, previouslyFocusedRect);
     }
 
@@ -1378,7 +1394,10 @@ public class BisonViewProvider {
             });
             return;
         }
-        mBvContents.onMeasure(widthMeasureSpec, heightMeasureSpec);
+        if (mBvContents!=null){
+            mBvContents.onMeasure(widthMeasureSpec, heightMeasureSpec);
+        }
+
     }
 
     public boolean requestChildRectangleOnScreen(final View child, final Rect rect, final boolean immediate) {
@@ -1391,7 +1410,11 @@ public class BisonViewProvider {
             });
             return ret;
         }
-        return mBvContents.requestChildRectangleOnScreen(child, rect, immediate);
+        if (mBvContents!=null){
+            return mBvContents.requestChildRectangleOnScreen(child, rect, immediate);
+        }else {
+            return false;
+        }
     }
 
     public void setBackgroundColor(final int color) {
@@ -1440,13 +1463,6 @@ public class BisonViewProvider {
         return mBvContents.onCheckIsTextEditor();
     }
 
-    public void scrollBy(int x, int y) {
-        mBvContents.scrollBy(x, y);
-    }
-
-    public void scrollTo(int x, int y) {
-        mBvContents.scrollTo(x, y);
-    }
 
     public int computeHorizontalScrollRange() {
         if (checkNeedsPost()) {
@@ -1475,7 +1491,7 @@ public class BisonViewProvider {
     }
 
     public int computeHorizontalScrollExtent() {
-        if (checkNeedsPost()) {
+        /*if (checkNeedsPost()) {
             int ret = mFactory.runOnUiThreadBlocking(new Callable<Integer>() {
                 @Override
                 public Integer call() {
@@ -1485,6 +1501,9 @@ public class BisonViewProvider {
             return ret;
         }
         return mBvContents.computeHorizontalScrollExtent();
+        */
+        // jiang947 暂时返回0
+        return 0;
     }
 
     public int computeVerticalScrollRange() {
@@ -1556,58 +1575,88 @@ public class BisonViewProvider {
 
         @Override
         public boolean super_onKeyUp(int keyCode, KeyEvent event) {
-            // jiang webview no-op
-            return mBisonViewInternalAccess.super_onKeyUp(keyCode, event);
+            if (mBisonViewInternalAccess!=null){
+                return mBisonViewInternalAccess.super_onKeyUp(keyCode, event);
+            }else{
+                return false;
+            }
+
         }
 
         @Override
         public void onScrollChanged(int l, int t, int oldl, int oldt) {
-            // jiang webview no-op ?
-            mBisonViewInternalAccess.onScrollChanged(l, t, oldl, oldt);
+            if (mBisonViewInternalAccess!=null){
+                mBisonViewInternalAccess.onScrollChanged(l, t, oldl, oldt);
+            }
+
         }
 
         @Override
         public boolean super_dispatchKeyEvent(KeyEvent event) {
-            return mBisonViewInternalAccess.super_dispatchKeyEvent(event);
+            if (mBisonViewInternalAccess!=null){
+                return mBisonViewInternalAccess.super_dispatchKeyEvent(event);
+            }else{
+                return false;
+            }
         }
 
         @Override
         public boolean super_onGenericMotionEvent(MotionEvent event) {
-            return mBisonViewInternalAccess.super_onGenericMotionEvent(event);
+            if (mBisonViewInternalAccess!=null){
+                return mBisonViewInternalAccess.super_onGenericMotionEvent(event);
+            }else {
+                return false;
+            }
+
         }
 
         @Override
         public void overScrollBy(int deltaX, int deltaY, int scrollX, int scrollY, int scrollRangeX, int scrollRangeY,
                                  int maxOverScrollX, int maxOverScrollY, boolean isTouchEvent) {
-            mBisonViewInternalAccess.overScrollBy(deltaX, deltaY, scrollX, scrollY, scrollRangeX, scrollRangeY,
+            if (mBisonViewInternalAccess!=null){
+                mBisonViewInternalAccess.overScrollBy(deltaX, deltaY, scrollX, scrollY, scrollRangeX, scrollRangeY,
                     maxOverScrollX, maxOverScrollY, isTouchEvent);
-
+            }
         }
 
         @Override
         public void super_scrollTo(int scrollX, int scrollY) {
-            mBisonViewInternalAccess.super_scrollTo(scrollX, scrollY);
+            if (mBisonViewInternalAccess!=null){
+                mBisonViewInternalAccess.super_scrollTo(scrollX, scrollY);
+            }
         }
 
         @Override
         public void setMeasuredDimension(int measuredWidth, int measuredHeight) {
-            mBisonViewInternalAccess.setMeasuredDimension(measuredWidth, measuredHeight);
+            if (mBisonViewInternalAccess!=null){
+                mBisonViewInternalAccess.setMeasuredDimension(measuredWidth, measuredHeight);
+            }
         }
 
         @Override
         public int super_getScrollBarStyle() {
-            return mBisonViewInternalAccess.super_getScrollBarStyle();
+            if (mBisonViewInternalAccess!= null){
+                return mBisonViewInternalAccess.super_getScrollBarStyle();
+            }else {
+                return 0;
+            }
+
         }
 
         @Override
         public void super_startActivityForResult(Intent intent, int requestCode) {
-            mBisonViewInternalAccess.super_startActivityForResult(intent, requestCode);
+            if (mBisonViewInternalAccess!=null){
+                mBisonViewInternalAccess.super_startActivityForResult(intent, requestCode);
+            }
+
         }
 
         @Override
         public void super_onConfigurationChanged(Configuration newConfig) {
-            // jiang sys webview no-op ?
-            mBisonViewInternalAccess.super_onConfigurationChanged(newConfig);
+            if (mBisonViewInternalAccess!=null){
+                mBisonViewInternalAccess.super_onConfigurationChanged(newConfig);
+            }
+
         }
 
     }

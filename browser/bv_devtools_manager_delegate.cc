@@ -20,24 +20,6 @@ BvDevToolsManagerDelegate::~BvDevToolsManagerDelegate() {}
 // jiang
 std::string BvDevToolsManagerDelegate::GetTargetDescription(
     content::WebContents* web_contents) {
-  // bison::BrowserViewRenderer* bvr =
-  //     bison::BrowserViewRenderer::FromWebContents(web_contents);
-  // if (!bvr)
-  //   return "";
-  // base::DictionaryValue description;
-  // description.SetBoolean("attached", bvr->attached_to_window());
-  // description.SetBoolean("visible", bvr->IsVisible());
-  // gfx::Rect screen_rect = bvr->GetScreenRect();
-  // description.SetInteger("screenX", screen_rect.x());
-  // description.SetInteger("screenY", screen_rect.y());
-  // description.SetBoolean("empty", screen_rect.size().IsEmpty());
-  // if (!screen_rect.size().IsEmpty()) {
-  //   description.SetInteger("width", screen_rect.width());
-  //   description.SetInteger("height", screen_rect.height());
-  // }
-  // std::string json;
-  // base::JSONWriter::Write(description, &json);
-  // return json;
   return "";
 }
 

@@ -1,17 +1,6 @@
 import("//build/config/android/rules.gni")
 import("//mojo/public/tools/bindings/mojom.gni")
 
-mojom("common_mojom") {
-  sources = [
-    "js_java_interaction/interfaces.mojom",
-  ]
-
-  public_deps = [
-    "//mojo/public/mojom/base",
-    "//services/network/public/mojom:mojom",
-  ]
-}
-
 source_set("common") {
   sources = [
     "bv_content_client.cc",
@@ -19,29 +8,66 @@ source_set("common") {
     "bv_descriptors.h",
     "bv_features.cc",
     "bv_features.h",
-    "bv_hit_test_data.cc",
-    "bv_hit_test_data.h",
-    "bison_view_message_generator.cc",
-    "bison_view_message_generator.h",
-    "devtools_instrumentation.h",
-    "render_view_messages.cc",
-    "render_view_messages.h",
-    "url_constants.cc",
-    "url_constants.h",
-    "bv_switches.cc",
-    "bv_switches.h",
-    "bv_resource_bundle.cc",
-    "bv_resource_bundle.h",
     "bv_media_drm_bridge_client.cc",
     "bv_media_drm_bridge_client.h",
+    "bv_paths.cc",
+    "bv_paths.h",
+    "bv_resource_bundle.cc",
+    "bv_resource_bundle.h",
+    "bv_switches.cc",
+    "bv_switches.h",
+    "components/bv_apps_package_names_allowlist_component_utils.cc",
+    "components/bv_apps_package_names_allowlist_component_utils.h",
+    "crash_reporter/bv_crash_reporter_client.cc",
+    "crash_reporter/bv_crash_reporter_client.h",
+    "crash_reporter/crash_keys.cc",
+    "crash_reporter/crash_keys.h",
+    "devtools_instrumentation.h",
+    "metrics/app_package_name_logging_rule.cc",
+    "metrics/app_package_name_logging_rule.h",
+    "url_constants.cc",
+    "url_constants.h",
   ]
 
   deps = [
     "//base",
+    "//bison:bison_jni_headers",
+    "//components/cdm/common",
+    "//components/crash/core/app",
+    "//components/crash/core/common:crash_key",
+    "//components/embedder_support/origin_trials",
+    "//components/gwp_asan/common",
+    "//components/services/heap_profiling/public/cpp",
+    "//components/version_info",
+    "//components/version_info:generate_version_info",
+    "//components/version_info/android:channel_getter",
     "//content/public/common",
+    "//gpu/config",
     "//ipc",
+    "//mojo/public/cpp/bindings",
+    "//skia",
     "//ui/base",
-
+    "//ui/gfx/geometry",
+    "//ui/gfx/ipc/geometry",
+    "//ui/gfx/ipc/skia",
     "//url",
+  ]
+}
+
+mojom("mojom") {
+  # We don't want Blink variants of bindings to be generated.
+  disable_variants = true
+
+  sources = [
+    "mojom/frame.mojom",
+    "mojom/render_message_filter.mojom",
+    "mojom/renderer.mojom",
+  ]
+
+  public_deps = [
+    "//mojo/public/mojom/base",
+    "//skia/public/mojom",
+    "//ui/gfx/geometry/mojom",
+    "//url/mojom:url_mojom_gurl",
   ]
 }

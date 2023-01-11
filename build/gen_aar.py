@@ -30,6 +30,7 @@ import tempfile
 import zipfile
 import json
 from functools import partial
+from functools import reduce
 import jinja2
 from datetime import datetime
 
@@ -37,10 +38,6 @@ from bison_build_util import AddResources, MergeRTxt , MergeProguardConfigs ,Add
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(sys.argv[0]))
 SRC_DIR = os.path.normpath(os.path.join(SCRIPT_DIR, os.pardir, os.pardir))
-
-
-
-
 
 DEFAULT_ARCHS = ['armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64']
 TARGET = 'bison:bison_view_aar'
@@ -51,23 +48,35 @@ jar_excluded_patterns = [
   "im/shimo/bison/R$*.class",
   "im/shimo/bison/R.class",
   "gen/_bison/*",
+  "gen/_third_party/*",
 
   "android/support/*",
-  "*/third_party/android_deps/*",
   "androidx/*",
-  "android/support/*",
-  "gen/_third_party/*",
   "com/google/*",
+  "google/protobuf/*"
   "javax/*",
+  "kotlinx/*",
+  "kotlin/*",
+  "org/intellij/*",
+  "org/jetbrains/annotations*",
+  "org/apache/*",
+
   "META-INF/*",
   "*.txt",
-  "*.properties"
+  "*.properties",
+  "*.version",
+  "*.stamp",
+  "*.readme",
+  "*.bin",
+  "*.proto"
 ]
 
 resource_included_patterns = [
   "*/bison/*",
-  "*/ui/android/*",
+  "*/ui/*",
   "*/content/*",
+  "*/components/*",
+  "*/media/*"
 ]
 
 NEEDED_SO_FILES = [
@@ -101,14 +110,15 @@ def _ParseArgs():
 
   parser.add_argument('--build-dir', default='out',
       help='Build dir. default  out')
-  # parser.add_argument('--output', default='bison_view.aar',
-  #     help='Output file of the script.')
   parser.add_argument('--arch', default=DEFAULT_ARCHS, nargs='*',
       help='Architectures to build. Defaults to %(default)s.')
   parser.add_argument('-p','--publish' ,action='store_true',default=False ,
       help ='publish aar file to maven')
   parser.add_argument('-s','--snapshot', action='store_true',default=False ,
       help ='publish snapshot to maven')
+  parser.add_argument('--rid', default='nexus' ,
+      help ='repositoryId for maven')
+
   parser.add_argument('-v','--verbose', action='store_true', default=False,
       help='Debug logging.')
 
@@ -202,8 +212,6 @@ def MergeZips(output, input_zips, path_transform=None, compress=None):
     for in_file in input_zips:
       # print ('input',in_file)
       with zipfile.ZipFile(in_file, 'r') as in_zip:
-        # ijar creates zips with null CRCs.
-        in_zip._expected_crc = None
         for info in in_zip.infolist():
           # Ignore directories.
           if info.filename[-1] == '/':
@@ -213,15 +221,19 @@ def MergeZips(output, input_zips, path_transform=None, compress=None):
             continue
           already_added = dst_name in added_names
           # TODO  jiang gen_jni filter for bison
+
+          # if "GEN_JNI" in dst_name:
+          #   print("GEN_JNI:",dst_name,in_file)
+
           if "GEN_JNI" in dst_name and not already_added:
-            already_added = not "bison" in in_file
-            # if not already_added:
-            #   print("already_added:",already_added,dst_name,in_file)
+            already_added = not "bison_view_aar__final_jni_java" in in_file
+            if not already_added:
+              print("already_added:",already_added,dst_name,in_file)
 
           if "J/N.class" in dst_name and not already_added:
-            already_added = not "bison" in in_file
-          if not already_added and "R.class" in dst_name:
-            print("already_added:",already_added,dst_name,in_file)
+            already_added = not "bison_view_aar__final_jni_java" in in_file
+          # if not already_added and "R.class" in dst_name:
+          #   print("already_added:",already_added,dst_name,in_file)
 
           if not already_added:
             # print("merge :" +dst_name)
@@ -298,37 +310,35 @@ def BuildAar(archs, output_file, common_gn_args,
       with open(os.path.join(output_directory , AAR_CONFIG_FILE),'r') as f :
         build_config = json.loads(f.read())
         jars = _ReadConfig(build_dir, arch , build_config,'deps_info', 'javac_full_classpath')
+
+        jars = filter(lambda x : "org.apache.http.legacy.jar" not in x, set(jars))
+        jars = filter(lambda x : "protobuf-javalite-3.19.3.jar" not in x, set(jars))
+        jars = filter(lambda x : "jsr305-3.0.2.jar" not in x, set(jars))
+        jars = list( filter(lambda x : "annotations-13.0.jar" not in x, set(jars)))
+
+        src_jars = _ReadConfig(build_dir, arch , build_config,'javac', 'classpath')
+        all_jars = src_jars + jars
+
+        all_jars = sorted(set(all_jars),key=all_jars.index)
         dependencies_res_zips =_ReadConfig(build_dir, arch, build_config ,'deps_info', 'dependency_zips')
-        r_text_files = _ReadConfig(build_dir, arch, build_config ,'deps_info', 'extra_r_text_files')
+        r_text_files = _ReadConfig(build_dir, arch, build_config ,'deps_info', 'dependency_r_txt_files')
         proguard_configs = _ReadConfig(build_dir, arch, build_config ,'deps_info', 'proguard_all_configs')
 
-      print("=== R ===")
-      for rf in r_text_files:
-          print(rf)
+      print('src_jars',src_jars)
+      print('android_deps jars',list (filter(lambda x : "android_deps" in x, set(jars))))
 
-      print("=== Res ===")
-      for rf in dependencies_res_zips:
-        if "android_deps" in rf:
-          print(rf)
-
-      print("=== jar ===")
-      for rf in jars:
-        if "android_deps" in rf:
-          print(rf)
-        if "bison" in rf:
-          print(rf)
 
       isCommonArgsGetted = True
 
 
   with zipfile.ZipFile(output_file, 'w') as aar_file:
     path_transform = CreatePathTransform(jar_excluded_patterns,
-                                             [], [])
+                                             [])
 
     AddAndroidManifest(aar_file, build_dir, archs[0])
 
     with tempfile.NamedTemporaryFile() as jar_file:
-      MergeZips(jar_file.name, jars, path_transform=path_transform)
+      MergeZips(jar_file.name, all_jars, path_transform=path_transform)
       build_utils.AddToZipHermetic(aar_file, 'classes.jar', src_path=jar_file.name)
 
       build_utils.AddToZipHermetic(
@@ -362,18 +372,22 @@ def _GeneratePom(target_file, version,args):
     {
       "groupId": "androidx.appcompat",
       "artifactId": "appcompat",
-      "version" : "1.2.0",
+      "version" : "1.4.0",
       "type" : "aar"
+    },
+    {
+      "groupId": "com.google.protobuf",
+      "artifactId": "protobuf-javalite",
+      "version" : "3.19.3",
+      "type" : "jar"
     }
   ]
-
   pom = template.render(version=version,args=args ,deps = deps)
-  print (pom)
   with open(target_file, 'w') as fh:
     fh.write(pom)
 
 
-def publish(filename , verison , is_snapshot,common_gn_args):
+def publish(filename , verison , is_snapshot,common_gn_args,rid):
   url = os.environ.get('SNAPSHOT_REPOSITORY_URL', None) if is_snapshot else os.environ.get('RELEASE_REPOSITORY_URL', None)
   pom_path = os.path.join(os.path.dirname(filename),os.path.splitext(os.path.basename(filename))[0]+'.pom')
   _GeneratePom(pom_path, verison, common_gn_args)
@@ -382,7 +396,7 @@ def publish(filename , verison , is_snapshot,common_gn_args):
     "-DgroupId":GROUP_ID,
     "-DartifactId":ARTIFACT_ID,
     "-Dversion": verison,
-    "-DrepositoryId":"nexus" ,
+    "-DrepositoryId":rid,
     "-Durl": url ,
     "-Dfile":filename,
     "-DpomFile":pom_path,
@@ -398,15 +412,25 @@ def publish(filename , verison , is_snapshot,common_gn_args):
 
 
 def createGnArgs(extra_gn_args,build_type):
+
+  symbol_level =  2 if 'debug'== build_type else -1
+
   gn_args = {
     'target_os': 'android',
-    'is_debug': 'debug'== build_type,
+    'is_debug': 'debug' == build_type,
     'is_component_build': False,
     'rtc_include_tests': False,
     'v8_android_log_stdout' : 'debug'== build_type,
-    # 'use_v8_context_snapshot' : True,
     'ffmpeg_branding' : 'Chrome',
     'proprietary_codecs' : True, # <audio/>
+    'is_official_build': 'release' == build_type,
+    'treat_warnings_as_errors' : False,
+    'symbol_level': symbol_level,
+    'blink_symbol_level' : symbol_level,
+    'use_debug_fission' : symbol_level == 2,
+    'clang_use_chrome_plugins' : 'debug' == build_type,
+    # 'android_full_debug': 'debug' == build_type,
+    # 'use_v8_context_snapshot' : True,
     # 'v8_embed_script' : '//bison/docHistory.bundle.js',
   }
   return ' '.join([
@@ -431,7 +455,7 @@ def main():
            args.build_dir,args.build_type, args.extra_gn_switches, args.extra_ninja_switches)
   if args.publish:
     gn_args = common_gn_args if args.snapshot else None;
-    publish(output, verison, args.snapshot, common_gn_args)
+    publish(output, verison, args.snapshot, common_gn_args,args.rid)
 
 
 

@@ -1,11 +1,9 @@
 #include "bison/browser/bv_download_manager_delegate.h"
 
-#include "base/files/file_path.h"
-#include "base/task/post_task.h"
 #include "bison/browser/bv_content_browser_client.h"
 #include "bison/browser/bv_contents_client_bridge.h"
-#include "components/download/public/common/download_danger_type.h"
-#include "components/download/public/common/download_item.h"
+
+
 #include "content/public/browser/browser_task_traits.h"
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/web_contents.h"
@@ -24,8 +22,9 @@ bool BvDownloadManagerDelegate::InterceptDownloadIfApplicable(
     int64_t content_length,
     bool is_transient,
     content::WebContents* web_contents) {
+  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
   if (!web_contents)
-    return false;
+    return true;
 
   BvContentsClientBridge* client =
       BvContentsClientBridge::FromWebContents(web_contents);

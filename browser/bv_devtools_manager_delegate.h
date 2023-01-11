@@ -8,7 +8,6 @@
 #include <memory>
 #include <vector>
 
-#include "base/macros.h"
 #include "content/public/browser/devtools_manager_delegate.h"
 
 namespace bison {
@@ -18,15 +17,16 @@ namespace bison {
 class BvDevToolsManagerDelegate : public content::DevToolsManagerDelegate {
  public:
   BvDevToolsManagerDelegate();
+  BvDevToolsManagerDelegate(const BvDevToolsManagerDelegate&) = delete;
+  BvDevToolsManagerDelegate& operator=(const BvDevToolsManagerDelegate&) =
+      delete;
+
   ~BvDevToolsManagerDelegate() override;
 
   // content::DevToolsManagerDelegate implementation.
   std::string GetTargetDescription(content::WebContents* web_contents) override;
   std::string GetDiscoveryPageHTML() override;
   bool IsBrowserTargetDiscoverable() override;
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(BvDevToolsManagerDelegate);
 };
 
 }  //  namespace bison

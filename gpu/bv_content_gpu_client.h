@@ -6,7 +6,7 @@
 #include <memory>
 
 #include "base/callback.h"
-#include "base/macros.h"
+
 #include "content/public/gpu/content_gpu_client.h"
 
 using content::ContentGpuClient;
@@ -14,12 +14,15 @@ using content::ContentGpuClient;
 namespace bison {
 
 class BvContentGpuClient : public ContentGpuClient {
-  using GetSyncPointManagerCallback = base::RepeatingCallback<gpu::SyncPointManager*()>;
-  using GetSharedImageManagerCallback = base::RepeatingCallback<gpu::SharedImageManager*()>;
+  using GetSyncPointManagerCallback =
+      base::RepeatingCallback<gpu::SyncPointManager*()>;
+  using GetSharedImageManagerCallback =
+      base::RepeatingCallback<gpu::SharedImageManager*()>;
 
  public:
-  BvContentGpuClient(const GetSyncPointManagerCallback& sync_point_manager_callback,
-                        const GetSharedImageManagerCallback& shared_image_manager_callback);
+  BvContentGpuClient(
+      const GetSyncPointManagerCallback& sync_point_manager_callback,
+      const GetSharedImageManagerCallback& shared_image_manager_callback);
   BvContentGpuClient();
   ~BvContentGpuClient() override;
 
@@ -27,10 +30,10 @@ class BvContentGpuClient : public ContentGpuClient {
   gpu::SyncPointManager* GetSyncPointManager() override;
   gpu::SharedImageManager* GetSharedImageManager() override;
 
-private:
+ private:
   GetSyncPointManagerCallback sync_point_manager_callback_;
   GetSharedImageManagerCallback shared_image_manager_callback_;
-  // DISALLOW_COPY_AND_ASSIGN(BvContentGpuClient);
+  //
 };
 
 }  // namespace bison

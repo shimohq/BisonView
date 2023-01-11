@@ -444,7 +444,7 @@ public abstract class BisonViewSettings {
      * @deprecated Use {@link #setTextZoom} instead.
      */
     @Deprecated
-    public synchronized void setTextSize(TextSize t) {
+    public void setTextSize(TextSize t) {
         setTextZoom(t.value);
     }
 
@@ -458,7 +458,7 @@ public abstract class BisonViewSettings {
      * @deprecated Use {@link #getTextZoom} instead.
      */
     @Deprecated
-    public synchronized TextSize getTextSize() {
+    public TextSize getTextSize() {
         TextSize closestSize = null;
         int smallestDelta = Integer.MAX_VALUE;
         int textSize = getTextZoom();

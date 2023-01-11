@@ -2,15 +2,14 @@
 
 #include "bison/browser/permission/simple_permission_request.h"
 
-#include "bison/browser/permission/bv_permission_request.h"
 #include "base/callback.h"
+#include "bison/browser/permission/bv_permission_request.h"
 
 namespace bison {
 
-SimplePermissionRequest::SimplePermissionRequest(
-    const GURL& origin,
-    int64_t resources,
-    base::OnceCallback<void(bool)> callback)
+SimplePermissionRequest::SimplePermissionRequest(const GURL& origin,
+                                                 int64_t resources,
+                                                 PermissionCallback callback)
     : origin_(origin), resources_(resources), callback_(std::move(callback)) {}
 
 SimplePermissionRequest::~SimplePermissionRequest() {}

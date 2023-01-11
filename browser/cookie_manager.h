@@ -1,4 +1,4 @@
-// create by jiang947 
+// create by jiang947
 
 
 #ifndef BISON_BROWSER_COOKIE_MANAGER_H_
@@ -9,6 +9,7 @@
 
 #include "base/android/scoped_java_ref.h"
 #include "base/containers/circular_deque.h"
+#include "base/files/file_path.h"
 #include "base/no_destructor.h"
 #include "base/thread_annotations.h"
 #include "base/threading/thread.h"
@@ -39,6 +40,9 @@ namespace bison {
 class CookieManager {
  public:
   static CookieManager* GetInstance();
+
+  CookieManager(const CookieManager&) = delete;
+  CookieManager& operator=(const CookieManager&) = delete;
 
   // Passes a |cookie_manager_remote|, which this will use for CookieManager
   // APIs going forward. Only called in the Network Service path, with the
@@ -187,7 +191,7 @@ class CookieManager {
   bool cookie_store_created_;
 
   bool workaround_http_secure_cookies_;
-  
+
   base::Thread cookie_store_client_thread_;
   base::Thread cookie_store_backend_thread_;
 
@@ -207,8 +211,6 @@ class CookieManager {
 
   // The CookieManager shared with the NetworkContext.
   mojo::Remote<network::mojom::CookieManager> mojo_cookie_manager_;
-
-  DISALLOW_COPY_AND_ASSIGN(CookieManager);
 };
 
 }  // namespace bison

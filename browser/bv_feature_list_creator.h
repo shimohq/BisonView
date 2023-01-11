@@ -6,10 +6,11 @@
 
 
 #include <memory>
+#include <utility>
 
 #include "bison/browser/bv_browser_policy_connector.h"
 #include "bison/browser/bv_field_trials.h"
-#include "bison/browser/bison_variations_service_client.h"
+#include "bison/browser/variations/bv_variations_service_client.h"
 
 #include "base/metrics/field_trial.h"
 #include "components/policy/core/browser/browser_policy_connector_base.h"
@@ -25,6 +26,10 @@ namespace bison {
 class BvFeatureListCreator {
  public:
   BvFeatureListCreator();
+
+  BvFeatureListCreator(const BvFeatureListCreator&) = delete;
+  BvFeatureListCreator& operator=(const BvFeatureListCreator&) = delete;
+
   ~BvFeatureListCreator();
 
   // Initializes all necessary parameters to create the feature list and setup
@@ -45,7 +50,11 @@ class BvFeatureListCreator {
     return std::move(browser_policy_connector_);
   }
 
+  static void DisableSignatureVerificationForTesting();
+
  private:
+  std::unique_ptr<PrefService> CreatePrefService();
+
   // Sets up the field trials and related initialization.
   void SetUpFieldTrials();
 
@@ -55,10 +64,6 @@ class BvFeatureListCreator {
   // of this variable. Stop using this variable afterwards.
   std::unique_ptr<PrefService> local_state_;
 
-  // A/B testing infrastructure for the entire application. empty until
-  // |SetupFieldTrials()| is called.
-  std::unique_ptr<base::FieldTrialList> field_trial_list_;
-
   // Performs set up for any WebView specific field trials.
   std::unique_ptr<BvFieldTrials> bv_field_trials_;
 
@@ -66,11 +71,11 @@ class BvFeatureListCreator {
   std::unique_ptr<variations::VariationsFieldTrialCreator>
       variations_field_trial_creator_;
 
-  std::unique_ptr<BisonVariationsServiceClient> client_;
+  std::unique_ptr<BvVariationsServiceClient> client_;
 
   std::unique_ptr<BvBrowserPolicyConnector> browser_policy_connector_;
 
-  DISALLOW_COPY_AND_ASSIGN(BvFeatureListCreator);
+
 };
 
 }  // namespace bison

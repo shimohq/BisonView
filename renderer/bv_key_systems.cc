@@ -4,9 +4,11 @@
 
 namespace bison {
 
-void BisonAddKeySystems(std::vector<std::unique_ptr<media::KeySystemProperties>>*
+void BvAddKeySystems(std::vector<std::unique_ptr<media::KeySystemProperties>>*
                          key_systems_properties) {
+#if BUILDFLAG(ENABLE_WIDEVINE)
   cdm::AddAndroidWidevine(key_systems_properties);
+#endif  // BUILDFLAG(ENABLE_WIDEVINE)
   cdm::AddAndroidPlatformKeySystems(key_systems_properties);
 }
 

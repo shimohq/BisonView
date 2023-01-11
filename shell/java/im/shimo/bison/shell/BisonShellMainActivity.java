@@ -17,6 +17,7 @@ import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
+import android.webkit.JavascriptInterface;
 
 import org.chromium.base.CommandLine;
 import org.chromium.content_public.browser.DeviceUtils;
@@ -56,6 +57,7 @@ public class BisonShellMainActivity extends Activity {
         if (commandLineParams != null) {
             CommandLine.getInstance().appendSwitchesAndArguments(commandLineParams);
         }
+
         // TraceEvent.setATraceEnabled(true);
         DeviceUtils.addDeviceSpecificUserAgentSwitch();
         setContentView(R.layout.main_activity);
@@ -67,6 +69,7 @@ public class BisonShellMainActivity extends Activity {
         if (TextUtils.isEmpty(startupUrl)) {
             startupUrl = INITIAL_URL;
         }
+        Log.i(TAG, "startup url :" + startupUrl);
         mBisonView.loadUrl(startupUrl);
         mUrlTextView.setText(startupUrl);
     }
@@ -156,7 +159,6 @@ public class BisonShellMainActivity extends Activity {
             @Override
             public WebResourceResponse shouldInterceptRequest(BisonView view,
                     WebResourceRequest request) {
-                Log.w(TAG, "shouldInterceptRequest");
                 return null;
             }
 
@@ -180,21 +182,27 @@ public class BisonShellMainActivity extends Activity {
                 Log.w(TAG, "onGeolocationPermissionsShowPrompt");
             }
 
-
         });
+
+        mBisonView.addJavascriptInterface(new Object() {
+
+            @JavascriptInterface
+            public void callMe() {
+                Log.d(TAG, "callMe() called");
+            }
+
+        }, "test");
 
     }
 
     private void setKeyboardVisibilityForUrl(boolean visible) {
-        InputMethodManager imm =
-                (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+        InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
         if (visible) {
             imm.showSoftInput(mUrlTextView, InputMethodManager.SHOW_IMPLICIT);
         } else {
             imm.hideSoftInputFromWindow(mUrlTextView.getWindowToken(), 0);
         }
     }
-
 
     private static String getUrlFromIntent(Intent intent) {
         return intent != null ? intent.getDataString() : null;

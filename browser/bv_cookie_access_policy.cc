@@ -7,6 +7,7 @@
 #include "base/check_op.h"
 #include "base/no_destructor.h"
 #include "content/public/browser/browser_thread.h"
+#include "content/public/browser/global_routing_id.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/websocket_handshake_request_info.h"
 #include "net/base/net_errors.h"
@@ -46,11 +47,12 @@ bool BvCookieAccessPolicy::GetShouldAcceptThirdPartyCookies(
     int render_frame_id,
     int frame_tree_node_id) {
   DCHECK_CURRENTLY_ON(BrowserThread::IO);
+  const content::GlobalRenderFrameHostId rfh_id(render_process_id,
+                                                render_frame_id);
   std::unique_ptr<BvContentsIoThreadClient> io_thread_client =
       (frame_tree_node_id != content::RenderFrameHost::kNoFrameTreeNodeId)
           ? BvContentsIoThreadClient::FromID(frame_tree_node_id)
-          : BvContentsIoThreadClient::FromID(render_process_id,
-                                             render_frame_id);
+          : BvContentsIoThreadClient::FromID(rfh_id);
 
   if (!io_thread_client) {
     return false;

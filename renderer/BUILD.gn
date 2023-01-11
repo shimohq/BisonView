@@ -1,30 +1,31 @@
+import("//printing/buildflags/buildflags.gni")
+
 source_set("renderer") {
   sources = [
     "bv_content_renderer_client.cc",
     "bv_content_renderer_client.h",
-    "bison_content_settings_client.cc",
-    "bison_content_settings_client.h",
+    "bv_content_settings_client.cc",
+    "bv_content_settings_client.h",
     "bv_key_systems.cc",
     "bv_key_systems.h",
-    "bison_print_render_frame_helper_delegate.cc",
-    "bison_print_render_frame_helper_delegate.h",
-    "bison_render_frame_ext.cc",
-    "bison_render_frame_ext.h",
-    "bison_render_thread_observer.cc",
-    "bison_render_thread_observer.h",
+    "bv_print_render_frame_helper_delegate.cc",
+    "bv_print_render_frame_helper_delegate.h",
+    "bv_render_frame_ext.cc",
+    "bv_render_frame_ext.h",
+    "bv_render_thread_observer.cc",
+    "bv_render_thread_observer.h",
     "bv_render_view_ext.cc",
     "bv_render_view_ext.h",
     "browser_exposed_renderer_interfaces.cc",
     "browser_exposed_renderer_interfaces.h",
-
   ]
 
   deps = [
     "//bison/common",
-    "//bison/common:common_mojom",
+    "//bison/common:mojom",
 
     "//base",
-
+    "//components/android_system_error_page",
     "//components/autofill/content/renderer",
     "//components/cdm/renderer",
     "//components/content_capture/common",
@@ -32,10 +33,14 @@ source_set("renderer") {
     "//components/js_injection/common",
     "//components/js_injection/renderer",
     "//components/page_load_metrics/renderer",
-    "//components/printing/common",
-    "//components/printing/renderer",
+    "//components/power_scheduler",
+    "//components/resources",
+    "//components/security_interstitials/content/renderer:security_interstitial_page_controller",
+    "//components/security_interstitials/core",
+    "//components/security_interstitials/core/common/mojom",
     "//components/spellcheck:buildflags",
     "//components/spellcheck/renderer",
+    "//components/strings",
     "//components/visitedlink/renderer",
     "//content/public/child",
     "//content/public/common",
@@ -44,4 +49,11 @@ source_set("renderer") {
     "//ui/base",
     "//url",
   ]
+
+  if (enable_basic_printing) {
+    deps += [
+      "//components/printing/common",
+      "//components/printing/renderer",
+    ]
+  }
 }

@@ -20,9 +20,9 @@ public class BisonViewWebStorage {
 
 
     public static class Origin {
-        private String mOrigin = null;
-        private long mQuota = 0;
-        private long mUsage = 0;
+        private String mOrigin;
+        private long mQuota;
+        private long mUsage;
 
 
         protected Origin(String origin, long quota, long usage) {
