@@ -39,6 +39,4 @@ public abstract class BvContentsIoThreadClient {
     @CalledByNative
     public abstract BvContentsBackgroundThreadClient getBackgroundThreadClient();
 
-    @CalledByNative
-    public abstract int getRequestedWithHeaderMode();
 }

@@ -29,12 +29,12 @@ void BvNetworkChangeNotifier::GetCurrentConnectedNetworks(
 
 net::NetworkChangeNotifier::ConnectionType
 BvNetworkChangeNotifier::GetCurrentNetworkConnectionType(
-    NetworkHandle network) const {
+    net::handles::NetworkHandle network) const {
   return delegate_->GetNetworkConnectionType(network);
 }
 
-net::NetworkChangeNotifier::NetworkHandle
-BvNetworkChangeNotifier::GetCurrentDefaultNetwork() const {
+net::handles::NetworkHandle BvNetworkChangeNotifier::GetCurrentDefaultNetwork()
+    const {
   return delegate_->GetCurrentDefaultNetwork();
 }
 
@@ -51,12 +51,15 @@ void BvNetworkChangeNotifier::OnMaxBandwidthChanged(
                                                              type);
 }
 
-void BvNetworkChangeNotifier::OnNetworkConnected(NetworkHandle network) {}
+void BvNetworkChangeNotifier::OnNetworkConnected(
+    net::handles::NetworkHandle network) {}
 void BvNetworkChangeNotifier::OnNetworkSoonToDisconnect(
-    NetworkHandle network) {}
+    net::handles::NetworkHandle network) {}
 void BvNetworkChangeNotifier::OnNetworkDisconnected(
-    NetworkHandle network) {}
-void BvNetworkChangeNotifier::OnNetworkMadeDefault(NetworkHandle network){}
+    net::handles::NetworkHandle network) {}
+void BvNetworkChangeNotifier::OnNetworkMadeDefault(
+    net::handles::NetworkHandle network) {}
+
 void BvNetworkChangeNotifier::OnDefaultNetworkActive() {}
 
 BvNetworkChangeNotifier::BvNetworkChangeNotifier(

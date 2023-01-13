@@ -12,6 +12,7 @@
 #include "bison/common/bv_features.h"
 
 #include "base/android/jni_android.h"
+#include "base/android/jni_array.h"
 #include "base/android/jni_string.h"
 #include "base/memory/raw_ptr.h"
 #include "base/supports_user_data.h"
@@ -26,6 +27,8 @@
 #include "services/network/public/mojom/network_context.mojom.h"
 #include "third_party/blink/public/common/renderer_preferences/renderer_preferences.h"
 #include "third_party/blink/public/mojom/webpreferences/web_preferences.mojom.h"
+#include "url/gurl.h"
+#include "url/origin.h"
 
 using base::android::ConvertJavaStringToUTF16;
 using base::android::ConvertUTF8ToJavaString;
@@ -60,11 +63,11 @@ class BvSettingsUserData : public base::SupportsUserData::Data {
       return NULL;
     BvSettingsUserData* data = static_cast<BvSettingsUserData*>(
         web_contents->GetUserData(kBvSettingsUserDataKey));
-    return data ? data->settings_ : NULL;
+    return data ? data->settings_.get() : NULL;
   }
 
  private:
-  BvSettings* settings_;
+  raw_ptr<BvSettings> settings_;
 };
 
 BvSettings::BvSettings(JNIEnv* env,
@@ -101,6 +104,10 @@ bool BvSettings::GetJavaScriptCanOpenWindowsAutomatically() {
 
 bool BvSettings::GetAllowThirdPartyCookies() {
   return allow_third_party_cookies_;
+}
+
+BvSettings::MixedContentMode BvSettings::GetMixedContentMode() {
+  return mixed_content_mode_;
 }
 
 void BvSettings::Destroy(JNIEnv* env, const JavaParamRef<jobject>& obj) {
@@ -174,6 +181,7 @@ void BvSettings::UpdateEverythingLocked(JNIEnv* env,
   UpdateWillSuppressErrorStateLocked(env, obj);
   UpdateCookiePolicyLocked(env, obj);
   UpdateAllowFileAccessLocked(env, obj);
+  UpdateMixedContentModeLocked(env, obj);
 }
 
 void BvSettings::UpdateUserAgentLocked(JNIEnv* env,
@@ -312,6 +320,16 @@ void BvSettings::UpdateAllowFileAccessLocked(JNIEnv* env,
     return;
 
   allow_file_access_ = Java_BvSettings_getAllowFileAccess(env, obj);
+}
+
+void BvSettings::UpdateMixedContentModeLocked(
+    JNIEnv* env,
+    const JavaParamRef<jobject>& obj) {
+  if (!web_contents())
+    return;
+
+  mixed_content_mode_ = static_cast<MixedContentMode>(
+      Java_AwSettings_getMixedContentMode(env, obj));
 }
 
 void BvSettings::RenderViewHostChanged(content::RenderViewHost* old_host,
@@ -540,7 +558,6 @@ bool BvSettings::IsForceDarkApplied(JNIEnv* env,
   return false;
 }
 
-
 void BvSettings::SetEnterpriseAuthenticationAppLinkPolicyEnabled(
     JNIEnv* env,
     const JavaParamRef<jobject>& obj,
@@ -556,6 +573,21 @@ bool BvSettings::GetEnterpriseAuthenticationAppLinkPolicyEnabled(
 
 bool BvSettings::GetAllowFileAccess() {
   return allow_file_access_;
+}
+
+base::android::ScopedJavaLocalRef<jobjectArray>
+BvSettings::UpdateXRequestedWithAllowListOriginMatcher(
+    JNIEnv* env,
+    const base::android::JavaParamRef<jobjectArray>& jrules) {
+  std::vector<std::string> rules;
+  base::android::AppendJavaStringArrayToStringVector(env, jrules, &rules);
+  std::vector<std::string> bad_rules =
+      xrw_allowlist_matcher_->UpdateRuleList(rules);
+  return base::android::ToJavaArrayOfStrings(env, bad_rules);
+}
+
+scoped_refptr<BvContentsOriginMatcher> BvSettings::xrw_allowlist_matcher() {
+  return xrw_allowlist_matcher_;
 }
 
 static jlong JNI_BvSettings_Init(JNIEnv* env,

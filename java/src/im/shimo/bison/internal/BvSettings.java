@@ -24,6 +24,9 @@ import org.chromium.content_public.browser.WebContents;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 
 @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
 @JNINamespace("bison")
@@ -65,20 +68,7 @@ public class BvSettings {
     @ForceDarkBehavior
     private int mForceDarkBehavior = ForceDarkBehavior.PREFER_MEDIA_QUERY_OVER_FORCE_DARK;
 
-    public static final int REQUESTED_WITH_NO_HEADER = RequestedWithHeaderMode.NO_HEADER;
-    public static final int REQUESTED_WITH_APP_PACKAGE_NAME =
-            RequestedWithHeaderMode.APP_PACKAGE_NAME;
-    public static final int REQUESTED_WITH_CONSTANT_WEBVIEW =
-            RequestedWithHeaderMode.CONSTANT_WEBVIEW;
-    public static final int REQUESTED_WITH_MODES_COUNT = 3;
-
-    @RequestedWithHeaderMode
-    private int mRequestedWithHeaderMode;
-
-    // Must match name of |kWebViewXRequestedWithHeaderMode| in
-    // android_webview/common/aw_features.cc
-    private static final String REQUESTED_WITH_HEADER_MODE_PARAM_NAME =
-            "WebViewXRequestedWithHeaderMode";
+    private Set<String> mRequestedWithHeaderAllowedOriginRules;
 
     private Context mContext;
 
@@ -291,33 +281,9 @@ public class BvSettings {
             mAllowGeolocationOnInsecureOrigins = false;
             mDoNotUpdateSelectionOnMutatingSelectionRange = false;
 
-            mRequestedWithHeaderMode = getDefaultXRequestedWithHeaderMode();
+            mRequestedWithHeaderAllowedOriginRules = Collections.emptySet();
         }
         // Defer initializing the native side until a native WebContents instance is set.
-    }
-
-    /**
-     * Compute the default value to use for XRequestedWithHeaderMode.
-     *
-     * Implemented as package-local static to share with |AwServiceWorkerSettings.java|
-     * @return Default mode for XRequestedWith header.
-     */
-    @RequestedWithHeaderMode
-    static int getDefaultXRequestedWithHeaderMode() {
-        int defaultMode = REQUESTED_WITH_APP_PACKAGE_NAME;
-        if (BvFeatureList.isEnabled(BvFeatures.WEBVIEW_X_REQUESTED_WITH_HEADER)) {
-            int headerMode = BvFeatureList.getFeatureParamValueAsInt(
-                    BvFeatures.WEBVIEW_X_REQUESTED_WITH_HEADER,
-                    REQUESTED_WITH_HEADER_MODE_PARAM_NAME, defaultMode);
-            // Verify that the value is valid
-            if (headerMode >= 0 && headerMode < REQUESTED_WITH_MODES_COUNT) {
-                defaultMode = headerMode;
-            }
-        } else {
-            // If the feature is disabled, that's equivalent of setting the NO_HEADER behaviour
-            defaultMode = REQUESTED_WITH_NO_HEADER;
-        }
-        return defaultMode;
     }
 
     public int getUiModeNight() {
@@ -1266,17 +1232,39 @@ public class BvSettings {
         }
     }
 
-    public void setRequestedWithHeaderMode(@RequestedWithHeaderMode int mode) {
-        //AwWebContentsMetricsRecorder.recordRequestedWithHeaderModeAPIUsage(mode);
-        synchronized (mSettingsLock) {
-            mRequestedWithHeaderMode = mode;
-        }
+    public void setRequestedWithHeaderOriginAllowList(Set<String> allowedOriginRules) {
+      // allowedOriginRules =
+      // allowedOriginRules != null ? allowedOriginRules : Collections.emptySet();
+      //           AwWebContentsMetricsRecorder.recordRequestedWithHeaderModeAPIUsage(allowedOriginRules);
+      //   synchronized (mSettingsLock) {
+      //     setRequestedWithHeaderOriginAllowListLocked(allowedOriginRules);
+      //   }
     }
 
-    @RequestedWithHeaderMode
-    public int getRequestedWithHeaderMode() {
+    private void setRequestedWithHeaderOriginAllowListLocked(final Set<String> allowedOriginRules) {
+      assert Thread.holdsLock(mSettingsLock);
+      if (mNativeBvSettings == 0) {
+          return;
+      }
+
+      // Final set to be updated by the Runnable on the UI thread.
+      final Set<String> rejectedRules = new HashSet<>();
+
+      mEventHandler.runOnUiThreadBlockingAndLocked(() -> {
+          String[] rejected = BvSettingsJni.get().updateXRequestedWithAllowListOriginMatcher(
+              mNativeBvSettings, allowedOriginRules.toArray(new String[0]));
+          rejectedRules.addAll(java.util.Arrays.asList(rejected));
+      });
+
+      if (!rejectedRules.isEmpty()) {
+          throw new IllegalArgumentException("Malformed origin match rules: " + rejectedRules);
+      }
+      mRequestedWithHeaderAllowedOriginRules = allowedOriginRules;
+  }
+
+    public Set<String> getRequestedWithHeaderOriginAllowList() {
         synchronized (mSettingsLock) {
-            return mRequestedWithHeaderMode;
+            return mRequestedWithHeaderAllowedOriginRules;
         }
     }
 
@@ -1974,6 +1962,7 @@ public class BvSettings {
         void updateCookiePolicyLocked(long nativeBvSettings, BvSettings caller);
 
         void updateAllowFileAccessLocked(long nativeBvSettings, BvSettings caller);
-    }
 
+        String[] updateXRequestedWithAllowListOriginMatcher(long nativeBvSettings, String[] rules);
+    }
 }

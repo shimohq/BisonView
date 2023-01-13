@@ -98,12 +98,6 @@ int BvMetricsServiceClient::GetSampleRatePerMille() const {
   }
 
 std::string BvMetricsServiceClient::GetAppPackageNameIfLoggable() {
-  if (!base::FeatureList::IsEnabled(
-          bison::features::kWebViewAppsPackageNamesAllowlist)) {
-    // Revert to the default implementation.
-    return ::metrics::AndroidMetricsServiceClient::
-        GetAppPackageNameIfLoggable();
-  }
   AndroidMetricsServiceClient::InstallerPackageType installer_type =
       GetInstallerPackageType();
   // Always record the app package name of system apps even if it's not in the
@@ -117,13 +111,6 @@ std::string BvMetricsServiceClient::GetAppPackageNameIfLoggable() {
 }
 
 bool BvMetricsServiceClient::ShouldRecordPackageName() {
-  if (!base::FeatureList::IsEnabled(
-          bison::features::kWebViewAppsPackageNamesAllowlist)) {
-    // Revert to the default implementation of using a random sample to decide
-    // whether to record the app package name or not.
-    return ::metrics::AndroidMetricsServiceClient::ShouldRecordPackageName();
-}
-
   base::UmaHistogramEnumeration(
       "Android.WebView.Metrics.PackagesAllowList.RecordStatus",
       package_name_record_status_);
@@ -172,7 +159,7 @@ BvMetricsServiceClient::GetCachedAppPackageNameLoggingRule() {
   PrefService* local_state = pref_service();
   DCHECK(local_state);
   cached_package_name_record_ = AppPackageNameLoggingRule::FromDictionary(
-      *(local_state->Get(prefs::kMetricsAppPackageNameLoggingRule)));
+      local_state->GetValue(prefs::kMetricsAppPackageNameLoggingRule));
   if (cached_package_name_record_.has_value()) {
     package_name_record_status_ =
         AppPackageNameLoggingRuleStatus::kNotLoadedUseCache;

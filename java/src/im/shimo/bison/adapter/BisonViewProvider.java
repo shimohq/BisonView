@@ -29,6 +29,7 @@ import android.view.textclassifier.TextClassifier;
 
 import org.chromium.base.ThreadUtils;
 import org.chromium.base.task.PostTask;
+import org.chromium.content_public.browser.MessagePayload;
 import org.chromium.content_public.browser.NavigationHistory;
 import org.chromium.content_public.browser.UiThreadTaskTraits;
 import org.chromium.url.GURL;
@@ -896,8 +897,9 @@ public class BisonViewProvider {
                 }
             });
         }
-        mBvContents.postMessageToMainFrame(message.getData(), targetOrigin.toString(),
-                WebMessagePortAdapter.toMessagePorts(message.getPorts()));
+
+        mBvContents.postMessageToMainFrame(new MessagePayload(message.getData()),
+                targetOrigin.toString(), WebMessagePortAdapter.toMessagePorts(message.getPorts()));
     }
 
     public BisonViewSettings getSettings() {

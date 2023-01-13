@@ -15,11 +15,11 @@ struct WebPreferences;
 
 namespace bison {
 
+class BvContentsOriginMatcher;
 class BvRenderViewHostExt;
 
 class BvSettings : public content::WebContentsObserver {
  public:
-  // TODO jiang package name use by BvSettings
   // GENERATED_JAVA_ENUM_PACKAGE: im.shimo.bison.internal
   enum ForceDarkMode {
     FORCE_DARK_OFF = 0,
@@ -34,11 +34,17 @@ class BvSettings : public content::WebContentsObserver {
     PREFER_MEDIA_QUERY_OVER_FORCE_DARK = 2,
   };
 
-  // GENERATED_JAVA_ENUM_PACKAGE: im.shimo.bison.internal
   enum RequestedWithHeaderMode {
     NO_HEADER = 0,
     APP_PACKAGE_NAME = 1,
     CONSTANT_WEBVIEW = 2,
+  };
+
+  enum MixedContentMode {
+    MIXED_CONTENT_ALWAYS_ALLOW = 0,
+    MIXED_CONTENT_NEVER_ALLOW = 1,
+    MIXED_CONTENT_COMPATIBILITY_MODE = 2,
+    COUNT,
   };
 
   static BvSettings* FromWebContents(content::WebContents* web_contents);
@@ -51,6 +57,7 @@ static RequestedWithHeaderMode GetDefaultRequestedWithHeaderMode();
 
   bool GetJavaScriptCanOpenWindowsAutomatically();
   bool GetAllowThirdPartyCookies();
+  MixedContentMode GetMixedContentMode();
 
   // Called from Java. Methods with "Locked" suffix require that the settings
   // access lock is held during their execution.
@@ -90,6 +97,9 @@ static RequestedWithHeaderMode GetDefaultRequestedWithHeaderMode();
   void UpdateAllowFileAccessLocked(
       JNIEnv* env,
       const base::android::JavaParamRef<jobject>& obj);
+  void UpdateMixedContentModeLocked(
+      JNIEnv* env,
+      const base::android::JavaParamRef<jobject>& obj);
 
   void PopulateWebPreferences(blink::web_pref::WebPreferences* web_prefs);
   bool GetAllowFileAccess();
@@ -107,6 +117,12 @@ static RequestedWithHeaderMode GetDefaultRequestedWithHeaderMode();
     return enterprise_authentication_app_link_policy_enabled_;
   }
 
+  base::android::ScopedJavaLocalRef<jobjectArray>
+  UpdateXRequestedWithAllowListOriginMatcher(
+      JNIEnv* env,
+      const base::android::JavaParamRef<jobjectArray>& rules);
+  scoped_refptr<BvContentsOriginMatcher> xrw_allowlist_matcher();
+
  private:
   BvRenderViewHostExt* GetBisonRenderViewHostExt();
   void UpdateEverything();
@@ -121,6 +137,9 @@ static RequestedWithHeaderMode GetDefaultRequestedWithHeaderMode();
   bool allow_third_party_cookies_;
   bool allow_file_access_;
   bool enterprise_authentication_app_link_policy_enabled_;
+  MixedContentMode mixed_content_mode_;
+
+  scoped_refptr<BvContentsOriginMatcher> xrw_allowlist_matcher_;
 
   JavaObjectWeakGlobalRef bv_settings_;
 };

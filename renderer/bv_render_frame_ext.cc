@@ -13,7 +13,6 @@
 #include "components/content_capture/common/content_capture_features.h"
 #include "components/content_capture/renderer/content_capture_sender.h"
 #include "content/public/renderer/render_frame.h"
-#include "content/public/renderer/render_view.h"
 #include "third_party/blink/public/common/associated_interfaces/associated_interface_provider.h"
 #include "third_party/blink/public/platform/web_security_origin.h"
 #include "third_party/blink/public/web/web_element.h"
@@ -161,7 +160,7 @@ BvRenderFrameExt::BvRenderFrameExt(content::RenderFrame* render_frame)
 
   // If we are the main frame register an additional mojo interface.
   if (render_frame->IsMainFrame()) {
-    registry_.AddInterface(base::BindRepeating(
+    registry_.AddInterface<mojom::LocalMainFrame>(base::BindRepeating(
         &BvRenderFrameExt::BindLocalMainFrame, base::Unretained(this)));
   }
 
@@ -213,6 +212,17 @@ bool BvRenderFrameExt::OnAssociatedInterfaceRequestForFrame(
   return registry_.TryBindInterface(interface_name, handle);
 }
 
+void BvRenderFrameExt::DidCreateDocumentElement() {
+  //jiang947 feature 判断，暂时删除
+  // if (!base::FeatureList::IsEnabled(
+  //         features::kWebViewHitTestInBlinkOnTouchStart)) {
+  //   return;
+  // }
+  render_frame()->GetWebFrame()->AddHitTestOnTouchStartCallback(
+      base::BindRepeating(&BvRenderFrameExt::HandleHitTestResult,
+                          base::Unretained(this)));
+}
+
 void BvRenderFrameExt::DidCommitProvisionalLoad(ui::PageTransition transition) {
   // Clear the cache when we cross site boundaries in the main frame.
   //
@@ -232,7 +242,7 @@ void BvRenderFrameExt::DidCommitProvisionalLoad(ui::PageTransition transition) {
 }
 
 void BvRenderFrameExt::FocusedElementChanged(const blink::WebElement& element) {
-  if (element.IsNull() || !render_frame() || !render_frame()->GetRenderView())
+  if (element.IsNull() || !render_frame())
     return;
 
   auto data = mojom::HitTestData::New();
@@ -264,6 +274,11 @@ void BvRenderFrameExt::HitTest(const gfx::PointF& touch_center,
   const blink::WebHitTestResult result = webview->HitTestResultForTap(
       gfx::Point(touch_center.x(), touch_center.y()),
       gfx::Size(touch_area.width(), touch_area.height()));
+  HandleHitTestResult(result);
+}
+
+void BvRenderFrameExt::HandleHitTestResult(
+    const blink::WebHitTestResult& result) {
   auto data = mojom::HitTestData::New();
 
   GURL absolute_image_url = result.AbsoluteImageURL();

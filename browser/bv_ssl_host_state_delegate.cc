@@ -57,20 +57,23 @@ bool BvSSLHostStateDelegate::DidHostRunInsecureContent(
 
 void BvSSLHostStateDelegate::AllowHttpForHost(
     const std::string& host,
-    content::WebContents* web_contents) {
+    content::StoragePartition* storage_partition) {
+  // Intentional no-op for Android WebView.
 }
 
 bool BvSSLHostStateDelegate::IsHttpAllowedForHost(
     const std::string& host,
-    content::WebContents* web_contents) {
-
+    content::StoragePartition* storage_partition) {
+  // Intentional no-op for Android WebView. Return value does not matter as
+  // HTTPS-First Mode is not enabled on WebView.
   return false;
 }
 
-void BvSSLHostStateDelegate::AllowCert(const std::string& host,
-                                       const net::X509Certificate& cert,
-                                       int error,
-                                       content::WebContents* web_contents) {
+void BvSSLHostStateDelegate::AllowCert(
+    const std::string& host,
+    const net::X509Certificate& cert,
+    int error,
+    content::StoragePartition* storage_partition) {
   cert_policy_for_host_[host].Allow(cert, error);
 }
 
@@ -96,7 +99,7 @@ SSLHostStateDelegate::CertJudgment BvSSLHostStateDelegate::QueryPolicy(
     const std::string& host,
     const net::X509Certificate& cert,
     int error,
-    content::WebContents* web_contents) {
+    content::StoragePartition* storage_partition) {
   return cert_policy_for_host_[host].Check(cert, error)
              ? SSLHostStateDelegate::ALLOWED
              : SSLHostStateDelegate::DENIED;
@@ -109,7 +112,7 @@ void BvSSLHostStateDelegate::RevokeUserAllowExceptions(
 
 bool BvSSLHostStateDelegate::HasAllowException(
     const std::string& host,
-    content::WebContents* web_contents) {
+    content::StoragePartition* storage_partition) {
   auto policy_iterator = cert_policy_for_host_.find(host);
   return policy_iterator != cert_policy_for_host_.end() &&
          policy_iterator->second.HasAllowException();

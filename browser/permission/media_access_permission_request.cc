@@ -1,5 +1,6 @@
 #include "bison/browser/permission/media_access_permission_request.h"
 
+#include <algorithm>
 #include <utility>
 
 #include "bison/browser/permission/bv_permission_request.h"
@@ -44,14 +45,18 @@ MediaAccessPermissionRequest::~MediaAccessPermissionRequest() {}
 
 void MediaAccessPermissionRequest::NotifyRequestResult(bool allowed) {
   std::unique_ptr<content::MediaStreamUI> ui;
-  blink::mojom::StreamDevices devices;
   if (!allowed) {
     std::move(callback_).Run(
-        devices, blink::mojom::MediaStreamRequestResult::PERMISSION_DENIED,
+        blink::mojom::StreamDevicesSet(),
+        blink::mojom::MediaStreamRequestResult::PERMISSION_DENIED,
         std::move(ui));
     return;
   }
 
+  blink::mojom::StreamDevicesSet stream_devices_set;
+  stream_devices_set.stream_devices.emplace_back(
+      blink::mojom::StreamDevices::New());
+  blink::mojom::StreamDevices& devices = *stream_devices_set.stream_devices[0];
   if (request_.audio_type ==
       blink::mojom::MediaStreamType::DEVICE_AUDIO_CAPTURE) {
     const MediaStreamDevices& audio_devices =
@@ -75,10 +80,15 @@ void MediaAccessPermissionRequest::NotifyRequestResult(bool allowed) {
     if (device)
       devices.video_device = *device;
   }
+
+  const bool has_no_hardware =
+      !devices.audio_device.has_value() && !devices.video_device.has_value();
+  if (has_no_hardware) {
+    stream_devices_set.stream_devices.clear();
+  }
   std::move(callback_).Run(
-      devices,
-      (!devices.audio_device.has_value() && !devices.video_device.has_value())
-          ? blink::mojom::MediaStreamRequestResult::NO_HARDWARE
+      stream_devices_set,
+      has_no_hardware ? blink::mojom::MediaStreamRequestResult::NO_HARDWARE
                       : blink::mojom::MediaStreamRequestResult::OK,
       std::move(ui));
 }

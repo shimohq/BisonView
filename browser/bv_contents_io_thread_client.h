@@ -135,10 +135,6 @@ class BvContentsIoThreadClient {
   // Retrieve the SafeBrowsingEnabled setting value of this BvContents.
   bool GetSafeBrowsingEnabled() const;
 
-  // Retrieve RequestedWithHeaderMode setting value of this AwContents.
-  // This method is called on the IO thread only.
-  BvSettings::RequestedWithHeaderMode GetRequestedWithHeaderMode() const;
-
  private:
   base::android::ScopedJavaGlobalRef<jobject> java_object_;
   base::android::ScopedJavaGlobalRef<jobject> bg_thread_client_object_;

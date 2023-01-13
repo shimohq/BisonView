@@ -61,7 +61,7 @@ void BvPrintManager::PdfWritingDone(int page_count) {
 
 bool BvPrintManager::PrintNow() {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
-  auto* rfh = web_contents()->GetMainFrame();
+  auto* rfh = web_contents()->GetPrimaryMainFrame();
   if (!rfh->IsRenderFrameLive())
     return false;
   GetPrintRenderFrame(rfh)->PrintRequestedPages();

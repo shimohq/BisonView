@@ -290,7 +290,7 @@ android_library("bison_java") {
     "//base:base_java",
     "//base:jni_java",
     "//build/android:build_java",
-    "//cc/base:cc_base_java",
+
     "//components/android_autofill/browser:java",
     "//components/autofill/android:autofill_java",
     "//components/background_task_scheduler:background_task_scheduler_task_ids_java",
@@ -540,12 +540,10 @@ grit("generate_components_resources") {
 
 repack("repack_100_percent") {
   sources = [
-    "$root_gen_dir/content/app/resources/content_resources_100_percent.pak",
     "$root_gen_dir/third_party/blink/public/resources/blink_scaled_resources_100_percent.pak",
     "$root_gen_dir/ui/resources/ui_resources_100_percent.pak",
   ]
   deps = [
-    "//content/app/resources",
     "//third_party/blink/public:scaled_resources_100_percent",
     "//ui/resources",
   ]

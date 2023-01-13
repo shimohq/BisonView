@@ -58,7 +58,7 @@ BvAutofillClient::GetAutocompleteHistoryManager() {
 }
 
 PrefService* BvAutofillClient::GetPrefs() {
-  return const_cast<PrefService*>(base::as_const(*this).GetPrefs());
+  return const_cast<PrefService*>(std::as_const(*this).GetPrefs());
 }
 
 const PrefService* BvAutofillClient::GetPrefs() const {
@@ -99,8 +99,12 @@ autofill::AddressNormalizer* BvAutofillClient::GetAddressNormalizer() {
   return nullptr;
 }
 
-const GURL& BvAutofillClient::GetLastCommittedURL() const {
-  return GetWebContents().GetLastCommittedURL();
+const GURL& BvAutofillClient::GetLastCommittedPrimaryMainFrameURL() const {
+  return GetWebContents().GetPrimaryMainFrame()->GetLastCommittedURL();
+}
+
+url::Origin BvAutofillClient::GetLastCommittedPrimaryMainFrameOrigin() const {
+  return GetWebContents().GetPrimaryMainFrame()->GetLastCommittedOrigin();
 }
 
 security_state::SecurityLevel
@@ -186,6 +190,49 @@ void BvAutofillClient::ScanCreditCard(CreditCardScanCallback callback) {
   NOTIMPLEMENTED();
 }
 
+bool BvAutofillClient::IsFastCheckoutSupported() {
+  return false;
+}
+
+bool BvAutofillClient::IsFastCheckoutTriggerForm(
+    const autofill::FormData& form,
+    const autofill::FormFieldData& field) {
+  return false;
+}
+
+bool BvAutofillClient::FastCheckoutScriptSupportsConsentlessExecution(
+    const url::Origin& origin) {
+  return false;
+}
+
+bool BvAutofillClient::FastCheckoutClientSupportsConsentlessExecution() {
+  return false;
+}
+
+bool BvAutofillClient::ShowFastCheckout(
+    base::WeakPtr<autofill::FastCheckoutDelegate> delegate) {
+  NOTREACHED();
+  return false;
+}
+
+void BvAutofillClient::HideFastCheckout() {
+  NOTREACHED();
+}
+
+bool BvAutofillClient::IsTouchToFillCreditCardSupported() {
+  return false;
+}
+
+bool BvAutofillClient::ShowTouchToFillCreditCard(
+    base::WeakPtr<autofill::TouchToFillDelegate> delegate) {
+  NOTREACHED();
+  return false;
+}
+
+void BvAutofillClient::HideTouchToFillCreditCard() {
+  NOTREACHED();
+}
+
 void BvAutofillClient::ShowAutofillPopup(
     const autofill::AutofillClient::PopupOpenArgs& open_args,
     base::WeakPtr<autofill::AutofillPopupDelegate> delegate) {
@@ -261,7 +308,7 @@ bool BvAutofillClient::IsPasswordManagerEnabled() {
 }
 
 void BvAutofillClient::PropagateAutofillPredictions(
-    content::RenderFrameHost* rfh,
+    autofill::AutofillDriver* driver,
     const std::vector<autofill::FormStructure*>& forms) {}
 
 void BvAutofillClient::DidFillOrPreviewField(
@@ -298,6 +345,10 @@ void BvAutofillClient::ExecuteCommand(int id) {
   NOTIMPLEMENTED();
 }
 
+void BvAutofillClient::OpenPromoCodeOfferDetailsURL(const GURL& url) {
+  NOTIMPLEMENTED();
+}
+
 void BvAutofillClient::LoadRiskData(
     base::OnceCallback<void(const std::string&)> callback) {
   NOTIMPLEMENTED();
@@ -312,9 +363,7 @@ void BvAutofillClient::SuggestionSelected(JNIEnv* env,
                                           const JavaParamRef<jobject>& object,
                                           jint position) {
   if (delegate_) {
-    delegate_->DidAcceptSuggestion(suggestions_[position].main_text.value,
-                                   suggestions_[position].frontend_id,
-                                   suggestions_[position].backend_id, position);
+    delegate_->DidAcceptSuggestion(suggestions_[position], position);
   }
 }
 
@@ -353,7 +402,10 @@ void BvAutofillClient::ShowAutofillPopupImpl(
     ScopedJavaLocalRef<jstring> name =
         ConvertUTF16ToJavaString(env, suggestions[i].main_text.value);
     ScopedJavaLocalRef<jstring> label =
-        ConvertUTF16ToJavaString(env, suggestions[i].label);
+        base::android::ConvertUTF8ToJavaString(env, std::string());
+    if (!suggestions[i].labels.empty())
+      label = ConvertUTF16ToJavaString(env, suggestions[i].labels[0][0].value);
+
     Java_BvAutofillClient_addToAutofillSuggestionArray(
         env, data_array, i, name, label, suggestions[i].frontend_id);
   }

@@ -15,6 +15,9 @@
 #include "bison/common/bv_features.h"
 #include "bison/common/bv_switches.h"
 
+#include "base/android/jni_android.h"
+#include "base/android/jni_array.h"
+#include "base/android/jni_string.h"
 #include "base/base_paths_posix.h"
 #include "base/bind.h"
 #include "base/command_line.h"
@@ -34,6 +37,7 @@
 #include "components/pref_registry/pref_registry_syncable.h"
 #include "components/prefs/in_memory_pref_store.h"
 #include "components/prefs/json_pref_store.h"
+#include "components/prefs/pref_name_set.h"
 #include "components/prefs/pref_registry_simple.h"
 #include "components/prefs/pref_service.h"
 #include "components/prefs/pref_service_factory.h"

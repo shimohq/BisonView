@@ -18,12 +18,13 @@
 
 namespace blink {
 class WebFrameWidget;
+class WebHitTestResult;
 class WebView;
 }  // namespace blink
 
 namespace bison {
 
-class BvRenderFrameExt : public content::RenderFrameObserver ,
+class BvRenderFrameExt : public content::RenderFrameObserver,
                          mojom::LocalMainFrame {
  public:
   explicit BvRenderFrameExt(content::RenderFrame* render_frame);
@@ -43,6 +44,7 @@ class BvRenderFrameExt : public content::RenderFrameObserver ,
   void DidCommitProvisionalLoad(ui::PageTransition transition) override;
 
   void FocusedElementChanged(const blink::WebElement& element) override;
+  void DidCreateDocumentElement() override;
   void OnDestruct() override;
 
   // mojom::LocalMainFrame overrides:
@@ -58,6 +60,8 @@ class BvRenderFrameExt : public content::RenderFrameObserver ,
 
   void BindLocalMainFrame(
       mojo::PendingAssociatedReceiver<mojom::LocalMainFrame> pending_receiver);
+
+  void HandleHitTestResult(const blink::WebHitTestResult& result);
 
   const mojo::AssociatedRemote<mojom::FrameHost>& GetFrameHost();
 

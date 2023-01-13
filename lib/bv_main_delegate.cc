@@ -190,7 +190,7 @@ bool BvMainDelegate::BasicStartupComplete(int* exit_code) {
   }
 
   {
-    ScopedAddFeatureFlags features(cl);
+    base::ScopedAddFeatureFlags features(cl);
 
     if (base::android::BuildInfo::GetInstance()->sdk_int() >=
         base::android::SDK_VERSION_OREO) {
@@ -200,15 +200,12 @@ bool BvMainDelegate::BasicStartupComplete(int* exit_code) {
     }
 
     features.EnableIfNotSet(::features::kLogJsConsoleMessages);
-  features.DisableIfNotSet(::features::kDefaultANGLEVulkan);
+    features.DisableIfNotSet(::features::kDefaultANGLEVulkan);
 
     features.DisableIfNotSet(::features::kVulkan);
 
     features.DisableIfNotSet(::features::kWebPayments);
     features.DisableIfNotSet(::features::kServiceWorkerPaymentApps);
-
-    // WebView requires SkiaRenderer.
-    features.EnableIfNotSet(::features::kUseSkiaRenderer);
 
     // WebView does not support overlay fullscreen yet for video overlays.
     features.DisableIfNotSet(media::kOverlayFullscreenVideo);
@@ -249,11 +246,14 @@ bool BvMainDelegate::BasicStartupComplete(int* exit_code) {
     features.DisableIfNotSet(::features::kInstalledApp);
     // features.EnableIfNotSet(
     //     metrics::UnsentLogStoreMetrics::kRecordLastUnsentLogMetadataMetrics);
-    // features.DisableIfNotSet(::features::kPeriodicBackgroundSync);
+    features.DisableIfNotSet(::features::kPeriodicBackgroundSync);
 
     // TODO(crbug.com/921655): Add support for User Agent Client hints on
     // WebView.
     features.DisableIfNotSet(blink::features::kUserAgentClientHint);
+
+    // Disable Reducing User Agent minor version on WebView.
+    features.DisableIfNotSet(blink::features::kReduceUserAgentMinorVersion);
 
     // Disabled until viz scheduling can be improved.
     features.DisableIfNotSet(::features::kUseSurfaceLayerForVideoDefault);
@@ -274,6 +274,21 @@ bool BvMainDelegate::BasicStartupComplete(int* exit_code) {
     // ML model delivery via Optimization Guide component.
     // TODO(crbug.com/1292622): Enable the feature on Webview.
     features.DisableIfNotSet(::translate::kTFLiteLanguageDetectionEnabled);
+
+    // Disable key pinning enforcement on webview.
+    features.DisableIfNotSet(net::features::kStaticKeyPinningEnforcement);
+
+    // Have the network service in the browser process even if we have separate
+    // renderer processes. See also: switches::kInProcessGPU above.
+    features.EnableIfNotSet(::features::kNetworkServiceInProcess);
+
+    // Disable Event.path on Canary and Dev to help the deprecation and removal.
+    // See crbug.com/1277431 for more details.
+    if (version_info::android::GetChannel() < version_info::Channel::BETA)
+      features.DisableIfNotSet(blink::features::kEventPath);
+
+    // FedCM is not yet supported on WebView.
+    features.DisableIfNotSet(::features::kFedCm);
   }
 
   bison::RegisterPathProvider();
@@ -344,7 +359,11 @@ void BvMainDelegate::ProcessExiting(const std::string& process_type) {
 }
 
 bool BvMainDelegate::ShouldCreateFeatureList() {
-  return false;
+  return absl::holds_alternative<InvokedInChildProcess>(invoked_in);
+}
+
+bool BvMainDelegate::ShouldInitializeMojo(InvokedIn invoked_in) {
+  return ShouldCreateFeatureList(invoked_in);
 }
 
 variations::VariationsIdsProvider*
@@ -353,19 +372,19 @@ BvMainDelegate::CreateVariationsIdsProvider() {
       variations::VariationsIdsProvider::Mode::kDontSendSignedInVariations);
 }
 
-// This function is called only on the browser process.
-void BvMainDelegate::PostEarlyInitialization(bool is_running_tests) {
-  InitIcuAndResourceBundleBrowserSide();
-  bv_feature_list_creator_->CreateFeatureListAndFieldTrials();
-  PostFieldTrialInitialization();
-}
+void BvMainDelegate::PostEarlyInitialization(
+    InvokedIn invoked_in) {
+  const bool is_browser_process =
+      absl::holds_alternative<InvokedInBrowserProcess>(invoked_in);
+  if (is_browser_process) {
+    InitIcuAndResourceBundleBrowserSide();
+    bv_feature_list_creator_->CreateFeatureListAndFieldTrials();
+    content::InitializeMojoCore();
+  }
 
-void BvMainDelegate::PostFieldTrialInitialization() {
-  const base::CommandLine& command_line =
-      *base::CommandLine::ForCurrentProcess();
-  std::string process_type =
-      command_line.GetSwitchValueASCII(switches::kProcessType);
-  [[maybe_unused]] bool is_browser_process = process_type.empty();
+  [[maybe_unused]] const std::string process_type =
+      base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
+          switches::kProcessType);
 
 #if BUILDFLAG(ENABLE_GWP_ASAN_MALLOC)
   gwp_asan::EnableForMalloc(is_browser_process, process_type.c_str());
@@ -374,6 +393,7 @@ void BvMainDelegate::PostFieldTrialInitialization() {
 #if BUILDFLAG(ENABLE_GWP_ASAN_PARTITIONALLOC)
   gwp_asan::EnableForPartitionAlloc(is_browser_process, process_type.c_str());
 #endif
+  return absl::nullopt;
 }
 
 content::ContentClient* BvMainDelegate::CreateContentClient() {

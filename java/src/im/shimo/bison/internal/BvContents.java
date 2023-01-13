@@ -118,7 +118,7 @@ import im.shimo.bison.ContentViewRenderView;
 @JNINamespace("bison")
 public class BvContents implements SmartClipProvider {
     private static final String TAG = "BvContents";
-    private static final boolean TRACE = true;
+    private static final boolean TRACE = false;
     private static final int NO_WARN = 0;
     private static final int WARN = 1;
     private static final String PRODUCT_VERSION = BvContentsJni.get().getProductVersion();
@@ -347,11 +347,6 @@ public class BvContents implements SmartClipProvider {
         public boolean getSafeBrowsingEnabled() {
             return mSettings.getSafeBrowsingEnabled();
         }
-
-        @Override
-        public int getRequestedWithHeaderMode() {
-            return mSettings.getRequestedWithHeaderMode();
-        }
     }
 
     private class BackgroundThreadClientImpl extends BvContentsBackgroundThreadClient {
@@ -483,8 +478,8 @@ public class BvContents implements SmartClipProvider {
     // --------------------------------------------------------------------------------------------
     private class BisonDisplayAndroidObserver implements DisplayAndroidObserver {
         @Override
-        public void onRotationChanged(int rotation) {
-        }
+        public void onRotationChanged(int rotation) { }
+
 
         @Override
         public void onDIPScaleChanged(float dipScale) {
@@ -556,12 +551,12 @@ public class BvContents implements SmartClipProvider {
         mWebContents.initialize(PRODUCT_VERSION, mViewAndroidDelegate, mInternalAccessAdapter,
                 mWindowAndroid.getWindowAndroid(), mWebContentsInternalsHolder);
         mNavigationController = mWebContents.getNavigationController();
-        //mWebContents.onShow();
+
         mContentViewRenderView.setWebContents(mWebContents);
         mViewEventSink = ViewEventSink.from(mWebContents);
         mViewEventSink.setHideKeyboardOnBlur(false);
         SelectionPopupController controller = SelectionPopupController.fromWebContents(webContents);
-        controller.setActionModeCallback(new BvActionModeCallback(mContext, this, mWebContents));
+        controller.setActionModeCallback(new BvActionModeCallback(this, mWebContents));
         // controller.setSelectionClient(SelectionClient.createSmartSelectionClient(webContents));
         ImeAdapter.fromWebContents(webContents).addEventObserver(new ImeEventObserver() {
             @Override
@@ -897,11 +892,12 @@ public class BvContents implements SmartClipProvider {
     // }
 
     public void findAllAsync(String searchString) {
-        if (TRACE)
-            Log.i(TAG, "%s findAllAsync", this);
-        if (!isDestroyed(WARN)) {
-            BvContentsJni.get().findAllAsync(mNativeBvContents, searchString);
+        if (TRACE) Log.i(TAG, "%s findAllAsync", this);
+        if (isDestroyed(WARN)) return;
+        if (searchString == null) {
+            throw new IllegalArgumentException("Search string shouldn't be null");
         }
+        BvContentsJni.get().findAllAsync(mNativeBvContents, searchString);
     }
 
     public void findNext(boolean forward) {
@@ -1715,27 +1711,24 @@ public class BvContents implements SmartClipProvider {
      * @param targetOrigin The expected target frame's origin.
      * @param sentPorts    ports for the JavaScript MessageEvent.
      */
-    public void postMessageToMainFrame(String message, String targetOrigin, MessagePort[] sentPorts) {
-        if (isDestroyed(WARN))
-            return;
+    public void postMessageToMainFrame(
+            MessagePayload messagePayload, String targetOrigin, MessagePort[] sentPorts) {
+        if (TRACE) Log.i(TAG, "%s postMessageToMainFrame", this);
+        if (isDestroyed(WARN)) return;
 
         RenderFrameHost mainFrame = mWebContents.getMainFrame();
-        // If the RenderFrameHost or the RenderFrame doesn't exist we couldn't post the
-        // message.
-        if (mainFrame == null || !mainFrame.isRenderFrameCreated())
-            return;
+        // If the RenderFrameHost or the RenderFrame doesn't exist we couldn't post the message.
+        if (mainFrame == null || !mainFrame.isRenderFrameLive()) return;
 
-        mWebContents.postMessageToMainFrame(message, null, targetOrigin, sentPorts);
+        mWebContents.postMessageToMainFrame(messagePayload, null, targetOrigin, sentPorts);
     }
 
     /**
      * Creates a message channel and returns the ports for each end of the channel.
      */
     public MessagePort[] createMessageChannel() {
-        if (TRACE)
-            Log.i(TAG, "%s createMessageChannel", this);
-        if (isDestroyed(WARN))
-            return null;
+        if (TRACE) Log.i(TAG, "%s createMessageChannel", this);
+        if (isDestroyed(WARN)) return null;
         return MessagePort.createPair();
     }
 

@@ -5,8 +5,8 @@ import android.content.pm.PackageManager;
 
 import org.chromium.base.ContextUtils;
 import org.chromium.base.annotations.JNINamespace;
-import org.chromium.base.annotations.MainDex;
 import org.chromium.base.annotations.NativeMethods;
+import org.chromium.build.annotations.MainDex;
 
 
 @JNINamespace("bison")

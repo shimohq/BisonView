@@ -4,6 +4,18 @@
 
 package im.shimo.bison.internal;
 
+import android.app.SearchManager;
+import android.content.Context;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.graphics.Rect;
+import android.text.TextUtils;
+import android.view.ActionMode;
+import android.view.Menu;
+import android.view.MenuItem;
+import android.view.View;
+import androidx.annotation.RestrictTo;
+
 import org.chromium.base.PackageManagerUtils;
 import org.chromium.base.metrics.RecordUserAction;
 import org.chromium.content.R;
@@ -11,26 +23,14 @@ import org.chromium.content_public.browser.ActionModeCallbackHelper;
 import org.chromium.content_public.browser.SelectionPopupController;
 import org.chromium.content_public.browser.WebContents;
 
-import android.app.SearchManager;
-import android.content.ActivityNotFoundException;
-import android.content.Context;
-import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.os.Build;
-import android.text.TextUtils;
-import android.view.ActionMode;
-import android.view.Menu;
-import android.view.MenuItem;
-import androidx.annotation.RestrictTo;
-
 @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
-public class BvActionModeCallback implements ActionMode.Callback {
-    private final BvContents mBisonContents;
+public class BvActionModeCallback extends ActionMode.Callback2 {
+    private final BvContents mBvContents;
     private final ActionModeCallbackHelper mHelper;
     private int mAllowedMenuItems;
 
-    public BvActionModeCallback(Context context, BvContents bvContents, WebContents webContents) {
-        mBisonContents = bvContents;
+    public BvActionModeCallback(BvContents bvContents, WebContents webContents) {
+        mBvContents = bvContents;
         mHelper =
                 SelectionPopupController.fromWebContents(webContents).getActionModeCallbackHelper();
         mHelper.setAllowedMenuItems(0);  // No item is allowed by default for WebView.
@@ -54,7 +54,7 @@ public class BvActionModeCallback implements ActionMode.Callback {
         if (menuItem == ActionModeCallbackHelper.MENU_ITEM_WEB_SEARCH) {
             showItem = isWebSearchAvailable();
         }
-        return showItem && mBisonContents.isSelectActionModeAllowed(menuItem) ? menuItem : 0;
+        return showItem && mBvContents.isSelectActionModeAllowed(menuItem) ? menuItem : 0;
     }
 
     private boolean isWebSearchAvailable() {
@@ -90,19 +90,21 @@ public class BvActionModeCallback implements ActionMode.Callback {
         mHelper.onDestroyActionMode();
     }
 
+    @Override
+    public void onGetContentRect(ActionMode mode, View view, Rect outRect) {
+        mHelper.onGetContentRect(mode, view, outRect);
+    }
+
     private void processText(Intent intent) {
         RecordUserAction.record("MobileActionMode.ProcessTextIntent");
-
         String query = ActionModeCallbackHelper.sanitizeQuery(mHelper.getSelectedText(),
                 ActionModeCallbackHelper.MAX_SEARCH_QUERY_LENGTH);
         if (TextUtils.isEmpty(query)) return;
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             intent.putExtra(Intent.EXTRA_PROCESS_TEXT, query);
-        }
         try {
-            mBisonContents.startProcessTextIntent(intent);
-        } catch (ActivityNotFoundException ex) {
+            mBvContents.startProcessTextIntent(intent);
+        } catch (android.content.ActivityNotFoundException ex) {
             // If no app handles it, do nothing.
         }
     }

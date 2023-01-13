@@ -17,10 +17,10 @@ namespace bison {
 
 // A RestrictedCookieManager which conditionally proxies to an underlying
 // RestrictedCookieManager, first consulting WebView's cookie settings.
-class BisonProxyingRestrictedCookieManager
+class BvProxyingRestrictedCookieManager
     : public network::mojom::RestrictedCookieManager {
  public:
-  // Creates a BisonProxyingRestrictedCookieManager that lives on IO thread,
+  // Creates a BvProxyingRestrictedCookieManager that lives on IO thread,
   // binding it to handle communications from |receiver|. The requests will be
   // delegated to |underlying_rcm|. The resulting object will be owned by the
   // pipe corresponding to |request| and will in turn own |underlying_rcm|.
@@ -34,12 +34,12 @@ class BisonProxyingRestrictedCookieManager
       int frame_id,
       mojo::PendingReceiver<network::mojom::RestrictedCookieManager> receiver);
 
-  BisonProxyingRestrictedCookieManager(const BisonProxyingRestrictedCookieManager&) =
+  BvProxyingRestrictedCookieManager(const BvProxyingRestrictedCookieManager&) =
       delete;
-  BisonProxyingRestrictedCookieManager& operator=(
-      const BisonProxyingRestrictedCookieManager&) = delete;
+  BvProxyingRestrictedCookieManager& operator=(
+      const BvProxyingRestrictedCookieManager&) = delete;
 
-  ~BisonProxyingRestrictedCookieManager() override;
+  ~BvProxyingRestrictedCookieManager() override;
 
   // network::mojom::RestrictedCookieManager interface:
   void GetAllForUrl(const GURL& url,
@@ -87,7 +87,7 @@ class BisonProxyingRestrictedCookieManager
   void ConvertPartitionedCookiesToUnpartitioned(const GURL& url) override;
 
  private:
-  BisonProxyingRestrictedCookieManager(
+  BvProxyingRestrictedCookieManager(
       mojo::PendingRemote<network::mojom::RestrictedCookieManager>
           underlying_restricted_cookie_manager,
       bool is_service_worker,
@@ -108,7 +108,7 @@ class BisonProxyingRestrictedCookieManager
   int process_id_;
   int frame_id_;
 
-  base::WeakPtrFactory<BisonProxyingRestrictedCookieManager> weak_factory_{this};
+  base::WeakPtrFactory<BvProxyingRestrictedCookieManager> weak_factory_{this};
 
 
 };

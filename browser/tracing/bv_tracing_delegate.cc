@@ -23,15 +23,15 @@ bool BvTracingDelegate::IsAllowedToBeginBackgroundScenario(
 bool BvTracingDelegate::IsAllowedToEndBackgroundScenario(
     const content::BackgroundTracingConfig& config,
     bool requires_anonymized_data,
-    bool is_crash_scenario) {
+  bool is_crash_scenario) {
   // Background tracing is allowed in general and can be restricted when
   // configuring BackgroundTracingManager.
   return true;
 }
 
-absl::optional<base::Value> BvTracingDelegate::GenerateMetadataDict() {
-  base::Value metadata_dict(base::Value::Type::DICTIONARY);
-  metadata_dict.SetStringKey("revision", version_info::GetLastChange());
+absl::optional<base::Value::Dict> BvTracingDelegate::GenerateMetadataDict() {
+  base::Value::Dict metadata_dict;
+  metadata_dict.Set("revision", version_info::GetLastChange());
   return metadata_dict;
 }
 

@@ -15,7 +15,7 @@
 #include "components/js_injection/browser/web_message.h"
 #include "components/js_injection/browser/web_message_host.h"
 #include "components/js_injection/common/origin_matcher.h"
-#include "content/public/browser/android/app_web_message_port.h"
+#include "content/public/browser/android/message_port_helper.h"
 
 namespace bison {
 namespace {
@@ -38,9 +38,8 @@ class BvWebMessageHost : public js_injection::WebMessageHost {
   void OnPostMessage(
       std::unique_ptr<js_injection::WebMessage> message) override {
     JNIEnv* env = base::android::AttachCurrentThread();
-    base::android::ScopedJavaGlobalRef<jobjectArray> jports =
-        content::AppWebMessagePort::WrapJavaArray(env,
-                                                  std::move(message->ports));
+    base::android::ScopedJavaLocalRef<jobjectArray> jports =
+        content::android::CreateJavaMessagePort(std::move(message->ports));
     Java_WebMessageListenerHolder_onPostMessage(
         env, listener_,
         base::android::ConvertUTF16ToJavaString(env, message->message),

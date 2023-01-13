@@ -22,10 +22,9 @@ void SetupBackgroundTracingFieldTrial(int allowed_modes) {
           kBackgroundTracingFieldTrial))
     return;
 
-  auto* manager = content::BackgroundTracingManager::GetInstance();
-  DCHECK(manager);
+  auto& manager = content::BackgroundTracingManager::GetInstance();
   std::unique_ptr<content::BackgroundTracingConfig> config =
-      manager->GetBackgroundTracingConfig(kBackgroundTracingFieldTrial);
+      manager.GetBackgroundTracingConfig(kBackgroundTracingFieldTrial);
 
   if (!config)
     return;
@@ -38,7 +37,7 @@ void SetupBackgroundTracingFieldTrial(int allowed_modes) {
   // go/public-webview-trace-collection).
   config->SetPackageNameFilteringEnabled(
       config->tracing_mode() != content::BackgroundTracingConfig::SYSTEM);
-  manager->SetActiveScenario(std::move(config),
+  manager.SetActiveScenario(std::move(config),
                              content::BackgroundTracingManager::ANONYMIZE_DATA);
 }
 

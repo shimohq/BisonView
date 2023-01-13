@@ -505,13 +505,4 @@ bool BvContentsIoThreadClient::ShouldBlockNetworkLoads() const {
                                                                java_object_);
 }
 
-BvSettings::RequestedWithHeaderMode
-BvContentsIoThreadClient::GetRequestedWithHeaderMode() const {
-  DCHECK_CURRENTLY_ON(BrowserThread::IO);
-
-  JNIEnv* env = AttachCurrentThread();
-  return static_cast<BvSettings::RequestedWithHeaderMode>(
-      Java_BvContentsIoThreadClient_getRequestedWithHeaderMode(env,
-                                                               java_object_));
-}
 }  // namespace bison

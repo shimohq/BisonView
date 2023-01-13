@@ -1,20 +1,20 @@
 diff --git a/BUILD.gn b/BUILD.gn
-index 09b4c938cdec9..584ac69d41ee4 100644
+index a6b18dea12365..e09e826ad13e0 100644
 --- a/BUILD.gn
 +++ b/BUILD.gn
-@@ -391,6 +391,7 @@ group("gn_all") {
-       "//weblayer/public/java:client_aar",
-       "//weblayer/shell/android:weblayer_shell_apk",
-       "//weblayer/shell/android:weblayer_support_apk",
+@@ -359,6 +359,7 @@ group("gn_all") {
+       "//components:components_junit_tests",
+       "//content/public/android:content_junit_tests",
+       "//content/shell/android:content_shell_apk",
 +      "//bison",
-     ]
-     deps -= [
-       "//net:net_perftests",
+       "//device:device_junit_tests",
+       "//media/gpu:video_decode_accelerator_unittest",
+       "//net/android:net_junit_tests",
 diff --git a/base/i18n/icu_util.cc b/base/i18n/icu_util.cc
-index 83c641d3cfae8..2b756d913871f 100644
+index cce9f358e144e..e52b39c927b6f 100644
 --- a/base/i18n/icu_util.cc
 +++ b/base/i18n/icu_util.cc
-@@ -111,7 +111,7 @@ const char kIcuTimeZoneDataDir[] = "/config/data/tzdata/icu/44/le";
+@@ -116,7 +116,7 @@ const char kLegacyIcuTimeZoneDataDir[] = "/config/data/tzdata/icu/44/le";
  #endif  // BUILDFLAG(IS_FUCHSIA)
  
  #if BUILDFLAG(IS_ANDROID)
@@ -24,7 +24,7 @@ index 83c641d3cfae8..2b756d913871f 100644
  
  // File handle intentionally never closed. Not using File here because its
 diff --git a/base/threading/thread_restrictions.h b/base/threading/thread_restrictions.h
-index 114677b5163b8..e762625feecf8 100644
+index 981370f9fffb6..f42f1c1910237 100644
 --- a/base/threading/thread_restrictions.h
 +++ b/base/threading/thread_restrictions.h
 @@ -122,6 +122,11 @@ class CookieManager;
@@ -32,14 +32,14 @@ index 114677b5163b8..e762625feecf8 100644
  class VizCompositorThreadRunnerWebView;
  }  // namespace android_webview
 +namespace bison {
-+class BvFormDatabaseService;
-+class CookieManager;
-+class ScopedAllowInitGLBindings;
++  class BvFormDatabaseService;
++  class CookieManager;
++  class ScopedAllowInitGLBindings;
 +}
  namespace ash {
  class MojoUtils;
  class BrowserDataMigrator;
-@@ -452,6 +457,7 @@ class BASE_EXPORT ScopedAllowBlocking {
+@@ -457,6 +462,7 @@ class BASE_EXPORT ScopedAllowBlocking {
    friend class ::GaiaConfig;
    friend class ::StartupTabProviderImpl;
    friend class android_webview::ScopedAllowInitGLBindings;
@@ -47,17 +47,18 @@ index 114677b5163b8..e762625feecf8 100644
    friend class ash::MojoUtils;  // http://crbug.com/1055467
    friend class ash::BrowserDataMigrator;
    friend class base::AdjustOOMScoreHelper;
-@@ -640,6 +646,8 @@ class BASE_EXPORT ScopedAllowBaseSyncPrimitivesOutsideBlockingScope {
+@@ -650,6 +656,9 @@ class BASE_EXPORT ScopedAllowBaseSyncPrimitivesOutsideBlockingScope {
        AwFormDatabaseService;  // http://crbug.com/904431
    friend class android_webview::CookieManager;
    friend class android_webview::VizCompositorThreadRunnerWebView;
 +  friend class bison::BvFormDatabaseService;
 +  friend class bison::CookieManager;
++  friend class bison::BvFormDatabaseService;
    friend class audio::OutputDevice;
    friend class base::sequence_manager::internal::TaskQueueImpl;
    friend class base::FileDescriptorWatcher;
 diff --git a/base/trace_event/builtin_categories.h b/base/trace_event/builtin_categories.h
-index a1a93418b0b0d..5f1f58922d73c 100644
+index cfa800eb9fc77..43eb4807e8f63 100644
 --- a/base/trace_event/builtin_categories.h
 +++ b/base/trace_event/builtin_categories.h
 @@ -33,6 +33,7 @@
@@ -68,502 +69,8 @@ index a1a93418b0b0d..5f1f58922d73c 100644
    /* Actions on Google Hardware, used in Google-internal code. */        \
    X("aogh")                                                              \
    X("audio")                                                             \
-diff --git a/chrome/android/BUILD.gn b/chrome/android/BUILD.gn
-index 0577383561b41..cc0de49353aa1 100644
---- a/chrome/android/BUILD.gn
-+++ b/chrome/android/BUILD.gn
-@@ -2397,8 +2397,10 @@ _chrome_public_shared_deps = [
-   ":chrome_public_apk_resources",
-   ":chrome_public_base_module_java",
-   ":chrome_public_non_pak_assets",
--  ":chrome_public_v8_assets",
--  "//third_party/icu:icu_assets",
-+  # ":chrome_public_v8_assets",
-+  # "//third_party/icu:icu_assets",
-+  "//bison:bison_v8_snapshot_assets",
-+  "//bison:bison_icu_assets",
- ]
- 
- generate_jni("test_support_jni_headers") {
-diff --git a/content/browser/accessibility/browser_accessibility_android.cc b/content/browser/accessibility/browser_accessibility_android.cc
-index 29a058e7f30d2..676de7e6dd14e 100644
---- a/content/browser/accessibility/browser_accessibility_android.cc
-+++ b/content/browser/accessibility/browser_accessibility_android.cc
-@@ -481,7 +481,7 @@ const char* BrowserAccessibilityAndroid::GetClassName() const {
-     // On Android, contenteditable needs to be handled the same as any
-     // other text field.
-     role = ax::mojom::Role::kTextField;
--  } else if (ui::IsAndroidTextViewCandidate(role) && HasOnlyTextChildren()) {
-+  } else if (IsAndroidTextView()) {
-     // On Android, we want to report some extra nodes as TextViews. For example,
-     // a <div> that only contains text, or a <p> that only contains text.
-     role = ax::mojom::Role::kStaticText;
-@@ -490,6 +490,10 @@ const char* BrowserAccessibilityAndroid::GetClassName() const {
-   return ui::AXRoleToAndroidClassName(role, PlatformGetParent() != nullptr);
- }
- 
-+bool BrowserAccessibilityAndroid::IsAndroidTextView() const {
-+  return ui::IsAndroidTextViewCandidate(GetRole()) && HasOnlyTextChildren();
-+}
-+
- bool BrowserAccessibilityAndroid::IsChildOfLeaf() const {
-   BrowserAccessibility* ancestor = InternalGetParent();
- 
-diff --git a/content/browser/accessibility/browser_accessibility_android.h b/content/browser/accessibility/browser_accessibility_android.h
-index 34419340b2e2d..372fc001b66fe 100644
---- a/content/browser/accessibility/browser_accessibility_android.h
-+++ b/content/browser/accessibility/browser_accessibility_android.h
-@@ -37,6 +37,7 @@ class CONTENT_EXPORT BrowserAccessibilityAndroid : public BrowserAccessibility {
-   std::u16string GetLocalizedStringForImageAnnotationStatus(
-       ax::mojom::ImageAnnotationStatus status) const override;
- 
-+  bool IsAndroidTextView() const;
-   bool IsCheckable() const;
-   bool IsChecked() const;
-   bool IsClickable() const override;
-diff --git a/content/browser/accessibility/browser_accessibility_manager_android.cc b/content/browser/accessibility/browser_accessibility_manager_android.cc
-index 7db2cbd0f8973..357ee15c76443 100644
---- a/content/browser/accessibility/browser_accessibility_manager_android.cc
-+++ b/content/browser/accessibility/browser_accessibility_manager_android.cc
-@@ -263,6 +263,17 @@ void BrowserAccessibilityManagerAndroid::FireGeneratedEvent(
-       wcax->AnnounceLiveRegionText(text);
-       break;
-     }
-+    case ui::AXEventGenerator::Event::NAME_CHANGED: {
-+      // Clear node from cache whenever the name changes to ensure fresh data.
-+      wcax->ClearNodeInfoCacheForGivenId(android_node->unique_id());
-+
-+      // If this is a simple text element, also send an event to the framework.
-+      if (ui::IsText(android_node->GetRole()) ||
-+          android_node->IsAndroidTextView()) {
-+        wcax->HandleTextContentChanged(android_node->unique_id());
-+      }
-+      break;
-+    }
-     case ui::AXEventGenerator::Event::RANGE_VALUE_CHANGED:
-       DCHECK(android_node->GetData().IsRangeValueSupported());
-       if (android_node->IsSlider())
-@@ -336,7 +347,6 @@ void BrowserAccessibilityManagerAndroid::FireGeneratedEvent(
-     case ui::AXEventGenerator::Event::MENU_ITEM_SELECTED:
-     case ui::AXEventGenerator::Event::MULTILINE_STATE_CHANGED:
-     case ui::AXEventGenerator::Event::MULTISELECTABLE_STATE_CHANGED:
--    case ui::AXEventGenerator::Event::NAME_CHANGED:
-     case ui::AXEventGenerator::Event::OBJECT_ATTRIBUTE_CHANGED:
-     case ui::AXEventGenerator::Event::OTHER_ATTRIBUTE_CHANGED:
-     case ui::AXEventGenerator::Event::PARENT_CHANGED:
-diff --git a/content/browser/accessibility/web_contents_accessibility_android.cc b/content/browser/accessibility/web_contents_accessibility_android.cc
-index 23bc1fadc5eaf..3cca1fc4a4efa 100644
---- a/content/browser/accessibility/web_contents_accessibility_android.cc
-+++ b/content/browser/accessibility/web_contents_accessibility_android.cc
-@@ -445,6 +445,16 @@ void WebContentsAccessibilityAndroid::AnnounceLiveRegionText(
-       env, obj, base::android::ConvertUTF16ToJavaString(env, text));
- }
- 
-+void WebContentsAccessibilityAndroid::HandleTextContentChanged(
-+    int32_t unique_id) {
-+  JNIEnv* env = AttachCurrentThread();
-+  ScopedJavaLocalRef<jobject> obj = java_ref_.get(env);
-+  if (obj.is_null())
-+    return;
-+  Java_WebContentsAccessibilityImpl_handleTextContentChanged(env, obj,
-+                                                             unique_id);
-+}
-+
- void WebContentsAccessibilityAndroid::HandleTextSelectionChanged(
-     int32_t unique_id) {
-   JNIEnv* env = AttachCurrentThread();
-diff --git a/content/browser/accessibility/web_contents_accessibility_android.h b/content/browser/accessibility/web_contents_accessibility_android.h
-index 905910cf7cd80..47915ce86f651 100644
---- a/content/browser/accessibility/web_contents_accessibility_android.h
-+++ b/content/browser/accessibility/web_contents_accessibility_android.h
-@@ -385,6 +385,7 @@ class CONTENT_EXPORT WebContentsAccessibilityAndroid
-   void HandleScrolledToAnchor(int32_t unique_id);
-   void HandleDialogModalOpened(int32_t unique_id);
-   void AnnounceLiveRegionText(const std::u16string& text);
-+  void HandleTextContentChanged(int32_t unique_id);
-   void HandleTextSelectionChanged(int32_t unique_id);
-   void HandleEditableTextChanged(int32_t unique_id);
-   void HandleSliderChanged(int32_t unique_id);
-diff --git a/content/browser/v8_snapshot_files.cc b/content/browser/v8_snapshot_files.cc
-index cb0af392214eb..2d0f946b359cb 100644
---- a/content/browser/v8_snapshot_files.cc
-+++ b/content/browser/v8_snapshot_files.cc
-@@ -19,15 +19,26 @@ std::map<std::string, base::FilePath> GetV8SnapshotFilesToPreload() {
-            base::FilePath(FILE_PATH_LITERAL("snapshot_blob.bin"))}};
- #endif
- #elif BUILDFLAG(IS_ANDROID)
--#if !defined(USE_V8_CONTEXT_SNAPSHOT)
-+#if defined(USE_V8_CONTEXT_SNAPSHOT)
-+  return {
-+      {kV8Snapshot64DataDescriptor,
-+       base::FilePath(FILE_PATH_LITERAL("assets/v8_context_snapshot_64.bin"))},
-+      {kV8Snapshot32DataDescriptor,
-+       base::FilePath(FILE_PATH_LITERAL("assets/v8_context_snapshot_32.bin"))}};
-+#else
-+#if defined(ARCH_CPU_ARM_FAMILY)
-   return {{kV8Snapshot64DataDescriptor,
--           base::FilePath(FILE_PATH_LITERAL("assets/snapshot_blob_64.bin"))},
-+           base::FilePath(FILE_PATH_LITERAL("assets/bison/arm/snapshot_blob_64.bin"))},
-           {kV8Snapshot32DataDescriptor,
--           base::FilePath(FILE_PATH_LITERAL("assets/snapshot_blob_32.bin"))}};
--#elif defined(USE_V8_CONTEXT_SNAPSHOT)
--  // For USE_V8_CONTEXT_SNAPSHOT, the renderer reads the files directly.
--  return {};
-+           base::FilePath(FILE_PATH_LITERAL("assets/bison/arm/snapshot_blob_32.bin"))}};
-+#else   // ARCH_CPU_X86_FAMILY
-+  return {{kV8Snapshot64DataDescriptor,
-+           base::FilePath(FILE_PATH_LITERAL("assets/bison/x86/snapshot_blob_64.bin"))},
-+          {kV8Snapshot32DataDescriptor,
-+           base::FilePath(FILE_PATH_LITERAL("assets/bison/x86/snapshot_blob_32.bin"))}};
-+#endif  // defined(ARCH_CPU_ARM_FAMILY)
- #endif
-+
- #else
-   return {};
- #endif
-diff --git a/content/public/android/java/src/org/chromium/content/browser/accessibility/WebContentsAccessibilityImpl.java b/content/public/android/java/src/org/chromium/content/browser/accessibility/WebContentsAccessibilityImpl.java
-index fb07ff2c2196a..7f6efd131b67b 100644
---- a/content/public/android/java/src/org/chromium/content/browser/accessibility/WebContentsAccessibilityImpl.java
-+++ b/content/public/android/java/src/org/chromium/content/browser/accessibility/WebContentsAccessibilityImpl.java
-@@ -107,6 +107,7 @@ import java.util.List;
- import java.util.Locale;
- import java.util.Map;
- import java.util.Set;
-+import java.lang.ref.WeakReference;
- 
- /**
-  * Implementation of {@link WebContentsAccessibility} interface.
-@@ -209,14 +210,14 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
- 
-     private final AccessibilityDelegate mDelegate;
-     protected AccessibilityManager mAccessibilityManager;
--    protected final Context mContext;
-+    protected final WeakReference<Context> mContext;
-     private String mProductVersion;
-     protected long mNativeObj;
-     private Rect mAccessibilityFocusRect;
-     private boolean mIsHovering;
-     private int mLastHoverId = View.NO_ID;
-     private int mCurrentRootId;
--    protected View mView;
-+    protected  WeakReference<View> mView;
-     private boolean mUserHasTouchExplored;
-     private boolean mPendingScrollToMakeNodeVisible;
-     private boolean mNotifyFrameInfoInitializedCalled;
-@@ -322,11 +323,11 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
- 
-     protected WebContentsAccessibilityImpl(AccessibilityDelegate delegate) {
-         mDelegate = delegate;
--        mView = mDelegate.getContainerView();
--        mContext = mView.getContext();
-+        mView = new WeakReference(mDelegate.getContainerView());
-+        mContext = new WeakReference(mView.get().getContext());
-         mProductVersion = mDelegate.getProductVersion();
-         mAccessibilityManager =
--                (AccessibilityManager) mContext.getSystemService(Context.ACCESSIBILITY_SERVICE);
-+                (AccessibilityManager) mContext.get().getSystemService(Context.ACCESSIBILITY_SERVICE);
-         if (mDelegate.getWebContents() != null) {
-             mCaptioningController = new CaptioningController(mDelegate.getWebContents());
-             WindowEventObserverManager.from(mDelegate.getWebContents()).addObserver(this);
-@@ -357,12 +358,17 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
-                 new AccessibilityEventDispatcher(new AccessibilityEventDispatcher.Client() {
-                     @Override
-                     public void postRunnable(Runnable toPost, long delayInMilliseconds) {
--                        mView.postDelayed(toPost, delayInMilliseconds);
-+                        if (mView.get()!=null){
-+                            mView.get().postDelayed(toPost, delayInMilliseconds);
-+                        }
-+
-                     }
- 
-                     @Override
-                     public void removeRunnable(Runnable toRemove) {
--                        mView.removeCallbacks(toRemove);
-+                        if (mView.get()!=null){
-+                            mView.get().removeCallbacks(toRemove);
-+                        }
-                     }
- 
-                     @Override
-@@ -400,7 +406,7 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
-         // actually requested.
- 
-         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
--            AutofillManager autofillManager = mContext.getSystemService(AutofillManager.class);
-+            AutofillManager autofillManager = mContext.get().getSystemService(AutofillManager.class);
-             if (autofillManager != null && autofillManager.isEnabled()) {
-                 // Native accessibility is usually initialized when getAccessibilityNodeProvider is
-                 // called, but the Autofill compatibility bridge only calls that method after it has
-@@ -433,7 +439,7 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
-         };
- 
-         // Register a broadcast receiver for locale change.
--        if (mView.isAttachedToWindow()) registerLocaleChangeReceiver();
-+        if (mView.get()!=null && mView.get().isAttachedToWindow()) registerLocaleChangeReceiver();
- 
-         // Define an initial set of relevant events if OnDemand feature is enabled.
-         if (ContentFeatureList.isEnabled(ContentFeatureList.ON_DEMAND_ACCESSIBILITY_EVENTS)) {
-@@ -444,7 +450,9 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
-                         convertMaskToEventTypes(serviceEventMask));
-                 mEventDispatcher.setOnDemandEnabled(true);
-             };
--            mView.post(serviceMaskRunnable);
-+            if (mView.get()!=null){
-+                mView.get().post(serviceMaskRunnable);
-+            }
-         }
- 
-         // Set whether image descriptions should be enabled for this instance. We do not want
-@@ -806,12 +814,13 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
- 
-         } else {
-             // If we have no copy of this node in our cache, build a new one from scratch.
--            final AccessibilityNodeInfoCompat info = AccessibilityNodeInfoCompat.obtain(mView);
--            info.setPackageName(mContext.getPackageName());
--            info.setSource(mView, virtualViewId);
-+            if (mContext.get() ==null || mView.get() ==null) return null;
-+            final AccessibilityNodeInfoCompat info = AccessibilityNodeInfoCompat.obtain(mView.get());
-+            info.setPackageName(mContext.get().getPackageName());
-+            info.setSource(mView.get(), virtualViewId);
- 
-             if (virtualViewId == rootId) {
--                info.setParent(mView);
-+                info.setParent(mView.get());
-             }
- 
-             if (WebContentsAccessibilityImplJni.get().populateAccessibilityNodeInfo(
-@@ -999,11 +1008,11 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
-             }
-             return true;
-         } else if (action == ACTION_CLICK.getId()) {
--            if (!mView.hasFocus()) mView.requestFocus();
-+            if (mView.get()!=null && !mView.get().hasFocus()) mView.get().requestFocus();
-             performClick(virtualViewId);
-             return true;
-         } else if (action == ACTION_FOCUS.getId()) {
--            if (!mView.hasFocus()) mView.requestFocus();
-+            if (mView.get() !=null && !mView.get().hasFocus()) mView.get().requestFocus();
-             WebContentsAccessibilityImplJni.get().focus(
-                     mNativeObj, WebContentsAccessibilityImpl.this, virtualViewId);
-             return true;
-@@ -1527,8 +1536,8 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
-     private void sendAccessibilityEvent(int virtualViewId, int eventType) {
-         // The container view is indicated by a virtualViewId of NO_ID; post these events directly
-         // since there's no web-specific information to attach.
--        if (virtualViewId == View.NO_ID) {
--            mView.sendAccessibilityEvent(eventType);
-+        if (virtualViewId == View.NO_ID && mView.get()!=null) {
-+            mView.get().sendAccessibilityEvent(eventType);
-             return;
-         }
- 
-@@ -1552,10 +1561,10 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
-                         mNativeObj, WebContentsAccessibilityImpl.this, virtualViewId)) {
-             return null;
-         }
--
-+        if (mContext.get() ==null || mView.get() ==null) return null;
-         final AccessibilityEvent event = AccessibilityEvent.obtain(eventType);
--        event.setPackageName(mContext.getPackageName());
--        event.setSource(mView, virtualViewId);
-+        event.setPackageName(mContext.get().getPackageName());
-+        event.setSource(mView.get(), virtualViewId);
-         if (eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
-             event.setContentChangeTypes(AccessibilityEvent.CONTENT_CHANGE_TYPE_SUBTREE);
-         }
-@@ -1576,11 +1585,12 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
-     private AccessibilityNodeInfoCompat createNodeForHost(int rootId) {
-         // Since we don't want the parent to be focusable, but we can't remove
-         // actions from a node, copy over the necessary fields.
--        final AccessibilityNodeInfoCompat result = AccessibilityNodeInfoCompat.obtain(mView);
-+        if (mView.get()==null) return null;
-+        final AccessibilityNodeInfoCompat result = AccessibilityNodeInfoCompat.obtain(mView.get());
-         // mView requires an |AccessibilityNodeInfo| object here, so we keep the |source| as the
-         // non-Compat type rather than unwrapping an |AccessibilityNodeInfoCompat| object.
--        final AccessibilityNodeInfo source = AccessibilityNodeInfo.obtain(mView);
--        mView.onInitializeAccessibilityNodeInfo(source);
-+        final AccessibilityNodeInfo source = AccessibilityNodeInfo.obtain(mView.get());
-+        mView.get().onInitializeAccessibilityNodeInfo(source);
- 
-         // Copy over parent and screen bounds.
-         Rect rect = new Rect();
-@@ -1590,7 +1600,7 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
-         result.setBoundsInScreen(rect);
- 
-         // Set up the parent view, if applicable.
--        final ViewParent parent = mView.getParentForAccessibility();
-+        final ViewParent parent = mView.get().getParentForAccessibility();
-         if (parent instanceof View) {
-             result.setParent((View) parent);
-         }
-@@ -1603,7 +1613,7 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
- 
-         // Add the Chrome root node.
-         if (isFrameInfoInitialized()) {
--            result.addChild(mView, rootId);
-+            result.addChild(mView.get(), rootId);
-         }
- 
-         return result;
-@@ -1659,6 +1669,16 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
-         sendAccessibilityEvent(id, AccessibilityEvent.TYPE_VIEW_TEXT_SELECTION_CHANGED);
-     }
- 
-+    @CalledByNative
-+    private void handleTextContentChanged(int id) {
-+        AccessibilityEvent event =
-+                buildAccessibilityEvent(id, AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED);
-+        if (event != null) {
-+            event.setContentChangeTypes(AccessibilityEvent.CONTENT_CHANGE_TYPE_TEXT);
-+            requestSendAccessibilityEvent(event);
-+        }
-+    }
-+
-     @CalledByNative
-     private void handleEditableTextChanged(int id) {
-         sendAccessibilityEvent(id, AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED);
-@@ -1728,13 +1748,13 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
-     @CalledByNative
-     @SuppressLint("WrongConstant")
-     protected void handleDialogModalOpened(int virtualViewId) {
--        if (isAccessibilityEnabled()) {
-+        if (isAccessibilityEnabled()&& mView.get()!=null) {
-             AccessibilityEvent event =
-                     AccessibilityEvent.obtain(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED);
-             if (event == null) return;
- 
-             event.setContentChangeTypes(CONTENT_CHANGE_TYPE_PANE_APPEARED);
--            event.setSource(mView, virtualViewId);
-+            event.setSource(mView.get(), virtualViewId);
-             requestSendAccessibilityEvent(event);
-         }
-     }
-@@ -1754,14 +1774,18 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
- 
-     @CalledByNative
-     private void setAccessibilityNodeInfoParent(AccessibilityNodeInfoCompat node, int parentId) {
--        node.setParent(mView, parentId);
-+        if (mView.get()!=null){
-+            node.setParent(mView.get(), parentId);
-+        }
-     }
- 
-     @CalledByNative
-     private void addAccessibilityNodeInfoChildren(
-             AccessibilityNodeInfoCompat node, int[] childIds) {
--        for (int childId : childIds) {
--            node.addChild(mView, childId);
-+        if (mView.get()!=null){
-+            for (int childId : childIds) {
-+                node.addChild(mView.get(), childId);
-+            }
-         }
-     }
- 
-@@ -1991,6 +2015,7 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
-     protected CharSequence computeText(String text, boolean annotateAsLink, String language,
-             int[] suggestionStarts, int[] suggestionEnds, String[] suggestions) {
-         CharSequence charSequence = text;
-+        if (mContext.get() == null) return charSequence;
-         if (annotateAsLink) {
-             SpannableString spannable = new SpannableString(text);
-             spannable.setSpan(new URLSpan(""), 0, spannable.length(), 0);
-@@ -2035,7 +2060,7 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
-                 suggestionArray[0] = suggestions[i];
-                 int flags = SuggestionSpan.FLAG_MISSPELLED;
-                 SuggestionSpan suggestionSpan =
--                        new SuggestionSpan(mContext, suggestionArray, flags);
-+                        new SuggestionSpan(mContext.get(), suggestionArray, flags);
-                 spannable.setSpan(suggestionSpan, start, end, 0);
-             }
-             charSequence = spannable;
-@@ -2060,7 +2085,9 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
- 
-         // Finally offset by the location of the view within the screen.
-         final int[] viewLocation = new int[2];
--        mView.getLocationOnScreen(viewLocation);
-+        if (mView.get()!=null){
-+            mView.get().getLocationOnScreen(viewLocation);
-+        }
-         rect.offset(viewLocation[0], viewLocation[1]);
- 
-         // Clip to the viewport bounds, and add unclipped values to the Bundle.
-@@ -2080,11 +2107,11 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
-         // If there is no parent, then the event can be ignored. In general the parent is only
-         // transiently null (such as during teardown, switching tabs...). Also ensure that
-         // accessibility is still enabled, throttling may result in events sent late.
--        if (mView.getParent() != null && isAccessibilityEnabled()) {
-+        if (mView.get()!=null && mView.get().getParent() != null && isAccessibilityEnabled()) {
-             mTotalDispatchedEvents++;
-             if (mTracker != null) mTracker.addEvent(event);
-             try {
--                mView.getParent().requestSendAccessibilityEvent(mView, event);
-+                mView.get().getParent().requestSendAccessibilityEvent(mView.get(), event);
-             } catch (IllegalStateException ignored) {
-                 // During boot-up of some content shell tests, events will erroneously be sent even
-                 // though the AccessibilityManager is not enabled, resulting in a crash.
-@@ -2306,8 +2333,9 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
-         // there is no need to check that Autofill is enabled here.
-         //
-         // https://cs.android.com/android/platform/superproject/+/HEAD:frameworks/base/core/java/android/view/autofill/AutofillManager.java;l=2817;drc=dd7d52f9632a0dbb8b14b69520c5ea31e0b3b4a2
-+        if (mContext.get() ==null) return true;
-         String activeServices = Settings.Secure.getString(
--                mContext.getContentResolver(), Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
-+                mContext.get().getContentResolver(), Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
-         if (activeServices != null && !activeServices.isEmpty()) {
-             return false;
-         }
-@@ -2344,7 +2372,8 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
-             return true;
-         }
- 
--        ContentResolver contentResolver = mContext.getContentResolver();
-+        if (mContext.get() ==null) return false;
-+        ContentResolver contentResolver = mContext.get().getContentResolver();
- 
-         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-             return (Settings.System.getInt(contentResolver, Settings.System.TEXT_SHOW_PASSWORD, 1)
-diff --git a/content/public/android/java/src/org/chromium/content_public/browser/WebContentsAccessibility.java b/content/public/android/java/src/org/chromium/content_public/browser/WebContentsAccessibility.java
-index ca83221448d51..12e82db206643 100644
---- a/content/public/android/java/src/org/chromium/content_public/browser/WebContentsAccessibility.java
-+++ b/content/public/android/java/src/org/chromium/content_public/browser/WebContentsAccessibility.java
-@@ -13,6 +13,8 @@ import android.view.accessibility.AccessibilityNodeProvider;
- import androidx.annotation.RequiresApi;
- import androidx.annotation.VisibleForTesting;
- 
-+
-+
- import org.chromium.content.browser.accessibility.WebContentsAccessibilityImpl;
- 
- /**
-diff --git a/content/shell/android/BUILD.gn b/content/shell/android/BUILD.gn
-index f21f3b5d04197..0b3c0661d49e3 100644
---- a/content/shell/android/BUILD.gn
-+++ b/content/shell/android/BUILD.gn
-@@ -174,13 +174,15 @@ android_assets("content_shell_assets") {
-   disable_compression = true
-   deps = [
-     "//content/shell:pak",
--    "//third_party/icu:icu_assets",
-+    #"//third_party/icu:icu_assets",
-+    "//bison:bison_icu_assets",
-+    "//bison:bison_v8_snapshot_assets"
-   ]
--  if (use_v8_context_snapshot) {
--    deps += [ "//tools/v8_context_snapshot:v8_context_snapshot_assets" ]
--  } else {
--    deps += [ "//v8:v8_external_startup_data_assets" ]
--  }
-+  # if (use_v8_context_snapshot) {
-+  #   deps += [ "//tools/v8_context_snapshot:v8_context_snapshot_assets" ]
-+  # } else {
-+  #   deps += [ "//v8:v8_external_startup_data_assets" ]
-+  # }
- }
- 
- template("content_shell_apk_tmpl") {
 diff --git a/gin/v8_initializer.cc b/gin/v8_initializer.cc
-index cebcf5ac6f587..533da1eb51636 100644
+index ec89b58257d26..2222fb850fe73 100644
 --- a/gin/v8_initializer.cc
 +++ b/gin/v8_initializer.cc
 @@ -122,7 +122,14 @@ void GetV8FilePath(const char* file_name, base::FilePath* path_out) {
@@ -582,26 +89,8 @@ index cebcf5ac6f587..533da1eb51636 100644
  #elif BUILDFLAG(IS_MAC)
    base::ScopedCFTypeRef<CFStringRef> bundle_resource(
        base::SysUTF8ToCFStringRef(file_name));
-@@ -165,6 +172,8 @@ base::File OpenV8File(const char* file_name,
-   GetV8FilePath(file_name, &path);
- 
- #if BUILDFLAG(IS_ANDROID)
-+
-+  VLOG(0) << "on android, v8 file path:" << path.value();
-   base::File file(base::android::OpenApkAsset(path.value(), region_out));
-   OpenV8FileResult result = file.IsValid() ? OpenV8FileResult::OPENED
-                                            : OpenV8FileResult::FAILED_OTHER;
-@@ -533,7 +542,7 @@ void V8Initializer::LoadV8SnapshotFromFile(
-     return;
- 
-   if (!snapshot_file.IsValid()) {
--    LOG(FATAL) << "Error loading V8 startup snapshot file";
-+    LOG(FATAL) << "Error loading V8 startup snapshot file ,file path:" ;
-     return;
-   }
- 
 diff --git a/third_party/blink/public/common/BUILD.gn b/third_party/blink/public/common/BUILD.gn
-index 611c6cff317b5..93df1a17307a5 100644
+index a1ec4a5129ad5..df6e8b679bc9e 100644
 --- a/third_party/blink/public/common/BUILD.gn
 +++ b/third_party/blink/public/common/BUILD.gn
 @@ -94,6 +94,7 @@ source_set("headers") {
@@ -613,36 +102,23 @@ index 611c6cff317b5..93df1a17307a5 100644
      "//chromecast/*",
      "//components/*",
 diff --git a/third_party/blink/renderer/bindings/core/v8/v8_code_cache.cc b/third_party/blink/renderer/bindings/core/v8/v8_code_cache.cc
-index 73a2053127016..ccc2958cf72f4 100644
+index 5e55fa641d5cf..33368af30ed67 100644
 --- a/third_party/blink/renderer/bindings/core/v8/v8_code_cache.cc
 +++ b/third_party/blink/renderer/bindings/core/v8/v8_code_cache.cc
-@@ -47,7 +47,7 @@ uint32_t CacheTag(CacheTagKind kind, const String& encoding) {
+@@ -48,7 +48,7 @@ uint32_t CacheTag(CacheTagKind kind, const String& encoding) {
  
  // Check previously stored timestamp.
- bool IsResourceHotForCaching(const SingleCachedMetadataHandler* cache_handler) {
+ bool IsResourceHotForCaching(const CachedMetadataHandler* cache_handler) {
 -  static constexpr base::TimeDelta kHotHours = base::Hours(72);
 +  static constexpr base::TimeDelta kHotHours = base::Hours(7*24);
    scoped_refptr<CachedMetadata> cached_metadata =
        cache_handler->GetCachedMetadata(
            V8CodeCache::TagForTimeStamp(cache_handler));
-diff --git a/ui/android/java/res/values-v31/colors.xml b/ui/android/java/res/values-v31/colors.xml
-index e5bc62c31d05f..1f0ed9b187dd2 100644
---- a/ui/android/java/res/values-v31/colors.xml
-+++ b/ui/android/java/res/values-v31/colors.xml
-@@ -6,6 +6,6 @@
- 
- <resources>
-     <!-- System colors for Android S+.-->
--    <color name="system_neutral1_10">@android:color/system_neutral1_10</color>
--    <color name="system_neutral1_900">@android:color/system_neutral1_900</color>
-+    <color name="system_neutral1_10">#f0f0f0</color>
-+    <color name="system_neutral1_900">#1b1b1b</color>
- </resources>
 diff --git a/ui/android/java/src/org/chromium/ui/base/ResourceBundle.java b/ui/android/java/src/org/chromium/ui/base/ResourceBundle.java
-index 3fc8f81b2c234..b62a4f7978635 100644
+index 1162f1e3a70ad..6f458b75b83f5 100644
 --- a/ui/android/java/src/org/chromium/ui/base/ResourceBundle.java
 +++ b/ui/android/java/src/org/chromium/ui/base/ResourceBundle.java
-@@ -79,7 +79,7 @@ public final class ResourceBundle {
+@@ -83,7 +83,7 @@ public final class ResourceBundle {
              // This locale is not supported by Chromium.
              return null;
          }
@@ -652,10 +128,10 @@ index 3fc8f81b2c234..b62a4f7978635 100644
              if (locale.equals("en-US")) {
                  pathPrefix = "assets/fallback-locales/";
 diff --git a/ui/base/resource/resource_bundle_android.cc b/ui/base/resource/resource_bundle_android.cc
-index 7595aeb039758..06708ad123fe9 100644
+index 582326ed63df9..4ca8c2356b1d3 100644
 --- a/ui/base/resource/resource_bundle_android.cc
 +++ b/ui/base/resource/resource_bundle_android.cc
-@@ -88,7 +88,7 @@ void ResourceBundle::LoadCommonResources() {
+@@ -89,7 +89,7 @@ void ResourceBundle::LoadCommonResources() {
    base::PathService::Get(ui::DIR_RESOURCE_PAKS_ANDROID, &disk_path);
    disk_path = disk_path.AppendASCII("chrome_100_percent.pak");
    bool success =
@@ -664,12 +140,3 @@ index 7595aeb039758..06708ad123fe9 100644
                          &g_chrome_100_percent_fd, &g_chrome_100_percent_region);
    DCHECK(success);
  
-@@ -116,7 +116,7 @@ std::string ResourceBundle::LoadLocaleResources(const std::string& pref_locale,
-                                                 bool crash_on_failure) {
-   DCHECK(!locale_resources_data_.get() &&
-          !secondary_locale_resources_data_.get())
--             << "locale.pak already loaded";
-+      << "locale.pak already loaded";
-   std::string app_locale = l10n_util::GetApplicationLocale(pref_locale);
- 
-   // Some Chromium apps have two sets of .pak files for their UI strings, i.e.:

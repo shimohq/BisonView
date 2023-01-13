@@ -24,7 +24,7 @@ class BvProxyingRestrictedCookieManagerListener
   BvProxyingRestrictedCookieManagerListener(
       const GURL& url,
       const net::SiteForCookies& site_for_cookies,
-      base::WeakPtr<BisonProxyingRestrictedCookieManager>
+      base::WeakPtr<BvProxyingRestrictedCookieManager>
           aw_restricted_cookie_manager,
       mojo::PendingRemote<network::mojom::CookieChangeListener> client_listener)
       : url_(url),
@@ -41,13 +41,13 @@ class BvProxyingRestrictedCookieManagerListener
  private:
   const GURL url_;
   const net::SiteForCookies site_for_cookies_;
-  base::WeakPtr<BisonProxyingRestrictedCookieManager>
+  base::WeakPtr<BvProxyingRestrictedCookieManager>
       aw_restricted_cookie_manager_;
   mojo::Remote<network::mojom::CookieChangeListener> client_listener_;
 };
 
 // static
-void BisonProxyingRestrictedCookieManager::CreateAndBind(
+void BvProxyingRestrictedCookieManager::CreateAndBind(
     mojo::PendingRemote<network::mojom::RestrictedCookieManager> underlying_rcm,
     bool is_service_worker,
     int process_id,
@@ -58,16 +58,16 @@ void BisonProxyingRestrictedCookieManager::CreateAndBind(
   content::GetIOThreadTaskRunner({})->PostTask(
       FROM_HERE,
       base::BindOnce(
-          &BisonProxyingRestrictedCookieManager::CreateAndBindOnIoThread,
+          &BvProxyingRestrictedCookieManager::CreateAndBindOnIoThread,
           std::move(underlying_rcm), is_service_worker, process_id, frame_id,
           std::move(receiver)));
 }
 
-BisonProxyingRestrictedCookieManager::~BisonProxyingRestrictedCookieManager() {
+BvProxyingRestrictedCookieManager::~BvProxyingRestrictedCookieManager() {
   DCHECK_CURRENTLY_ON(content::BrowserThread::IO);
 }
 
-void BisonProxyingRestrictedCookieManager::GetAllForUrl(
+void BvProxyingRestrictedCookieManager::GetAllForUrl(
     const GURL& url,
     const net::SiteForCookies& site_for_cookies,
     const url::Origin& top_frame_origin,
@@ -85,7 +85,7 @@ void BisonProxyingRestrictedCookieManager::GetAllForUrl(
   }
 }
 
-void BisonProxyingRestrictedCookieManager::SetCanonicalCookie(
+void BvProxyingRestrictedCookieManager::SetCanonicalCookie(
     const net::CanonicalCookie& cookie,
     const GURL& url,
     const net::SiteForCookies& site_for_cookies,
@@ -103,7 +103,7 @@ void BisonProxyingRestrictedCookieManager::SetCanonicalCookie(
   }
 }
 
-void BisonProxyingRestrictedCookieManager::AddChangeListener(
+void BvProxyingRestrictedCookieManager::AddChangeListener(
     const GURL& url,
     const net::SiteForCookies& site_for_cookies,
     const url::Origin& top_frame_origin,
@@ -127,7 +127,7 @@ void BisonProxyingRestrictedCookieManager::AddChangeListener(
       std::move(callback));
 }
 
-void BisonProxyingRestrictedCookieManager::SetCookieFromString(
+void BvProxyingRestrictedCookieManager::SetCookieFromString(
     const GURL& url,
     const net::SiteForCookies& site_for_cookies,
     const url::Origin& top_frame_origin,
@@ -141,11 +141,12 @@ void BisonProxyingRestrictedCookieManager::SetCookieFromString(
         url, site_for_cookies, top_frame_origin, cookie,
         partitioned_cookies_runtime_feature_enabled, std::move(callback));
   } else {
-    std::move(callback).Run();
+    std::move(callback).Run(/*site_for_cookies_ok=*/true,
+                            /*top_frame_origin_ok=*/true);
   }
 }
 
-void BisonProxyingRestrictedCookieManager::GetCookiesString(
+void BvProxyingRestrictedCookieManager::GetCookiesString(
     const GURL& url,
     const net::SiteForCookies& site_for_cookies,
     const url::Origin& top_frame_origin,
@@ -162,7 +163,7 @@ void BisonProxyingRestrictedCookieManager::GetCookiesString(
   }
 }
 
-void BisonProxyingRestrictedCookieManager::CookiesEnabledFor(
+void BvProxyingRestrictedCookieManager::CookiesEnabledFor(
     const GURL& url,
     const net::SiteForCookies& site_for_cookies,
     const url::Origin& top_frame_origin,
@@ -171,7 +172,7 @@ void BisonProxyingRestrictedCookieManager::CookiesEnabledFor(
   std::move(callback).Run(AllowCookies(url, site_for_cookies));
 }
 
-BisonProxyingRestrictedCookieManager::BisonProxyingRestrictedCookieManager(
+BvProxyingRestrictedCookieManager::BvProxyingRestrictedCookieManager(
     mojo::PendingRemote<network::mojom::RestrictedCookieManager>
         underlying_restricted_cookie_manager,
     bool is_service_worker,
@@ -186,19 +187,19 @@ BisonProxyingRestrictedCookieManager::BisonProxyingRestrictedCookieManager(
 }
 
 // static
-void BisonProxyingRestrictedCookieManager::CreateAndBindOnIoThread(
+void BvProxyingRestrictedCookieManager::CreateAndBindOnIoThread(
     mojo::PendingRemote<network::mojom::RestrictedCookieManager> underlying_rcm,
     bool is_service_worker,
     int process_id,
     int frame_id,
     mojo::PendingReceiver<network::mojom::RestrictedCookieManager> receiver) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::IO);
-  auto wrapper = base::WrapUnique(new BisonProxyingRestrictedCookieManager(
+  auto wrapper = base::WrapUnique(new BvProxyingRestrictedCookieManager(
       std::move(underlying_rcm), is_service_worker, process_id, frame_id));
   mojo::MakeSelfOwnedReceiver(std::move(wrapper), std::move(receiver));
 }
 
-bool BisonProxyingRestrictedCookieManager::AllowCookies(
+bool BvProxyingRestrictedCookieManager::AllowCookies(
     const GURL& url,
     const net::SiteForCookies& site_for_cookies) const {
   if (is_service_worker_) {
@@ -211,7 +212,7 @@ bool BisonProxyingRestrictedCookieManager::AllowCookies(
   }
 }
 
-void BisonProxyingRestrictedCookieManager::
+void BvProxyingRestrictedCookieManager::
     ConvertPartitionedCookiesToUnpartitioned(const GURL& url) {
   underlying_restricted_cookie_manager_
       ->ConvertPartitionedCookiesToUnpartitioned(url);

@@ -30,7 +30,6 @@
 #include "content/public/common/url_constants.h"
 #include "content/public/renderer/render_frame.h"
 #include "content/public/renderer/render_thread.h"
-#include "content/public/renderer/render_view.h"
 #include "ipc/ipc_sync_channel.h"
 #include "mojo/public/cpp/bindings/binder_map.h"
 #include "third_party/blink/public/common/associated_interfaces/associated_interface_provider.h"
@@ -83,7 +82,6 @@ void BvContentRendererClient::ExposeInterfacesToBrowser(
 
 bool BvContentRendererClient::HandleNavigation(
     content::RenderFrame* render_frame,
-    bool render_view_was_created_by_renderer,
     blink::WebFrame* frame,
     const blink::WebURLRequest& request,
     blink::WebNavigationType type,
@@ -113,6 +111,9 @@ bool BvContentRendererClient::HandleNavigation(
        gurl.SchemeIs(url::kAboutScheme)))
     return false;
 
+  BvRenderViewExt* view =
+      BvRenderViewExt::FromWebView(render_frame->GetWebView());
+
   // use NavigationInterception throttle to handle the call as that can
   // be deferred until after the java side has been constructed.
   //
@@ -122,7 +123,7 @@ bool BvContentRendererClient::HandleNavigation(
   // RenderView created via window.open(), but it will also be true for all
   // subsequent navigations in that RenderView, no matter how they are
   // initiated.
-  if (render_view_was_created_by_renderer) {
+  if (view->created_by_renderer()) {
     return false;
   }
 
@@ -164,8 +165,11 @@ void BvContentRendererClient::RenderFrameCreated(
   new page_load_metrics::MetricsRenderFrameObserver(render_frame);
 }
 
-void BvContentRendererClient::WebViewCreated(blink::WebView* web_view) {
-  BvRenderViewExt::WebViewCreated(web_view);
+void BvContentRendererClient::WebViewCreated(
+  blink::WebView* web_view,
+  bool was_created_by_renderer,
+  const url::Origin* outermost_origin) {
+  BvRenderViewExt::WebViewCreated(web_view, was_created_by_renderer);
 }
 
 void BvContentRendererClient::PrepareErrorPage(
@@ -197,7 +201,7 @@ void BvContentRendererClient::RunScriptsAtDocumentStart(
 
 void BvContentRendererClient::GetSupportedKeySystems(
     media::GetSupportedKeySystemsCB cb) {
-  media::KeySystemPropertiesVector key_systems;
+  media::KeySystemInfoVector key_systems;
   BvAddKeySystems(&key_systems);
   std::move(cb).Run(std::move(key_systems));
 }

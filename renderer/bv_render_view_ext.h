@@ -20,11 +20,15 @@ class BvRenderViewExt : public blink::WebViewObserver {
  public:
   BvRenderViewExt(const BvRenderViewExt&) = delete;
   BvRenderViewExt& operator=(const BvRenderViewExt&) = delete;
+  static void WebViewCreated(blink::WebView* web_view,
+                             bool created_by_renderer);
 
-  static void WebViewCreated(blink::WebView* web_view);
+  static BvRenderViewExt* FromWebView(blink::WebView* web_view);
+
+  bool created_by_renderer() { return created_by_renderer_; }
 
  private:
-  BvRenderViewExt(blink::WebView* web_view);
+  BvRenderViewExt(blink::WebView* web_view, bool created_by_renderer);
   ~BvRenderViewExt() override;
 
   // blink::WebViewObserver overrides.
@@ -39,6 +43,8 @@ class BvRenderViewExt : public blink::WebViewObserver {
   // Whether the contents size may have changed and |UpdateContentsSize| needs
   // to be called.
   bool needs_contents_size_update_ = true;
+
+  bool created_by_renderer_;
 };
 
 }  // namespace bison

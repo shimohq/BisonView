@@ -1,13 +1,12 @@
 import("//components/gwp_asan/buildflags/buildflags.gni")
 import("//components/spellcheck/spellcheck_build_features.gni")
 
-
 source_set("lib") {
   sources = [
-    "bv_main_delegate.cc",
-    "bv_main_delegate.h",
     "bv_library_loader.cc",
     "bv_library_loader.h",
+    "bv_main_delegate.cc",
+    "bv_main_delegate.h",
   ]
 
   deps = [
@@ -15,10 +14,13 @@ source_set("lib") {
     "//bison/common",
     "//bison/gpu",
     "//bison/renderer",
+
+    # chromium deps
     "//base",
     "//cc/base",
     "//components/autofill/core/common",
     "//components/crash/core/common",
+    "//components/embedder_support:embedder_support",
     "//components/gwp_asan/buildflags",
     "//components/metrics",
     "//components/power_scheduler",
@@ -38,7 +40,6 @@ source_set("lib") {
     "//gin",
     "//gpu/command_buffer/service",
     "//gpu/config",
-    "//gpu/ipc:gl_in_process_context",
     "//media",
     "//media:media_buildflags",
     "//third_party/blink/public/common:headers",
@@ -61,5 +62,4 @@ source_set("webview_entry_point") {
     "//base",
   ]
   sources = [ "bv_entry_point.cc" ]
-
 }

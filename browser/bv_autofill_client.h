@@ -17,6 +17,7 @@
 
 namespace autofill {
 class AutocompleteHistoryManager;
+class AutofillDriver;
 class AutofillPopupDelegate;
 class CardUnmaskDelegate;
 class CreditCard;
@@ -74,7 +75,8 @@ class BvAutofillClient : public autofill::AutofillClient,
   ukm::UkmRecorder* GetUkmRecorder() override;
   ukm::SourceId GetUkmSourceId() override;
   autofill::AddressNormalizer* GetAddressNormalizer() override;
-  const GURL& GetLastCommittedURL() const override;
+  const GURL& GetLastCommittedPrimaryMainFrameURL() const override;
+  url::Origin GetLastCommittedPrimaryMainFrameOrigin() const override;
   security_state::SecurityLevel GetSecurityLevelForUmaHistograms() override;
   const translate::LanguageState* GetLanguageState() override;
   translate::TranslateDriver* GetTranslateDriver() override;
@@ -109,6 +111,19 @@ class BvAutofillClient : public autofill::AutofillClient,
       AddressProfileSavePromptCallback callback) override;
   bool HasCreditCardScanFeature() override;
   void ScanCreditCard(CreditCardScanCallback callback) override;
+  bool IsFastCheckoutSupported() override;
+  bool IsFastCheckoutTriggerForm(const autofill::FormData& form,
+                                 const autofill::FormFieldData& field) override;
+  bool FastCheckoutScriptSupportsConsentlessExecution(
+      const url::Origin& origin) override;
+  bool FastCheckoutClientSupportsConsentlessExecution() override;
+  bool ShowFastCheckout(
+      base::WeakPtr<autofill::FastCheckoutDelegate> delegate) override;
+  void HideFastCheckout() override;
+  bool IsTouchToFillCreditCardSupported() override;
+  bool ShowTouchToFillCreditCard(
+      base::WeakPtr<autofill::TouchToFillDelegate> delegate) override;
+  void HideTouchToFillCreditCard() override;
   void ShowAutofillPopup(
       const autofill::AutofillClient::PopupOpenArgs& open_args,
       base::WeakPtr<autofill::AutofillPopupDelegate> delegate) override;
@@ -124,7 +139,7 @@ class BvAutofillClient : public autofill::AutofillClient,
   bool IsAutocompleteEnabled() override;
   bool IsPasswordManagerEnabled() override;
   void PropagateAutofillPredictions(
-      content::RenderFrameHost* rfh,
+      autofill::AutofillDriver* driver,
       const std::vector<autofill::FormStructure*>& forms) override;
   void DidFillOrPreviewField(const std::u16string& autofilled_value,
                              const std::u16string& profile_full_name) override;
@@ -132,6 +147,7 @@ class BvAutofillClient : public autofill::AutofillClient,
   bool ShouldShowSigninPromo() override;
   bool AreServerCardsSupported() const override;
   void ExecuteCommand(int id) override;
+  void OpenPromoCodeOfferDetailsURL(const GURL& url) override;
 
   // RiskDataLoader:
   void LoadRiskData(

@@ -921,7 +921,7 @@ bool BvContentBrowserClient::WillCreateRestrictedCookieManager(
       target_rcm_remote;
   *receiver = target_rcm_remote.InitWithNewPipeAndPassReceiver();
 
-  BisonProxyingRestrictedCookieManager::CreateAndBind(
+  BvProxyingRestrictedCookieManager::CreateAndBind(
       std::move(target_rcm_remote), is_service_worker, process_id, routing_id,
       std::move(orig_receiver));
 

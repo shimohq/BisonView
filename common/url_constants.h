@@ -9,7 +9,6 @@ namespace bison {
 
 extern const char kAndroidAssetPath[];
 extern const char kAndroidResourcePath[];
-
 // Returns whether the given URL is for loading a file from a special path.
 bool IsAndroidSpecialFileUrl(const GURL& url);
 

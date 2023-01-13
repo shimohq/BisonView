@@ -1,5 +1,6 @@
 package im.shimo.bison.internal;
 
+//import im.shimo.bison.internal.BvContents.VisualStateCallback;
 import org.chromium.base.task.PostTask;
 import org.chromium.content_public.browser.GlobalRenderFrameHostId;
 import org.chromium.content_public.browser.LifecycleState;
@@ -43,11 +44,11 @@ public class BvWebContentsObserver extends WebContentsObserver {
     }
 
     @Override
-    public void didFinishLoad(GlobalRenderFrameHostId rfhId, GURL url, boolean isKnownValid,
-            boolean isInPrimaryMainFrame, @LifecycleState int rfhLifecycleState) {
+    public void didFinishLoadInPrimaryMainFrame(GlobalRenderFrameHostId rfhId, GURL url,
+            boolean isKnownValid, @LifecycleState int rfhLifecycleState) {
         if (rfhLifecycleState != LifecycleState.ACTIVE) return;
         String validatedUrl = isKnownValid ? url.getSpec() : url.getPossiblyInvalidSpec();
-        if (isInPrimaryMainFrame && getClientIfNeedToFireCallback(validatedUrl) != null) {
+        if (getClientIfNeedToFireCallback(validatedUrl) != null) {
             mLastDidFinishLoadUrl = validatedUrl;
         }
     }
@@ -108,18 +109,15 @@ public class BvWebContentsObserver extends WebContentsObserver {
     }
 
     @Override
-    public void didFinishNavigation(NavigationHandle navigation) {
+    public void didFinishNavigationInPrimaryMainFrame(NavigationHandle navigation) {
         String url = navigation.getUrl().getPossiblyInvalidSpec();
         if (navigation.errorCode() != NetError.OK && !navigation.isDownload()) {
-            processFailedLoad(
-                    navigation.isInPrimaryMainFrame(), navigation.errorCode(), navigation.getUrl());
+          processFailedLoad(true, navigation.errorCode(), navigation.getUrl());
         }
 
         if (!navigation.hasCommitted()) return;
 
         mCommittedNavigation = true;
-
-        if (!navigation.isInPrimaryMainFrame()) return;
 
         BvContentsClient client = mBvContentsClient.get();
         if (client != null) {
@@ -139,20 +137,20 @@ public class BvWebContentsObserver extends WebContentsObserver {
             PostTask.postTask(UiThreadTaskTraits.DEFAULT, () -> {
                 BvContents bvContents = mBvContents.get();
                 if (bvContents != null) {
-                //    bvContents.insertVisualStateCallbackIfNotDestroyed(
-                //            0, new VisualStateCallback() {
-                //                @Override
-                //                public void onComplete(long requestId) {
-                //                    BvContentsClient client1 = client.get();
-                //                    if (client1 == null) return;
-                //                    client1.onPageCommitVisible(url);
-                //                }
-                //            });
+                  //  bvContents.insertVisualStateCallbackIfNotDestroyed(
+                  //          0, new VisualStateCallback() {
+                  //              @Override
+                  //              public void onComplete(long requestId) {
+                  //                  BvContentsClient client1 = mBvContentsClient.get();
+                  //                  if (client1 == null) return;
+                  //                  client1.onPageCommitVisible(url);
+                  //              }
+                  //          });
                 }
             });
         }
 
-        if (client != null && navigation.isFragmentNavigation()) {
+        if (client != null && navigation.isPrimaryMainFrameFragmentNavigation()) {
             // Note fragment navigations do not have a matching onPageStarted.
            client.getCallbackHelper().postOnPageFinished(url);
         }

@@ -60,10 +60,6 @@ const char kFinchSeedMinUpdatePeriod[] = "finch-seed-min-update-period";
 const char kWebViewEnableModernCookieSameSite[] =
     "webview-enable-modern-cookie-same-site";
 
-// Disables downloading/updating Apps Package Names Allowlist.
-const char kWebViewDisableAppsPackageNamesAllowlistComponent[] =
-    "webview-disable-apps-package-names-allowlist-component";
-
 // Disables throttling querying apps package names allowlist components in
 // WebView clients.
 const char kWebViewDisablePackageAllowlistThrottling[] =
@@ -81,5 +77,11 @@ const char kWebViewMPArchFencedFrames[] = "webview-mparch-fenced-frames";
 // Enables ShadowDOM-based FencedFrames. This also implies
 // PrivacySandboxAdsAPIsOverride and SharedStorageAPI.
 const char kWebViewShadowDOMFencedFrames[] = "webview-shadow-dom-fenced-frames";
+
+// Disables WebView from checking for app recovery mitigations.
+const char kWebViewDisableAppRecovery[] = "webview-disable-app-recovery";
+
+// Enables WebView to check for app recovery mitigations.
+const char kWebViewEnableAppRecovery[] = "webview-enable-app-recovery";
 
 }  // namespace switches
