@@ -109,8 +109,6 @@ class BvProxyingRestrictedCookieManager
   int frame_id_;
 
   base::WeakPtrFactory<BvProxyingRestrictedCookieManager> weak_factory_{this};
-
-
 };
 
 }  // namespace bison

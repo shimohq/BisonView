@@ -20,6 +20,8 @@ source_set("browser") {
     "bv_browser_context.h",
     "bv_browser_main_parts.cc",
     "bv_browser_main_parts.h",
+
+    # 顺序修改到这了
     "bv_browser_permission_request_delegate.h",
     "bv_browser_policy_connector.cc",
     "bv_browser_policy_connector.h",
@@ -27,6 +29,8 @@ source_set("browser") {
     "bv_browser_process.h",
     "bv_browser_terminator.cc",
     "bv_browser_terminator.h",
+    "bv_client_hints_controller_delegate.cc",
+    "bv_client_hints_controller_delegate.h",
     "bv_content_browser_client.cc",
     "bv_content_browser_client.h",
     "bv_content_browser_client_receiver_bindings.cc",
@@ -49,6 +53,8 @@ source_set("browser") {
     "bv_devtools_server.h",
     "bv_download_manager_delegate.cc",
     "bv_download_manager_delegate.h",
+    "bv_enterprise_authentication_app_link_manager.cc",
+    "bv_enterprise_authentication_app_link_manager.h",
     "bv_feature_entries.cc",
     "bv_feature_entries.h",
     "bv_feature_list.cc",
@@ -92,6 +98,8 @@ source_set("browser") {
     "content_view_render_view.h",
     "cookie_manager.cc",
     "cookie_manager.h",
+    "enterprise_authentication_app_link_policy_handler.cc",
+    "enterprise_authentication_app_link_policy_handler.h",
     "find_helper.cc",
     "find_helper.h",
     "icon_helper.cc",
@@ -100,8 +108,6 @@ source_set("browser") {
     "js_java_interaction/bv_web_message_host_factory.h",
     "js_java_interaction/js_reply_proxy.cc",
     "js_java_interaction/js_reply_proxy.h",
-    "scoped_add_feature_flags.cc",
-    "scoped_add_feature_flags.h",
 
     # network_service
     # "network_service/android_stream_reader_url_loader.cc",
@@ -202,6 +208,8 @@ source_set("browser") {
     "//components/keyed_service/content",
     "//components/optimization_guide/core:bloomfilter",
     "//components/profile_metrics",
+    "//components/strings:components_strings_grit",
+    "//components/url_matcher",
 
     # Called via JNI in CrashpadMain
     "//components/crash/android:crashpad_main",

@@ -2,8 +2,9 @@
 
 #include "bison/browser/permission/simple_permission_request.h"
 
-#include "base/callback.h"
 #include "bison/browser/permission/bv_permission_request.h"
+
+#include "base/callback.h"
 
 namespace bison {
 

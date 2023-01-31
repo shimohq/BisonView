@@ -1706,6 +1706,7 @@ public class BvSettings {
         }
     }
 
+    @CalledByNative
     public int getMixedContentMode() {
         synchronized (mSettingsLock) {
             return mMixedContentMode;

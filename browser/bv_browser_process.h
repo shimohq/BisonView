@@ -6,6 +6,7 @@
 #include "bison/browser/bv_browser_context.h"
 #include "bison/browser/bv_feature_list_creator.h"
 #include "bison/browser/lifecycle/bv_contents_lifecycle_notifier.h"
+#include "bison/browser/bv_enterprise_authentication_app_link_manager.h"
 
 #include "base/feature_list.h"
 #include "base/memory/raw_ptr.h"
@@ -60,6 +61,8 @@ class BvBrowserProcess {
   void PreMainMessageLoopRun();
 
   static void TriggerMinidumpUploading();
+  EnterpriseAuthenticationAppLinkManager*
+  GetEnterpriseAuthenticationAppLinkManager();
 
  private:
   // jiang bison not impl safe Browsing
@@ -107,6 +110,7 @@ class BvBrowserProcess {
 
   std::unique_ptr<VisibilityMetricsLogger> visibility_metrics_logger_;
   std::unique_ptr<BvContentsLifecycleNotifier> aw_contents_lifecycle_notifier_;
+  std::unique_ptr<EnterpriseAuthenticationAppLinkManager> app_link_manager_;
 };
 
 }  // namespace bison

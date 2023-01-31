@@ -45,7 +45,7 @@ class BvContents : public FindHelper::Listener,
  public:
   // Returns the BvContents object corresponding to the given WebContents.
   static BvContents* FromWebContents(content::WebContents* web_contents);
-  static BvContents* CreateBisonContents(
+  static BvContents* CreateBvContents(
       content::BrowserContext* browser_context);
 
   static std::string GetLocale();
@@ -111,8 +111,7 @@ class BvContents : public FindHelper::Listener,
                                jfloat x,
                                jfloat y,
                                jfloat touch_major);
-  void UpdateLastHitTestData(JNIEnv* env,
-                             const base::android::JavaParamRef<jobject>& obj);
+  void UpdateLastHitTestData(JNIEnv* env);
   void OnSizeChanged(JNIEnv* env,
                      const base::android::JavaParamRef<jobject>& obj,
                      int w,

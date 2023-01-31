@@ -290,7 +290,6 @@ android_library("bison_java") {
     "//base:base_java",
     "//base:jni_java",
     "//build/android:build_java",
-
     "//components/android_autofill/browser:java",
     "//components/autofill/android:autofill_java",
     "//components/background_task_scheduler:background_task_scheduler_task_ids_java",

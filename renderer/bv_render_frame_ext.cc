@@ -356,7 +356,7 @@ blink::WebView* BvRenderFrameExt::GetWebView() {
   if (!render_frame())
     return nullptr;
 
-  return render_frame()->GetRenderView()->GetWebView();
+  return render_frame()->GetWebView();
 }
 
 blink::WebFrameWidget* BvRenderFrameExt::GetWebFrameWidget() {

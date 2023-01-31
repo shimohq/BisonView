@@ -319,7 +319,6 @@ BvContents::~BvContents() {
     return;
   base::subtle::Atomic32 instance_count =
       base::subtle::NoBarrier_AtomicIncrement(&g_instance_count, -1);
-
   if (instance_count == 0) {
     // TODO(timvolodine): consider moving NotifyMemoryPressure to
     // (crbug.com/522988).
@@ -340,22 +339,14 @@ ScopedJavaLocalRef<jobject> BvContents::GetWebContents(JNIEnv* env) {
   return web_contents_->GetJavaWebContents();
 }
 
-BvContents* BvContents::CreateBisonContents(content::BrowserContext* browser_context) {
-  WebContents::CreateParams create_params(browser_context, nullptr);
-  std::unique_ptr<WebContents> web_contents =
-      WebContents::Create(create_params);
-  // WebContents* raw_web_contents = web_contents.get();
-  BvContents* bison_contents = new BvContents(std::move(web_contents));
 
-  return bison_contents;
-}
 
 ScopedJavaLocalRef<jobject> BvContents::GetRenderProcess(
     JNIEnv* env,
     const JavaParamRef<jobject>& obj) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
   content::RenderProcessHost* host =
-      web_contents_->GetMainFrame()->GetProcess();
+      web_contents_->GetPrimaryMainFrame()->GetProcess();
   if (host->run_renderer_in_process()) {
     return ScopedJavaLocalRef<jobject>();
   }
@@ -369,12 +360,20 @@ void BvContents::Destroy(JNIEnv* env) {
   delete this;
 }
 
+BvContents* BvContents::CreateBvContents(content::BrowserContext* browser_context) {
+  //WebContents::CreateParams create_params(browser_context, nullptr);
+  std::unique_ptr<WebContents> web_contents(content::WebContents::Create(
+      content::WebContents::CreateParams(browser_context)));
+  BvContents* bison_contents = new BvContents(std::move(web_contents));
+  return bison_contents;
+}
+
 jlong JNI_BvContents_Init(JNIEnv* env,
                           const JavaParamRef<jobject>& obj,
                           jlong bv_browser_context) {
   BvBrowserContext* browserContext =
       reinterpret_cast<BvBrowserContext*>(bv_browser_context);
-  BvContents* bison_contents = BvContents::CreateBisonContents(browserContext);
+  BvContents* bison_contents = BvContents::CreateBvContents(browserContext);
   bison_contents->java_ref_ = JavaObjectWeakGlobalRef(env, obj);
   return reinterpret_cast<intptr_t>(bison_contents);
 }
@@ -401,7 +400,6 @@ jlong JNI_BvContents_Init(JNIEnv* env,
 jint JNI_BvContents_GetNativeInstanceCount(JNIEnv* env) {
   return base::subtle::NoBarrier_Load(&g_instance_count);
 }
-
 
 
 namespace {
@@ -495,7 +493,7 @@ void ShowGeolocationPromptHelper(const JavaObjectWeakGlobalRef& java_ref,
   }
 }
 
-}  // namespace
+}  // anonymous namespace
 
 void BvContents::ShowGeolocationPrompt(const GURL& requesting_frame,
                                        PermissionCallback callback) {
@@ -671,7 +669,7 @@ void BvContents::ClearCache(JNIEnv* env, jboolean include_disk_files) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
   BvRenderProcess* bv_render_process =
       BvRenderProcess::GetInstanceForRenderProcessHost(
-          web_contents_->GetMainFrame()->GetProcess());
+          web_contents_->GetPrimaryMainFrame()->GetProcess());
 
   bv_render_process->ClearCache();
 
@@ -701,7 +699,7 @@ void BvContents::OnFindResultReceived(int active_ordinal,
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
   JNIEnv* env = AttachCurrentThread();
   ScopedJavaLocalRef<jobject> obj = java_ref_.get(env);
-  if (obj.is_null())
+  if (!obj)
     return;
 
   Java_BvContents_onFindResultReceived(env, obj, active_ordinal, match_count,
@@ -716,7 +714,7 @@ void BvContents::OnReceivedIcon(const GURL& icon_url, const SkBitmap& bitmap) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
   JNIEnv* env = AttachCurrentThread();
   ScopedJavaLocalRef<jobject> obj = java_ref_.get(env);
-  if (obj.is_null())
+  if (!obj)
     return;
 
   content::NavigationEntry* entry =
@@ -768,8 +766,9 @@ base::android::ScopedJavaLocalRef<jbyteArray> BvContents::GetCertificate(
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
   content::NavigationEntry* entry =
       web_contents_->GetController().GetLastCommittedEntry();
-  if (!entry || !entry->GetSSL().certificate)
+  if (!entry || entry->IsInitialEntry() || !entry->GetSSL().certificate) {
     return ScopedJavaLocalRef<jbyteArray>();
+  }
 
   // Convert the certificate and return it
   base::StringPiece der_string = net::x509_util::CryptoBufferAsStringPiece(
@@ -790,35 +789,37 @@ void BvContents::RequestNewHitTestDataAt(JNIEnv* env,
   render_view_host_ext_->RequestNewHitTestDataAt(touch_center, touch_area);
 }
 
-void BvContents::UpdateLastHitTestData(JNIEnv* env,
-                                       const JavaParamRef<jobject>& obj) {
+void BvContents::UpdateLastHitTestData(JNIEnv* env) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
-  if (!render_view_host_ext_->HasNewHitTestData())
+
+  ScopedJavaLocalRef<jobject> obj = java_ref_.get(env);
+  if (!obj)
     return;
 
-  const mojom::HitTestData& data =
-      render_view_host_ext_->GetLastHitTestData();
-  render_view_host_ext_->MarkHitTestDataRead();
+  bison::mojom::HitTestDataPtr data =
+      render_view_host_ext_->TakeLastHitTestData();
+  if (!data)
+    return;
 
   // Make sure to null the Java object if data is empty/invalid.
   ScopedJavaLocalRef<jstring> extra_data_for_type;
-  if (data.extra_data_for_type.length())
+  if (data->extra_data_for_type.length())
     extra_data_for_type =
-        ConvertUTF8ToJavaString(env, data.extra_data_for_type);
+        ConvertUTF8ToJavaString(env, data->extra_data_for_type);
 
   ScopedJavaLocalRef<jstring> href;
-  if (data.href.length())
-    href = ConvertUTF16ToJavaString(env, data.href);
+  if (data->href.length())
+    href = ConvertUTF16ToJavaString(env, data->href);
 
   ScopedJavaLocalRef<jstring> anchor_text;
-  if (data.anchor_text.length())
-    anchor_text = ConvertUTF16ToJavaString(env, data.anchor_text);
+  if (data->anchor_text.length())
+    anchor_text = ConvertUTF16ToJavaString(env, data->anchor_text);
 
   ScopedJavaLocalRef<jstring> img_src;
-  if (data.img_src.is_valid())
-    img_src = ConvertUTF8ToJavaString(env, data.img_src.spec());
+  if (data->img_src.is_valid())
+    img_src = ConvertUTF8ToJavaString(env, data->img_src.spec());
 
-  Java_BvContents_updateHitTestData(env, obj, static_cast<jint>(data.type),
+  Java_BvContents_updateHitTestData(env, obj, static_cast<jint>(data->type),
                                     extra_data_for_type, href, anchor_text,
                                     img_src);
 }
@@ -1002,7 +1003,7 @@ void BvContents::InsertVisualStateCallback(
     jlong request_id,
     const JavaParamRef<jobject>& callback) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
-  web_contents_->GetMainFrame()->InsertVisualStateCallback(
+  web_contents_->GetPrimaryMainFrame()->InsertVisualStateCallback(
       base::BindOnce(&InvokeVisualStateCallback, java_ref_, request_id,
                      ScopedJavaGlobalRef<jobject>(env, callback)));
 }
@@ -1011,7 +1012,7 @@ jint BvContents::GetEffectivePriority(
     JNIEnv* env,
     const base::android::JavaParamRef<jobject>& obj) {
   switch (
-      web_contents_->GetMainFrame()->GetProcess()->GetEffectiveImportance()) {
+      web_contents_->GetPrimaryMainFrame()->GetProcess()->GetEffectiveImportance()) {
     case content::ChildProcessImportance::NORMAL:
       return static_cast<jint>(RendererPriority::WAIVED);
     case content::ChildProcessImportance::MODERATE:
@@ -1118,14 +1119,15 @@ void BvContents::SetJsOnlineProperty(JNIEnv* env,
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
   BvRenderProcess* bv_render_process =
       BvRenderProcess::GetInstanceForRenderProcessHost(
-          web_contents_->GetMainFrame()->GetProcess());
+          web_contents_->GetPrimaryMainFrame()->GetProcess());
 
   bv_render_process->SetJsOnlineProperty(network_up);
 }
 
 void BvContents::GrantFileSchemeAccesstoChildProcess(JNIEnv* env) {
   content::ChildProcessSecurityPolicy::GetInstance()->GrantRequestScheme(
-      web_contents_->GetMainFrame()->GetProcess()->GetID(), url::kFileScheme);
+      web_contents_->GetPrimaryMainFrame()->GetProcess()->GetID(),
+      url::kFileScheme);
 }
 
 void JNI_BvContents_SetShouldDownloadFavicons(JNIEnv* env) {
@@ -1184,7 +1186,7 @@ void BvContents::RendererUnresponsive(
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
   JNIEnv* env = AttachCurrentThread();
   ScopedJavaLocalRef<jobject> obj = java_ref_.get(env);
-  if (obj.is_null())
+  if (!obj)
     return;
 
   BvRenderProcess* render_process =
@@ -1198,7 +1200,7 @@ void BvContents::RendererResponsive(
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
   JNIEnv* env = AttachCurrentThread();
   ScopedJavaLocalRef<jobject> obj = java_ref_.get(env);
-  if (obj.is_null())
+  if (!obj)
     return;
 
   BvRenderProcess* render_process =
@@ -1213,7 +1215,7 @@ BvContents::RenderProcessGoneResult BvContents::OnRenderProcessGone(
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
   JNIEnv* env = AttachCurrentThread();
   ScopedJavaLocalRef<jobject> obj = java_ref_.get(env);
-  if (obj.is_null())
+  if (!obj)
     return RenderProcessGoneResult::kHandled;
 
   bool result =

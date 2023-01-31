@@ -7,7 +7,7 @@
 #include <memory>
 #include <vector>
 
-#include "media/base/key_system_properties.h"
+#include "media/base/key_system_info.h"
 
 namespace bison {
 

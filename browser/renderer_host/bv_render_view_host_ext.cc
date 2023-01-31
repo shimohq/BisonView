@@ -22,36 +22,6 @@
 
 namespace bison {
 
-namespace {
-
-void ShouldOverrideUrlLoadingOnUI(
-    content::WebContents* web_contents,
-    const std::u16string& url,
-    bool has_user_gesture,
-    bool is_redirect,
-    bool is_main_frame,
-    mojom::FrameHost::ShouldOverrideUrlLoadingCallback callback) {
-  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
-  bool ignore_navigation = false;
-  BvContentsClientBridge* client =
-      BvContentsClientBridge::FromWebContents(web_contents);
-  if (client) {
-    if (!client->ShouldOverrideUrlLoading(url, has_user_gesture, is_redirect,
-                                          is_main_frame, &ignore_navigation)) {
-      // If the shouldOverrideUrlLoading call caused a java exception we should
-      // always return immediately here!
-      return;
-    }
-  } else {
-    LOG(WARNING) << "Failed to find the associated render view host for url: "
-                 << url;
-  }
-
-  std::move(callback).Run(ignore_navigation);
-}
-
-}  // namespace
-
 // static
 void BvRenderViewHostExt::BindFrameHost(
     mojo::PendingAssociatedReceiver<mojom::FrameHost> receiver,
@@ -72,17 +42,16 @@ BvRenderViewHostExt::BvRenderViewHostExt(BvRenderViewHostExtClient* client,
     content::WebContents* contents)
     : content::WebContentsObserver(contents),
       client_(client),
-      has_new_hit_test_data_(false),
       frame_host_receivers_(contents, this) {
   DCHECK(client_);
 }
 
 BvRenderViewHostExt::~BvRenderViewHostExt() {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
 }
 
 void BvRenderViewHostExt::DocumentHasImages(DocumentHasImagesResult result) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
   if (!web_contents()->GetRenderViewHost()) {
     std::move(result).Run(false);
     return;
@@ -97,18 +66,10 @@ void BvRenderViewHostExt::DocumentHasImages(DocumentHasImagesResult result) {
   }
 }
 
-bool BvRenderViewHostExt::HasNewHitTestData() const {
-  return has_new_hit_test_data_;
-}
-
-void BvRenderViewHostExt::MarkHitTestDataRead() {
-  has_new_hit_test_data_ = false;
-}
-
 void BvRenderViewHostExt::RequestNewHitTestDataAt(
     const gfx::PointF& touch_center,
     const gfx::SizeF& touch_area) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
   // We only need to get blink::WebView on the renderer side to invoke the
   // blink hit test Mojo method, so sending this message via LocalMainFrame
   // interface is enough.
@@ -116,25 +77,25 @@ void BvRenderViewHostExt::RequestNewHitTestDataAt(
     local_main_frame_remote->HitTest(touch_center, touch_area);
 }
 
-const mojom::HitTestData& BvRenderViewHostExt::GetLastHitTestData() const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  return *last_hit_test_data_;
+mojom::HitTestDataPtr BvRenderViewHostExt::TakeLastHitTestData() {
+  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+  return std::move(last_hit_test_data_);
 }
 
 void BvRenderViewHostExt::SetTextZoomFactor(float factor) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
   if (auto* local_main_frame_remote = GetLocalMainFrameRemote())
     local_main_frame_remote->SetTextZoomFactor(factor);
 }
 
 void BvRenderViewHostExt::ResetScrollAndScaleState() {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
   if (auto* local_main_frame_remote = GetLocalMainFrameRemote())
     local_main_frame_remote->ResetScrollAndScaleState();
 }
 
 void BvRenderViewHostExt::SetInitialPageScale(double page_scale_factor) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
   if (auto* local_main_frame_remote = GetLocalMainFrameRemote())
     local_main_frame_remote->SetInitialPageScale(page_scale_factor);
 }
@@ -158,14 +119,18 @@ void BvRenderViewHostExt::DidStartNavigation(
 
 void BvRenderViewHostExt::DidFinishNavigation(
     content::NavigationHandle* navigation_handle) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (!navigation_handle->HasCommitted() ||
-      (!navigation_handle->IsInMainFrame() &&
-       !navigation_handle->HasSubframeNavigationEntryCommitted()))
+  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+
+  if (!navigation_handle->HasCommitted())
     return;
 
-  BvBrowserContext::FromWebContents(web_contents())
+  if (navigation_handle->IsInPrimaryMainFrame() ||
+      (navigation_handle->GetParentFrame() &&
+       navigation_handle->GetParentFrame()->GetPage().IsPrimary() &&
+       navigation_handle->HasSubframeNavigationEntryCommitted())) {
+    BvBrowserContext::FromWebContents(web_contents())
       ->AddVisitedURLs(navigation_handle->GetRedirectChain());
+  }
 }
 
 void BvRenderViewHostExt::OnPageScaleFactorChanged(float page_scale_factor) {
@@ -174,19 +139,15 @@ void BvRenderViewHostExt::OnPageScaleFactorChanged(float page_scale_factor) {
 
 void BvRenderViewHostExt::UpdateHitTestData(
     mojom::HitTestDataPtr hit_test_data) {
-  content::RenderFrameHost* main_frame_host =
+  content::RenderFrameHost* render_frame_host =
       frame_host_receivers_.GetCurrentTargetFrame();
-  while (main_frame_host->GetParent())
-    main_frame_host = main_frame_host->GetParent();
-
-  // Make sense from any frame of the current frame tree, because a focused
+  // Make sense from any frame of the active frame tree, because a focused
   // node could be in either the mainframe or a subframe.
-  if (main_frame_host != web_contents()->GetMainFrame())
+  if (!render_frame_host->IsActive())
     return;
 
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
   last_hit_test_data_ = std::move(hit_test_data);
-  has_new_hit_test_data_ = true;
 }
 
 void BvRenderViewHostExt::ContentsSizeChanged(const gfx::Size& contents_size) {
@@ -194,7 +155,7 @@ void BvRenderViewHostExt::ContentsSizeChanged(const gfx::Size& contents_size) {
       frame_host_receivers_.GetCurrentTargetFrame();
 
   // Only makes sense coming from the main frame of the current frame tree.
-  if (render_frame_host != web_contents()->GetMainFrame())
+  if (render_frame_host != web_contents()->GetPrimaryMainFrame())
     return;
 
   client_->OnWebLayoutContentsSizeChanged(contents_size);
@@ -206,11 +167,24 @@ void BvRenderViewHostExt::ShouldOverrideUrlLoading(
     bool is_redirect,
     bool is_main_frame,
     ShouldOverrideUrlLoadingCallback callback) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  content::GetUIThreadTaskRunner({})->PostTask(
-      FROM_HERE, base::BindOnce(&ShouldOverrideUrlLoadingOnUI, web_contents(),
-                                url, has_user_gesture, is_redirect,
-                                is_main_frame, std::move(callback)));
+  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+
+  bool ignore_navigation = false;
+  BvContentsClientBridge* client =
+      BvContentsClientBridge::FromWebContents(web_contents());
+  if (client) {
+    if (!client->ShouldOverrideUrlLoading(url, has_user_gesture, is_redirect,
+                                          is_main_frame, &ignore_navigation)) {
+      // If the shouldOverrideUrlLoading call caused a java exception we should
+      // always return immediately here!
+      return;
+    }
+  } else {
+    LOG(WARNING) << "Failed to find the associated render view host for url: "
+                 << url;
+  }
+
+  std::move(callback).Run(ignore_navigation);
 }
 
 mojom::LocalMainFrame* BvRenderViewHostExt::GetLocalMainFrameRemote() {
@@ -219,7 +193,7 @@ mojom::LocalMainFrame* BvRenderViewHostExt::GetLocalMainFrameRemote() {
   // RenderFrameCreated/RenderFrameHostChanged events but the timings of when
   // this class gets called vs others using this class might cause a TOU
   // problem, so we validate it each time before use.
-  content::RenderFrameHost* main_frame = web_contents()->GetMainFrame();
+  content::RenderFrameHost* main_frame = web_contents()->GetPrimaryMainFrame();
   content::GlobalRenderFrameHostId main_frame_id = main_frame->GetGlobalId();
   if (main_frame_global_id_ == main_frame_id) {
     return local_main_frame_remote_.get();
@@ -229,7 +203,7 @@ mojom::LocalMainFrame* BvRenderViewHostExt::GetLocalMainFrameRemote() {
 
   // Avoid accessing GetRemoteAssociatedInterfaces until the renderer is
   // created.
-  if (!main_frame->IsRenderFrameCreated()) {
+  if (!main_frame->IsRenderFrameLive()) {
     main_frame_global_id_ = content::GlobalRenderFrameHostId();
     return nullptr;
   }

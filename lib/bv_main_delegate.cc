@@ -5,7 +5,6 @@
 
 #include "bison/browser/bv_content_browser_client.h"
 #include "bison/browser/bv_media_url_interceptor.h"
-#include "bison/browser/scoped_add_feature_flags.h"
 #include "bison/common/bv_content_client.h"
 #include "bison/common/bv_descriptors.h"
 #include "bison/common/bv_paths.h"
@@ -22,16 +21,19 @@
 #include "base/check_op.h"
 #include "base/command_line.h"
 #include "base/cpu.h"
-#include "base/cpu_affinity_posix.h"
 #include "base/i18n/icu_util.h"
 #include "base/i18n/rtl.h"
 #include "base/posix/global_descriptors.h"
+#include "base/scoped_add_feature_flags.h"
 #include "base/strings/string_number_conversions.h"
+#include "base/strings/string_split.h"
+#include "base/strings/string_util.h"
 #include "base/threading/thread_restrictions.h"
 #include "build/build_config.h"
 #include "cc/base/switches.h"
 #include "components/autofill/core/common/autofill_features.h"
 #include "components/crash/core/common/crash_key.h"
+#include "components/embedder_support/switches.h"
 #include "components/gwp_asan/buildflags/buildflags.h"
 #include "components/metrics/unsent_log_store_metrics.h"
 #include "components/services/heap_profiling/public/cpp/profiling_client.h"
@@ -40,6 +42,7 @@
 #include "components/variations/variations_ids_provider.h"
 #include "components/version_info/android/channel_getter.h"
 #include "components/viz/common/features.h"
+#include "content/public/app/initialize_mojo_core.h"
 #include "content/public/browser/android/compositor.h"
 #include "content/public/browser/android/media_url_interceptor_register.h"
 #include "content/public/browser/browser_main_runner.h"
@@ -53,10 +56,11 @@
 #include "gin/v8_initializer.h"
 #include "gpu/command_buffer/service/gpu_switches.h"
 #include "gpu/config/gpu_finch_features.h"
-#include "gpu/ipc/gl_in_process_context.h"
 #include "media/base/media_switches.h"
 #include "media/media_buildflags.h"
+#include "net/base/features.h"
 #include "services/network/public/cpp/features.h"
+#include "third_party/abseil-cpp/absl/types/variant.h"
 #include "third_party/blink/public/common/features.h"
 #include "ui/base/ui_base_paths.h"
 #include "ui/base/ui_base_switches.h"
@@ -77,9 +81,8 @@ BvMainDelegate::BvMainDelegate() = default;
 
 BvMainDelegate::~BvMainDelegate() = default;
 
-bool BvMainDelegate::BasicStartupComplete(int* exit_code) {
-  // SetContentClient(&content_client_);
-
+absl::optional<int> BvMainDelegate::BasicStartupComplete() {
+  //TRACE_EVENT0("startup", "BvMainDelegate::BasicStartupComplete");
   base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
 
   cl->AppendSwitch(switches::kDisableOverscrollEdgeEffect);
@@ -97,6 +100,10 @@ bool BvMainDelegate::BasicStartupComplete(int* exit_code) {
   // Check damage in OnBeginFrame to prevent unnecessary draws.
   cl->AppendSwitch(cc::switches::kCheckDamageEarly);
 
+  // This is needed for sharing textures across the different GL threads.
+  cl->AppendSwitch(switches::kEnableThreadedTextureMailboxes);
+
+  // WebView does not yet support screen orientation locking.
   cl->AppendSwitch(switches::kDisableScreenOrientationLock);
   cl->AppendSwitch(switches::kDisableSpeechSynthesisAPI);
 
@@ -127,7 +134,7 @@ bool BvMainDelegate::BasicStartupComplete(int* exit_code) {
   cl->AppendSwitch(switches::kDisableGpuShaderDiskCache);
 
   // ref :https://bugs.chromium.org/p/chromium/issues/detail?id=1306508
-  cl->AppendSwitch(switches::kDisableRendererAccessibility);
+  //cl->AppendSwitch(switches::kDisableRendererAccessibility);
 
   if (cl->GetSwitchValueASCII(switches::kProcessType).empty()) {
     // Browser process (no type specified).
@@ -199,9 +206,32 @@ bool BvMainDelegate::BasicStartupComplete(int* exit_code) {
           autofill::features::kAutofillSkipComparingInferredLabels);
     }
 
-    features.EnableIfNotSet(::features::kLogJsConsoleMessages);
-    features.DisableIfNotSet(::features::kDefaultANGLEVulkan);
+    if (cl->HasSwitch(switches::kWebViewLogJsConsoleMessages)) {
+      features.EnableIfNotSet(::features::kLogJsConsoleMessages);
+    }
 
+    if (!cl->HasSwitch(switches::kWebViewDrawFunctorUsesVulkan)) {
+      // Not use ANGLE's Vulkan backend, if the draw functor is not using
+      // Vulkan.
+      features.DisableIfNotSet(::features::kDefaultANGLEVulkan);
+    }
+
+    if (cl->HasSwitch(switches::kWebViewMPArchFencedFrames)) {
+      features.EnableIfNotSetWithParameter(blink::features::kFencedFrames,
+                                           "implementation_type", "mparch");
+      features.EnableIfNotSet(blink::features::kSharedStorageAPI);
+      features.EnableIfNotSet(::features::kPrivacySandboxAdsAPIsOverride);
+    }
+
+    if (cl->HasSwitch(switches::kWebViewShadowDOMFencedFrames)) {
+      features.EnableIfNotSetWithParameter(blink::features::kFencedFrames,
+                                           "implementation_type", "shadow_dom");
+      features.EnableIfNotSet(blink::features::kSharedStorageAPI);
+      features.EnableIfNotSet(::features::kPrivacySandboxAdsAPIsOverride);
+    }
+
+    // WebView uses kWebViewVulkan to control vulkan. Pre-emptively disable
+    // kVulkan in case it becomes enabled by default.
     features.DisableIfNotSet(::features::kVulkan);
 
     features.DisableIfNotSet(::features::kWebPayments);
@@ -295,11 +325,11 @@ bool BvMainDelegate::BasicStartupComplete(int* exit_code) {
   content::Compositor::Initialize();
   heap_profiling::InitTLSSlot();
 
-  return false;
+  return absl::nullopt;
 }
 
 void BvMainDelegate::PreSandboxStartup() {
-  TRACE_EVENT0("startup", "BvMainDelegate::PreSandboxStartup");
+  //TRACE_EVENT0("startup", "BvMainDelegate::PreSandboxStartup");
 #if defined(ARCH_CPU_ARM_FAMILY)
   // Create an instance of the CPU class to parse /proc/cpuinfo and cache
   // cpu_brand info.
@@ -358,7 +388,7 @@ void BvMainDelegate::ProcessExiting(const std::string& process_type) {
   logging::CloseLogFile();
 }
 
-bool BvMainDelegate::ShouldCreateFeatureList() {
+bool BvMainDelegate::ShouldCreateFeatureList(InvokedIn invoked_in) {
   return absl::holds_alternative<InvokedInChildProcess>(invoked_in);
 }
 
@@ -372,7 +402,7 @@ BvMainDelegate::CreateVariationsIdsProvider() {
       variations::VariationsIdsProvider::Mode::kDontSendSignedInVariations);
 }
 
-void BvMainDelegate::PostEarlyInitialization(
+absl::optional<int> BvMainDelegate::PostEarlyInitialization(
     InvokedIn invoked_in) {
   const bool is_browser_process =
       absl::holds_alternative<InvokedInBrowserProcess>(invoked_in);

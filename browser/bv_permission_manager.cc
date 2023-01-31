@@ -15,6 +15,7 @@
 #include "components/permissions/permission_util.h"
 #include "content/public/browser/child_process_security_policy.h"
 #include "content/public/browser/permission_controller.h"
+#include "content/public/browser/permission_result.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/render_process_host.h"
 #include "content/public/browser/web_contents.h"
@@ -465,6 +466,17 @@ PermissionStatus BvPermissionManager::GetPermissionStatus(
   }
 
   return PermissionStatus::DENIED;
+}
+
+content::PermissionResult
+BvPermissionManager::GetPermissionResultForOriginWithoutContext(
+    blink::PermissionType permission,
+    const url::Origin& origin) {
+  blink::mojom::PermissionStatus status =
+      GetPermissionStatus(permission, origin.GetURL(), origin.GetURL());
+
+  return content::PermissionResult(
+      status, content::PermissionStatusSource::UNSPECIFIED);
 }
 
 PermissionStatus BvPermissionManager::GetPermissionStatusForCurrentDocument(

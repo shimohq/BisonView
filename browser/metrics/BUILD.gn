@@ -17,10 +17,6 @@ source_set("metrics") {
     "//bison/common",
 
     "//base",
-    # #jiang947 begin 先加上，后面可能需要删除
-    # "//components/component_updater",
-    # "//components/component_updater/android:embedded_component_loader",
-    # # jiang947 end
     "//components/embedder_support/android/metrics",
     "//components/metrics",
     "//components/metrics:component_metrics",

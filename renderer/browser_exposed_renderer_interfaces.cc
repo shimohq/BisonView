@@ -14,7 +14,8 @@ namespace bison {
 
 void ExposeRendererInterfacesToBrowser(BvContentRendererClient* client,
                                        mojo::BinderMap* binders) {
-  binders->Add(client->visited_link_reader()->GetBindCallback(),
+  binders->Add<visitedlink::mojom::VisitedLinkNotificationSink>(
+      client->visited_link_reader()->GetBindCallback(),
                base::ThreadTaskRunnerHandle::Get());
 }
 

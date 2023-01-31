@@ -132,6 +132,9 @@ public class BvContents implements SmartClipProvider {
 
     private static final Pattern sFileAndroidAssetPattern = Pattern.compile("^file:/*android_(asset|res).*");
 
+    private static final Pattern sDataURLWithSelectorPattern =
+            Pattern.compile("^[^#]*(#[A-Za-z][A-Za-z0-9\\-_:.]*)$");
+
     /**
      * WebKit hit test related data structure. These are used to implement
      * getHitTestResult, requestFocusNodeHref, requestImageRef methods in WebView.
@@ -580,11 +583,9 @@ public class BvContents implements SmartClipProvider {
 
         private static final class DestroyRunnable implements Runnable {
             private final WindowAndroid mWindowAndroid;
-
             private DestroyRunnable(WindowAndroid windowAndroid) {
                 mWindowAndroid = windowAndroid;
             }
-
             @Override
             public void run() {
                 mWindowAndroid.destroy();
@@ -643,7 +644,8 @@ public class BvContents implements SmartClipProvider {
             // but
             // it is not guaranteed to be listed at the first of sCurrentLocales. Therefore,
             // both values are passed to native.
-            BvContentsJni.get().updateDefaultLocale(LocaleUtils.getDefaultLocaleString(), sCurrentLocales);
+            BvContentsJni.get().updateDefaultLocale(
+                    LocaleUtils.getDefaultLocaleString(), sCurrentLocales);
             mSettings.updateAcceptLanguages();
         }
     }
@@ -916,48 +918,61 @@ public class BvContents implements SmartClipProvider {
         }
     }
 
+
+    /**
+     * @return load progress of the WebContents, on a scale of 0-100.
+     */
+    public int getMostRecentProgress() {
+        if (isDestroyed(WARN)) return 0;
+        if (!mWebContents.isLoading()) return 100;
+        return Math.round(100 * mWebContents.getLoadProgress());
+    }
+
     public Bitmap getFavicon() {
         if (isDestroyed(WARN))
             return null;
         return mFavicon;
     }
 
-    /**
-     * @return load progress of the WebContents, on a scale of 0-100.
-     */
-    public int getMostRecentProgress() {
-        if (isDestroyed(WARN))
-            return 0;
-        if (!mWebContents.isLoading())
-            return 100;
-        return Math.round(100 * mWebContents.getLoadProgress());
-    }
-
+    /* package */ static final Pattern BAD_HEADER_CHAR = Pattern.compile("[\u0000\r\n]");
+    /* package */ static final String BAD_HEADER_MSG =
+    "HTTP headers must not contain null, CR, or NL characters. ";
     public void loadUrl(String url, Map<String, String> additionalHttpHeaders) {
-        if (TRACE)
-            Log.i(TAG, "%s loadUrl(extra headers)=%s", this, url);
-        if (isDestroyed(WARN))
-            return;
-
+        if (TRACE) Log.i(TAG, "%s loadUrl(extra headers)=%s", this, url);
+        if (isDestroyed(WARN)) return;
+        // Early out to match old WebView implementation
         if (url == null) {
             return;
         }
+        // TODO: We may actually want to do some sanity checks here (like filter about://chrome).
+
 
         LoadUrlParams params = new LoadUrlParams(url, PageTransition.TYPED);
         if (additionalHttpHeaders != null) {
-            params.setExtraHeaders(new HashMap<>(additionalHttpHeaders));
+            for (Map.Entry<String, String> header : additionalHttpHeaders.entrySet()) {
+                String headerName = header.getKey();
+                String headerValue = header.getValue();
+                if (headerName != null && BAD_HEADER_CHAR.matcher(headerName).find()) {
+                    throw new IllegalArgumentException(
+                            BAD_HEADER_MSG + "Invalid header name '" + headerName + "'.");
+                }
+                if (headerValue != null && BAD_HEADER_CHAR.matcher(headerValue).find()) {
+                    throw new IllegalArgumentException(BAD_HEADER_MSG + "Header '" + headerName
+                            + "' has invalid value '" + headerValue + "'");
+                }
+            }
+            params.setExtraHeaders(new HashMap<String, String>(additionalHttpHeaders));
         }
 
         loadUrl(params);
     }
 
     public void loadUrl(String url) {
-        if (TRACE)
-            Log.i(TAG, "%s loadUrl=%s", this, url);
-        if (isDestroyed(WARN))
-            return;
-        if (url == null)
-            return;
+      if (TRACE) Log.i(TAG, "%s loadUrl=%s", this, url);
+      if (isDestroyed(WARN)) return;
+        if (url == null) {
+          return;
+        }
         loadUrl(url, null);
     }
 
@@ -997,15 +1012,35 @@ public class BvContents implements SmartClipProvider {
 
      */
     public void loadData(String data, String mimeType, String encoding) {
-        if (TRACE)
-            Log.i(TAG, "%s loadData", this);
-        if (isDestroyed(WARN))
-            return;
-        loadUrl(LoadUrlParams.createLoadDataParams(fixupData(data), fixupMimeType(mimeType),
-                isBase64Encoded(encoding)));
+        if (TRACE) Log.i(TAG, "%s loadData", this);
+        if (isDestroyed(WARN)) return;
+        if (data != null && data.contains("#")) {
+            if (ContextUtils.getApplicationContext().getApplicationInfo().targetSdkVersion
+                            < Build.VERSION_CODES.Q
+                    && !isBase64Encoded(encoding)) {
+                // As of Chromium M72, data URI parsing strictly enforces encoding of '#'. To
+                // support WebView applications which were not expecting this change, we do it for
+                // them.
+                data = fixupOctothorpesInLoadDataContent(data);
+            }
+        }
+        loadUrl(LoadUrlParams.createLoadDataParams(
+                fixupData(data), fixupMimeType(mimeType), isBase64Encoded(encoding)));
     }
 
-    public void loadDataWithBaseURL(String baseUrl, String data, String mimeType, String encoding, String historyUrl) {
+    public static String fixupOctothorpesInLoadDataContent(String data) {
+        // If the data may have had a valid DOM selector, we duplicate the selector and append it as
+        // a proper URL fragment. For example, "<a id='target'>Target</a>#target" will be converted
+        // to "<a id='target'>Target</a>%23target#target". This preserves both the rendering (which
+        // should render 'Target#target' on the page) and the DOM selector behavior (which should
+        // scroll to the anchor).
+        Matcher matcher = sDataURLWithSelectorPattern.matcher(data);
+        String suffix = matcher.matches() ? matcher.group(1) : "";
+        return data.replace("#", "%23") + suffix;
+    }
+
+    public void loadDataWithBaseURL(
+            String baseUrl, String data, String mimeType, String encoding, String historyUrl) {
         if (TRACE)
             Log.i(TAG, "%s loadDataWithBaseURL=%s", this, baseUrl);
         if (isDestroyed(WARN))
@@ -1019,13 +1054,13 @@ public class BvContents implements SmartClipProvider {
 
         if (baseUrl.startsWith("data:")) {
             boolean isBase64 = isBase64Encoded(encoding);
-            loadUrlParams = LoadUrlParams.createLoadDataParamsWithBaseUrl(data, mimeType, isBase64, baseUrl, historyUrl,
-                    isBase64 ? null : encoding);
+            loadUrlParams = LoadUrlParams.createLoadDataParamsWithBaseUrl(
+                    data, mimeType, isBase64, baseUrl, historyUrl, isBase64 ? null : encoding);
         } else {
             try {
                 loadUrlParams = LoadUrlParams.createLoadDataParamsWithBaseUrl(
-                        Base64.encodeToString(data.getBytes("utf-8"), Base64.DEFAULT), mimeType, true, baseUrl,
-                        historyUrl, "utf-8");
+                        Base64.encodeToString(data.getBytes("utf-8"), Base64.DEFAULT), mimeType,
+                        true, baseUrl, historyUrl, "utf-8");
             } catch (java.io.UnsupportedEncodingException e) {
                 Log.wtf(TAG, "Unable to load data string %s", data, e);
                 return;
@@ -1035,7 +1070,7 @@ public class BvContents implements SmartClipProvider {
         loadUrl(loadUrlParams);
     }
 
-    private void loadUrl(LoadUrlParams params) {
+    public void loadUrl(LoadUrlParams params) {
         if (params.getLoadUrlType() == LoadURLType.DATA && !params.isBaseUrlDataScheme()) {
             params.setCanLoadLocalResources(true);
             BvContentsJni.get().grantFileSchemeAccesstoChildProcess(mNativeBvContents);
@@ -1055,7 +1090,8 @@ public class BvContents implements SmartClipProvider {
         if (extraHeaders != null) {
             for (String header : extraHeaders.keySet()) {
                 if (referer.equals(header.toLowerCase(Locale.US))) {
-                    params.setReferrer(new Referrer(extraHeaders.remove(header), ReferrerPolicy.DEFAULT));
+                    params.setReferrer(
+                            new Referrer(extraHeaders.remove(header), ReferrerPolicy.DEFAULT));
                     params.setExtraHeaders(extraHeaders);
                     break;
                 }
@@ -1084,11 +1120,10 @@ public class BvContents implements SmartClipProvider {
      * @return The URL of the current page or null if it's empty.
      */
     public GURL getUrl() {
-        if (isDestroyed(WARN))
-            return null;
+        if (TRACE) Log.i(TAG, "%s getUrl", this);
+        if (isDestroyed(WARN)) return null;
         GURL url = mWebContents.getVisibleUrl();
-        if (url == null || url.getSpec().trim().isEmpty())
-            return null;
+        if (url == null || url.getSpec().trim().isEmpty()) return null;
         return url;
     }
 
@@ -1099,11 +1134,10 @@ public class BvContents implements SmartClipProvider {
      * @return The URL of the current page or null if it's empty.
      */
     public String getLastCommittedUrl() {
-        if (isDestroyed(NO_WARN))
-            return null;
+        if (TRACE) Log.i(TAG, "%s getLastCommittedUrl", this);
+        if (isDestroyed(NO_WARN)) return null;
         GURL url = mWebContents.getLastCommittedUrl();
-        if (url == null || url.isEmpty())
-            return null;
+        if (url == null || url.isEmpty()) return null;
         return url.getSpec();
     }
 
@@ -1484,7 +1518,7 @@ public class BvContents implements SmartClipProvider {
             Log.i(TAG, "%s getLastHitTestResult", this);
         if (isDestroyed(WARN))
             return null;
-        BvContentsJni.get().updateLastHitTestData(mNativeBvContents, BvContents.this);
+        BvContentsJni.get().updateLastHitTestData(mNativeBvContents);
         return mPossiblyStaleHitTestData;
     }
 
@@ -1497,7 +1531,7 @@ public class BvContents implements SmartClipProvider {
         if (msg == null || isDestroyed(WARN))
             return;
 
-        BvContentsJni.get().updateLastHitTestData(mNativeBvContents, BvContents.this);
+        BvContentsJni.get().updateLastHitTestData(mNativeBvContents);
         Bundle data = msg.getData();
 
         // In order to maintain compatibility with the old WebView's implementation,
@@ -1519,7 +1553,7 @@ public class BvContents implements SmartClipProvider {
         if (msg == null || isDestroyed(WARN))
             return;
 
-        BvContentsJni.get().updateLastHitTestData(mNativeBvContents, BvContents.this);
+        BvContentsJni.get().updateLastHitTestData(mNativeBvContents);
         Bundle data = msg.getData();
         data.putString("url", mPossiblyStaleHitTestData.imgSrc);
         msg.setData(data);
@@ -2361,8 +2395,7 @@ public class BvContents implements SmartClipProvider {
 
         @Override
         public void requestFocus() {
-            if (isDestroyed(NO_WARN) || mContainerView == null)
-                return;
+            if (isDestroyed(NO_WARN) || mContainerView == null) return;
             if (!mContainerView.isInTouchMode() && mSettings.shouldFocusFirstNode()) {
                 BvContentsJni.get().focusFirstNode(mNativeBvContents, BvContents.this);
             }
@@ -2375,8 +2408,7 @@ public class BvContents implements SmartClipProvider {
         }
 
         private void updateHardwareAcceleratedFeaturesToggle() {
-            if (mContainerView == null)
-                return;
+            if (mContainerView == null) return;
             mSettings.setEnableSupportedHardwareAcceleratedFeatures(
                     mIsAttachedToWindow && mContainerView.isHardwareAccelerated()
                             && (mLayerType == View.LAYER_TYPE_NONE || mLayerType == View.LAYER_TYPE_HARDWARE));
@@ -2658,7 +2690,6 @@ public class BvContents implements SmartClipProvider {
         void destroy(long nativeBvContents);
 
         void setShouldDownloadFavicons();
-
         void updateDefaultLocale(String locale, String localeList);
 
         void setJavaPeers(long nativeBvContents, BvWebContentsDelegate webContentsDelegate,
@@ -2690,9 +2721,7 @@ public class BvContents implements SmartClipProvider {
         byte[] getOpaqueState(long nativeBvContents, BvContents caller);
 
         boolean restoreFromOpaqueState(long nativeBvContents, BvContents caller, byte[] state);
-
-        void updateLastHitTestData(long nativeBvContents, BvContents caller);
-
+        void updateLastHitTestData(long nativeBvContents);
         void onSizeChanged(long nativeBvContents, BvContents caller, int w, int h, int ow, int oh);
 
         void setViewVisibility(long nativeBvContents, BvContents caller, boolean visible);

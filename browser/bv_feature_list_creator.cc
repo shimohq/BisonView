@@ -20,6 +20,7 @@
 #include "base/command_line.h"
 #include "base/feature_list.h"
 #include "base/files/file_path.h"
+#include "base/metrics/field_trial.h"
 #include "base/path_service.h"
 #include "base/strings/string_split.h"
 #include "base/time/time.h"
@@ -33,14 +34,17 @@
 #include "components/pref_registry/pref_registry_syncable.h"
 #include "components/prefs/in_memory_pref_store.h"
 #include "components/prefs/json_pref_store.h"
+#include "components/prefs/pref_name_set.h"
 #include "components/prefs/pref_registry_simple.h"
 #include "components/prefs/pref_service.h"
 #include "components/prefs/pref_service_factory.h"
 #include "components/prefs/segregated_pref_store.h"
+#include "components/tracing/common/pref_names.h"
 #include "components/variations/entropy_provider.h"
 #include "components/variations/pref_names.h"
 #include "components/variations/service/safe_seed_manager.h"
 #include "components/variations/service/variations_service.h"
+#include "components/variations/variations_switches.h"
 #include "content/public/common/content_switch_dependent_feature_overrides.h"
 #include "net/base/features.h"
 #include "net/nqe/pref_names.h"
@@ -72,10 +76,12 @@ const char* const kPersistentPrefsAllowlist[] = {
     metrics::prefs::kStabilityPageLoadCount,
     metrics::prefs::kStabilityRendererLaunchCount,
     // Unsent logs.
-    metrics::prefs::kMetricsInitialLogs, metrics::prefs::kMetricsOngoingLogs,
+    metrics::prefs::kMetricsInitialLogs,
+    metrics::prefs::kMetricsOngoingLogs,
     // Unsent logs metadata.
     metrics::prefs::kMetricsInitialLogsMetadata,
-    metrics::prefs::kMetricsOngoingLogsMetadata, net::nqe::kNetworkQualities,
+    metrics::prefs::kMetricsOngoingLogsMetadata,
+    net::nqe::kNetworkQualities,
     // Current and past country codes, to filter variations studies by country.
     variations::prefs::kVariationsCountry,
     variations::prefs::kVariationsPermanentConsistencyCountry,
@@ -119,6 +125,25 @@ BvFeatureListCreator::BvFeatureListCreator()
 
 BvFeatureListCreator::~BvFeatureListCreator() {}
 
+void BvFeatureListCreator::CreateFeatureListAndFieldTrials() {
+  TRACE_EVENT0("startup",
+               "BvFeatureListCreator::CreateFeatureListAndFieldTrials");
+  CreateLocalState();
+  BvMetricsServiceClient::SetInstance(std::make_unique<BvMetricsServiceClient>(
+      std::make_unique<BvMetricsServiceClientDelegate>()));
+  BvMetricsServiceClient::GetInstance()->Initialize(local_state_.get());
+  SetUpFieldTrials();
+}
+
+void BvFeatureListCreator::CreateLocalState() {
+  browser_policy_connector_ = std::make_unique<BvBrowserPolicyConnector>();
+  local_state_ = CreatePrefService();
+}
+
+void BvFeatureListCreator::DisableSignatureVerificationForTesting() {
+  g_signature_verification_enabled = false;
+}
+
 std::unique_ptr<PrefService> BvFeatureListCreator::CreatePrefService() {
   // auto pref_registry = base::MakeRefCounted<PrefRegistrySimple>(); //shell
   auto pref_registry = base::MakeRefCounted<user_prefs::PrefRegistrySyncable>();
@@ -134,7 +159,7 @@ std::unique_ptr<PrefService> BvFeatureListCreator::CreatePrefService() {
 
   PrefServiceFactory pref_service_factory;
 
-  std::set<std::string> persistent_prefs;
+  PrefNameSet persistent_prefs;
   for (const char* const pref_name : kPersistentPrefsAllowlist)
     persistent_prefs.insert(pref_name);
 
@@ -210,31 +235,16 @@ void BvFeatureListCreator::SetUpFieldTrials() {
       bv_feature_entries::RegisterEnabledFeatureEntries(feature_list.get());
 
   auto* metrics_client = BvMetricsServiceClient::GetInstance();
+  const base::CommandLine* command_line =
+      base::CommandLine::ForCurrentProcess();
   variations_field_trial_creator_->SetUpFieldTrials(
       variation_ids,
-      GetSwitchDependentFeatureOverrides(
-          *base::CommandLine::ForCurrentProcess()),
-      /*low_entropy_provider=*/nullptr, std::move(feature_list),
-      metrics_client->metrics_state_manager(), bv_field_trials_.get(),
-      &ignored_safe_seed_manager,
+      command_line->GetSwitchValueASCII(
+          variations::switches::kForceVariationIds),
+      GetSwitchDependentFeatureOverrides(*command_line),
+      std::move(feature_list), metrics_client->metrics_state_manager(),
+      bv_field_trials_.get(), &ignored_safe_seed_manager,
       /*low_entropy_source_value=*/absl::nullopt);
-}
-
-void BvFeatureListCreator::CreateLocalState() {
-  browser_policy_connector_ = std::make_unique<BvBrowserPolicyConnector>();
-  local_state_ = CreatePrefService();
-}
-
-void BvFeatureListCreator::CreateFeatureListAndFieldTrials() {
-  CreateLocalState();
-  BvMetricsServiceClient::SetInstance(std::make_unique<BvMetricsServiceClient>(
-      std::make_unique<BvMetricsServiceClientDelegate>()));
-  BvMetricsServiceClient::GetInstance()->Initialize(local_state_.get());
-  SetUpFieldTrials();
-}
-
-void BvFeatureListCreator::DisableSignatureVerificationForTesting() {
-  g_signature_verification_enabled = false;
 }
 
 }  // namespace bison

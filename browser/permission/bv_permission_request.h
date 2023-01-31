@@ -21,7 +21,6 @@ class BvPermissionRequestDelegate;
 // This object is owned by the java peer.
 class BvPermissionRequest {
  public:
-  // TODO jiang947 生成包名
   // GENERATED_JAVA_ENUM_PACKAGE: im.shimo.bison.internal
   enum PermissionResource {
     Geolocation = 1 << 0,
@@ -36,6 +35,9 @@ class BvPermissionRequest {
   static base::android::ScopedJavaLocalRef<jobject> Create(
       std::unique_ptr<BvPermissionRequestDelegate> delegate,
       base::WeakPtr<BvPermissionRequest>* weak_ptr);
+
+  BvPermissionRequest(const BvPermissionRequest&) = delete;
+  BvPermissionRequest& operator=(const BvPermissionRequest&) = delete;
 
   // Return the Java peer. Must be null-checked.
   base::android::ScopedJavaLocalRef<jobject> GetJavaObject();
@@ -74,8 +76,6 @@ class BvPermissionRequest {
 
   bool processed_;
   base::WeakPtrFactory<BvPermissionRequest> weak_factory_{this};
-
-
 };
 
 }  // namespace bison

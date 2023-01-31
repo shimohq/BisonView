@@ -5,9 +5,11 @@
 
 #include <stdint.h>
 
-#include "base/callback.h"
 #include "bison/browser/permission/bv_permission_request_delegate.h"
 #include "bison/browser/permission/permission_callback.h"
+
+#include "base/callback.h"
+
 
 namespace bison {
 
@@ -17,7 +19,8 @@ class SimplePermissionRequest : public BvPermissionRequestDelegate {
  public:
   SimplePermissionRequest(const GURL& origin,
                           int64_t resources,
-                          base::OnceCallback<void(bool)> callback);
+                          PermissionCallback callback);
+
   SimplePermissionRequest(const SimplePermissionRequest&) = delete;
   SimplePermissionRequest& operator=(const SimplePermissionRequest&) = delete;
 
@@ -32,8 +35,6 @@ class SimplePermissionRequest : public BvPermissionRequestDelegate {
   const GURL origin_;
   int64_t resources_;
   PermissionCallback callback_;
-
-
 };
 
 }  // namespace bison

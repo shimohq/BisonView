@@ -39,12 +39,14 @@
 #include "base/feature_list.h"
 #include "base/files/scoped_file.h"
 #include "base/memory/ptr_util.h"
+#include "base/metrics/histogram_macros.h"
 #include "base/path_service.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/task/thread_pool/thread_pool_instance.h"
 #include "build/build_config.h"
 #include "components/cdm/browser/cdm_message_filter_android.h"
 #include "components/crash/content/browser/crash_handler_host_linux.h"
+#include "components/embedder_support/switches.h"
 #include "components/embedder_support/user_agent_utils.h"
 #include "components/navigation_interception/intercept_navigation_delegate.h"
 #include "components/page_load_metrics/browser/metrics_navigation_throttle.h"
@@ -324,23 +326,18 @@ void BvContentBrowserClient::AppendExtraCommandLineSwitches(
     // The only kind of a child process WebView can have is renderer or utility.
     std::string process_type =
         command_line->GetSwitchValueASCII(switches::kProcessType);
-    VLOG(0) << "process_type :" << process_type;
     // DCHECK(process_type == switches::kRendererProcess ||
     //        process_type == switches::kUtilityProcess)
     //     << process_type;
-    // Pass crash reporter enabled state to renderer processes.
-    if (base::CommandLine::ForCurrentProcess()->HasSwitch(
-            ::switches::kEnableCrashReporter)) {
-      //command_line->AppendSwitch(::switches::kEnableCrashReporter);
-      VLOG(0) << "HasSwitch" << ::switches::kEnableCrashReporter;
-    }
-    command_line->AppendSwitch(::switches::kEnableCrashReporter);
-    if (base::CommandLine::ForCurrentProcess()->HasSwitch(
-            ::switches::kEnableCrashReporterForTesting)) {
-      //command_line->AppendSwitch(::switches::kEnableCrashReporterForTesting);
-      VLOG(0) << "HasSwitch" << ::switches::kEnableCrashReporterForTesting;
-    }
-    command_line->AppendSwitch(::switches::kEnableCrashReporterForTesting);
+
+    static const char* const kSwitchNames[] = {
+        ::switches::kEnableCrashReporter,
+        ::switches::kEnableCrashReporterForTesting,
+        embedder_support::kOriginTrialDisabledFeatures,
+    };
+
+    command_line->CopySwitchesFrom(*base::CommandLine::ForCurrentProcess(),
+                                   kSwitchNames, std::size(kSwitchNames));
   }
 }
 
@@ -361,7 +358,7 @@ gfx::ImageSkia BvContentBrowserClient::GetDefaultFavicon() {
 
  scoped_refptr<content::QuotaPermissionContext>
  BvContentBrowserClient::CreateQuotaPermissionContext() {
-   return new BvQuotaPermissionContext();
+   return new BvQuotaPermissionContext;
  }
 
 content::GeneratedCodeCacheSettings
@@ -520,22 +517,21 @@ BvContentBrowserClient::CreateThrottlesForNavigation(
     // behavior) should be added before MetricsNavigationThrottle.
     throttles.push_back(page_load_metrics::MetricsNavigationThrottle::Create(
         navigation_handle));
+  }
     // Use Synchronous mode for the navigation interceptor, since this class
     // doesn't actually call into an arbitrary client, it just posts a task to
     // call onPageStarted. shouldOverrideUrlLoading happens earlier (see
     // ContentBrowserClient::ShouldOverrideUrlLoading).
     std::unique_ptr<content::NavigationThrottle> intercept_navigation_throttle =
         navigation_interception::InterceptNavigationDelegate::
-            MaybeCreateThrottleFor(
-                navigation_handle,
+          MaybeCreateThrottleFor(navigation_handle,
                 navigation_interception::SynchronyMode::kSync);
     if (intercept_navigation_throttle)
       throttles.push_back(std::move(intercept_navigation_throttle));
 
     throttles.push_back(std::make_unique<PolicyBlocklistNavigationThrottle>(
-        navigation_handle, BvBrowserContext::FromWebContents(
-                               navigation_handle->GetWebContents())));
-  }
+        navigation_handle,
+        BvBrowserContext::FromWebContents(navigation_handle->GetWebContents())));
   return throttles;
 }
 
@@ -573,29 +569,6 @@ BvContentBrowserClient::CreateURLLoaderThrottles(
   return result;
 }
 
-static bool IsEnterpriseAuthAppLinkUrl(const GURL& url) {
-  PrefService* pref_service =
-      bison::BvBrowserProcess::GetInstance()->local_state();
-
-  const base::Value* authentication_url_list =
-      pref_service->GetList(prefs::kEnterpriseAuthAppLinkPolicy);
-
-  if (authentication_url_list == nullptr) {
-    return false;
-  }
-
-  for (const auto& el : authentication_url_list->GetList()) {
-    const std::string* policy_url = el.FindStringKey("url");
-    GURL authentication_url = GURL(*policy_url);
-
-    // TODO(ayushsha,b/201408457): Use UrlMatcher to match authentication urls.
-    if (authentication_url.EqualsIgnoringRef(url)) {
-      return true;
-    }
-  }
-
-  return false;
-}
 
 bool BvContentBrowserClient::ShouldOverrideUrlLoading(
     int frame_tree_node_id,
@@ -604,7 +577,7 @@ bool BvContentBrowserClient::ShouldOverrideUrlLoading(
     const std::string& request_method,
     bool has_user_gesture,
     bool is_redirect,
-    bool is_main_frame,
+    bool is_outermost_main_frame,
     ui::PageTransition transition,
     bool* ignore_navigation) {
   *ignore_navigation = false;
@@ -618,7 +591,7 @@ bool BvContentBrowserClient::ShouldOverrideUrlLoading(
   if (application_initiated && !is_redirect)
     return true;
 
-  if (!is_main_frame &&
+  if (!is_outermost_main_frame &&
       (gurl.SchemeIs(url::kHttpScheme) || gurl.SchemeIs(url::kHttpsScheme) ||
        gurl.SchemeIs(url::kAboutScheme)))
     return true;
@@ -637,15 +610,19 @@ bool BvContentBrowserClient::ShouldOverrideUrlLoading(
   BvSettings* aw_settings = BvSettings::FromWebContents(web_contents);
   if ((gurl.SchemeIs(url::kHttpScheme) || gurl.SchemeIs(url::kHttpsScheme)) &&
       aw_settings->enterprise_authentication_app_link_policy_enabled() &&
-      IsEnterpriseAuthAppLinkUrl(gurl)) {
+      bison::BvBrowserProcess::GetInstance()
+          ->GetEnterpriseAuthenticationAppLinkManager()
+          ->IsEnterpriseAuthenticationUrl(gurl)) {
     bool success = client_bridge->SendBrowseIntent(url);
     if (success) {
+      *ignore_navigation = true;
       return true;
     }
   }
 
   return client_bridge->ShouldOverrideUrlLoading(
-      url, has_user_gesture, is_redirect, is_main_frame, ignore_navigation);
+      url, has_user_gesture, is_redirect, is_outermost_main_frame,
+      ignore_navigation);
 }
 
 bool BvContentBrowserClient::
@@ -714,7 +691,8 @@ bool BvContentBrowserClient::HandleExternalProtocol(
     // Manages its own lifetime.
     new bison::BvProxyingURLLoaderFactory(
         frame_tree_node_id, std::move(receiver), mojo::NullRemote(),
-        true /* intercept_only */, absl::nullopt /* security_options */);
+        true /* intercept_only */, absl::nullopt /* security_options */,
+        nullptr /* xrw_allowlist_matcher */);
   } else {
     content::GetIOThreadTaskRunner({})->PostTask(
         FROM_HERE,
@@ -725,7 +703,8 @@ bool BvContentBrowserClient::HandleExternalProtocol(
               new bison::BvProxyingURLLoaderFactory(
                   frame_tree_node_id, std::move(receiver), mojo::NullRemote(),
                   true /* intercept_only */,
-                  absl::nullopt /* security_options */);
+                  absl::nullopt /* security_options */,
+                  nullptr /* xrw_allowlist_matcher */);
             },
             std::move(receiver), frame_tree_node_id));
   }
@@ -847,8 +826,8 @@ bool BvContentBrowserClient::WillCreateURLLoaderFactory(
     security_options->disable_web_security =
         base::CommandLine::ForCurrentProcess()->HasSwitch(
             switches::kDisableWebSecurity);
-    const auto& preferences =
-        WebContents::FromRenderFrameHost(frame)->GetOrCreateWebPreferences();
+    WebContents* web_contents = WebContents::FromRenderFrameHost(frame);
+    const auto& preferences = web_contents->GetOrCreateWebPreferences();
     // See also //android_webview/docs/cors-and-webview-api.md to understand how
     // each settings affect CORS behaviors on file:// and content://.
     if (request_initiator.scheme() == url::kFileScheme) {
@@ -865,21 +844,29 @@ bool BvContentBrowserClient::WillCreateURLLoaderFactory(
           preferences.allow_universal_access_from_file_urls;
     }
 
+    auto xrw_allowlist_matcher =
+        BvSettings::FromWebContents(web_contents)->xrw_allowlist_matcher();
+
     content::GetIOThreadTaskRunner({})->PostTask(
         FROM_HERE,
         base::BindOnce(&BvProxyingURLLoaderFactory::CreateProxy,
                        frame->GetFrameTreeNodeId(), std::move(proxied_receiver),
-                       std::move(target_factory_remote), security_options));
+                       std::move(target_factory_remote), security_options,
+                       std::move(xrw_allowlist_matcher)));
   } else {
     // A service worker and worker subresources set nullptr to |frame|, and
     // work without seeing the AllowUniversalAccessFromFileURLs setting. So,
     // we don't pass a valid |security_options| here.
+    BvBrowserContext* bv_browser_context =
+        static_cast<BvBrowserContext*>(browser_context);
     content::GetIOThreadTaskRunner({})->PostTask(
-        FROM_HERE, base::BindOnce(&BvProxyingURLLoaderFactory::CreateProxy,
-                                  content::RenderFrameHost::kNoFrameTreeNodeId,
-                                  std::move(proxied_receiver),
-                                  std::move(target_factory_remote),
-                                  absl::nullopt /* security_options */));
+        FROM_HERE,
+        base::BindOnce(
+            &BvProxyingURLLoaderFactory::CreateProxy,
+            content::RenderFrameHost::kNoFrameTreeNodeId,
+            std::move(proxied_receiver), std::move(target_factory_remote),
+            absl::nullopt /* security_options */,
+            bv_browser_context->service_worker_xrw_allowlist_matcher()));
   }
   return true;
 }

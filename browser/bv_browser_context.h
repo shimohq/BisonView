@@ -4,7 +4,9 @@
 #define BISON_BROWSER_BISON_BROWSER_CONTEXT_H_
 
 #include <memory>
+#include <vector>
 
+#include "bison/browser/bv_contents_origin_matcher.h"
 #include "bison/browser/bv_ssl_host_state_delegate.h"
 #include "bison/browser/network_service/bv_proxy_config_monitor.h"
 
@@ -26,6 +28,7 @@ class AutocompleteHistoryManager;
 }
 
 namespace content {
+class ClientHintsControllerDelegate;
 class PermissionControllerDelegate;
 class ResourceContext;
 class SSLHostStateDelegate;
@@ -42,6 +45,7 @@ class VisitedLinkWriter;
 
 namespace bison {
 
+class BvContentsOriginMatcher;
 class BvFormDatabaseService;
 class BvQuotaManagerBridge;
 
@@ -84,7 +88,12 @@ class BvBrowserContext : public content::BrowserContext,
   // TODO(amalova): implement for non-default browser context
   bool IsDefaultBrowserContext() { return true; }
 
-  // BrowserContext implementation.
+  base::android::ScopedJavaLocalRef<jobjectArray>
+  UpdateServiceWorkerXRequestedWithAllowListOriginMatcher(
+      JNIEnv* env,
+      const base::android::JavaParamRef<jobjectArray>& rules);
+
+  // content::BrowserContext implementation.
   base::FilePath GetPath() override;
   bool IsOffTheRecord() override;
   content::ResourceContext* GetResourceContext() override;
@@ -100,11 +109,12 @@ class BvBrowserContext : public content::BrowserContext,
       override;
   content::ClientHintsControllerDelegate* GetClientHintsControllerDelegate()
       override;
-  variations::VariationsClient* GetVariationsClient() override;
   content::BackgroundFetchDelegate* GetBackgroundFetchDelegate() override;
   content::BackgroundSyncController* GetBackgroundSyncController() override;
   content::BrowsingDataRemoverDelegate* GetBrowsingDataRemoverDelegate()
       override;
+  content::ReduceAcceptLanguageControllerDelegate*
+  GetReduceAcceptLanguageControllerDelegate() override;
   download::InProgressDownloadManager* RetriveInProgressDownloadManager()
       override;
   std::unique_ptr<content::ZoomLevelDelegate> CreateZoomLevelDelegate(
@@ -126,6 +136,8 @@ class BvBrowserContext : public content::BrowserContext,
 
   base::android::ScopedJavaLocalRef<jobject> GetJavaBrowserContext();
 
+  scoped_refptr<BvContentsOriginMatcher> service_worker_xrw_allowlist_matcher();
+
  private:
   void CreateUserPrefService();
   void MigrateLocalStatePrefs();
@@ -144,9 +156,12 @@ class BvBrowserContext : public content::BrowserContext,
   std::unique_ptr<PrefService> user_pref_service_;
   std::unique_ptr<BvSSLHostStateDelegate> ssl_host_state_delegate_;
   std::unique_ptr<content::PermissionControllerDelegate> permission_manager_;
-  std::unique_ptr<variations::VariationsClient> variations_client_;
+  std::unique_ptr<content::ClientHintsControllerDelegate>
+      client_hints_controller_delegate_;
 
   SimpleFactoryKey simple_factory_key_;
+
+  scoped_refptr<BvContentsOriginMatcher> service_worker_xrw_allowlist_matcher_;
 
   base::android::ScopedJavaGlobalRef<jobject> obj_;
 };

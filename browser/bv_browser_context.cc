@@ -4,6 +4,7 @@
 
 #include "bison/bison_jni_headers/BvBrowserContext_jni.h"
 #include "bison/browser/bv_browser_process.h"
+#include "bison/browser/bv_client_hints_controller_delegate.h"
 #include "bison/browser/bv_content_browser_client.h"
 #include "bison/browser/bv_download_manager_delegate.h"
 #include "bison/browser/bv_form_database_service.h"
@@ -46,8 +47,6 @@
 #include "components/safe_browsing/core/common/safe_browsing_prefs.h"
 #include "components/url_formatter/url_fixer.h"
 #include "components/user_prefs/user_prefs.h"
-#include "components/variations/variations_client.h"
-#include "components/variations/variations_ids_provider.h"
 #include "components/visitedlink/browser/visitedlink_writer.h"
 #include "content/public/browser/browser_task_traits.h"
 #include "content/public/browser/browser_thread.h"
@@ -136,55 +135,17 @@ void MigrateProfileData(base::FilePath cache_path,
   migrate_context_storage_data("webrtc_event_logs");
 }
 
-bool ShouldSendVariationsHeaders() {
-  // Note: Normally, checking the feature second is preferred to avoid tagging
-  // clients with the trial that are not participating in the behavior. However,
-  // doing so reveals the shouldSendVariationsHeaders() result for the clients
-  // where it's true, which would require carefully considering the implications
-  // of. This can be revisited later.
-  return base::FeatureList::IsEnabled(
-             features::kWebViewSendVariationsHeaders) &&
-         Java_BvBrowserContext_shouldSendVariationsHeaders(
-             base::android::AttachCurrentThread());
-}
-
-class BvVariationsClient : public variations::VariationsClient {
- public:
-  explicit BvVariationsClient(content::BrowserContext* browser_context)
-      : browser_context_(browser_context),
-        should_send_headers_(ShouldSendVariationsHeaders()) {}
-
-  ~BvVariationsClient() override = default;
-
-  bool IsOffTheRecord() const override {
-    return browser_context_->IsOffTheRecord();
-  }
-
-  variations::mojom::VariationsHeadersPtr GetVariationsHeaders()
-      const override {
-    if (!should_send_headers_)
-      return nullptr;
-
-    const bool is_signed_in = false;
-    DCHECK_EQ(
-        variations::VariationsIdsProvider::Mode::kDontSendSignedInVariations,
-        variations::VariationsIdsProvider::GetInstance()->mode());
-    return variations::VariationsIdsProvider::GetInstance()
-        ->GetClientDataHeaders(is_signed_in);
-  }
-
- private:
-  raw_ptr<content::BrowserContext> browser_context_;
-  bool should_send_headers_;
-};
-
 }  // namespace
 
 BvBrowserContext::BvBrowserContext()
     : context_storage_path_(GetContextStoragePath()),
-      simple_factory_key_(GetPath(), IsOffTheRecord()) {
+      simple_factory_key_(GetPath(), IsOffTheRecord()),
+      service_worker_xrw_allowlist_matcher_(
+          base::MakeRefCounted<BvContentsOriginMatcher>()) {
   DCHECK(!g_browser_context);
 
+  profile_metrics::SetBrowserProfileType(
+      this, profile_metrics::BrowserProfileType::kRegular);
   if (IsDefaultBrowserContext()) {
     MigrateProfileData(GetCacheDir(), GetContextStoragePath());
   }
@@ -229,7 +190,7 @@ BvBrowserContext* BvBrowserContext::FromWebContents(
 base::FilePath BvBrowserContext::GetCacheDir() {
   FilePath cache_path;
   if (!base::PathService::Get(base::DIR_CACHE, &cache_path)) {
-    NOTREACHED() << "Failed to get app cache directory for Android WebView";
+    NOTREACHED() << "Failed to get app cache directory for BisonView";
   }
   cache_path = cache_path.Append(FILE_PATH_LITERAL("Default"))
                    .Append(FILE_PATH_LITERAL("HTTP Cache"));
@@ -295,7 +256,7 @@ void BvBrowserContext::CreateUserPrefService() {
 
   PrefServiceFactory pref_service_factory;
 
-  std::set<std::string> persistent_prefs;
+  PrefNameSet persistent_prefs;
   // Persisted to avoid having to provision MediaDrm every time the
   // application tries to play protected content after restart.
   persistent_prefs.insert(cdm::prefs::kMediaDrmStorage);
@@ -331,7 +292,7 @@ void BvBrowserContext::MigrateLocalStatePrefs() {
   }
 
   user_pref_service_->Set(cdm::prefs::kMediaDrmStorage,
-                          *(local_state->Get(cdm::prefs::kMediaDrmStorage)));
+                          local_state->GetValue(cdm::prefs::kMediaDrmStorage));
   local_state->ClearPref(cdm::prefs::kMediaDrmStorage);
 }
 
@@ -438,13 +399,11 @@ BvBrowserContext::GetPermissionControllerDelegate() {
 
 content::ClientHintsControllerDelegate*
 BvBrowserContext::GetClientHintsControllerDelegate() {
-  return nullptr;
-}
-
-variations::VariationsClient* BvBrowserContext::GetVariationsClient() {
-  if (!variations_client_)
-    variations_client_ = std::make_unique<BvVariationsClient>(this);
-  return variations_client_.get();
+  if (!client_hints_controller_delegate_.get()) {
+    client_hints_controller_delegate_ =
+        std::make_unique<BvClientHintsControllerDelegate>();
+  }
+  return client_hints_controller_delegate_.get();
 }
 
 content::BackgroundFetchDelegate*
@@ -459,6 +418,11 @@ BvBrowserContext::GetBackgroundSyncController() {
 
 content::BrowsingDataRemoverDelegate*
 BvBrowserContext::GetBrowsingDataRemoverDelegate() {
+  return nullptr;
+}
+
+content::ReduceAcceptLanguageControllerDelegate*
+BvBrowserContext::GetReduceAcceptLanguageControllerDelegate() {
   return nullptr;
 }
 
@@ -575,6 +539,11 @@ BvBrowserContext::GetJavaBrowserContext() {
 
 jlong BvBrowserContext::GetQuotaManagerBridge(JNIEnv* env) {
   return reinterpret_cast<intptr_t>(GetQuotaManagerBridge());
+}
+
+scoped_refptr<BvContentsOriginMatcher>
+BvBrowserContext::service_worker_xrw_allowlist_matcher() {
+  return service_worker_xrw_allowlist_matcher_;
 }
 
 }  // namespace bison

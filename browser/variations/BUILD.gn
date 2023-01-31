@@ -1,5 +1,4 @@
 source_set("variations") {
-  # jiang 这里还有点问题
   sources = [
     "bv_variations_service_client.cc",
     "bv_variations_service_client.h",

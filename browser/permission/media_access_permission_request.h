@@ -19,6 +19,11 @@ class MediaAccessPermissionRequest : public BvPermissionRequestDelegate {
  public:
   MediaAccessPermissionRequest(const content::MediaStreamRequest& request,
                                content::MediaResponseCallback callback);
+
+  MediaAccessPermissionRequest(const MediaAccessPermissionRequest&) = delete;
+  MediaAccessPermissionRequest& operator=(const MediaAccessPermissionRequest&) =
+      delete;
+
   ~MediaAccessPermissionRequest() override;
 
   // BvPermissionRequestDelegate implementation.
@@ -35,8 +40,6 @@ class MediaAccessPermissionRequest : public BvPermissionRequestDelegate {
   // For test only.
   blink::MediaStreamDevices audio_test_devices_;
   blink::MediaStreamDevices video_test_devices_;
-
-
 };
 
 }  // namespace bison

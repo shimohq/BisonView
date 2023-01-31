@@ -27,6 +27,10 @@ class PermissionRequestHandler : public content::WebContentsObserver {
  public:
   PermissionRequestHandler(PermissionRequestHandlerClient* client,
                            content::WebContents* bison_contents);
+
+  PermissionRequestHandler(const PermissionRequestHandler&) = delete;
+  PermissionRequestHandler& operator=(const PermissionRequestHandler&) = delete;
+
   ~PermissionRequestHandler() override;
 
   // Send the given |request| to PermissionRequestHandlerClient.
@@ -62,7 +66,7 @@ class PermissionRequestHandler : public content::WebContentsObserver {
   // Return true if |origin| were preauthorized to access |resources|.
   bool Preauthorized(const GURL& origin, int64_t resources);
 
-  PermissionRequestHandlerClient* client_;
+  raw_ptr<PermissionRequestHandlerClient> client_;
 
   // A list of ongoing requests.
   std::vector<base::WeakPtr<BvPermissionRequest>> requests_;
@@ -72,8 +76,6 @@ class PermissionRequestHandler : public content::WebContentsObserver {
   // The unique id of the active NavigationEntry of the WebContents that we were
   // opened for. Used to help expire on requests.
   int contents_unique_id_;
-
-
 };
 
 }  // namespace bison

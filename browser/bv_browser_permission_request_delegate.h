@@ -3,8 +3,9 @@
 #ifndef BISON_BROWSER_BISON_BROWSER_PERMISSION_REQUEST_DELEGATE_H_
 #define BISON_BROWSER_BISON_BROWSER_PERMISSION_REQUEST_DELEGATE_H_
 
-#include "base/callback_forward.h"
 #include "bison/browser/permission/permission_callback.h"
+
+#include "base/callback_forward.h"
 #include "url/gurl.h"
 
 namespace bison {

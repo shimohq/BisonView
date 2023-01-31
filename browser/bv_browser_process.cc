@@ -148,4 +148,9 @@ void BvBrowserProcess::OnAuthPrefsChanged() {
       CreateHttpAuthDynamicParams());
 }
 
+EnterpriseAuthenticationAppLinkManager*
+BvBrowserProcess::GetEnterpriseAuthenticationAppLinkManager() {
+  return app_link_manager_.get();
+}
+
 }  // namespace bison

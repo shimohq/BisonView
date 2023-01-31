@@ -14,6 +14,7 @@
 #include "base/android/jni_string.h"
 #include "base/android/scoped_java_ref.h"
 #include "base/location.h"
+#include "base/logging.h"
 #include "base/memory/ptr_util.h"
 #include "base/no_destructor.h"
 #include "base/strings/string_util.h"
@@ -143,7 +144,7 @@ void BvWebContentsDelegate::AddNewContents(
     std::unique_ptr<WebContents> new_contents,
     const GURL& target_url,
     WindowOpenDisposition disposition,
-    const gfx::Rect& initial_rect,
+    const blink::mojom::WindowFeatures& window_features,
     bool user_gesture,
     bool* was_blocked) {
   JNIEnv* env = AttachCurrentThread();
@@ -165,7 +166,6 @@ void BvWebContentsDelegate::AddNewContents(
     // it. The source BvContents takes ownership of the new WebContents
     // until then, and when the callback is made we will swap the WebContents
     // out into the new BvContents.
-
     WebContents* raw_new_contents = new_contents.get();
     BvContents::FromWebContents(source)->SetPendingWebContentsForPopup(
         std::move(new_contents));
@@ -257,7 +257,7 @@ void BvWebContentsDelegate::RequestMediaAccessPermission(
   BvContents* bv_contents = BvContents::FromWebContents(web_contents);
   if (!bv_contents) {
     std::move(callback).Run(
-        blink::mojom::StreamDevices(),
+        blink::mojom::StreamDevicesSet(),
         blink::mojom::MediaStreamRequestResult::FAILED_DUE_TO_SHUTDOWN,
         nullptr);
     return;
@@ -295,7 +295,7 @@ void BvWebContentsDelegate::UpdateUserGestureCarryoverInfo(
   auto* intercept_navigation_delegate =
       navigation_interception::InterceptNavigationDelegate::Get(web_contents);
   if (intercept_navigation_delegate)
-    intercept_navigation_delegate->UpdateLastUserGestureCarryoverTimestamp();
+    intercept_navigation_delegate->OnResourceRequestWithGesture();
 }
 
 scoped_refptr<content::FileSelectListener>
@@ -338,8 +338,11 @@ static void JNI_BvWebContentsDelegate_FilesSelectedInChooser(
   files.reserve(file_path_str.size());
   for (size_t i = 0; i < file_path_str.size(); ++i) {
     GURL url(file_path_str[i]);
-    if (!url.is_valid())
+    if (!url.is_valid()) {
+      LOG(ERROR) << "The file choice request has an invalid Uri: "
+                 << file_path_str[i];
       continue;
+    }
     base::FilePath path;
     if (url.SchemeIsFile()) {
       if (!net::FileURLToFilePath(url, &path))

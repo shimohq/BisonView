@@ -6,6 +6,7 @@
 #include "bison/browser/bv_browser_context.h"
 #include "bison/browser/bv_content_browser_client.h"
 #include "bison/browser/bv_contents.h"
+#include "bison/browser/bv_contents_origin_matcher.h"
 #include "bison/browser/bv_dark_mode.h"
 #include "bison/browser/renderer_host/bv_render_view_host_ext.h"
 #include "bison/common/bv_content_client.h"
@@ -125,20 +126,20 @@ bool BvSettings::GetAllowSniffingFileUrls() {
 
 BvSettings::RequestedWithHeaderMode
 BvSettings::GetDefaultRequestedWithHeaderMode() {
-  if (base::FeatureList::IsEnabled(features::kWebViewXRequestedWithHeader)) {
-    int configuredValue = features::kWebViewXRequestedWithHeaderMode.Get();
-    switch (configuredValue) {
-      case BvSettings::RequestedWithHeaderMode::CONSTANT_WEBVIEW:
-        return BvSettings::RequestedWithHeaderMode::CONSTANT_WEBVIEW;
-      case BvSettings::RequestedWithHeaderMode::NO_HEADER:
-        return BvSettings::RequestedWithHeaderMode::NO_HEADER;
-      default:
-        // If the field trial config is broken for some reason, use the
-        // package name, since the feature is still enabled.
-        return BvSettings::RequestedWithHeaderMode::APP_PACKAGE_NAME;
-    }
-  } else {
-    return BvSettings::RequestedWithHeaderMode::NO_HEADER;
+  if (!base::FeatureList::IsEnabled(
+          features::kWebViewXRequestedWithHeaderControl))
+    return BvSettings::RequestedWithHeaderMode::APP_PACKAGE_NAME;
+
+  int configuredValue = features::kWebViewXRequestedWithHeaderMode.Get();
+  switch (configuredValue) {
+    case BvSettings::RequestedWithHeaderMode::CONSTANT_WEBVIEW:
+      return BvSettings::RequestedWithHeaderMode::CONSTANT_WEBVIEW;
+    case BvSettings::RequestedWithHeaderMode::NO_HEADER:
+      return BvSettings::RequestedWithHeaderMode::NO_HEADER;
+    default:
+      // If the field trial config is broken for some reason, use the
+      // package name, since the feature is still enabled.
+      return BvSettings::RequestedWithHeaderMode::APP_PACKAGE_NAME;
   }
 }
 
@@ -329,7 +330,7 @@ void BvSettings::UpdateMixedContentModeLocked(
     return;
 
   mixed_content_mode_ = static_cast<MixedContentMode>(
-      Java_AwSettings_getMixedContentMode(env, obj));
+      Java_BvSettings_getMixedContentMode(env, obj));
 }
 
 void BvSettings::RenderViewHostChanged(content::RenderViewHost* old_host,

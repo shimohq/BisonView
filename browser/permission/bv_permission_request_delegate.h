@@ -13,6 +13,11 @@ namespace bison {
 class BvPermissionRequestDelegate {
  public:
   BvPermissionRequestDelegate();
+
+  BvPermissionRequestDelegate(const BvPermissionRequestDelegate&) = delete;
+  BvPermissionRequestDelegate& operator=(const BvPermissionRequestDelegate&) =
+      delete;
+
   virtual ~BvPermissionRequestDelegate();
 
   // Get the origin which initiated the permission request.

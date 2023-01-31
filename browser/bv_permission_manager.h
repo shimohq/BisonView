@@ -22,6 +22,10 @@ class LastRequestResultCache;
 class BvPermissionManager : public content::PermissionControllerDelegate {
  public:
   BvPermissionManager();
+
+  BvPermissionManager(const BvPermissionManager&) = delete;
+  BvPermissionManager& operator=(const BvPermissionManager&) = delete;
+
   ~BvPermissionManager() override;
 
   // PermissionControllerDelegate implementation.
@@ -54,6 +58,9 @@ class BvPermissionManager : public content::PermissionControllerDelegate {
       blink::PermissionType permission,
       const GURL& requesting_origin,
       const GURL& embedding_origin) override;
+  content::PermissionResult GetPermissionResultForOriginWithoutContext(
+      blink::PermissionType permission,
+      const url::Origin& origin) override;
   blink::mojom::PermissionStatus GetPermissionStatusForCurrentDocument(
       blink::PermissionType permission,
       content::RenderFrameHost* render_frame_host) override;
