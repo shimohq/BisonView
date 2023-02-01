@@ -20,10 +20,6 @@ namespace content {
 class WebContents;
 }
 
-namespace net {
-class URLRequest;
-}
-
 namespace bison {
 
 class BvWebResourceInterceptResponse;
@@ -106,7 +102,6 @@ class BvContentsIoThreadClient {
   // This method is called on the IO thread only.
   using ShouldInterceptRequestResponseCallback = base::OnceCallback<void(
       std::unique_ptr<BvWebResourceInterceptResponse>)>;
-  // jiang947 暂时先注释
   using OverrideRequestRequestCallback =
       base::OnceCallback<void(std::unique_ptr<BvWebResourceOverrideRequest>)>;
 

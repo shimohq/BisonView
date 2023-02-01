@@ -7,13 +7,8 @@ import("//build/config/sanitizers/sanitizers.gni")
 import("//components/gwp_asan/buildflags/buildflags.gni")
 import("//components/spellcheck/spellcheck_build_features.gni")
 import("//device/vr/buildflags/buildflags.gni")
-import("//gpu/vulkan/features.gni")
-import("//media/media_options.gni")
-import("//mojo/public/tools/bindings/mojom.gni")
 import("//pdf/features.gni")
 import("//printing/buildflags/buildflags.gni")
-import("//third_party/icu/config.gni")
-import("//tools/grit/grit_rule.gni")
 import("//tools/grit/repack.gni")
 import("//tools/resources/generate_resource_allowlist.gni")
 import("//tools/v8_context_snapshot/v8_context_snapshot.gni")
@@ -279,7 +274,6 @@ android_library("bison_java") {
     ":generate_sandboxed_service_srcjar",
     "browser:browser_enums",
   ]
-
   deps = [
     ":bison_aar_manifest",
     ":bison_aar_resources",
@@ -311,13 +305,8 @@ android_library("bison_java") {
     "//net/android:net_java",
     "//services/network/public/mojom:mojom_java",
     "//services/network/public/mojom:url_loader_base_java",
-
-    # "//services/device/public/mojom",
-    "//third_party/androidx:androidx_annotation_annotation_java",
-
-    # "//third_party/androidx:androidx_appcompat_appcompat_java",
-    # androidx.core.graphics.ColorUtils
     "//third_party/android_deps:protobuf_lite_runtime_java",
+    "//third_party/androidx:androidx_annotation_annotation_java",
     "//third_party/androidx:androidx_core_core_java",
     "//third_party/blink/public:blink_headers_java",
     "//third_party/blink/public/common:common_java",
@@ -325,8 +314,8 @@ android_library("bison_java") {
     "//ui/android:ui_java",
     "//url:gurl_java",
   ]
-
   annotation_processor_deps = [ "//base/android/jni_generator:jni_processor" ]
+
   if (enable_spellcheck) {
     deps += [ "//components/spellcheck/browser/android:java" ]
   }
@@ -422,7 +411,6 @@ repack("repack_pack") {
     "$target_gen_dir/mojo_bindings_resources.pak",  # generate_mojo_resources
     "$target_gen_dir/webui_generated_resources.pak",  #generate_webui_resources
   ]
-
   deps = [
     ":generate_components_resources",
     ":generate_mojo_resources",
@@ -432,8 +420,35 @@ repack("repack_pack") {
     "//third_party/blink/public:devtools_inspector_resources",
     "//third_party/blink/public:resources",
   ]
-
   output = "$target_gen_dir/resources.pak"
+}
+
+repack("repack_100_percent") {
+  sources = [
+    "$root_gen_dir/third_party/blink/public/resources/blink_scaled_resources_100_percent.pak",
+    "$root_gen_dir/ui/resources/ui_resources_100_percent.pak",
+  ]
+  deps = [
+    "//third_party/blink/public:scaled_resources_100_percent",
+    "//ui/resources",
+  ]
+  output = "$target_gen_dir/chrome_100_percent.pak"
+}
+
+android_assets("pak_file_assets") {
+  renaming_sources = [
+    "$target_gen_dir/chrome_100_percent.pak",
+    "$target_gen_dir/resources.pak",
+  ]
+  renaming_destinations = [
+    "bison/chrome_100_percent.pak",
+    "bison/resources.pak",
+  ]
+  deps = [
+    ":repack_100_percent",
+    ":repack_pack",
+  ]
+  disable_compression = true
 }
 
 grit("generate_webui_resources") {
@@ -535,34 +550,6 @@ grit("generate_components_resources") {
       "//components/safe_browsing/content/resources:make_file_types_protobuf",
     ]
   }
-}
-
-repack("repack_100_percent") {
-  sources = [
-    "$root_gen_dir/third_party/blink/public/resources/blink_scaled_resources_100_percent.pak",
-    "$root_gen_dir/ui/resources/ui_resources_100_percent.pak",
-  ]
-  deps = [
-    "//third_party/blink/public:scaled_resources_100_percent",
-    "//ui/resources",
-  ]
-  output = "$target_gen_dir/chrome_100_percent.pak"
-}
-
-android_assets("pak_file_assets") {
-  renaming_sources = [
-    "$target_gen_dir/chrome_100_percent.pak",
-    "$target_gen_dir/resources.pak",
-  ]
-  renaming_destinations = [
-    "bison/chrome_100_percent.pak",
-    "bison/resources.pak",
-  ]
-  deps = [
-    ":repack_100_percent",
-    ":repack_pack",
-  ]
-  disable_compression = true
 }
 
 android_assets("bison_icu_assets") {

@@ -100,6 +100,7 @@ BvContentsClientBridge::BvContentsClientBridge(JNIEnv* env,
 
 BvContentsClientBridge::~BvContentsClientBridge() {
   JNIEnv* env = AttachCurrentThread();
+
   ScopedJavaLocalRef<jobject> obj = java_ref_.get(env);
   if (obj) {
     Java_BvContentsClientBridge_setNativeContentsClientBridge(env, obj, 0);

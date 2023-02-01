@@ -10,8 +10,41 @@ index a6b18dea12365..e09e826ad13e0 100644
        "//device:device_junit_tests",
        "//media/gpu:video_decode_accelerator_unittest",
        "//net/android:net_junit_tests",
+diff --git a/base/android/java/src/org/chromium/base/ApkAssets.java b/base/android/java/src/org/chromium/base/ApkAssets.java
+index 4eaf5dd9890c3..7a7102c07b222 100644
+--- a/base/android/java/src/org/chromium/base/ApkAssets.java
++++ b/base/android/java/src/org/chromium/base/ApkAssets.java
+@@ -27,12 +27,13 @@ public class ApkAssets {
+     @CalledByNative
+     public static long[] open(String fileName, String splitName) {
+         AssetFileDescriptor afd = null;
++        Log.e(LOGTAG, "ApkAssets.open fileName:" + fileName);
+         try {
+             Context context = ContextUtils.getApplicationContext();
+-            if (!TextUtils.isEmpty(splitName)
+-                    && BundleUtils.isIsolatedSplitInstalled(context, splitName)) {
+-                context = BundleUtils.createIsolatedSplitContext(context, splitName);
+-            }
++            // if (!TextUtils.isEmpty(splitName)
++            //         && BundleUtils.isIsolatedSplitInstalled(context, splitName)) {
++            //     context = BundleUtils.createIsolatedSplitContext(context, splitName);
++            // }
+             AssetManager manager = context.getAssets();
+             afd = manager.openNonAssetFd(fileName);
+             return new long[] {afd.getParcelFileDescriptor().detachFd(), afd.getStartOffset(),
+@@ -50,7 +51,10 @@ public class ApkAssets {
+             // found, and the empty string also wouldn't give any useful information for debugging).
+             if (!e.getMessage().equals("") && !e.getMessage().equals(fileName)) {
+                 Log.e(LOGTAG, "Error while loading asset " + fileName + ": " + e);
++            } else {
++                Log.e(LOGTAG, "ApkAssets.open " + fileName + ": " + e);
+             }
++
+             return new long[] {-1, -1, -1};
+         } finally {
+             try {
 diff --git a/base/i18n/icu_util.cc b/base/i18n/icu_util.cc
-index cce9f358e144e..e52b39c927b6f 100644
+index cce9f358e144e..98f1c20f7d7f1 100644
 --- a/base/i18n/icu_util.cc
 +++ b/base/i18n/icu_util.cc
 @@ -116,7 +116,7 @@ const char kLegacyIcuTimeZoneDataDir[] = "/config/data/tzdata/icu/44/le";
@@ -23,6 +56,14 @@ index cce9f358e144e..e52b39c927b6f 100644
  #endif  // BUILDFLAG(IS_ANDROID)
  
  // File handle intentionally never closed. Not using File here because its
+@@ -141,6 +141,7 @@ void LazyInitIcuDataFile() {
+       android::OpenApkAsset(kAndroidAssetsIcuDataFileName, &g_icudtl_region);
+   g_icudtl_pf = fd;
+   if (fd != -1) {
++    VLOG(0) << "open file:" << kAndroidAssetsIcuDataFileName << " fail";
+     return;
+   }
+ #endif  // BUILDFLAG(IS_ANDROID)
 diff --git a/base/threading/thread_restrictions.h b/base/threading/thread_restrictions.h
 index 981370f9fffb6..f42f1c1910237 100644
 --- a/base/threading/thread_restrictions.h
@@ -69,8 +110,74 @@ index cfa800eb9fc77..43eb4807e8f63 100644
    /* Actions on Google Hardware, used in Google-internal code. */        \
    X("aogh")                                                              \
    X("audio")                                                             \
+diff --git a/content/browser/v8_snapshot_files.cc b/content/browser/v8_snapshot_files.cc
+index 9569c07c91381..acdd9b2dc6a9e 100644
+--- a/content/browser/v8_snapshot_files.cc
++++ b/content/browser/v8_snapshot_files.cc
+@@ -19,15 +19,27 @@ std::map<std::string, base::FilePath> GetV8SnapshotFilesToPreload() {
+            base::FilePath(FILE_PATH_LITERAL("snapshot_blob.bin"))}};
+ #endif
+ #elif BUILDFLAG(IS_ANDROID)
+-#if !defined(USE_V8_CONTEXT_SNAPSHOT)
++
++#if defined(USE_V8_CONTEXT_SNAPSHOT)
++  return {
++      {kV8Snapshot64DataDescriptor,
++       base::FilePath(FILE_PATH_LITERAL("assets/v8_context_snapshot_64.bin"))},
++      {kV8Snapshot32DataDescriptor,
++       base::FilePath(FILE_PATH_LITERAL("assets/v8_context_snapshot_32.bin"))}};
++#else
++#if defined(ARCH_CPU_ARM_FAMILY)
+   return {{kV8Snapshot64DataDescriptor,
+-           base::FilePath(FILE_PATH_LITERAL("assets/snapshot_blob_64.bin"))},
++           base::FilePath(FILE_PATH_LITERAL("assets/bison/arm/snapshot_blob_64.bin"))},
+           {kV8Snapshot32DataDescriptor,
+-           base::FilePath(FILE_PATH_LITERAL("assets/snapshot_blob_32.bin"))}};
+-#elif defined(USE_V8_CONTEXT_SNAPSHOT)
+-  // For USE_V8_CONTEXT_SNAPSHOT, the renderer reads the files directly.
+-  return {};
++           base::FilePath(FILE_PATH_LITERAL("assets/bison/arm/snapshot_blob_32.bin"))}};
++#else   // ARCH_CPU_X86_FAMILY
++  return {{kV8Snapshot64DataDescriptor,
++           base::FilePath(FILE_PATH_LITERAL("assets/bison/x86/snapshot_blob_64.bin"))},
++          {kV8Snapshot32DataDescriptor,
++           base::FilePath(FILE_PATH_LITERAL("assets/bison/x86/snapshot_blob_32.bin"))}};
++#endif  // defined(ARCH_CPU_ARM_FAMILY)
+ #endif
++
+ #else
+   return {};
+ #endif
+diff --git a/content/shell/android/BUILD.gn b/content/shell/android/BUILD.gn
+index 4a585ac39c907..683e0a700429f 100644
+--- a/content/shell/android/BUILD.gn
++++ b/content/shell/android/BUILD.gn
+@@ -173,14 +173,17 @@ android_assets("content_shell_assets") {
+   sources = [ "$root_out_dir/content_shell.pak" ]
+   disable_compression = true
+   deps = [
++    # "//third_party/icu:icu_assets",
++    "//bison:bison_icu_assets",
++    "//bison:bison_v8_snapshot_assets",
+     "//content/shell:pak",
+-    "//third_party/icu:icu_assets",
+   ]
+-  if (use_v8_context_snapshot) {
+-    deps += [ "//tools/v8_context_snapshot:v8_context_snapshot_assets" ]
+-  } else {
+-    deps += [ "//v8:v8_external_startup_data_assets" ]
+-  }
++
++  # if (use_v8_context_snapshot) {
++  #   deps += [ "//tools/v8_context_snapshot:v8_context_snapshot_assets" ]
++  # } else {
++  #   deps += [ "//v8:v8_external_startup_data_assets" ]
++  # }
+ }
+ 
+ template("content_shell_apk_tmpl") {
 diff --git a/gin/v8_initializer.cc b/gin/v8_initializer.cc
-index ec89b58257d26..2222fb850fe73 100644
+index ec89b58257d26..5dc42564f8888 100644
 --- a/gin/v8_initializer.cc
 +++ b/gin/v8_initializer.cc
 @@ -122,7 +122,14 @@ void GetV8FilePath(const char* file_name, base::FilePath* path_out) {
@@ -89,6 +196,14 @@ index ec89b58257d26..2222fb850fe73 100644
  #elif BUILDFLAG(IS_MAC)
    base::ScopedCFTypeRef<CFStringRef> bundle_resource(
        base::SysUTF8ToCFStringRef(file_name));
+@@ -165,6 +172,7 @@ base::File OpenV8File(const char* file_name,
+   GetV8FilePath(file_name, &path);
+ 
+ #if BUILDFLAG(IS_ANDROID)
++  VLOG(0) << "base::android::OpenApkAsset:" << path.value();
+   base::File file(base::android::OpenApkAsset(path.value(), region_out));
+   OpenV8FileResult result = file.IsValid() ? OpenV8FileResult::OPENED
+                                            : OpenV8FileResult::FAILED_OTHER;
 diff --git a/third_party/blink/public/common/BUILD.gn b/third_party/blink/public/common/BUILD.gn
 index a1ec4a5129ad5..df6e8b679bc9e 100644
 --- a/third_party/blink/public/common/BUILD.gn

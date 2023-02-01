@@ -2,6 +2,7 @@
 #include "bison/browser/bv_browser_process.h"
 
 #include "bison/browser/bv_browser_context.h"
+#include "bison/browser/bv_enterprise_authentication_app_link_manager.h"
 #include "bison/browser/lifecycle/bv_contents_lifecycle_notifier.h"
 #include "bison/browser/metrics/visibility_metrics_logger.h"
 
@@ -52,6 +53,9 @@ BvBrowserProcess::BvBrowserProcess(
   bv_contents_lifecycle_notifier_ =
       std::make_unique<BvContentsLifecycleNotifier>(base::BindRepeating(
           &BvBrowserProcess::OnLoseForeground, base::Unretained(this)));
+
+  app_link_manager_ =
+      absl::make_unique<EnterpriseAuthenticationAppLinkManager>(local_state());
 }
 
 BvBrowserProcess::~BvBrowserProcess() {

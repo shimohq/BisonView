@@ -11,7 +11,7 @@
 namespace bison {
 
 BvDownloadManagerDelegate::BvDownloadManagerDelegate() = default;
-BvDownloadManagerDelegate::~BvDownloadManagerDelegate() {}
+BvDownloadManagerDelegate::~BvDownloadManagerDelegate() = default;
 
 bool BvDownloadManagerDelegate::InterceptDownloadIfApplicable(
     const GURL& url,

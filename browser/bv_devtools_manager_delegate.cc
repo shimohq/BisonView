@@ -1,11 +1,10 @@
 #include "bison/browser/bv_devtools_manager_delegate.h"
 
-#include "base/json/json_writer.h"
-#include "base/memory/ptr_util.h"
-#include "base/strings/stringprintf.h"
-#include "base/strings/utf_string_conversions.h"
 // #include "bison/browser/gfx/browser_view_renderer.h"
 #include "bison/common/bv_content_client.h"
+#include "base/json/json_writer.h"
+#include "base/memory/ptr_util.h"
+#include "base/strings/utf_string_conversions.h"
 #include "content/public/browser/devtools_agent_host.h"
 #include "content/public/browser/web_contents.h"
 

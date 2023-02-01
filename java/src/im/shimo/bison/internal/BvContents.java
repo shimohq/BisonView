@@ -187,6 +187,7 @@ public class BvContents implements SmartClipProvider {
 
     /**
      * Visual state callback, see {@link #insertVisualStateCallback} for details.
+     *
      */
     @VisibleForTesting
     public abstract static class VisualStateCallback {
@@ -391,8 +392,7 @@ public class BvContents implements SmartClipProvider {
 
     private class InterceptNavigationDelegateImpl extends InterceptNavigationDelegate {
         @Override
-        public boolean shouldIgnoreNavigation(NavigationHandle navigationHandle, GURL escapedUrl,
-                boolean applyUserGestureCarryover) {
+        public boolean shouldIgnoreNavigation(NavigationHandle navigationHandle, GURL escapedUrl) {
             if (!navigationHandle.isRendererInitiated()) {
                 GURL url = navigationHandle.getBaseUrlForDataUrl().isEmpty()
                         ? navigationHandle.getUrl()

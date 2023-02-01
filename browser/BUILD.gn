@@ -20,8 +20,6 @@ source_set("browser") {
     "bv_browser_context.h",
     "bv_browser_main_parts.cc",
     "bv_browser_main_parts.h",
-
-    # 顺序修改到这了
     "bv_browser_permission_request_delegate.h",
     "bv_browser_policy_connector.cc",
     "bv_browser_policy_connector.h",
@@ -36,6 +34,8 @@ source_set("browser") {
     "bv_content_browser_client_receiver_bindings.cc",
     "bv_contents.cc",
     "bv_contents.h",
+
+    # 顺序修改到这了
     "bv_contents_client_bridge.cc",
     "bv_contents_client_bridge.h",
     "bv_contents_io_thread_client.cc",
@@ -73,6 +73,8 @@ source_set("browser") {
     "bv_media_url_interceptor.h",
     "bv_metrics_service_client_delegate.cc",
     "bv_metrics_service_client_delegate.h",
+
+    # new
     "bv_pdf_exporter.cc",
     "bv_pdf_exporter.h",
     "bv_permission_manager.cc",
