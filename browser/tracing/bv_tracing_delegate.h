@@ -5,6 +5,7 @@
 #include "content/public/browser/tracing_delegate.h"
 #include "third_party/abseil-cpp/absl/types/optional.h"
 
+class PrefRegistrySimple;
 
 namespace base {
 class Value;
@@ -16,6 +17,8 @@ class BvTracingDelegate : public content::TracingDelegate {
  public:
   BvTracingDelegate();
   ~BvTracingDelegate() override;
+
+  static void RegisterPrefs(PrefRegistrySimple* registry);
 
   // content::TracingDelegate implementation:
   bool IsAllowedToBeginBackgroundScenario(

@@ -6,13 +6,14 @@
 #include <utility>
 #include <vector>
 
-#include "components/metrics/metrics_service.h"
+//#include "components/metrics/metrics_service.h"
 
 #include "bison/browser/bv_browser_context.h"
 #include "bison/browser/bv_browser_process.h"
 #include "bison/browser/bv_feature_entries.h"
 #include "bison/browser/bv_metrics_service_client_delegate.h"
 #include "bison/browser/variations/variations_seed_loader.h"
+#include "bison/browser/tracing/bv_tracing_delegate.h"
 #include "bison/proto/bv_variations_seed.pb.h"
 
 #include "base/bind.h"
@@ -156,6 +157,7 @@ std::unique_ptr<PrefService> BvFeatureListCreator::CreatePrefService() {
   BvBrowserProcess::RegisterNetworkContextLocalStatePrefs(pref_registry.get());
   BvBrowserProcess::RegisterEnterpriseAuthenticationAppLinkPolicyPref(
       pref_registry.get());
+  BvTracingDelegate::RegisterPrefs(pref_registry.get());
 
   PrefServiceFactory pref_service_factory;
 

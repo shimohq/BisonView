@@ -150,16 +150,6 @@ public class BvBrowserContext {
         return new BvBrowserContext(sharedPreferences, nativeBvBrowserContext, isDefault);
     }
 
-    // jiang947
-    @CalledByNative
-    public static boolean shouldSendVariationsHeaders() {
-        // String packageId = PlatformServiceBridge.getInstance()
-        // .getFirstPartyVariationsHeadersEnabledPackageId();
-        // return !TextUtils.isEmpty(packageId)
-        // && packageId.equals(ContextUtils.getApplicationContext().getPackageName());
-        return false;
-    }
-
     @NativeMethods
     interface Natives {
         BvBrowserContext getDefaultJava();

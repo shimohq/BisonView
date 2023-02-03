@@ -127,7 +127,6 @@ public class BvContents implements SmartClipProvider {
     // The request code should be unique per BisonView/BvContents object.
     private static final int PROCESS_TEXT_REQUEST_CODE = 100;
 
-    private static String sCurrentLocales = "";
     private static final float ZOOM_CONTROLS_EPSILON = 0.007f;
 
     private static final Pattern sFileAndroidAssetPattern = Pattern.compile("^file:/*android_(asset|res).*");
@@ -259,6 +258,9 @@ public class BvContents implements SmartClipProvider {
     private boolean mIsDestroyed;
 
     private AutofillProvider mAutofillProvider;
+
+    private static String sCurrentLocales = "";
+
     private WebContentsInternals mWebContentsInternals;
 
     private JavascriptInjector mJavascriptInjector;
@@ -299,7 +301,8 @@ public class BvContents implements SmartClipProvider {
         // until we are done here.
         private final WindowAndroidWrapper mWindowAndroid;
 
-        private BisonContentsDestroyRunnable(long nativeBvContents, WindowAndroidWrapper windowAndroid) {
+        private BisonContentsDestroyRunnable(
+                long nativeBvContents, WindowAndroidWrapper windowAndroid) {
             mNativeBvContents = nativeBvContents;
             mWindowAndroid = windowAndroid;
         }
@@ -312,9 +315,8 @@ public class BvContents implements SmartClipProvider {
 
     private CleanupReference mCleanupReference;
 
-    // --------------------------------------------------------------------------------------------
+    //--------------------------------------------------------------------------------------------
     private class IoThreadClientImpl extends BvContentsIoThreadClient {
-
         // All methods are called on the IO thread.
 
         @Override
@@ -403,7 +405,7 @@ public class BvContents implements SmartClipProvider {
         }
     }
 
-    // --------------------------------------------------------------------------------------------
+    //--------------------------------------------------------------------------------------------
     private class LayoutSizerDelegate implements BvLayoutSizer.Delegate {
         @Override
         public void requestLayout() {
@@ -420,7 +422,8 @@ public class BvContents implements SmartClipProvider {
         @Override
         public boolean isLayoutParamsHeightWrapContent() {
             return mContainerView != null && mContainerView.getLayoutParams() != null
-                    && (mContainerView.getLayoutParams().height == ViewGroup.LayoutParams.WRAP_CONTENT);
+                    && (mContainerView.getLayoutParams().height
+                            == ViewGroup.LayoutParams.WRAP_CONTENT);
         }
 
         @Override
@@ -440,7 +443,10 @@ public class BvContents implements SmartClipProvider {
 
         @Override
         public void scrollContainerViewTo(int x, int y) {
-            mInternalAccessAdapter.super_scrollTo(x, y);
+            try {
+                mInternalAccessAdapter.super_scrollTo(x, y);
+            } catch (Throwable ignore) {
+            }
         }
 
         @Override
@@ -619,7 +625,8 @@ public class BvContents implements SmartClipProvider {
             Activity activity = ContextUtils.activityFromContext(context);
             if (activity != null) {
                 ActivityWindowAndroid activityWindow;
-                try (ScopedSysTraceEvent e2 = ScopedSysTraceEvent.scoped("BisonContents.createActivityWindow")) {
+                try (ScopedSysTraceEvent e2 =
+                                ScopedSysTraceEvent.scoped("BisonContents.createActivityWindow")) {
                     final boolean listenToActivityState = false;
                     activityWindow = new ActivityWindowAndroid(context, listenToActivityState,
                             IntentRequestTracker.createFromActivity(activity));
@@ -692,8 +699,7 @@ public class BvContents implements SmartClipProvider {
 
     @CalledByNativeUnchecked
     protected boolean onRenderProcessGone(int childProcessID, boolean crashed) {
-        if (isDestroyed(NO_WARN))
-            return false;
+        if (isDestroyed(NO_WARN))return true;
         return mContentsClient.onRenderProcessGone(new BvRenderProcessGoneDetail(crashed,
                 BvContentsJni.get().getEffectivePriority(mNativeBvContents, this)));
     }
@@ -706,8 +712,7 @@ public class BvContents implements SmartClipProvider {
     public void destroy() {
         if (TRACE)
             Log.i(TAG, "%s destroy", this);
-        if (isDestroyed(NO_WARN))
-            return;
+        if (isDestroyed(NO_WARN)) return;
         if (mContentViewRenderView != null) {
             mContentViewRenderView.destroy();
             mContentViewRenderView = null;
@@ -724,6 +729,12 @@ public class BvContents implements SmartClipProvider {
 
         // Remove pending messages
         mContentsClient.getCallbackHelper().removeCallbacksAndMessages();
+
+        if (mIsAttachedToWindow) {
+            Log.w(TAG, "BisonView.destroy() called while BisonView is still attached to window.");
+            // Need to call detach to avoid leaks because the real detach later will be ignored.
+            onDetachedFromWindow();
+        }
         mIsDestroyed = true;
         PostTask.postTask(UiThreadTaskTraits.DEFAULT, () -> destroyNatives());
     }
@@ -777,15 +788,16 @@ public class BvContents implements SmartClipProvider {
     }
 
     @VisibleForTesting
-    protected void onDestroyed() {
-    }
+    protected void onDestroyed() {}
 
     private boolean isDestroyed(int warnIfDestroyed) {
         if (mIsDestroyed && warnIfDestroyed == WARN) {
             Log.w(TAG, "Application attempted to call on a destroyed BisonView", new Throwable());
         }
-        boolean destroyRunnableHasRun = mCleanupReference != null && mCleanupReference.hasCleanedUp();
-        boolean weakRefsCleared = mWebContentsInternalsHolder != null && mWebContentsInternalsHolder.weakRefCleared();
+        boolean destroyRunnableHasRun =
+                mCleanupReference != null && mCleanupReference.hasCleanedUp();
+        boolean weakRefsCleared =
+                mWebContentsInternalsHolder != null && mWebContentsInternalsHolder.weakRefCleared();
         if (TRACE && destroyRunnableHasRun && !mIsDestroyed) {
             // Swallow the error. App developers are not going to do anything with an error
             // msg.
@@ -813,8 +825,8 @@ public class BvContents implements SmartClipProvider {
     }
 
     public BvPdfExporter getPdfExporter() {
-        if (isDestroyed(WARN))
-            return null;
+        if (TRACE) Log.i(TAG, "%s getPdfExporter", this);
+        if (isDestroyed(WARN)) return null;
         if (mBvPdfExporter == null) {
             mBvPdfExporter = new BvPdfExporter();
             BvContentsJni.get().createPdfExporter(mNativeBvContents, mBvPdfExporter);
@@ -1081,7 +1093,8 @@ public class BvContents implements SmartClipProvider {
                 && params.getTransitionType() == PageTransition.TYPED) {
             params.setTransitionType(PageTransition.RELOAD);
         }
-        params.setTransitionType(params.getTransitionType() | PageTransition.FROM_API);
+        params.setTransitionType(
+                params.getTransitionType() | PageTransition.FROM_API);
 
         params.setOverrideUserAgent(UserAgentOverrideOption.TRUE);
 
@@ -1098,8 +1111,8 @@ public class BvContents implements SmartClipProvider {
             }
         }
 
-        BvContentsJni.get().setExtraHeadersForUrl(mNativeBvContents, params.getUrl(),
-                params.getExtraHttpRequestHeadersString());
+        BvContentsJni.get().setExtraHeadersForUrl(
+                mNativeBvContents, params.getUrl(), params.getExtraHttpRequestHeadersString());
         params.setExtraHeaders(new HashMap<String, String>());
 
         params.setUrl(UrlFormatter.fixupUrl(params.getUrl()).getPossiblyInvalidSpec());
@@ -1441,10 +1454,10 @@ public class BvContents implements SmartClipProvider {
         }
     }
 
-    public void saveWebArchive(final String basename, boolean autoname, final Callback<String> callback) {
+    public void saveWebArchive(
+            final String basename, boolean autoname, final Callback<String> callback) {
         if (TRACE)
             Log.i(TAG, "%s saveWebArchive=%s", this, basename);
-
         if (!autoname) {
             saveWebArchiveInternal(basename, callback);
             return;
@@ -1466,9 +1479,8 @@ public class BvContents implements SmartClipProvider {
     }
 
     public String getOriginalUrl() {
-        if (isDestroyed(WARN))
-            return null;
-        NavigationHistory history = mNavigationController.getNavigationHistory();
+        if (isDestroyed(WARN)) return null;
+        NavigationHistory history = getNavigationHistory();
         int currentIndex = history.getCurrentEntryIndex();
         if (currentIndex >= 0 && currentIndex < history.getEntryCount()) {
             return history.getEntryAtIndex(currentIndex).getOriginalUrl().getSpec();
@@ -1564,7 +1576,8 @@ public class BvContents implements SmartClipProvider {
         return mWindowAndroid.getWindowAndroid().getDisplay().getDipScale();
     }
 
-    public ScriptReference addDocumentStartJavaScript(@NonNull String script, @NonNull String[] allowedOriginRules) {
+    public ScriptReference addDocumentStartJavaScript(
+        @NonNull String script, @NonNull String[] allowedOriginRules) {
         if (script == null) {
             throw new IllegalArgumentException("script shouldn't be null.");
         }
@@ -1633,21 +1646,6 @@ public class BvContents implements SmartClipProvider {
     private void setAutofillClient(BvAutofillClient client) {
         mAutofillClient = client;
         client.init(mContext);
-    }
-
-    @CalledByNative
-    private void onNativeDestroyed() {
-        mWindowAndroid = null;
-        mNativeBvContents = 0;
-        mWebContents = null;
-    }
-
-    public static String sanitizeUrl(String url) {
-        if (url == null)
-            return null;
-        if (url.startsWith("www.") || url.indexOf(":") == -1)
-            url = "http://" + url;
-        return url;
     }
 
     public void flingScroll(int velocityX, int velocityY) {
@@ -2157,6 +2155,7 @@ public class BvContents implements SmartClipProvider {
         return BvContentsJni.get().getRenderProcess(mNativeBvContents, BvContents.this);
     }
 
+
     @CalledByNative
     private static void onDocumentHasImagesResponse(boolean result, Message message) {
         message.arg1 = result ? 1 : 0;
@@ -2211,8 +2210,8 @@ public class BvContents implements SmartClipProvider {
         }
         // Allow if the origin has a retained allow
         if (permissions.hasOrigin(origin)) {
-            BvContentsJni.get().invokeGeolocationCallback(mNativeBvContents, permissions.isOriginAllowed(origin),
-                    origin);
+            BvContentsJni.get().invokeGeolocationCallback(
+                    mNativeBvContents, permissions.isOriginAllowed(origin),origin);
             return;
         }
         mContentsClient.onGeolocationPermissionsShowPrompt(origin, new BvGeolocationCallback(origin, this));

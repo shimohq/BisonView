@@ -56,7 +56,6 @@
 #include "components/autofill/content/browser/content_autofill_driver_factory.h"
 #include "components/autofill/core/browser/webdata/autofill_webdata_service.h"
 #include "components/autofill/core/common/autofill_features.h"
-#include "components/metrics/content/content_stability_metrics_provider.h"
 #include "components/navigation_interception/intercept_navigation_delegate.h"
 #include "components/security_interstitials/content/security_interstitial_tab_helper.h"
 #include "components/viz/common/surfaces/frame_sink_id.h"
@@ -313,6 +312,10 @@ BvContents::~BvContents() {
   DCHECK_EQ(this, BvContents::FromWebContents(web_contents_.get()));
   web_contents_->RemoveUserData(kBvContentsUserDataKey);
   BvContentsClientBridge::Dissociate(web_contents_.get());
+  if (find_helper_.get())
+    find_helper_->SetListener(NULL);
+  if (icon_helper_.get())
+    icon_helper_->SetListener(NULL);
   JNIEnv* env = AttachCurrentThread();
   ScopedJavaLocalRef<jobject> obj = java_ref_.get(env);
   if (obj.is_null())
@@ -325,7 +328,6 @@ BvContents::~BvContents() {
     base::MemoryPressureListener::NotifyMemoryPressure(
         base::MemoryPressureListener::MEMORY_PRESSURE_LEVEL_CRITICAL);
   }
-  Java_BvContents_onNativeDestroyed(env, obj);
   BvContentsLifecycleNotifier::GetInstance().OnWebViewDestroyed(this);
   WebContentsObserver::Observe(nullptr);
 }
@@ -443,7 +445,8 @@ void BvContents::GenerateMHTML(JNIEnv* env,
 
 void BvContents::CreatePdfExporter(JNIEnv* env,
                                    const JavaParamRef<jobject>& pdfExporter) {
-  pdf_exporter_.reset(new BvPdfExporter(env, pdfExporter, web_contents_.get()));
+  pdf_exporter_ =
+      std::make_unique<BvPdfExporter>(env, pdfExporter, web_contents_.get());
 }
 
 bool BvContents::OnReceivedHttpAuthRequest(const JavaRef<jobject>& handler,

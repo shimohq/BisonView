@@ -14,6 +14,7 @@ import org.chromium.base.CommandLine;
 import org.chromium.base.ContextUtils;
 import org.chromium.base.Log;
 import org.chromium.base.PathUtils;
+import org.chromium.base.PowerMonitor;
 import org.chromium.base.ThreadUtils;
 import org.chromium.base.annotations.JNINamespace;
 import org.chromium.base.library_loader.LibraryLoader;
@@ -86,8 +87,7 @@ public final class BvBrowserProcess {
     }
 
     /**
-     * Configures child process launcher. This is required only if child services
-     * are used in
+     * Configures child process launcher. This is required only if child services are used in
      * WebView.
      */
     public static void configureChildProcessLauncher() {
@@ -95,9 +95,9 @@ public final class BvBrowserProcess {
         final boolean bindToCaller = true;
         final boolean ignoreVisibilityForImportance = true;
         ChildProcessCreationParams.set(mAppPackageName, "im.shimo.bison.PrivilegedProcessService",
-                mAppPackageName, "im.shimo.bison.SandboxedProcessService",
-                isExternalService, LibraryProcessType.PROCESS_WEBVIEW_CHILD,
-                bindToCaller, ignoreVisibilityForImportance);
+                mAppPackageName, "im.shimo.bison.SandboxedProcessService", isExternalService,
+                LibraryProcessType.PROCESS_WEBVIEW_CHILD, bindToCaller,
+                ignoreVisibilityForImportance);
     }
 
     /**
@@ -121,8 +121,7 @@ public final class BvBrowserProcess {
                     ChildProcessLauncherHelper.warmUp(appContext, true);
                 }
                 // The policies are used by browser startup, so we need to register the policy
-                // providers before starting the browser process. This only registers java
-                // objects
+                // providers before starting the browser process. This only registers java objects
                 // and doesn't need the native library.
 
                 CombinedPolicyProvider.get().registerProvider(new BisonPolicyProvider(appContext));
@@ -132,6 +131,8 @@ public final class BvBrowserProcess {
                     BrowserStartupController.getInstance().startBrowserProcessesSync(
                             LibraryProcessType.PROCESS_WEBVIEW, !multiProcess);
                 }
+
+                PowerMonitor.create();
             });
         }
     }
@@ -142,8 +143,7 @@ public final class BvBrowserProcess {
     }
 
     public static String getWebViewPackageName() {
-        if (sWebViewPackageName == null)
-            return ""; // May be null in testing.
+        if (sWebViewPackageName == null) return ""; // May be null in testing.
         return sWebViewPackageName;
     }
 

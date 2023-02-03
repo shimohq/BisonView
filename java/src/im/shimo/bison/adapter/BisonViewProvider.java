@@ -87,7 +87,8 @@ public class BisonViewProvider {
             bvSettings.setScrollTopLeftInteropEnabled(true);
         }
         mSettings = new BisonViewSettingsAdapter(bvSettings);
-        BvContentsClientBridge bvContentsClientBridge = new BvContentsClientBridge(context, mContentsClient, new ClientCertLookupTable());
+        BvContentsClientBridge bvContentsClientBridge = new BvContentsClientBridge(
+                context, mContentsClient, new ClientCertLookupTable());
 
         mBvContents = new BvContents(context, view, BisonInitializer.getInstance().getBrowserContext(),
                 new InternalAccessAdapter(), bvContentsClientBridge, mContentsClient, bvSettings, webContentsRenderView);
