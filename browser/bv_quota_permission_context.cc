@@ -22,4 +22,4 @@ void BvQuotaPermissionContext::RequestQuotaPermission(
   std::move(callback).Run(QUOTA_PERMISSION_RESPONSE_DISALLOW);
 }
 
-}  // namespace android_webview
+}  // namespace bison

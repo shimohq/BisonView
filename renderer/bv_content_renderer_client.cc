@@ -226,4 +226,4 @@ mojom::RenderMessageFilter* BvContentRendererClient::GetRenderMessageFilter() {
   return render_message_filter_.get();
 }
 
-}  // namespace android_webview
+}  // namespace bison

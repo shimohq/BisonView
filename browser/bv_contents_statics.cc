@@ -178,4 +178,4 @@ ScopedJavaLocalRef<jstring> JNI_BvContentsStatics_GetVariationsHeader(
       headers->headers_map.at(variations::mojom::GoogleWebVisibility::ANY));
 }
 
-}  // namespace android_webview
+}  // namespace bison

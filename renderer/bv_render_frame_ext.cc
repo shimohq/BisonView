@@ -377,4 +377,4 @@ void BvRenderFrameExt::BindLocalMainFrame(
   local_main_frame_receiver_.Bind(std::move(pending_receiver));
 }
 
-}  // namespace android_webview
+}  // namespace bison

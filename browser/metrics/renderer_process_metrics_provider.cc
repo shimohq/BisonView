@@ -38,4 +38,4 @@ void RendererProcessMetricsProvider::ProvideCurrentSessionData(
   RecordRendererProcessMetricsImpl();
 }
 
-}  // namespace android_webview
+}  // namespace bison

@@ -82,34 +82,13 @@ class BvBrowserProcess {
 
   std::unique_ptr<BvBrowserPolicyConnector> browser_policy_connector_;
 
-  // Accessed on both UI and IO threads.
-  // jiang bison not impl safe Browsing
-  // scoped_refptr<BisonSafeBrowsingUIManager> safe_browsing_ui_manager_;
 
-  // Accessed on UI thread only.
-  // jiang bison not impl safe Browsing
-  // std::unique_ptr<safe_browsing::TriggerManager>
-  // safe_browsing_trigger_manager_;
-
-  // These two are accessed on IO thread only.
-  // jiang bison not impl safe Browsing
-  // scoped_refptr<safe_browsing::RemoteSafeBrowsingDatabaseManager>
-  //     safe_browsing_db_manager_;
-  // bool safe_browsing_db_manager_started_ = false;
 
   PrefChangeRegistrar pref_change_registrar_;
 
-  // TODO(amalova): Consider to make WhitelistManager per-profile.
-  // Accessed on UI and IO threads.
-  // jiang bison not impl safe Browsing
-  // std::unique_ptr<BisonSafeBrowsingWhitelistManager>
-  //     safe_browsing_whitelist_manager_;
-
-  std::unique_ptr<BvContentsLifecycleNotifier> bv_contents_lifecycle_notifier_;
-
 
   std::unique_ptr<VisibilityMetricsLogger> visibility_metrics_logger_;
-  std::unique_ptr<BvContentsLifecycleNotifier> aw_contents_lifecycle_notifier_;
+  std::unique_ptr<BvContentsLifecycleNotifier> bv_contents_lifecycle_notifier_;
   std::unique_ptr<EnterpriseAuthenticationAppLinkManager> app_link_manager_;
 };
 

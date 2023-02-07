@@ -112,7 +112,7 @@ std::string BvMetricsServiceClient::GetAppPackageNameIfLoggable() {
 
 bool BvMetricsServiceClient::ShouldRecordPackageName() {
   base::UmaHistogramEnumeration(
-      "Android.WebView.Metrics.PackagesAllowList.RecordStatus",
+      "BisonView.Metrics.PackagesAllowList.RecordStatus",
       package_name_record_status_);
   return cached_package_name_record_.has_value() &&
          cached_package_name_record_.value().IsAppPackageNameAllowed();
@@ -146,7 +146,7 @@ void BvMetricsServiceClient::SetAppPackageNameLoggingRule(
       AppPackageNameLoggingRuleStatus::kNewVersionLoaded;
 
   UmaHistogramTimes(
-      "Android.WebView.Metrics.PackagesAllowList.ResultReceivingDelay",
+      "BisonView.Metrics.PackagesAllowList.ResultReceivingDelay",
       base::Time::Now() - time_created_);
 }
 

@@ -184,4 +184,4 @@ void BvDarkMode::InferredColorSchemeUpdated(
   }
 }
 
-}  // namespace android_webview
+}  // namespace bison

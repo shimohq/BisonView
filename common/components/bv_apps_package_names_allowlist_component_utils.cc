@@ -25,4 +25,4 @@ void GetWebViewAppsPackageNamesAllowlistPublicKeyHash(
                    std::size(kWebViewAppsPackageNamesAllowlistPublicKeySHA256));
 }
 
-}  // namespace android_webview
+}  // namespace bison

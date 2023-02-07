@@ -1,9 +1,5 @@
-// Copyright 2021 The Chromium Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file.
-
-#ifndef ANDROID_WEBVIEW_BROWSER_AW_DARK_MODE_H_
-#define ANDROID_WEBVIEW_BROWSER_AW_DARK_MODE_H_
+#ifndef BISON_BROWSER_BV_DARK_MODE_H_
+#define BISON_BROWSER_BV_DARK_MODE_H_
 
 #include "bison/browser/bv_settings.h"
 
@@ -52,4 +48,4 @@ class BvDarkMode : public content::WebContentsObserver,
 
 }  // namespace bison
 
-#endif  // ANDROID_WEBVIEW_BROWSER_AW_DARK_MODE_H_
+#endif  // BISON_BROWSER_BV_DARK_MODE_H_

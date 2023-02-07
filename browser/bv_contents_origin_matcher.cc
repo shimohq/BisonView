@@ -41,4 +41,4 @@ std::vector<std::string> BvContentsOriginMatcher::UpdateRuleList(
   return bad_rules;
 }
 
-}  // namespace android_webview
+}  // namespace bison

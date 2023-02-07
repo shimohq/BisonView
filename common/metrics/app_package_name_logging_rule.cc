@@ -79,4 +79,4 @@ base::Value AppPackageNameLoggingRule::ToDictionary() {
   return dict;
 }
 
-}  // namespace android_webview
+}  // namespace bison

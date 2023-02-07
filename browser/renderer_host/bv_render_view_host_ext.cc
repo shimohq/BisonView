@@ -214,4 +214,4 @@ mojom::LocalMainFrame* BvRenderViewHostExt::GetLocalMainFrameRemote() {
   return local_main_frame_remote_.get();
 }
 
-}  // namespace android_webview
+}  // namespace bison

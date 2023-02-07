@@ -39,6 +39,6 @@ class BvContentsOriginMatcher
   std::unique_ptr<js_injection::OriginMatcher> origin_matcher_;
 };
 
-}  // namespace android_webview
+}  // namespace bison
 
 #endif  // BISON_BROWSER_BV_CONTENTS_ORIGIN_MATCHER_H_

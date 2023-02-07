@@ -31,6 +31,6 @@ bool ParseHeader(const std::string& header,
                  RealmRestriction realm_restriction,
                  HeaderData* header_data);
 
-}  // namespace android_webview
+}  // namespace bison
 
 #endif  // BISON_BROWSER_RENDERER_HOST_AUTO_LOGIN_PARSER_H_

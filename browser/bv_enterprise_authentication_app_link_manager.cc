@@ -42,4 +42,4 @@ bool EnterpriseAuthenticationAppLinkManager::IsEnterpriseAuthenticationUrl(
     const GURL& url) {
   return url_matcher_ && !(url_matcher_->MatchURL(url).empty());
 }
-}  // namespace android_webview
+}  // namespace bison

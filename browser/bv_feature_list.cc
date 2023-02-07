@@ -70,4 +70,4 @@ static jint JNI_BvFeatureList_GetFeatureParamValueAsInt(
       *feature, ConvertJavaStringToUTF8(env, jparameter_name), defaultValue);
 }
 
-}  // namespace android_webview
+}  // namespace bison

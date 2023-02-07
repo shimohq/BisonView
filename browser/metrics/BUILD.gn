@@ -1,7 +1,5 @@
 source_set("metrics") {
   sources = [
-    "bv_component_metrics_provider_delegate.cc",
-    "bv_component_metrics_provider_delegate.h",
     "bv_metrics_service_client.cc",
     "bv_metrics_service_client.h",
     "renderer_process_metrics_provider.cc",
@@ -12,11 +10,10 @@ source_set("metrics") {
     "visibility_metrics_provider.h",
   ]
   deps = [
+    "//base",
     "//bison:bison_jni_headers",
     "//bison/browser/lifecycle",
     "//bison/common",
-
-    "//base",
     "//components/embedder_support/android/metrics",
     "//components/metrics",
     "//components/metrics:component_metrics",

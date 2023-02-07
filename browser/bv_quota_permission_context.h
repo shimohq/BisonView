@@ -21,6 +21,6 @@ class BvQuotaPermissionContext : public content::QuotaPermissionContext {
   ~BvQuotaPermissionContext() override;
 };
 
-}  // namespace android_webview
+}  // namespace bison
 
 #endif  // BISON_BROWSER_BV_QUOTA_PERMISSION_CONTEXT_H_

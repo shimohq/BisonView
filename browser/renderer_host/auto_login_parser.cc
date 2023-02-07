@@ -67,4 +67,4 @@ bool ParseHeader(const std::string& header,
   return true;
 }
 
-}  // namespace android_webview
+}  // namespace bison

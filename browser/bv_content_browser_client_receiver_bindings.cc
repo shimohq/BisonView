@@ -190,4 +190,4 @@ void BvContentBrowserClient::ExposeInterfacesToRenderer(
 #endif
 }
 
-}  // namespace android_webview
+}  // namespace bison

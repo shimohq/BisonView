@@ -139,4 +139,4 @@ TEST_F(MediaAccessPermissionRequestTest, TestDenyPermissionRequest) {
   EXPECT_EQ(blink::mojom::MediaStreamRequestResult::PERMISSION_DENIED, result_);
 }
 
-}  // namespace android_webview
+}  // namespace bison

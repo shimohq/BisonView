@@ -77,10 +77,10 @@ public class BisonView extends FrameLayout {
     private void initialize(Context context, @Nullable AttributeSet attrs) {
         if (isInEditMode())
             return;
-        mProvider = new BisonViewProvider(this, mWebContentsRenderView, new InternalAccess());
         TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.BisonView);
         mWebContentsRenderView = a.getInt(R.styleable.BisonView_webContentsRenderView, 0);
         a.recycle();
+        mProvider = new BisonViewProvider(this, mWebContentsRenderView, new InternalAccess());
         setOverScrollMode(View.OVER_SCROLL_ALWAYS);
         setFocusable(true);
         setFocusableInTouchMode(true);

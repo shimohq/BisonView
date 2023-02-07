@@ -80,4 +80,4 @@ bool IsTraceMetadataAllowlisted(const std::string& name) {
   return false;
 }
 
-}  // namespace android_webview
+}  // namespace bison

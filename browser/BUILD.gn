@@ -192,17 +192,16 @@ source_set("browser") {
     "//components/cdm/browser",
 
     # jiang947 begin 先加上后面可能会删除
-    "//components/component_updater/android:embedded_component_loader",
-    "//components/component_updater/android:loader_policies",
-    "//components/component_updater/installer_policies",
+    # "//components/component_updater/android:embedded_component_loader",
+    # "//components/component_updater/android:loader_policies",
+    # "//components/component_updater/installer_policies",
 
     # jiang947 end
     "//components/content_capture/android",
     "//components/content_capture/browser",
     "//components/embedder_support:browser_util",
+    "//components/embedder_support:embedder_support",
     "//components/embedder_support/android:util",
-    "//components/embedder_support/android:web_contents_delegate",
-    "//components/embedder_support/android/metrics",
     "//components/embedder_support/origin_trials",
     "//components/favicon_base:favicon_base",
     "//components/flags_ui",

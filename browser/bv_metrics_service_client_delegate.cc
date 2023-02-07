@@ -3,7 +3,6 @@
 
 #include "bison/browser/bv_browser_process.h"
 #include "bison/browser/lifecycle/bv_contents_lifecycle_notifier.h"
-#include "bison/browser/metrics/bv_component_metrics_provider_delegate.h"
 #include "bison/browser/metrics/bv_metrics_service_client.h"
 #include "bison/browser/metrics/renderer_process_metrics_provider.h"
 #include "bison/browser/metrics/visibility_metrics_provider.h"
@@ -26,10 +25,10 @@ void BvMetricsServiceClientDelegate::RegisterAdditionalMetricsProviders(
       BvBrowserProcess::GetInstance()->visibility_metrics_logger()));
   service->RegisterMetricsProvider(
       std::make_unique<RendererProcessMetricsProvider>());
-  service->RegisterMetricsProvider(
-      std::make_unique<metrics::ComponentMetricsProvider>(
-          std::make_unique<BvComponentMetricsProviderDelegate>(
-              BvMetricsServiceClient::GetInstance())));
+  // service->RegisterMetricsProvider(
+  //     std::make_unique<metrics::ComponentMetricsProvider>(
+  //         std::make_unique<BvComponentMetricsProviderDelegate>(
+  //             BvMetricsServiceClient::GetInstance())));
   service->RegisterMetricsProvider(
       std::make_unique<tracing::BvBackgroundTracingMetricsProvider>());
 }

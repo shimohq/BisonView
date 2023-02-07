@@ -69,9 +69,6 @@ void BvBrowserProcess::PreMainMessageLoopRun() {
   pref_change_registrar_.Add(prefs::kAuthServerAllowlist, auth_pref_callback);
   pref_change_registrar_.Add(prefs::kAuthAndroidNegotiateAccountType,
                              auth_pref_callback);
-
-  // jiang
-  // InitSafeBrowsing();
 }
 
 PrefService* BvBrowserProcess::local_state() {
