@@ -713,7 +713,9 @@ public class BisonViewProvider {
     }
 
     public void setFindListener(BisonView.FindListener listener) {
-        mContentsClient.setFindListener(listener);
+        if (mContentsClient !=null){
+            mContentsClient.setFindListener(listener);
+        }
     }
 
     public void findNext(boolean forward) {

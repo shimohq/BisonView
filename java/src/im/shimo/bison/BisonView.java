@@ -802,7 +802,6 @@ public class BisonView extends FrameLayout {
         } else {
             return super.performAccessibilityAction(action, arguments);
         }
-
     }
 
     @Override

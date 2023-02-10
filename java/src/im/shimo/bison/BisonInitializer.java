@@ -2,6 +2,7 @@ package im.shimo.bison;
 
 import android.app.Application;
 import android.content.Context;
+import android.content.pm.ApplicationInfo;
 import android.os.Build;
 import android.os.StrictMode;
 import android.text.TextUtils;
@@ -137,8 +138,8 @@ public class BisonInitializer {
         return mGeolocationPermissions;
     }
 
-    public void initCommandLine(@Nullable String path) {
-        if (IsHostAppDebug() && !TextUtils.isEmpty(path)) {
+    public void initCommandLine(Context context , @Nullable String path) {
+        if (IsHostAppDebug(context) && !TextUtils.isEmpty(path)) {
             StrictMode.ThreadPolicy oldPolicy = StrictMode.allowThreadDiskReads();
             CommandLine.initFromFile(path);
             StrictMode.setThreadPolicy(oldPolicy);
@@ -147,20 +148,24 @@ public class BisonInitializer {
         }
     }
 
-    private boolean IsHostAppDebug() {
+    private boolean IsHostAppDebug(Context context) {
         if (mIsHostAppDebug != null) {
             return mIsHostAppDebug;
         }
-        try {
-            Class<?> buildConfigClass = Class.forName(String.format("%s.BuildConfig", mAppPackageName));
-            Field debugField = buildConfigClass.getDeclaredField("DEBUG");
-            debugField.setAccessible(true);
-            mIsHostAppDebug = (Boolean) debugField.get(null);
-            return mIsHostAppDebug;
-        } catch (ClassNotFoundException | NoSuchFieldException | IllegalAccessException
-                | IllegalArgumentException ignore) {
-            return false;
-        }
+        // try {
+        //     Class<?> buildConfigClass = Class.forName(String.format("%s.BuildConfig", mAppPackageName));
+        //     Field debugField = buildConfigClass.getDeclaredField("DEBUG");
+        //     debugField.setAccessible(true);
+        //     mIsHostAppDebug = (Boolean) debugField.get(null);
+        //     return mIsHostAppDebug;
+        // } catch (ClassNotFoundException | NoSuchFieldException | IllegalAccessException
+        //         | IllegalArgumentException ignore) {
+        //     return false;
+        // }
+
+        int applicationFlags = context.getApplicationInfo().flags;
+        mIsHostAppDebug = (applicationFlags & ApplicationInfo.FLAG_DEBUGGABLE) != 0;
+        return mIsHostAppDebug;
     }
 
     public static boolean isBrowserProcess() {

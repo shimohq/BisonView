@@ -165,7 +165,7 @@ std::string GetProduct() {
 }
 
 std::string GetUserAgent() {
-  std::string product = "Version/4.0 Bison/1.2.1 " + GetProduct();
+  std::string product = "Version/4.0 Bison/1.3.0 " + GetProduct();
   if (base::CommandLine::ForCurrentProcess()->HasSwitch(
           switches::kUseMobileUserAgent)) {
     product += " Mobile";

@@ -133,6 +133,9 @@ absl::optional<int> BvMainDelegate::BasicStartupComplete() {
   // See crbug.com/1309151.
   cl->AppendSwitch(switches::kDisableGpuShaderDiskCache);
 
+  // ref :https://bugs.chromium.org/p/chromium/issues/detail?id=1306508
+  cl->AppendSwitch(switches::kDisableRendererAccessibility);
+
   if (cl->GetSwitchValueASCII(switches::kProcessType).empty()) {
     // Browser process (no type specified).
 
