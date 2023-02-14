@@ -16,6 +16,7 @@ android_apk("bison_shell_apk") {
   sources = [
     "java/im/shimo/bison/shell/BisonShellApp.java",
     "java/im/shimo/bison/shell/BisonShellMainActivity.java",
+
     # "java/im/shimo/bison/test/BvJUnit4ClassRunner.java",
     "java/im/shimo/bison/test/BvTestRunnerActivity.java",
   ]
@@ -70,9 +71,17 @@ android_assets("bison_shell_assets") {
     "assets/visual_state_on_page_commit_visible_test.html",
     "assets/visual_state_waits_for_js_detached_test.html",
     "assets/visual_state_waits_for_js_test.html",
+  ]
+
+  renaming_sources = [
     "assets/dark_theme/index.html",
     "assets/dark_theme/main.js",
     "assets/dark_theme/style.css",
+  ]
+  renaming_destinations = [
+    "dark_theme/index.html",
+    "dark_theme/main.js",
+    "dark_theme/style.css",
   ]
 
   deps = [
