@@ -1240,6 +1240,7 @@ public class BisonViewProvider {
             });
             return;
         }
+
         mBvContents.onDetachedFromWindow();
     }
 
@@ -1382,11 +1383,15 @@ public class BisonViewProvider {
             });
             return ret;
         }
-        if (mBvContents!=null){
+        if (mBvContents != null){
             mBvContents.requestFocus();
         }
+        if (mBisonViewInternalAccess != null){
+            return mBisonViewInternalAccess.super_requestFocus(direction, previouslyFocusedRect);
+        } else {
+            return false;
+        }
 
-        return mBisonViewInternalAccess.super_requestFocus(direction, previouslyFocusedRect);
     }
 
     public void onMeasure(final int widthMeasureSpec, final int heightMeasureSpec) {
